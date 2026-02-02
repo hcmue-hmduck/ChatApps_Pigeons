@@ -15,7 +15,10 @@ const app = express();
 const server = createServer(app);
 const io = Server(server, {
     cors: {
-        origin: [process.env.LINK_CLIENT, process.env.LINK_SERVER],
+        origin: [process.env.LINK_CLIENT, 
+                process.env.LINK_SERVER,
+                process.env.LINK_CLIENT_PROD,
+                process.env.LINK_SERVER_PROD],
         methods: ['GET', 'POST'],
         credentials: true
     }
@@ -24,7 +27,10 @@ const PORT = process.env.PORT || 8888;
 
 // CORS - Cho phép Angular gọi API
 app.use(cors({  
-  origin: [process.env.LINK_CLIENT, process.env.LINK_SERVER],
+  origin: [process.env.LINK_CLIENT, 
+          process.env.LINK_SERVER,
+          process.env.LINK_CLIENT_PROD,
+          process.env.LINK_SERVER_PROD],
   credentials: true
 }));
 
