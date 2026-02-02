@@ -29,8 +29,6 @@ class MessagesService {
 
     // Tạo message mới
     async createMessage(messageData) {
-        messageData.created_at = new Date();
-        messageData.updated_at = new Date();
         return await messagesModel.create(messageData);
     }
 

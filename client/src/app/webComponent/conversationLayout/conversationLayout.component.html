@@ -51,6 +51,7 @@
                                     {{ getLastMessageSenderName(conv) }}
                                 </span>
                                 <span>{{ conv.lastMessage.content }}</span>
+                                <span> {{ toLocalTime(conv.lastMessage.created_at) }}</span>
                             </ng-container>
                             <span *ngIf="!conv.lastMessage" style="color:#aaa;">Chưa có tin nhắn</span>
                         </div>

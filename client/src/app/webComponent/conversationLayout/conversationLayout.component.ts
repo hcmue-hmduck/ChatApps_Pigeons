@@ -4,6 +4,7 @@ import { MessagesLayoutComponent } from '../messagesLayout/messagesLayout.compon
 import { Conversation } from '../../services/conversation';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SocketService } from '../../services/socket';
+import { create } from 'domain';
 
 @Component({
     selector: 'conversation-layout',
@@ -28,26 +29,43 @@ export class ConversationLayoutComponent implements OnInit {
     constructor(private conversationService: Conversation, 
                 private socketService: SocketService,
                 private router: ActivatedRoute) {}
+    
+    // Format ISO date string to local time string (giờ máy client)
+    toLocalTime(dateStr: string): string {
+        console.log('toLocalTime input:', dateStr);
+        if (!dateStr) return '';
+        // Nếu không có Z và có dạng yyyy-mm-dd hh:mm:ss, thêm Z vào cuối
+        let isoStr = dateStr;
+        if (!isoStr.endsWith('Z') && isoStr.length === 23) {
+            isoStr = isoStr.replace(' ', 'T') + 'Z';
+        }
+        const date = new Date(isoStr);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
 
     reloadSidebar() {
         this.currentUserId = this.router.snapshot.paramMap.get('id') || '';
-        // this.loadConversations(this.currentUserId); 
         this.socketService.on('updateConversation', (data: any) => {
+            console.log('Received updateConversation event:', data);
             const currentConversations = this.conversations();
             if (currentConversations.homeConversationData) {
-                const updatedConversations = currentConversations.homeConversationData.map((conv: any) => {
-                    if (conv.conversation_id === data.conversation_id) {
-                        return {
+                // Đưa conversation vừa update lên đầu mảng
+                const updatedConversations = [
+                    ...currentConversations.homeConversationData
+                        .filter((conv: any) => conv.conversation_id === data.conversation_id)
+                        .map((conv: any) => ({
                             ...conv,
                             lastMessage: {
                                 ...conv.lastMessage,
                                 sender_id: data.sender_id,
-                                content: data.content
+                                content: data.content,
+                                created_at: data.created_at,
+                                updated_at: data.updated_at
                             }
-                        };
-                    }
-                    return conv;
-                });
+                        })),
+                    ...currentConversations.homeConversationData
+                        .filter((conv: any) => conv.conversation_id !== data.conversation_id)
+                ];
                 this.conversations.set({
                     ...currentConversations,
                     homeConversationData: updatedConversations
@@ -59,31 +77,6 @@ export class ConversationLayoutComponent implements OnInit {
     ngOnInit() {
         this.currentUserId = this.router.snapshot.paramMap.get('id') || '';        
         this.loadConversations(this.currentUserId);
-        
-        // Setup listener 1 lần duy nhất
-        // this.socketService.on('updateConversation', (data: any) => {
-        //     console.log('updateConversation received:', data);
-        //     const currentConversations = this.conversations();
-        //     if (currentConversations.homeConversationData) {
-        //         const updatedConversations = currentConversations.homeConversationData.map((conv: any) => {
-        //             if (conv.conversation_id === data.conversation_id) {
-        //                 return {
-        //                     ...conv,
-        //                     lastMessage: {
-        //                         ...conv.lastMessage,
-        //                         sender_id: data.sender_id,
-        //                         content: data.content
-        //                     }
-        //                 };
-        //             }
-        //             return conv;
-        //         });
-        //         this.conversations.set({
-        //             ...currentConversations,
-        //             homeConversationData: updatedConversations
-        //         });
-        //     }
-        // });
     }
 
     ngOnChanges() {
@@ -118,8 +111,8 @@ export class ConversationLayoutComponent implements OnInit {
         this.loading = true;
         this.conversationService.getConversations(userId).subscribe({
             next: (response) => {
+                console.log('Conversations loaded:', response);
                 this.conversations.set(response.metadata || {});
-                
                 // Join vào TẤT CẢ conversation rooms để nhận update
                 if (response.metadata?.homeConversationData) {
                     response.metadata.homeConversationData.forEach((conv: any) => {

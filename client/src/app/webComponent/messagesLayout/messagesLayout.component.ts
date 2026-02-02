@@ -48,6 +48,14 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
                 private router: ActivatedRoute, 
                 private socketService: SocketService) {}
 
+    // Format ISO date string to local time string (giờ máy client)
+    toLocalTime(dateStr: string): string {
+        if (!dateStr) return '';
+        const date = new Date(dateStr);
+        // Hiển thị dạng HH:mm hoặc tuỳ ý
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
     ngOnInit() {
         if (!this.isLoaded) {  
             this.isLoaded = true;
@@ -175,9 +183,6 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
                     },
                 }));
 
-                // this.parentComponent.reloadSidebar();
-                
-        
                 const currentUser = this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId) || {};
                 const newMessage = {
                     ...response.metadata.newMessage,
@@ -187,6 +192,7 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
                 this.socketService.emit('sendMessage', newMessage);
                 
                 this.socketService.emit('updateConversation', newMessage);
+                console.log('New message added2:', newMessage);
             },
             error: (error) => {
                 console.error('Error sending message:', error);

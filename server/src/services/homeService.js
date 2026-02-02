@@ -37,6 +37,12 @@ class HomeService {
         const lastMessageIds = conversations
             .map(conv => conv.last_message_id)
             .filter(id => !!id);
+
+        // console.log('Last Message IDs:', lastMessageIds);
+        for (const id of lastMessageIds) {
+            console.log('Last Message ID:', await messagesService.getMessageById(id));
+        }
+
         let lastMessagesArr = [];
         if (lastMessageIds.length > 0) {
             lastMessagesArr = await messagesService.getMessagesByIds(lastMessageIds); // Hàm này cần trả về mảng messages theo id

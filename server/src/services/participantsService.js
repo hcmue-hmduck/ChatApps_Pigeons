@@ -20,15 +20,15 @@ class ParticipantsService {
 
     // Tạo participant mới
     async createParticipant(participantData) {
-        participantData.joined_at = new Date();
-        participantData.updated_at = new Date();
+        participantData.joined_at = new Date().toISOString();
+        participantData.updated_at = new Date().toISOString();
         return await participantsModel.create(participantData);
     }
 
     // Cập nhật participant
     async updateParticipant(participantId, participantData) {
         const participant = await participantsModel.findByPk(participantId);
-        participantData.updated_at = new Date();
+        participantData.updated_at = new Date().toISOString();
         if (participant) {
             return await participant.update(participantData);
         }
@@ -42,7 +42,7 @@ class ParticipantsService {
             // Soft delete - chỉ đánh dấu is_active = false
             await participant.update({ 
                 is_active: false,
-                updated_at: new Date()
+                updated_at: new Date().toISOString()
             });
             return true;
         }

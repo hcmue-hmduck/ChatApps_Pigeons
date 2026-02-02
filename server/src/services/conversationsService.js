@@ -16,15 +16,15 @@ class ConversationsService {
 
     // Tạo conversation mới
     async createConversation(conversationData) {
-        conversationData.created_at = new Date();
-        conversationData.updated_at = new Date();
+        conversationData.created_at = new Date().toISOString();
+        conversationData.updated_at = new Date().toISOString();
         return await conversationsModel.create(conversationData);
     }
 
     // Cập nhật conversation
     async updateConversation(conversationId, conversationData) {
         const conversation = await conversationsModel.findByPk(conversationId);
-        conversationData.updated_at = new Date();
+        conversationData.updated_at = new Date().toISOString();
         if (conversation) {
             return await conversation.update(conversationData);
         }
@@ -38,7 +38,7 @@ class ConversationsService {
             // Soft delete - chỉ đánh dấu is_active = false
             await conversation.update({ 
                 is_active: false,
-                updated_at: new Date()
+                updated_at: new Date().toISOString()
             });
             return true;
         }

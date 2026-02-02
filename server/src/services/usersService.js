@@ -16,15 +16,15 @@ class UsersService {
 
     // Tạo user mới
     async createUser(userData) {
-        userData.created_at = new Date();
-        userData.updated_at = new Date();
+        userData.created_at = new Date().toISOString();
+        userData.updated_at = new Date().toISOString();
         return await usersModel.create(userData);
     }
 
     // Cập nhật user
     async updateUser(userId, userData) {
         const user = await usersModel.findByPk(userId);
-        userData.updated_at = new Date();
+        userData.updated_at = new Date().toISOString();
         if (user) {
             return await user.update(userData);
         }
@@ -38,7 +38,7 @@ class UsersService {
             // Soft delete - chỉ đánh dấu is_active = false
             await user.update({ 
                 is_active: false,
-                updated_at: new Date()
+                updated_at: new Date().toISOString()
             });
             return true;
         }

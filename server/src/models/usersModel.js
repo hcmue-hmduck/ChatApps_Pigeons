@@ -111,7 +111,14 @@ const User = sequelize.define('User', {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
         allowNull: false,
-        field: 'created_at'
+        field: 'created_at',
+        get() {
+            const rawValue = this.getDataValue('created_at');
+            if (!rawValue) return null;
+            const d = new Date(rawValue);
+            const pad = n => n.toString().padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${d.getMilliseconds().toString().padStart(3, '0')}`;
+        }
     },
     
     // Updated At
@@ -119,7 +126,14 @@ const User = sequelize.define('User', {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
         allowNull: true,
-        field: 'updated_at'
+        field: 'updated_at',
+        get() {
+            const rawValue = this.getDataValue('updated_at');
+            if (!rawValue) return null;
+            const d = new Date(rawValue);
+            const pad = n => n.toString().padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${d.getMilliseconds().toString().padStart(3, '0')}`;
+        }  
     }
 }, {
     // Cấu hình bảng
