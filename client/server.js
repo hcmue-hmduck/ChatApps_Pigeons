@@ -9,7 +9,7 @@ const distPath = path.join(__dirname, 'dist/client/browser');
 app.use(express.static(distPath));
 
 // Redirect tất cả routes về index.html cho Angular routing
-app.get('*', (req, res) => {
+app.use((req, res) => {
   res.sendFile(path.join(distPath, 'index.html'));
 });
 
