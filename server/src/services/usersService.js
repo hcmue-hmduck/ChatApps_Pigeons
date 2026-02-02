@@ -16,12 +16,15 @@ class UsersService {
 
     // Tạo user mới
     async createUser(userData) {
+        userData.created_at = new Date();
+        userData.updated_at = new Date();
         return await usersModel.create(userData);
     }
 
     // Cập nhật user
     async updateUser(userId, userData) {
         const user = await usersModel.findByPk(userId);
+        userData.updated_at = new Date();
         if (user) {
             return await user.update(userData);
         }

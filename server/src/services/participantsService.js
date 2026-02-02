@@ -11,14 +11,24 @@ class ParticipantsService {
         return await participantsModel.findByPk(participantId);
     }
 
+    async getParticipantByConversationId(conversationId) {
+        return await participantsModel.findAll({
+            where: { conversation_id: conversationId },
+            order: [['joined_at', 'ASC']]
+        });
+    }
+
     // Tạo participant mới
     async createParticipant(participantData) {
+        participantData.joined_at = new Date();
+        participantData.updated_at = new Date();
         return await participantsModel.create(participantData);
     }
 
     // Cập nhật participant
     async updateParticipant(participantId, participantData) {
         const participant = await participantsModel.findByPk(participantId);
+        participantData.updated_at = new Date();
         if (participant) {
             return await participant.update(participantData);
         }

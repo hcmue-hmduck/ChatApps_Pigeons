@@ -1,0 +1,71 @@
+/* User Admin Table Styles */
+.user-admin-container {
+	padding: 24px;
+	font-family: 'Segoe UI', Arial, sans-serif;
+	background: #f9f9fb;
+	min-height: 100vh;
+}
+
+.user-admin-title {
+	font-size: 2rem;
+	font-weight: 700;
+	margin-bottom: 18px;
+	color: #222;
+}
+
+.user-admin-table {
+	width: 100%;
+	border-collapse: collapse;
+	background: #fff;
+	box-shadow: 0 2px 8px #0001;
+	border-radius: 8px;
+	overflow: hidden;
+}
+
+.user-admin-table th, .user-admin-table td {
+	border: 1px solid #e0e0e0;
+	padding: 12px 10px;
+	text-align: left;
+}
+
+.user-admin-table th {
+	background: #f5f6fa;
+	font-weight: 600;
+	color: #333;
+}
+
+.user-admin-table tbody tr:hover {
+	background: #f0f4ff;
+}
+
+.user-avatar {
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	object-fit: cover;
+	border: 2px solid #fff;
+	box-shadow: 0 1px 4px #0002;
+}
+
+.user-status-online {
+	color: #43a047;
+	font-weight: 500;
+}
+.user-status-offline {
+	color: #888;
+}
+
+.user-empty {
+	color: #aaa;
+	text-align: center;
+	margin-top: 16px;
+}
+
+.user-loading {
+	color: #1976d2;
+	font-weight: 500;
+}
+.user-error {
+	color: #d32f2f;
+	font-weight: 500;
+}

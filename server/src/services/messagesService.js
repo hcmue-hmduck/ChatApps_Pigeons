@@ -13,13 +13,31 @@ class MessagesService {
         return await messagesModel.findByPk(messageId);
     }
 
+    // Thêm vào class MessagesService
+    async getMessagesByIds(ids) {
+        return await messagesModel.findAll({
+            where: { id: ids, is_deleted: false }
+        });
+    }
+
+    async getAllMessagesByConversationId(conversationId) {
+        return await messagesModel.findAll({
+            where: { conversation_id: conversationId, is_deleted: false },
+            order: [['created_at', 'ASC']]
+        });
+    }
+
     // Tạo message mới
     async createMessage(messageData) {
+        messageData.created_at = new Date();
+        messageData.updated_at = new Date();
         return await messagesModel.create(messageData);
     }
 
     // Cập nhật message
     async updateMessage(messageId, messageData) {
+        messageData.is_edited = true;
+        messageData.updated_at = new Date();
         const message = await messagesModel.findByPk(messageId);
         if (message) {
             return await message.update(messageData);

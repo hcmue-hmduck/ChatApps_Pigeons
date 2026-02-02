@@ -1,0 +1,52 @@
+<div class="user-admin-container">
+  <h1 class="user-admin-title">Users List</h1>
+
+  <!-- Loading state -->
+  <div *ngIf="loading" class="user-loading">
+    Loading users...
+  </div>
+
+  <!-- Error state -->
+  <div *ngIf="error" class="user-error">
+    Error: {{ error }}
+  </div>
+
+  <!-- Users list -->
+  <div *ngIf="!loading && !error">
+    <p>Total users: {{ users.length }}</p>
+    
+    <table class="user-admin-table">
+      <thead>
+        <tr>
+          <th>Avatar</th>
+          <th>Full Name</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Status</th>
+          <th>Role</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let user of users">
+          <td style="text-align: center;">
+            <img [src]="user.avatar_url" alt="avatar" class="user-avatar">
+          </td>
+          <td>{{ user.full_name }}</td>
+          <td>{{ user.email }}</td>
+          <td>{{ user.phone_number }}</td>
+          <td>
+            <span [ngClass]="user.status === 'online' ? 'user-status-online' : 'user-status-offline'">
+              {{ user.status }}
+            </span>
+          </td>
+          <td>{{ user.role }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- No users message -->
+    <p *ngIf="users.length === 0" class="user-empty">
+      No users found.
+    </p>
+  </div>
+</div>

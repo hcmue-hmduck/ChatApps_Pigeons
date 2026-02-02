@@ -4,7 +4,8 @@ class ConversationsService {
     // Lấy tất cả conversations
     async getAllConversations() {
         return await conversationsModel.findAll({
-            where: { is_active: true }
+            where: { is_active: true },
+            order: [['updated_at', 'DESC']]
         });
     }
 
@@ -15,12 +16,15 @@ class ConversationsService {
 
     // Tạo conversation mới
     async createConversation(conversationData) {
+        conversationData.created_at = new Date();
+        conversationData.updated_at = new Date();
         return await conversationsModel.create(conversationData);
     }
 
     // Cập nhật conversation
     async updateConversation(conversationId, conversationData) {
         const conversation = await conversationsModel.findByPk(conversationId);
+        conversationData.updated_at = new Date();
         if (conversation) {
             return await conversation.update(conversationData);
         }

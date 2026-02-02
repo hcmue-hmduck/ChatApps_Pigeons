@@ -22,11 +22,7 @@ if (!process.env.MongoDB_URL) {
 
 // PostgreSQL pool
 const pgPool = new Pool({
-    user: process.env.UsernameDB,
-    host: process.env.SERVER_NAME,
-    database: process.env.DATABASE,
-    password: process.env.PasswordDB,
-    port: 5432,
+    connectionString: process.env.POSTGRES_URL,
     ssl: {
         rejectUnauthorized: false
     }
