@@ -36,7 +36,6 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
     hasNewMessage = false; // Track new messages when scrolled up
     
     private scrollTimeout: any;
-    private previousMessagesLength = 0;
     private lastConversationId: string = ''; // Track conversation changes
 
     // Menu state
@@ -56,42 +55,11 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
 
-    ngOnInit() {
-        if (!this.isLoaded) {  
-            this.isLoaded = true;
-            this.loadMessages(this.conversationId);
-
-            // Join vào conversation room
-            this.socketService.emit('joinConversation', this.conversationId);
-
-            // Lắng nghe tin nhắn mới từ người khác
-            this.socketService.on('newMessage', (data: any) => {
-                // Chỉ update message mới vào signal, không reload toàn bộ
-                if (data.conversation_id === this.conversationId) {
-                    this.getMessagesData.update(old => ({
-                        ...old,
-                        homeMessagesData: {
-                            ...old.homeMessagesData,
-                            messages: [
-                                ...old.homeMessagesData.messages,
-                                data
-                            ]
-                        }
-                    }));
-
-                    // Hiển thị badge "new" nếu user đang scroll ở trên
-                    if (!this.isUserNearBottom()) {
-                        this.hasNewMessage = true;
-                    }
-                }
-            });
-        }
-    }
-
-    ngOnChanges(changes: SimpleChanges) {
+    reloadMessages(conversationId: string) {
+        this.socketService.emit('joinConversation', conversationId);
         this.socketService.on('newMessage', (data: any) => {
-            // Chỉ update message mới vào signal, không reload toàn bộ
-            if (data.conversation_id === this.conversationId) {
+            if (data.conversation_id === conversationId) {
+                console.log('New message received in conversation', conversationId, ':', data);
                 this.getMessagesData.update(old => ({
                     ...old,
                     homeMessagesData: {
@@ -106,12 +74,20 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
                 // Hiển thị badge "new" nếu user đang scroll ở trên
                 if (!this.isUserNearBottom()) {
                     this.hasNewMessage = true;
-                    console.log('Set hasNewMessage = true');
-                } else {
-                    console.log('User is near bottom, not showing badge');
                 }
             }
         });
+    }
+
+    ngOnInit() {
+        if (!this.isLoaded) {  
+            this.isLoaded = true;
+            this.loadMessages(this.conversationId);
+        }
+    }
+
+    ngOnChanges(changes: SimpleChanges) {
+        this.reloadMessages(this.conversationId);
 
         console.log('message info', this.getMessageInfor);
         this.isLoaded = true;
@@ -126,7 +102,6 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
 
     ngAfterViewInit() {
         // Scroll xuống dưới cùng sau khi view được khởi tạo
-        
     }
 
     ngOnDestroy() {

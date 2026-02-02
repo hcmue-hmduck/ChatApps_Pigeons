@@ -32,7 +32,6 @@ export class ConversationLayoutComponent implements OnInit {
     
     // Format ISO date string to local time string (giờ máy client)
     toLocalTime(dateStr: string): string {
-        console.log('toLocalTime input:', dateStr);
         if (!dateStr) return '';
         // Nếu không có Z và có dạng yyyy-mm-dd hh:mm:ss, thêm Z vào cuối
         let isoStr = dateStr;
@@ -77,10 +76,6 @@ export class ConversationLayoutComponent implements OnInit {
     ngOnInit() {
         this.currentUserId = this.router.snapshot.paramMap.get('id') || '';        
         this.loadConversations(this.currentUserId);
-    }
-
-    ngOnChanges() {
-        this.reloadSidebar();
     }
 
     ngAfterViewInit() {
