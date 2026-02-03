@@ -12,8 +12,8 @@ export class Messages {
     constructor(private http: HttpClient) { }
 
     // Lấy tất cả messages của users này
-    getMessages(conversationId: string): Observable<any> {
-        return this.http.get(`${this.apiUrl}/${conversationId}`);
+    getMessages(conversationId: string, limit: number = 100, offset: number = 0): Observable<any> {
+        return this.http.get(`${this.apiUrl}/${conversationId}?limit=${limit}&offset=${offset}`);
     }
 
     postMessage(conversationId: string, senderId:string, content: string): Observable<any> {

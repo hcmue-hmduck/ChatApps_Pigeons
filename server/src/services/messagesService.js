@@ -20,11 +20,15 @@ class MessagesService {
         });
     }
 
-    async getAllMessagesByConversationId(conversationId) {
-        return await messagesModel.findAll({
+    async getAllMessagesByConversationId(conversationId, limit = 100, offset = 0) {
+        const messages = await messagesModel.findAll({
             where: { conversation_id: conversationId, is_deleted: false },
-            order: [['created_at', 'ASC']]
+            order: [['created_at', 'DESC']], // Lấy tin nhắn mới nhất trước
+            limit: limit, // Giới hạn số lượng tin nhắn
+            offset: offset // Bỏ qua số tin nhắn đầu (cho pagination)
         });
+        // Đảo ngược lại để hiển thị theo thứ tự cũ nhất đến mới nhất
+        return messages.reverse();
     }
 
     // Tạo message mới

@@ -11,6 +11,11 @@
         <div class="messages-content" #messagesContent (scroll)="onMessagesScroll()">
             <!-- Container chứa tin nhắn (reversed) -->
             <div class="messages-container">
+                <!-- Loading more indicator -->
+                <div *ngIf="isLoadingMore" class="loading-more">
+                    <span>Đang tải thêm tin nhắn...</span>
+                </div>
+                
                 <ng-container *ngFor="let msg of getMessagesData().homeMessagesData.messages; let i = index">
                     <!-- Date separator -->
                     <div *ngIf="shouldShowDateSeparator(msg, getMessagesData().homeMessagesData.messages[i-1])" class="date-separator">

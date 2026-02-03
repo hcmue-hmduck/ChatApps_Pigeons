@@ -104,12 +104,22 @@ class HomeService {
     }
 
     // Lấy tất cả messages trong 1 conversation (tối ưu: batch lấy user info)
-    async getMessagesByConversation(conversationId) {
-        // Song song hóa query conversation và messages
+    async getMessagesByConversation(conversationId, limit = 100, offset = 0) {
+        // Song song hóa TẤT CẢ queries: conversation, messages, VÀ có thể pre-fetch users
+        // Nếu có cache participants, có thể lấy userIds từ đó
         const [conversation, messages] = await Promise.all([
             conversationsService.getConversationById(conversationId),
-            messagesService.getAllMessagesByConversationId(conversationId)
+            messagesService.getAllMessagesByConversationId(conversationId, limit, offset)
         ]);
+
+        // Chỉ query users khi thực sự có messages
+        if (messages.length === 0) {
+            return {
+                ...conversation.dataValues,
+                messages: [],
+                hasMore: false // Không còn tin nhắn nào để load
+            };
+        }
 
         // Lấy tất cả sender_id duy nhất
         const senderIds = [...new Set(messages.map(m => m.sender_id))];
@@ -126,12 +136,11 @@ class HomeService {
             m.dataValues.sender_status = sender ? sender.status : '';
         });
 
-        const conversationData = {
+        return {
             ...conversation.dataValues,
-            messages
+            messages,
+            hasMore: messages.length === limit // Nếu trả về đủ limit thì có thể còn nữa
         };
-
-        return conversationData;
     }
 
     async postMessageToConversation(conversationId, senderId, content) {

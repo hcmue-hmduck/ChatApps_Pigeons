@@ -20,7 +20,9 @@ class HomeController {
     }
 
     async getHomeMessages(req, res) {
-        const homeMessagesData = await homeService.getMessagesByConversation(req.params.convID);
+        const limit = parseInt(req.query.limit) || 100;
+        const offset = parseInt(req.query.offset) || 0;
+        const homeMessagesData = await homeService.getMessagesByConversation(req.params.convID, limit, offset);
         new SuccessResponse({
             message: 'Get home messages successfully',
             metadata: {

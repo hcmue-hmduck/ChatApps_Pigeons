@@ -34,9 +34,18 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
     isLoaded = false;
     hasNewMessage = false; // Track new messages when scrolled up
     
+    // Pagination state
+    hasMore = true; // Còn tin nhắn cũ hơn để load
+    isLoadingMore = false; // Đang load thêm tin nhắn
+    currentOffset = 0; // Vị trí hiện tại (số messages đã load)
+    
     private scrollTimeout: any;
     private lastConversationId: string = ''; // Track conversation changes
     private pendingScroll = false; // Flag to scroll in ngAfterViewChecked
+    
+    // Cache để tránh tính toán lặp lại
+    private dateCache = new Map<string, string>();
+    private timeCache = new Map<string, string>();
 
     // Menu state
     showMenuId: string | number | null = null;
@@ -63,6 +72,12 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
     // Format date label (Today, Yesterday, or specific date)
     formatDateLabel(dateStr: string): string {
         if (!dateStr) return '';
+        
+        // Check cache
+        if (this.dateCache.has(dateStr)) {
+            return this.dateCache.get(dateStr)!;
+        }
+        
         let isoStr = dateStr;
         if (!isoStr.endsWith('Z') && isoStr.length === 23) {
             isoStr = isoStr.replace(' ', 'T') + 'Z';
@@ -72,19 +87,30 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
 
+        let result: string;
         if (msgDate.toDateString() === today.toDateString()) {
-            return 'Hôm nay';
+            result = 'Hôm nay';
         } else if (msgDate.toDateString() === yesterday.toDateString()) {
-            return 'Hôm qua';
+            result = 'Hôm qua';
         } else {
             const options: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            return msgDate.toLocaleDateString('vi-VN', options);
+            result = msgDate.toLocaleDateString('vi-VN', options);
         }
+        
+        // Cache result
+        this.dateCache.set(dateStr, result);
+        return result;
     }
 
     // Format time as HH:mm
     formatTime(dateStr: string): string {
         if (!dateStr) return '';
+        
+        // Check cache
+        if (this.timeCache.has(dateStr)) {
+            return this.timeCache.get(dateStr)!;
+        }
+        
         let isoStr = dateStr;
         if (!isoStr.endsWith('Z') && isoStr.length === 23) {
             isoStr = isoStr.replace(' ', 'T') + 'Z';
@@ -92,7 +118,11 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
         const date = new Date(isoStr);
         const hours = date.getHours().toString().padStart(2, '0');
         const minutes = date.getMinutes().toString().padStart(2, '0');
-        return `${hours}:${minutes}`;
+        const result = `${hours}:${minutes}`;
+        
+        // Cache result
+        this.timeCache.set(dateStr, result);
+        return result;
     }
 
     constructor(private messagesService: Messages, 
@@ -100,8 +130,10 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
                 private router: ActivatedRoute, 
                 private socketService: SocketService) {}
 
-    reloadMessages(conversationId: string) {
+    setupSocketListener(conversationId: string) {
         this.socketService.emit('joinConversation', conversationId);
+        
+        // Setup listener cho tin nhắn mới (chỉ setup 1 lần)
         this.socketService.on('newMessage', (data: any) => {
             if (data.conversation_id === conversationId) {
                 console.log('New message received in conversation', conversationId, ':', data);
@@ -131,20 +163,29 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
         if (!this.isLoaded) {  
             this.isLoaded = true;
             this.loadMessages(this.conversationId);
+            this.setupSocketListener(this.conversationId);
         }
     }
 
     ngOnChanges(changes: SimpleChanges) {
-        this.reloadMessages(this.conversationId);
-
         console.log('message info', this.getMessageInfor);
         this.isLoaded = true;
         
         if (changes['conversationId']) {
             const newConversationId = changes['conversationId'].currentValue;
-            this.conversationId = newConversationId;
-            this.loadMessages(newConversationId);
-            this.socketService.emit('joinConversation', newConversationId);
+            const oldConversationId = changes['conversationId'].previousValue;
+            
+            // Chỉ xử lý khi thực sự thay đổi conversation
+            if (newConversationId !== oldConversationId) {
+                this.conversationId = newConversationId;
+                
+                // Cleanup socket listener cũ
+                this.socketService.off('newMessage');
+                
+                // Load messages và setup socket mới
+                this.loadMessages(newConversationId);
+                this.setupSocketListener(newConversationId);
+            }
         }
     }
 
@@ -173,6 +214,15 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
             next: (response) => {
                 this.getMessagesData.set(response.metadata || {});
                 this.loading = false;
+                
+                // Clear cache khi load conversation mới
+                this.dateCache.clear();
+                this.timeCache.clear();
+                
+                // Reset pagination state
+                this.currentOffset = response.metadata?.homeMessagesData?.messages?.length || 0;
+                this.hasMore = response.metadata?.homeMessagesData?.hasMore ?? true;
+                
                 // Chỉ reset scroll khi THAY ĐỔI conversation, không reset khi có tin nhắn mới
                 const isConversationChange = this.lastConversationId !== conversationId;
                 if (isConversationChange) {
@@ -188,7 +238,46 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
                 this.loading = false;
             }
         });
+    }
+
+    // Load thêm tin nhắn cũ hơn khi scroll lên đầu
+    loadMoreMessages() {
+        if (this.isLoadingMore || !this.hasMore) return;
         
+        this.isLoadingMore = true;
+        
+        this.messagesService.getMessages(this.conversationId, 50, this.currentOffset).subscribe({
+            next: (response) => {
+                const olderMessages = response.metadata?.homeMessagesData?.messages || [];
+                if (olderMessages.length === 0) {
+                    this.hasMore = false;
+                    this.isLoadingMore = false;
+                    return;
+                }
+                
+                // Prepend older messages vào đầu danh sách
+                this.getMessagesData.update(old => ({
+                    ...old,
+                    homeMessagesData: {
+                        ...old.homeMessagesData,
+                        messages: [
+                            ...olderMessages,
+                            ...old.homeMessagesData.messages
+                        ]
+                    }
+                }));
+                
+                this.currentOffset += olderMessages.length;
+                this.hasMore = response.metadata?.homeMessagesData?.hasMore ?? false;
+                this.isLoadingMore = false;
+                
+                // Không điều chỉnh scroll - để trình duyệt tự giữ vị trí tương đối
+            },
+            error: (error) => {
+                console.error('Error loading more messages:', error);
+                this.isLoadingMore = false;
+            }
+        });
     }
 
     handleKeyDown(event: KeyboardEvent) {
@@ -356,6 +445,17 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
         if (this.isNearBottom) {
             this.autoScroll = true;
             this.hasNewMessage = false; // Clear new message flag khi scroll xuống cuối
+        }
+        
+        // Detect scroll to top (với column-reverse, scrollTop rất âm là đang ở trên cùng)
+        if (this.messagesContent?.nativeElement) {
+            const element = this.messagesContent.nativeElement;
+            const scrollThreshold = element.scrollHeight + element.scrollTop - element.clientHeight;
+            
+            // Nếu scroll gần đến top (còn 100px nữa là đến top)
+            if (scrollThreshold < 100 && this.hasMore && !this.isLoadingMore) {
+                this.loadMoreMessages();
+            }
         }
     }
 
