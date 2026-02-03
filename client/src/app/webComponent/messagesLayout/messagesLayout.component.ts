@@ -130,6 +130,11 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
                 private router: ActivatedRoute, 
                 private socketService: SocketService) {}
 
+    // TrackBy function để tối ưu rendering
+    trackByMessageId(index: number, message: any): any {
+        return message.id;
+    }
+
     setupSocketListener(conversationId: string) {
         this.socketService.emit('joinConversation', conversationId);
         
@@ -270,8 +275,6 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
                 this.currentOffset += olderMessages.length;
                 this.hasMore = response.metadata?.homeMessagesData?.hasMore ?? false;
                 this.isLoadingMore = false;
-                
-                // Không điều chỉnh scroll - để trình duyệt tự giữ vị trí tương đối
             },
             error: (error) => {
                 console.error('Error loading more messages:', error);

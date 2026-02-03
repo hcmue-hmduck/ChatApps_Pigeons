@@ -3,7 +3,7 @@
         Không có tin nhắn nào.
     </div>
     
-    <ng-container *ngIf="getMessagesData().homeMessagesData">
+    <ng-container *ngIf="getMessagesData().homeMessagesData?.messages?.length">
         <div class="messages-title">
             {{ getMessageInfor.title || 'Conversation' }}
         </div>
@@ -16,7 +16,7 @@
                     <span>Đang tải thêm tin nhắn...</span>
                 </div>
                 
-                <ng-container *ngFor="let msg of getMessagesData().homeMessagesData.messages; let i = index">
+                <ng-container *ngFor="let msg of getMessagesData().homeMessagesData.messages; let i = index; trackBy: trackByMessageId">
                     <!-- Date separator -->
                     <div *ngIf="shouldShowDateSeparator(msg, getMessagesData().homeMessagesData.messages[i-1])" class="date-separator">
                         <span>{{ formatDateLabel(msg.created_at) }}</span>
