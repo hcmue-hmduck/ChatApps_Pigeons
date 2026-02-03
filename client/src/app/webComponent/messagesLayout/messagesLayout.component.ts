@@ -1,4 +1,4 @@
-import { Component, signal, OnInit, Input, ViewContainerRef, OnChanges, SimpleChanges, HostListener, ElementRef, ViewChild, AfterViewInit, OnDestroy } from '@angular/core';
+import { Component, signal, OnInit, Input, ViewContainerRef, OnChanges, SimpleChanges, HostListener, ElementRef, ViewChild, AfterViewInit, AfterViewChecked, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Messages } from '../../services/messages';
@@ -13,7 +13,7 @@ import { SocketService } from '../../services/socket';
     templateUrl: './messagesLayout.component.html',
     styleUrls: ['./messagesLayout.component.css']
 })
-export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit, OnDestroy {
+export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit, AfterViewChecked, OnDestroy {
     protected readonly title = signal('client');
 
     getMessagesData = signal<any>({});
@@ -36,10 +36,64 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
     
     private scrollTimeout: any;
     private lastConversationId: string = ''; // Track conversation changes
+    private pendingScroll = false; // Flag to scroll in ngAfterViewChecked
 
     // Menu state
     showMenuId: string | number | null = null;
 
+    // Helper method to check if should show date separator
+    shouldShowDateSeparator(currentMsg: any, prevMsg: any): boolean {
+        if (!prevMsg) return true;
+        const currentDate = this.getMessageDate(currentMsg.created_at);
+        const prevDate = this.getMessageDate(prevMsg.created_at);
+        return currentDate !== prevDate;
+    }
+
+    // Get date string from message timestamp
+    getMessageDate(dateStr: string): string {
+        if (!dateStr) return '';
+        let isoStr = dateStr;
+        if (!isoStr.endsWith('Z') && isoStr.length === 23) {
+            isoStr = isoStr.replace(' ', 'T') + 'Z';
+        }
+        const date = new Date(isoStr);
+        return date.toDateString();
+    }
+
+    // Format date label (Today, Yesterday, or specific date)
+    formatDateLabel(dateStr: string): string {
+        if (!dateStr) return '';
+        let isoStr = dateStr;
+        if (!isoStr.endsWith('Z') && isoStr.length === 23) {
+            isoStr = isoStr.replace(' ', 'T') + 'Z';
+        }
+        const msgDate = new Date(isoStr);
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        if (msgDate.toDateString() === today.toDateString()) {
+            return 'Hôm nay';
+        } else if (msgDate.toDateString() === yesterday.toDateString()) {
+            return 'Hôm qua';
+        } else {
+            const options: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            return msgDate.toLocaleDateString('vi-VN', options);
+        }
+    }
+
+    // Format time as HH:mm
+    formatTime(dateStr: string): string {
+        if (!dateStr) return '';
+        let isoStr = dateStr;
+        if (!isoStr.endsWith('Z') && isoStr.length === 23) {
+            isoStr = isoStr.replace(' ', 'T') + 'Z';
+        }
+        const date = new Date(isoStr);
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        return `${hours}:${minutes}`;
+    }
 
     constructor(private messagesService: Messages, 
                 private conversationService: Conversation,
@@ -62,8 +116,11 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
                     }
                 }));
 
-                // Hiển thị badge "new" nếu user đang scroll ở trên
-                if (!this.isUserNearBottom()) {
+                // Tự động scroll xuống nếu đang ở gần cuối
+                if (this.isUserNearBottom()) {
+                    this.pendingScroll = true;
+                } else {
+                    // Hiển thị badge "new" nếu user đang scroll ở trên
                     this.hasNewMessage = true;
                 }
             }
@@ -95,6 +152,13 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
         // Scroll xuống dưới cùng sau khi view được khởi tạo
     }
 
+    ngAfterViewChecked() {
+        if (this.pendingScroll && this.messagesContent?.nativeElement) {
+            this.messagesContent.nativeElement.scrollTop = 0;
+            this.pendingScroll = false;
+        }
+    }
+
     ngOnDestroy() {
         if (this.scrollTimeout) {
             clearTimeout(this.scrollTimeout);
@@ -111,9 +175,10 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
                 this.loading = false;
                 // Chỉ reset scroll khi THAY ĐỔI conversation, không reset khi có tin nhắn mới
                 const isConversationChange = this.lastConversationId !== conversationId;
-                if (isConversationChange && this.messagesContent?.nativeElement) {
-                    this.messagesContent.nativeElement.scrollTop = 0;
+                if (isConversationChange) {
                     this.lastConversationId = conversationId;
+                    // Scroll xuống cuối
+                    this.pendingScroll = true;
                 }
                 // Nếu là tin nhắn mới trong cùng conversation, giữ nguyên scroll position
             },
@@ -126,18 +191,27 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
         
     }
 
+    handleKeyDown(event: KeyboardEvent) {
+        // Chỉ gửi tin nhắn khi Enter (không có Shift)
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            this.handleSendBtn();
+        }
+        // Nếu Shift+Enter thì cho phép xuống dòng (mặc định của textarea)
+    }
+
     handleSendBtn() {
         if (!this.newMessage.trim()) return;
-        
         const messageContent = this.newMessage;
-        this.newMessage = '';
-        
+        this.loading = true;
+        this.error = '';
         this.messagesService.postMessage(this.conversationId, this.currentUserId, messageContent).subscribe({
             next: (response) => {
+                this.loading = false;
+                this.newMessage = '';
                 console.log('Message sent successfully:', response);
                 this.conversationService.putConversation(this.conversationId, { lastMessage: response.metadata.id }).subscribe({ next: (res) => { /* Conversation updated */},
                     error: (err) => { console.error('Error updating conversation:', err); } });
-                
                 this.getMessagesData.update( old => ({
                     ...old,
                     homeMessagesData: {
@@ -148,7 +222,6 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
                         ]
                     },
                 }));
-
                 const currentUser = this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId) || {};
                 const newMessage = {
                     ...response.metadata.newMessage,
@@ -156,11 +229,11 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
                     sender_avatar: currentUser.avatar_url,
                 };
                 this.socketService.emit('sendMessage', newMessage);
-                
                 this.socketService.emit('updateConversation', newMessage);
                 console.log('New message added2:', newMessage);
             },
             error: (error) => {
+                this.loading = false;
                 console.error('Error sending message:', error);
                 this.error = error.message;
                 this.newMessage = messageContent;

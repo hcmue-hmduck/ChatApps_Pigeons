@@ -49,6 +49,54 @@
     min-height: min-content;
 }
 
+/* Date separator */
+.date-separator {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 16px 0;
+    text-align: center;
+}
+.date-separator span {
+    background: #e4e6eb;
+    color: #65676b;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+/* Message timestamp */
+.msg-timestamp {
+    font-size: 11px;
+    color: #65676b;
+    margin-top: 4px;
+}
+.me-timestamp {
+    text-align: right;
+    margin-right: 8px;
+}
+.other-timestamp {
+    text-align: left;
+    margin-left: 8px;
+}
+.other-with-time {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    flex: 1;
+    min-width: 0;
+}
+
+.me-with-time {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    flex: 1;
+    min-width: 0;
+}
+
 /* Input area */
 .messages-input {
     flex-shrink: 0;
@@ -69,12 +117,19 @@
     flex: 1 1 auto;
     padding: 10px 16px;
     border: 1px solid #e4e6eb;
-    border-radius: 20px;
+    border-radius: 16px;
     background: #f0f2f5;
     font-size: 15px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     outline: none;
     transition: border-color 0.2s, background 0.2s;
     min-width: 0;
+    resize: none;
+    min-height: 38px;
+    max-height: 120px;
+    line-height: 1.5;
+    overflow-y: auto;
+    box-sizing: border-box;
 }
 
 /* Hiệu ứng focus cho input */
@@ -168,7 +223,7 @@
     margin-bottom: 4px;
     position: relative;
     width: 100%;
-    animation: messageAppear 0.2s ease-out;
+    animation: messageAppear 0.02s ease-out;
 }
 
 /* My messages (right aligned) */
@@ -217,8 +272,8 @@
     height: 28px;
     flex-shrink: 0;
     margin-right: 8px;
-    align-self: flex-start;
-    margin-top: 8px;
+    align-self: flex-end;
+    margin-bottom: 0;
 }
 
 .avatar {
@@ -245,7 +300,6 @@
     align-items: flex-start;
     gap: 8px;
     flex: 1;
-    min-height: 44px;
     align-items: center;
 }
 
@@ -259,9 +313,7 @@
     overflow-wrap: break-word;
     min-width: 0;
     box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    min-height: 44px;
+    display: block;
 }
 
 .me {

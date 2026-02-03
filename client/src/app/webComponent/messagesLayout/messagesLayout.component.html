@@ -12,6 +12,10 @@
             <!-- Container chứa tin nhắn (reversed) -->
             <div class="messages-container">
                 <ng-container *ngFor="let msg of getMessagesData().homeMessagesData.messages; let i = index">
+                    <!-- Date separator -->
+                    <div *ngIf="shouldShowDateSeparator(msg, getMessagesData().homeMessagesData.messages[i-1])" class="date-separator">
+                        <span>{{ formatDateLabel(msg.created_at) }}</span>
+                    </div>
                     <ng-container *ngIf="msg.message_type === 'system'; else userMsg">
                         <div class="message-system">{{ msg.content }}</div>
                     </ng-container>
@@ -32,7 +36,13 @@
                                             <button class="dropdown-item" (click)="pinMessage(msg)">Ghim</button>
                                         </div>
                                     </div>
-                                    <div class="me">{{ msg.content }}</div>
+                                    <div class="me-with-time">
+                                        <div class="me" [innerHTML]="msg.content.replace(/\n/g, '<br>')"></div>
+                                        <div *ngIf="i === getMessagesData().homeMessagesData.messages.length - 1 || 
+                                                    getMessagesData().homeMessagesData.messages[i+1].sender_id !== msg.sender_id || 
+                                                    getMessagesData().homeMessagesData.messages[i+1].message_type === 'system'"
+                                             class="msg-timestamp me-timestamp">{{ formatTime(msg.created_at) }}</div>
+                                    </div>
                                 </div>
                             </div>
                         </ng-container>
@@ -65,7 +75,13 @@
                                     </div>
                                     
                                     <div class="message-content-wrapper">
-                                        <div class="other">{{ msg.content }}</div>
+                                        <div class="other-with-time">
+                                            <div class="other" [innerHTML]="msg.content.replace(/\n/g, '<br>')"></div>
+                                            <div *ngIf="i === getMessagesData().homeMessagesData.messages.length - 1 || 
+                                                        getMessagesData().homeMessagesData.messages[i+1].sender_id !== msg.sender_id || 
+                                                        getMessagesData().homeMessagesData.messages[i+1].message_type === 'system'"
+                                                 class="msg-timestamp other-timestamp">{{ formatTime(msg.created_at) }}</div>
+                                        </div>
                                         <div class="message-actions">
                                             <button class="more-icon" title="Tùy chọn"
                                                 (click)="toggleMenu(msg.id)">
@@ -98,8 +114,8 @@
             <button class="attach-btn" title="Đính kèm tệp" type="button">
                 <i class="fas fa-paperclip"></i>
             </button>
-            <input class="msg-input" [(ngModel)]="newMessage" type="text" placeholder="Type a message..." 
-                (keyup.enter)="handleSendBtn()" />
+            <textarea class="msg-input" [(ngModel)]="newMessage" placeholder="Type a message..."
+                (keydown)="handleKeyDown($event)" rows="1"></textarea>
             <button class="send-btn" (click)="handleSendBtn()" title="Gửi">
                 <i class="fas fa-paper-plane"></i>
             </button>
