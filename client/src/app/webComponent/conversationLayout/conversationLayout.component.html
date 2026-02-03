@@ -23,6 +23,8 @@
         <ng-container *ngIf="conversations().homeConversationData">
             <ng-container *ngFor="let conv of conversations().homeConversationData">
                 <div (click)="handleConversationID(conv)" class="conversation-item">
+                    
+                    <!-- <ng-container *ngIf="conv." -->
                     <ng-container *ngIf="conv.type === 'group'">
                         <div class="avatar-group" [ngClass]="{
                         'four': conv.participants.length === 4,

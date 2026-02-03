@@ -29,44 +29,58 @@ class HomeService {
             participantsService.getAllParticipants({ conversation_id: conversationIds })
         ]);
 
-        // 3. Lấy user info cho tất cả participants
+        // 3. Song song hóa query users và lastMessages
         const userIds = [...new Set(allParticipants.map(p => p.user_id))];
-        const users = await usersService.getAllUsers({ id: userIds });
-
-        // 4. Lấy last message cho tất cả conversation (batch)
         const lastMessageIds = conversations
             .map(conv => conv.last_message_id)
             .filter(id => !!id);
 
-        let lastMessagesArr = [];
-        if (lastMessageIds.length > 0) {
-            lastMessagesArr = await messagesService.getMessagesByIds(lastMessageIds);
-        }
+        const [users, lastMessagesArr] = await Promise.all([
+            usersService.getAllUsers({ id: userIds }),
+            lastMessageIds.length > 0 
+                ? messagesService.getMessagesByIds(lastMessageIds)
+                : Promise.resolve([])
+        ]);
 
-        // 5. Tạo Map để lookup nhanh O(1) thay vì find O(n)
+        // 4. Tạo Map để lookup nhanh O(1) thay vì find O(n)
         const lastMessagesMap = new Map(lastMessagesArr.map(msg => [msg.id, msg]));
         const usersMap = new Map(users.map(u => [u.id, u]));
         const participantsMap = new Map();
-        
+        const conversationsMap = new Map(conversations.map(c => [c.id, c]));
+        const ownerInfoMap = new Map(); // Lưu riêng owner info cho từng conversation
+
         allParticipants.forEach(p => {
-            
             if (!participantsMap.has(p.conversation_id)) {
                 participantsMap.set(p.conversation_id, []);
             }
             const user = usersMap.get(p.user_id);
-            participantsMap.get(p.conversation_id).push(
-                user ? { user_id: user.id, full_name: user.full_name, avatar_url: user.avatar_url } 
-                     : { user_id: p.user_id }
-            );
+            const conv = conversationsMap.get(p.conversation_id);
+            const isOwner = conv && conv.created_by === p.user_id;
+            
+            const participantInfo = user ? { 
+                user_id: user.id, 
+                full_name: user.full_name, 
+                avatar_url: user.avatar_url,
+                owner: isOwner 
+            } : { 
+                user_id: p.user_id,
+                owner: isOwner 
+            };
+            
+            participantsMap.get(p.conversation_id).push(participantInfo);
+            
+            // Lưu riêng owner info để tránh phải find sau
+            if (isOwner) {
+                ownerInfoMap.set(p.conversation_id, participantInfo);
+            }
         });
 
-        // 6. Tổng hợp dữ liệu cho sidebar (chỉ lọc 1 lần)
+        // 5. Tổng hợp dữ liệu cho sidebar (chỉ lọc 1 lần)
         return conversations
             .filter(conv => participantsMap.has(conv.id) && 
                            participantsMap.get(conv.id).some(p => p.user_id === userId))
             .map(conv => {
                 const convParticipants = participantsMap.get(conv.id);
-                
                 // Xác định tiêu đề hội thoại
                 let title = conv.name;
                 if (!title) {
@@ -74,10 +88,15 @@ class HomeService {
                     title = other ? other.full_name : 'Cuộc trò chuyện';
                 }
                 
+                // Lấy owner info từ map (đã lưu sẵn, không cần find)
+                const ownerInfo = ownerInfoMap.get(conv.id) || null;
+                
                 return {
                     conversation_id: conv.id,
                     title,
+                    avatar_url: conv.avatar_url,
                     type: conv.conversation_type,
+                    ownerInfo,
                     participants: convParticipants,
                     lastMessage: lastMessagesMap.get(conv.last_message_id) || null
                 };
@@ -86,20 +105,22 @@ class HomeService {
 
     // Lấy tất cả messages trong 1 conversation (tối ưu: batch lấy user info)
     async getMessagesByConversation(conversationId) {
-        const conversation = await conversationsService.getConversationById(conversationId);
+        // Song song hóa query conversation và messages
+        const [conversation, messages] = await Promise.all([
+            conversationsService.getConversationById(conversationId),
+            messagesService.getAllMessagesByConversationId(conversationId)
+        ]);
 
-        const messages = await messagesService.getAllMessagesByConversationId(conversationId);
         // Lấy tất cả sender_id duy nhất
         const senderIds = [...new Set(messages.map(m => m.sender_id))];
         const senders = await usersService.getAllUsers({ id: senderIds });
-        // Map sender info theo id
-        const senderMap = {};
-        senders.forEach(u => {
-            senderMap[u.id] = u;
-        });
+        
+        // Map sender info theo id (dùng Map thay vì object)
+        const senderMap = new Map(senders.map(u => [u.id, u]));
+        
         // Gắn info vào từng message
         messages.forEach(m => {
-            const sender = senderMap[m.sender_id];
+            const sender = senderMap.get(m.sender_id);
             m.dataValues.sender_name = sender ? sender.full_name : '';
             m.dataValues.sender_avatar = sender ? sender.avatar_url : '';
             m.dataValues.sender_status = sender ? sender.status : '';
