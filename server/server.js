@@ -47,8 +47,33 @@ app.set('views', path.join(__dirname, 'src/views'));
 
 routes(app);
 
+// Map để lưu trạng thái online của users (tối ưu cho multiple devices)
+const onlineUsers = new Map(); // { userId: Set<socketId> }
+const socketToUser = new Map(); // { socketId: userId } - O(1) lookup
+
 io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
+
+    // User login - set online status
+    socket.on('userOnline', (userId) => {
+        // Thêm socketId vào Set của userId
+        if (!onlineUsers.has(userId)) {
+            onlineUsers.set(userId, new Set());
+        }
+        onlineUsers.get(userId).add(socket.id);
+        socketToUser.set(socket.id, userId);
+        
+        console.log(`User ${userId} is online (${onlineUsers.get(userId).size} connections)`);
+        
+        // Gửi danh sách tất cả users đang online cho user mới login
+        const allOnlineUserIds = Array.from(onlineUsers.keys());
+        socket.emit('onlineUsersList', allOnlineUserIds);
+        
+        // Chỉ emit nếu đây là connection đầu tiên (user mới online)
+        if (onlineUsers.get(userId).size === 1) {
+            io.emit('userStatusChanged', { userId, status: 'online' });
+        }
+    });
 
     // User join vào conversation room
     socket.on('joinConversation', (conversationId) => {
@@ -69,6 +94,20 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
+        
+        const userId = socketToUser.get(socket.id);
+        if (userId && onlineUsers.has(userId)) {
+            onlineUsers.get(userId).delete(socket.id);
+            socketToUser.delete(socket.id);
+            
+            console.log(`User ${userId} connection removed (${onlineUsers.get(userId).size} remaining)`);
+            
+            // Chỉ emit offline nếu không còn connection nào
+            if (onlineUsers.get(userId).size === 0) {
+                onlineUsers.delete(userId);
+                io.emit('userStatusChanged', { userId, status: 'offline' });
+            }
+        }
     });
 });
 

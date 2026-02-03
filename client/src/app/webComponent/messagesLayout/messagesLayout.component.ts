@@ -165,6 +165,7 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
     }
 
     ngOnInit() {
+        
         if (!this.isLoaded) {  
             this.isLoaded = true;
             this.loadMessages(this.conversationId);

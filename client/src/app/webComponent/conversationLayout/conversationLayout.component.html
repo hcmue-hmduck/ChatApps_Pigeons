@@ -24,21 +24,41 @@
             <ng-container *ngFor="let conv of conversations().homeConversationData">
                 <div (click)="handleConversationID(conv)" class="conversation-item">
                     
-                    <!-- <ng-container *ngIf="conv." -->
                     <ng-container *ngIf="conv.type === 'group'">
-                        <div class="avatar-group" [ngClass]="{
-                        'four': conv.participants.length === 4,
-                        'three': conv.participants.length === 3 }">
-                            <ng-container *ngFor="let p of conv.participants.slice(0,4); let i = index">
-                                <img class="avatar-group-item avatar-pos-{{i}}"
-                                    [src]="p.avatar_url || 'https://i.pravatar.cc/150?img=1'" [alt]="p.full_name">
-                            </ng-container>
-                        </div>
+                        <ng-container *ngIf="conv.avatar_url && conv.avatar_url.trim(); else noAvatar">
+                            <div class="avatar-wrapper">
+                                <img class="avatar-single" [src]="conv.avatar_url" [alt]="conv.title">
+                                <div class="dot-container">
+                                    <span class="status-dot" [ngClass]="hasOnlineUser(conv) ? 'online' : 'offline'"></span>
+                                </div>
+                            </div>
+                        </ng-container>
+
+                        <ng-template #noAvatar>
+                            <div class="avatar-wrapper">
+                                <div class="avatar-group" [ngClass]="{
+                                'four': (conv.participants?.length || 0) === 4,
+                                'three': (conv.participants?.length || 0) === 3 }">
+                                    <ng-container *ngFor="let p of (conv.participants || []).slice(0,4); let i = index">
+                                        <img class="avatar-group-item avatar-pos-{{i}}"
+                                            [src]="p.avatar_url || 'https://i.pravatar.cc/150?img=1'" [alt]="p.full_name">
+                                    </ng-container>
+                                </div>
+                                <div class="dot-container">
+                                    <span class="status-dot" [ngClass]="hasOnlineUser(conv) ? 'online' : 'offline'"></span>
+                                </div>
+                            </div>
+                        </ng-template>
                     </ng-container>
 
                     <ng-container *ngIf="conv.type === 'direct' && getOtherParticipant(conv) as other">
-                        <img class="avatar-single" [src]="other.avatar_url || 'https://i.pravatar.cc/150?img=1'"
-                            [alt]="other.full_name || 'avatar'">
+                        <div class="avatar-wrapper">
+                            <img class="avatar-single" [src]="other.avatar_url || 'https://i.pravatar.cc/150?img=1'"
+                                [alt]="other.full_name || 'avatar'">
+                            <div class="dot-container">
+                                <span class="status-dot" [ngClass]="isUserOnline(other.user_id) ? 'online' : 'offline'"></span>
+                            </div>
+                        </div>
                     </ng-container>
 
                     <div class="conv-info">

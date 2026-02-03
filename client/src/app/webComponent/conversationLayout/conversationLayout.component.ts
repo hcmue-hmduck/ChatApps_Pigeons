@@ -17,6 +17,9 @@ export class ConversationLayoutComponent implements OnInit {
     protected readonly title = signal('client');
     conversations = signal<any>({});
     
+    // Set để track user online status
+    onlineUsers = signal<Set<string>>(new Set());
+    
     // Signals để trigger re-render cho các conversation khác nhau
     tick1s = signal(0);   // Cho message <= 60s
     tick60s = signal(0);  // Cho message > 60s và < 1h
@@ -69,6 +72,24 @@ export class ConversationLayoutComponent implements OnInit {
 
     reloadSidebar() {
         this.currentUserId = this.router.snapshot.paramMap.get('id') || '';
+        
+        // Lắng nghe danh sách tất cả users đang online khi mới login
+        this.socketService.on('onlineUsersList', (userIds: string[]) => {
+            console.log('Received online users list:', userIds);
+            this.onlineUsers.set(new Set(userIds));
+        });
+        
+        // Lắng nghe sự kiện user status thay đổi
+        this.socketService.on('userStatusChanged', (data: { userId: string, status: string }) => {
+            const currentOnlineUsers = new Set(this.onlineUsers());
+            if (data.status === 'online') {
+                currentOnlineUsers.add(data.userId);
+            } else {
+                currentOnlineUsers.delete(data.userId);
+            }
+            this.onlineUsers.set(currentOnlineUsers);
+        });
+        
         this.socketService.on('updateConversation', (data: any) => {
             console.log('Received updateConversation event:', data);
             const currentConversations = this.conversations();
@@ -103,6 +124,9 @@ export class ConversationLayoutComponent implements OnInit {
             this.isLoaded = true;
             this.currentUserId = this.router.snapshot.paramMap.get('id') || '';
             this.loadConversations(this.currentUserId);
+            
+            // Emit userOnline event khi user login
+            this.socketService.emit('userOnline', this.currentUserId);
         }
     }
 
@@ -130,6 +154,8 @@ export class ConversationLayoutComponent implements OnInit {
         console.log('Destroying ConversationLayoutComponent, disconnecting sockets.');
         this.socketService.off('updateConversation');
         this.socketService.off('newMessage');
+        this.socketService.off('userStatusChanged');
+        this.socketService.off('onlineUsersList');
         if (this.interval1s) clearInterval(this.interval1s);
         if (this.interval60s) clearInterval(this.interval60s);
         if (this.interval3600s) clearInterval(this.interval3600s);
@@ -146,6 +172,19 @@ export class ConversationLayoutComponent implements OnInit {
     getOtherParticipant(conv: any): any {
         if (conv.participants.length !== 2) return null;
         return conv.participants.find((p: any) => p.user_id !== this.currentUserId);
+    }
+
+    // Kiểm tra user có online không
+    isUserOnline(userId: string): boolean {
+        return this.onlineUsers().has(userId);
+    }
+
+    // Kiểm tra conversation có user online không (cho group)
+    hasOnlineUser(conv: any): boolean {
+        if (!conv.participants) return false;
+        return conv.participants.some((p: any) => 
+            p.user_id !== this.currentUserId && this.isUserOnline(p.user_id)
+        );
     }
 
     loadConversations(userId: string) {
