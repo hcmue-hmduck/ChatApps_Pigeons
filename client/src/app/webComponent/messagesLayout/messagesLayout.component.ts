@@ -203,12 +203,12 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
     handleSendBtn() {
         if (!this.newMessage.trim()) return;
         const messageContent = this.newMessage;
+        this.newMessage = '';
         this.loading = true;
         this.error = '';
         this.messagesService.postMessage(this.conversationId, this.currentUserId, messageContent).subscribe({
             next: (response) => {
                 this.loading = false;
-                this.newMessage = '';
                 console.log('Message sent successfully:', response);
                 this.conversationService.putConversation(this.conversationId, { lastMessage: response.metadata.id }).subscribe({ next: (res) => { /* Conversation updated */},
                     error: (err) => { console.error('Error updating conversation:', err); } });
