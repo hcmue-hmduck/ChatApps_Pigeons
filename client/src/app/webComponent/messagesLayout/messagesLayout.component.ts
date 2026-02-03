@@ -25,7 +25,6 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
     @Input() conversationId: string = '';
     @Input() currentUserId: any = {};
     @Input() getMessageInfor: any = {};
-    @Input() parentComponent: any;
     
     @ViewChild('messagesContent') messagesContent!: ElementRef<HTMLDivElement>;
     
@@ -46,14 +45,6 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
                 private conversationService: Conversation,
                 private router: ActivatedRoute, 
                 private socketService: SocketService) {}
-
-    // Format ISO date string to local time string (giờ máy client)
-    toLocalTime(dateStr: string): string {
-        if (!dateStr) return '';
-        const date = new Date(dateStr);
-        // Hiển thị dạng HH:mm hoặc tuỳ ý
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
 
     reloadMessages(conversationId: string) {
         this.socketService.emit('joinConversation', conversationId);

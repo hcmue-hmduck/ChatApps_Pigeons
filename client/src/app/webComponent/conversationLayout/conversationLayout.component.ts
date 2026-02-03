@@ -1,10 +1,9 @@
-import { Component, signal, OnInit } from '@angular/core';
+import { Component, signal, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MessagesLayoutComponent } from '../messagesLayout/messagesLayout.component';
 import { Conversation } from '../../services/conversation';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SocketService } from '../../services/socket';
-import { create } from 'domain';
 
 @Component({
     selector: 'conversation-layout',
@@ -17,7 +16,17 @@ import { create } from 'domain';
 export class ConversationLayoutComponent implements OnInit {
     protected readonly title = signal('client');
     conversations = signal<any>({});
+    
+    // Signals để trigger re-render cho các conversation khác nhau
+    tick1s = signal(0);   // Cho message <= 60s
+    tick60s = signal(0);  // Cho message > 60s và < 1h
+    tick3600s = signal(0); // Cho message >= 1h
 
+    private interval1s: any;
+    private interval60s: any;
+    private interval3600s: any;
+
+    isLoaded = false;
     loading = false;
     error = '';
 
@@ -29,17 +38,33 @@ export class ConversationLayoutComponent implements OnInit {
     constructor(private conversationService: Conversation, 
                 private socketService: SocketService,
                 private router: ActivatedRoute) {}
-    
-    // Format ISO date string to local time string (giờ máy client)
-    toLocalTime(dateStr: string): string {
+
+    relativeTime(dateStr: string, tick1s: number, tick60s: number, tick3600s: number): string {
         if (!dateStr) return '';
-        // Nếu không có Z và có dạng yyyy-mm-dd hh:mm:ss, thêm Z vào cuối
         let isoStr = dateStr;
         if (!isoStr.endsWith('Z') && isoStr.length === 23) {
             isoStr = isoStr.replace(' ', 'T') + 'Z';
         }
         const date = new Date(isoStr);
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const now = new Date();
+        const diff = Math.floor((now.getTime() - date.getTime()) / 1000); // diff in seconds
+
+        // Subscribe vào signal phù hợp để trigger re-render
+        if (diff <= 60) {
+            const _ = tick1s; // Subscribe to tick1s
+            return 'vừa xong';
+        }
+        if (diff < 3600) {
+            const _ = tick60s; // Subscribe to tick60s
+            return `${Math.floor(diff / 60)} phút`;
+        }
+        // Subscribe vào tick3600s cho các message >= 1h
+        const _ = tick3600s;
+        if (diff < 86400) return `${Math.floor(diff / 3600)} giờ`;
+        if (diff < 604800) return `${Math.floor(diff / 86400)} ngày`;
+        if (diff < 2592000) return `${Math.floor(diff / 604800)} tuần`;
+        if (diff < 31536000) return `${Math.floor(diff / 2592000)} tháng`;
+        return `${Math.floor(diff / 31536000)} năm`;
     }
 
     reloadSidebar() {
@@ -74,12 +99,30 @@ export class ConversationLayoutComponent implements OnInit {
     }
 
     ngOnInit() {
-        this.currentUserId = this.router.snapshot.paramMap.get('id') || '';        
-        this.loadConversations(this.currentUserId);
+        if (!this.isLoaded) {
+            this.isLoaded = true;
+            this.currentUserId = this.router.snapshot.paramMap.get('id') || '';
+            this.loadConversations(this.currentUserId);
+        }
     }
 
     ngAfterViewInit() {
         this.reloadSidebar();
+        this.isLoaded = true;
+        // Interval 1s cho message mới (≤ 60s)
+        this.interval1s = setInterval(() => {
+            this.tick1s.update(v => v + 1);
+        }, 1000);
+        
+        // Interval 60s cho message từ 1 phút đến 1 giờ
+        this.interval60s = setInterval(() => {
+            this.tick60s.update(v => v + 1);
+        }, 60000);
+        
+        // Interval 1 giờ cho message >= 1h
+        this.interval3600s = setInterval(() => {
+            this.tick3600s.update(v => v + 1);
+        }, 3600000);
     }
 
     ngOnDestroy() {
@@ -87,6 +130,9 @@ export class ConversationLayoutComponent implements OnInit {
         console.log('Destroying ConversationLayoutComponent, disconnecting sockets.');
         this.socketService.off('updateConversation');
         this.socketService.off('newMessage');
+        if (this.interval1s) clearInterval(this.interval1s);
+        if (this.interval60s) clearInterval(this.interval60s);
+        if (this.interval3600s) clearInterval(this.interval3600s);
     }
 
     // Trả về tên người gửi last message cho 1 conversation

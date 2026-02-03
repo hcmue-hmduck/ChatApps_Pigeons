@@ -1,3 +1,42 @@
+/* Không có hội thoại */
+.no-conversation {
+    padding: 24px;
+    color: #888;
+    text-align: center;
+}
+
+/* Tên người gửi tin nhắn cuối */
+.msg-sender {
+    color: #1976d2;
+    font-weight: 500;
+    margin-right: 4px;
+}
+
+/* Tin nhắn chưa có nội dung */
+.no-message {
+    color: #aaa;
+}
+/* Hiển thị content tin nhắn với ellipsis, chừa chỗ cho msg-time */
+.conv-last {
+    display: flex;
+    align-items: center;
+    gap: 0;
+}
+
+.conv-last .msg-content {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+    margin: 0;
+}
+
+.conv-last .msg-time {
+    margin-left: 2px;
+    white-space: nowrap;
+}
 .searchConversation {
     padding: 0 14px 10px 14px;
     margin-bottom: 8px;
@@ -273,9 +312,20 @@
     height: 22px;
     border-radius: 50%;
     object-fit: cover;
-    border: 1.5px solid #fff;
-    margin-right: -7px;
-    box-shadow: 0 1px 2px #0001;
+}
+
+/* Thời gian tin nhắn (relativeTime) */
+.conv-last .msg-time {
+    display: inline-block;
+    padding: 0px;
+    font-size: 13px;
+    color: #555;
+    border-radius: 12px;
+    box-shadow: 0 1px 4px rgba(25, 118, 210, 0.12);
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    transition: background 0.3s;
+    vertical-align: middle;
 }
 
 

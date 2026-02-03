@@ -19,8 +19,7 @@
         </div>
 
 
-        <div *ngIf="!conversations().homeConversationData || conversations().homeConversationData.length === 0"
-            style="padding: 24px; color: #888; text-align: center;">Không có hội thoại nào.</div>
+        <div *ngIf="!isLoaded" class="no-conversation">Không có hội thoại nào.</div>
         <ng-container *ngIf="conversations().homeConversationData">
             <ng-container *ngFor="let conv of conversations().homeConversationData">
                 <div (click)="handleConversationID(conv)" class="conversation-item">
@@ -47,13 +46,11 @@
                         </div>
                         <div class="conv-last">
                             <ng-container *ngIf="conv.lastMessage">
-                                <span style="color:#1976d2; font-weight:500;">
-                                    {{ getLastMessageSenderName(conv) }}
-                                </span>
-                                <span>{{ conv.lastMessage.content }}</span>
-                                <span> {{ toLocalTime(conv.lastMessage.created_at) }}</span>
+                                <span class="msg-sender">{{ getLastMessageSenderName(conv) }}</span>
+                                <span class="msg-content">{{ conv.lastMessage.content }}</span>
+                                <span class="msg-separator">&nbsp;&middot;&nbsp;</span><span class="msg-time">{{ relativeTime(conv.lastMessage.created_at, tick1s(), tick60s(), tick3600s()) }}</span>
                             </ng-container>
-                            <span *ngIf="!conv.lastMessage" style="color:#aaa;">Chưa có tin nhắn</span>
+                            <span *ngIf="!conv.lastMessage" class="no-message">Chưa có tin nhắn</span>
                         </div>
                     </div>
                 </div>
@@ -64,7 +61,6 @@
             <messages-layout *ngIf="selectedConversationId" 
                             [conversationId]="selectedConversationId"
                             [currentUserId]="currentUserId"
-                            [getMessageInfor]="getMessageInfor"
-                            [parentComponent]="this"/>
+                            [getMessageInfor]="getMessageInfor"/>
     </div>
 </div>

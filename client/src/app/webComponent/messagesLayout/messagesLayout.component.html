@@ -95,9 +95,14 @@
         </div>
         
         <div class="messages-input">
-            <input [(ngModel)]="newMessage" type="text" placeholder="Type a message..." 
+            <button class="attach-btn" title="Đính kèm tệp" type="button">
+                <i class="fas fa-paperclip"></i>
+            </button>
+            <input class="msg-input" [(ngModel)]="newMessage" type="text" placeholder="Type a message..." 
                 (keyup.enter)="handleSendBtn()" />
-            <button (click)="handleSendBtn()">Send</button>
+            <button class="send-btn" (click)="handleSendBtn()" title="Gửi">
+                <i class="fas fa-paper-plane"></i>
+            </button>
         </div>
     </ng-container>
 </div>

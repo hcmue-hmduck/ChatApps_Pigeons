@@ -23,59 +23,63 @@ class HomeService {
         const conversationIds = userParticipants.map(p => p.conversation_id);
         if (conversationIds.length === 0) return [];
 
-        // 2. Lấy thông tin các conversation
-        const conversations = await conversationsService.getAllConversations({ id: conversationIds });
+        // 2. Batch query song song các thông tin cần thiết
+        const [conversations, allParticipants] = await Promise.all([
+            conversationsService.getAllConversations({ id: conversationIds }),
+            participantsService.getAllParticipants({ conversation_id: conversationIds })
+        ]);
 
-        // 3. Lấy participants cho các conversation này
-        const allParticipants = await participantsService.getAllParticipants({ conversation_id: conversationIds });
-
-        // 4. Lấy user info cho tất cả participants
+        // 3. Lấy user info cho tất cả participants
         const userIds = [...new Set(allParticipants.map(p => p.user_id))];
         const users = await usersService.getAllUsers({ id: userIds });
 
-        // 5. Lấy last message cho tất cả conversation (batch)
+        // 4. Lấy last message cho tất cả conversation (batch)
         const lastMessageIds = conversations
             .map(conv => conv.last_message_id)
             .filter(id => !!id);
 
-        // console.log('Last Message IDs:', lastMessageIds);
-        for (const id of lastMessageIds) {
-            console.log('Last Message ID:', await messagesService.getMessageById(id));
-        }
-
         let lastMessagesArr = [];
         if (lastMessageIds.length > 0) {
-            lastMessagesArr = await messagesService.getMessagesByIds(lastMessageIds); // Hàm này cần trả về mảng messages theo id
+            lastMessagesArr = await messagesService.getMessagesByIds(lastMessageIds);
         }
-        const lastMessagesMap = {};
-        lastMessagesArr.forEach(msg => {
-            lastMessagesMap[msg.id] = msg;
+
+        // 5. Tạo Map để lookup nhanh O(1) thay vì find O(n)
+        const lastMessagesMap = new Map(lastMessagesArr.map(msg => [msg.id, msg]));
+        const usersMap = new Map(users.map(u => [u.id, u]));
+        const participantsMap = new Map();
+        
+        allParticipants.forEach(p => {
+            
+            if (!participantsMap.has(p.conversation_id)) {
+                participantsMap.set(p.conversation_id, []);
+            }
+            const user = usersMap.get(p.user_id);
+            participantsMap.get(p.conversation_id).push(
+                user ? { user_id: user.id, full_name: user.full_name, avatar_url: user.avatar_url } 
+                     : { user_id: p.user_id }
+            );
         });
 
-        // 6. Tổng hợp dữ liệu cho sidebar
-        // Chỉ trả về các conversation mà userId là participant
+        // 6. Tổng hợp dữ liệu cho sidebar (chỉ lọc 1 lần)
         return conversations
-            .filter(conv => allParticipants.some(p => p.conversation_id === conv.id && p.user_id === userId))
+            .filter(conv => participantsMap.has(conv.id) && 
+                           participantsMap.get(conv.id).some(p => p.user_id === userId))
             .map(conv => {
-                const convParticipants = allParticipants.filter(p => p.conversation_id === conv.id)
-                    .map(p => {
-                        const u = users.find(u => u.id === p.user_id);
-                        return u ? { user_id: u.id, full_name: u.full_name, avatar_url: u.avatar_url } : { user_id: p.user_id };
-                    });
-        
+                const convParticipants = participantsMap.get(conv.id);
+                
                 // Xác định tiêu đề hội thoại
                 let title = conv.name;
                 if (!title) {
-                    // Nếu là chat 1-1, lấy tên user còn lại (không phải userId hiện tại)
                     const other = convParticipants.find(u => u.user_id !== userId);
                     title = other ? other.full_name : 'Cuộc trò chuyện';
                 }
+                
                 return {
                     conversation_id: conv.id,
                     title,
                     type: conv.conversation_type,
                     participants: convParticipants,
-                    lastMessage: conv.last_message_id ? lastMessagesMap[conv.last_message_id] : null
+                    lastMessage: lastMessagesMap.get(conv.last_message_id) || null
                 };
             });
     }
