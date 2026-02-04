@@ -13,6 +13,7 @@ const routes = require('./src/routes/index');
 const { connectToDB } = require('./src/configs/dbConfig');
 
 const app = express();
+
 const server = createServer(app);
 const io = Server(server, {
     cors: {
@@ -138,19 +139,6 @@ io.on('connection', (socket) => {
     });
 });
 
-// app.use((req, res, next) => {
-//     const error = new Error('Not Found');
-//     error.status_code = 404;
-//     next(error);
-// });
-
-// app.use((error, req, res, next) => {
-//     console.error(error.stack);
-//     res.status(req.status_code || 500).json({
-//         status: 'error',
-//         message: error.message || 'Internal Server Error',
-//     });
-// });
 
 async function startServer() {
   await connectToDB();
