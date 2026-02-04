@@ -5,6 +5,7 @@ const cors = require('cors');
 const { engine } = require('express-handlebars');
 const path = require('path');
 const Server = require('socket.io');
+const usersModel = require('./src/models/usersModel');
 
 dotenv.config();
 
@@ -55,7 +56,7 @@ io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
 
     // User login - set online status
-    socket.on('userOnline', (userId) => {
+    socket.on('userOnline', async (userId) => {
         // Thêm socketId vào Set của userId
         if (!onlineUsers.has(userId)) {
             onlineUsers.set(userId, new Set());
@@ -71,6 +72,17 @@ io.on('connection', (socket) => {
         
         // Chỉ emit nếu đây là connection đầu tiên (user mới online)
         if (onlineUsers.get(userId).size === 1) {
+            // Cập nhật status thành online vào database
+            try {
+                await usersModel.update(
+                    { status: 'online' },
+                    { where: { id: userId } }
+                );
+                console.log(`Updated status to online for user ${userId}`);
+            } catch (error) {
+                console.error(`Error updating status for user ${userId}:`, error);
+            }
+            
             io.emit('userStatusChanged', { userId, status: 'online' });
         }
     });
@@ -92,7 +104,7 @@ io.on('connection', (socket) => {
         io.to(data.conversation_id).emit('updateConversation', data);
     });
 
-    socket.on('disconnect', () => {
+    socket.on('disconnect', async () => {
         console.log('User disconnected:', socket.id);
         
         const userId = socketToUser.get(socket.id);
@@ -105,6 +117,21 @@ io.on('connection', (socket) => {
             // Chỉ emit offline nếu không còn connection nào
             if (onlineUsers.get(userId).size === 0) {
                 onlineUsers.delete(userId);
+                
+                // Cập nhật last_online_at vào database
+                try {
+                    await usersModel.update(
+                        { 
+                            status: 'offline',
+                            last_online_at: new Date() 
+                        },
+                        { where: { id: userId } }
+                    );
+                    console.log(`Updated last_online_at for user ${userId}`);
+                } catch (error) {
+                    console.error(`Error updating last_online_at for user ${userId}:`, error);
+                }
+                
                 io.emit('userStatusChanged', { userId, status: 'offline' });
             }
         }

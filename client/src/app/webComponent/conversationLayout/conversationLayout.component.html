@@ -1,88 +1,131 @@
-<div class="conversation-layout-header">
-    <div class="sidebar">
-        
-        <div class="conversation-header">
-            <h1>Hội thoại</h1>
-            <div class="header-actions">
-                <button (click)="openSetting()">...</button>
-                <button (click)="createConversation()">+</button>
+<div class="container-fluid p-0 vh-100">
+    <div class="row g-0 h-100">
+        <!-- Sidebar -->
+        <div class="col-12 col-md-4 col-lg-3 d-flex flex-column bg-white conversation-sidebar">
+            <div class="d-flex flex-column h-100">
+                
+                <!-- Header -->
+                <div class="px-3 py-2 sticky-top bg-white messenger-header">
+                    <div class="d-flex align-items-center mb-3">
+                        <img src="assets/PigeonLogo.png" alt="Messenger" class="messenger-logo">
+                        <div class="flex-grow-1 d-flex flex-column justify-content-center ms-3">
+                            <h5 class="mb-2">ChatPigeons</h5>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-light rounded-circle p-0 d-flex align-items-center justify-content-center sidebar-icon-btn" title="Thông tin cá nhân" style="width: 36px; height: 36px;">
+                                    <i class="bi bi-person-circle"></i>
+                                </button>
+                                <button class="btn btn-sm btn-light rounded-circle p-0 d-flex align-items-center justify-content-center sidebar-icon-btn" title="Đăng xuất" style="width: 36px; height: 36px;">
+                                    <i class="bi bi-box-arrow-right"></i>
+                                </button>
+                                <button class="btn btn-sm btn-primary rounded-circle p-0 d-flex align-items-center justify-content-center" (click)="createConversation()" style="width: 36px; height: 36px;">
+                                    <i class="bi bi-plus-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Search -->
+                    <div class="messenger-search-box">
+                        <i class="bi bi-search"></i>
+                        <input type="text" placeholder="Tìm kiếm trên Messenger" />
+                    </div>
+                </div>
+
+
+
+                <!-- Conversations List -->
+                <div class="flex-grow-1 overflow-auto conversations-list">
+                    <div *ngIf="!isLoaded" class="text-center text-muted py-5">
+                        <i class="bi bi-inbox display-4 d-block mb-3 opacity-25"></i>
+                        <p class="small">Không có hội thoại nào.</p>
+                    </div>
+                    
+                    <div class="list-group list-group-flush" *ngIf="conversations().homeConversationData">
+                        <ng-container *ngFor="let conv of conversations().homeConversationData">
+                            <a href="javascript:void(0)" 
+                               (click)="handleConversationID(conv)" 
+                               class="messenger-conversation-item"
+                               [class.active]="selectedConversationId === conv.conversation_id">
+                                
+                                <div class="d-flex align-items-center">
+                                    <!-- Avatar -->
+                                    <div class="position-relative me-3 flex-shrink-0">
+                                        <!-- Group with avatar -->
+                                        <ng-container *ngIf="conv.type === 'group'">
+                                            <ng-container *ngIf="conv.avatar_url && conv.avatar_url.trim(); else noAvatar">
+                                                <img [src]="conv.avatar_url" [alt]="conv.title" 
+                                                     class="rounded-circle" style="width: 56px; height: 56px; object-fit: cover;">
+                                                <span class="position-absolute bottom-0 end-0 status-dot" 
+                                                      [ngClass]="hasOnlineUser(conv) ? 'online' : 'offline'"></span>
+                                            </ng-container>
+
+                                            <!-- Group without avatar -->
+                                            <ng-template #noAvatar>
+                                                <div class="avatar-group-wrapper">
+                                                    <div class="avatar-group" [ngClass]="{
+                                                        'four': (conv.participants?.length || 0) === 4,
+                                                        'three': (conv.participants?.length || 0) === 3 }">
+                                                        <ng-container *ngFor="let p of (conv.participants || []).slice(0,4); let i = index">
+                                                            <img class="avatar-group-item avatar-pos-{{i}} rounded-circle"
+                                                                [src]="p.avatar_url || 'https://i.pravatar.cc/150?img=1'" 
+                                                                [alt]="p.full_name">
+                                                        </ng-container>
+                                                    </div>
+                                                    <span class="position-absolute bottom-0 end-0 status-dot" 
+                                                          [ngClass]="hasOnlineUser(conv) ? 'online' : 'offline'"></span>
+                                                </div>
+                                            </ng-template>
+                                        </ng-container>
+
+                                        <!-- Direct conversation -->
+                                        <ng-container *ngIf="conv.type === 'direct' && getOtherParticipant(conv) as other">
+                                            <img [src]="other.avatar_url || 'https://i.pravatar.cc/150?img=1'"
+                                                 [alt]="other.full_name || 'avatar'"
+                                                 class="rounded-circle" style="width: 56px; height: 56px; object-fit: cover;">
+                                            <span class="position-absolute bottom-0 end-0 status-dot" 
+                                                  [ngClass]="isUserOnline(other.user_id) ? 'online' : 'offline'"></span>
+                                        </ng-container>
+                                    </div>
+
+                                    <!-- Conversation Info -->
+                                    <div class="flex-grow-1 min-w-0">
+                                        <div class="d-flex align-items-center justify-content-between mb-1">
+                                            <h6 class="mb-0 fw-semibold text-truncate me-2">
+                                                {{ conv.title }}
+                                            </h6>
+
+                                        </div>
+                                        
+                                        <div class="d-flex align-items-center text-muted small">
+                                            <ng-container *ngIf="conv.lastMessage">
+                                                <span class="text-truncate flex-grow-1">
+                                                    <strong class="text-primary" *ngIf="getLastMessageSenderName(conv)">
+                                                        {{ getLastMessageSenderName(conv) }}
+                                                    </strong>
+                                                    {{ conv.lastMessage.content }}
+                                                </span>
+                                                <span class="ms-2 flex-shrink-0 d-flex align-items-center">
+                                                    <i class="bi bi-clock me-1"></i>
+                                                    <span>{{ relativeTime(conv.lastMessage.created_at, tick1s(), tick60s(), tick3600s()) }}</span>
+                                                </span>
+                                            </ng-container>
+                                            <span *ngIf="!conv.lastMessage" class="text-muted fst-italic">Chưa có tin nhắn</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                        </ng-container>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="searchConversation">
-            <input type="text" placeholder="Tìm kiếm hội thoại..." />
-        </div>
-
-        <div class="filterConversation">
-            <button (click)="filter()">Tất cả</button>
-            <button (click)="filter()">Chưa đọc</button>
-        </div>
-
-
-        <div *ngIf="!isLoaded" class="no-conversation">Không có hội thoại nào.</div>
-        <ng-container *ngIf="conversations().homeConversationData">
-            <ng-container *ngFor="let conv of conversations().homeConversationData">
-                <div (click)="handleConversationID(conv)" class="conversation-item">
-                    
-                    <ng-container *ngIf="conv.type === 'group'">
-                        <ng-container *ngIf="conv.avatar_url && conv.avatar_url.trim(); else noAvatar">
-                            <div class="avatar-wrapper">
-                                <img class="avatar-single" [src]="conv.avatar_url" [alt]="conv.title">
-                                <div class="dot-container">
-                                    <span class="status-dot" [ngClass]="hasOnlineUser(conv) ? 'online' : 'offline'"></span>
-                                </div>
-                            </div>
-                        </ng-container>
-
-                        <ng-template #noAvatar>
-                            <div class="avatar-wrapper">
-                                <div class="avatar-group" [ngClass]="{
-                                'four': (conv.participants?.length || 0) === 4,
-                                'three': (conv.participants?.length || 0) === 3 }">
-                                    <ng-container *ngFor="let p of (conv.participants || []).slice(0,4); let i = index">
-                                        <img class="avatar-group-item avatar-pos-{{i}}"
-                                            [src]="p.avatar_url || 'https://i.pravatar.cc/150?img=1'" [alt]="p.full_name">
-                                    </ng-container>
-                                </div>
-                                <div class="dot-container">
-                                    <span class="status-dot" [ngClass]="hasOnlineUser(conv) ? 'online' : 'offline'"></span>
-                                </div>
-                            </div>
-                        </ng-template>
-                    </ng-container>
-
-                    <ng-container *ngIf="conv.type === 'direct' && getOtherParticipant(conv) as other">
-                        <div class="avatar-wrapper">
-                            <img class="avatar-single" [src]="other.avatar_url || 'https://i.pravatar.cc/150?img=1'"
-                                [alt]="other.full_name || 'avatar'">
-                            <div class="dot-container">
-                                <span class="status-dot" [ngClass]="isUserOnline(other.user_id) ? 'online' : 'offline'"></span>
-                            </div>
-                        </div>
-                    </ng-container>
-
-                    <div class="conv-info">
-                        <div class="conv-title">
-                            {{ conv.title }}
-                            <span class="conv-type" [ngClass]="conv.type">{{ conv.type === 'group' ? 'Nhóm' : 'Cá nhân' }}</span>
-                        </div>
-                        <div class="conv-last">
-                            <ng-container *ngIf="conv.lastMessage">
-                                <span class="msg-sender">{{ getLastMessageSenderName(conv) }}</span>
-                                <span class="msg-content">{{ conv.lastMessage.content }}</span>
-                                <span class="msg-separator">&nbsp;&middot;&nbsp;</span><span class="msg-time">{{ relativeTime(conv.lastMessage.created_at, tick1s(), tick60s(), tick3600s()) }}</span>
-                            </ng-container>
-                            <span *ngIf="!conv.lastMessage" class="no-message">Chưa có tin nhắn</span>
-                        </div>
-                    </div>
-                </div>
-            </ng-container>
-        </ng-container>
-    </div>
-    <div class="message-content">
+        <!-- Message Content -->
+        <div class="col-12 col-md-8 col-lg-9 bg-white">
             <messages-layout *ngIf="selectedConversationId" 
                             [conversationId]="selectedConversationId"
                             [currentUserId]="currentUserId"
                             [getMessageInfor]="getMessageInfor"/>
+        </div>
     </div>
 </div>

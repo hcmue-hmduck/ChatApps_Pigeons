@@ -1,4 +1,4 @@
-import { Component, signal, OnInit, OnDestroy } from '@angular/core';
+import { Component, signal, OnInit, OnDestroy, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MessagesLayoutComponent } from '../messagesLayout/messagesLayout.component';
 import { Conversation } from '../../services/conversation';
@@ -10,7 +10,8 @@ import { SocketService } from '../../services/socket';
     standalone: true,
     imports: [CommonModule, MessagesLayoutComponent],
     templateUrl: './conversationLayout.component.html',
-    styleUrls: ['./conversationLayout.component.css']
+    styleUrls: ['./conversationLayout.component.css'],
+    encapsulation: ViewEncapsulation.None
 })
 
 export class ConversationLayoutComponent implements OnInit {
@@ -198,6 +199,11 @@ export class ConversationLayoutComponent implements OnInit {
                     response.metadata.homeConversationData.forEach((conv: any) => {
                         this.socketService.emit('joinConversation', conv.conversation_id);
                     });
+                    
+                    // Tự động click vào conversation đầu tiên nếu chưa có conversation nào được chọn
+                    if (!this.selectedConversationId && response.metadata.homeConversationData.length > 0) {
+                        this.handleConversationID(response.metadata.homeConversationData[0]);
+                    }
                 }
                 
                 this.loading = false;

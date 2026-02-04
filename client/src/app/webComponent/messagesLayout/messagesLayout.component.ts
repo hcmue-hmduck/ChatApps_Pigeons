@@ -5,11 +5,12 @@ import { Messages } from '../../services/messages';
 import { Conversation } from '../../services/conversation';
 import { ActivatedRoute } from '@angular/router';
 import { SocketService } from '../../services/socket';
+import { PickerModule } from '@ctrl/ngx-emoji-mart';
 
 @Component({
     selector: 'messages-layout',
     standalone: true,
-    imports: [CommonModule, FormsModule],
+    imports: [CommonModule, FormsModule, PickerModule],
     templateUrl: './messagesLayout.component.html',
     styleUrls: ['./messagesLayout.component.css']
 })
@@ -27,6 +28,7 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
     @Input() getMessageInfor: any = {};
     
     @ViewChild('messagesContent') messagesContent!: ElementRef<HTMLDivElement>;
+    @ViewChild('messageInput', { static: false }) messageInput!: ElementRef<HTMLTextAreaElement>;
     
     autoScroll = true;
     isNearBottom = true;
@@ -42,6 +44,7 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
     private scrollTimeout: any;
     private lastConversationId: string = ''; // Track conversation changes
     private pendingScroll = false; // Flag to scroll in ngAfterViewChecked
+    private needsFocus = true; // Flag to auto-focus input
     
     // Cache để tránh tính toán lặp lại
     private dateCache = new Map<string, string>();
@@ -136,29 +139,40 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
     }
 
     setupSocketListener(conversationId: string) {
+        // Cleanup listener cũ trước khi setup mới
+        this.socketService.off('newMessage');
+        
         this.socketService.emit('joinConversation', conversationId);
         
-        // Setup listener cho tin nhắn mới (chỉ setup 1 lần)
+        // Setup listener cho tin nhắn mới
         this.socketService.on('newMessage', (data: any) => {
+            console.log('New message received:', data);
             if (data.conversation_id === conversationId) {
-                console.log('New message received in conversation', conversationId, ':', data);
-                this.getMessagesData.update(old => ({
-                    ...old,
-                    homeMessagesData: {
-                        ...old.homeMessagesData,
-                        messages: [
-                            ...old.homeMessagesData.messages,
-                            data
-                        ]
-                    }
-                }));
+                console.log('Adding message to conversation', conversationId, ':', data);
+                
+                // Kiểm tra xem tin nhắn đã tồn tại chưa (tránh duplicate)
+                const currentMessages = this.getMessagesData().homeMessagesData?.messages || [];
+                const messageExists = currentMessages.some((msg: any) => msg.id === data.id);
+                
+                if (!messageExists) {
+                    this.getMessagesData.update(old => ({
+                        ...old,
+                        homeMessagesData: {
+                            ...old.homeMessagesData,
+                            messages: [
+                                ...currentMessages,
+                                data
+                            ]
+                        }
+                    }));
 
-                // Tự động scroll xuống nếu đang ở gần cuối
-                if (this.isUserNearBottom()) {
-                    this.pendingScroll = true;
-                } else {
-                    // Hiển thị badge "new" nếu user đang scroll ở trên
-                    this.hasNewMessage = true;
+                    // Tự động scroll xuống nếu đang ở gần cuối
+                    if (this.isUserNearBottom()) {
+                        this.pendingScroll = true;
+                    } else {
+                        // Hiển thị badge "new" nếu user đang scroll ở trên
+                        this.hasNewMessage = true;
+                    }
                 }
             }
         });
@@ -182,14 +196,12 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
             const oldConversationId = changes['conversationId'].previousValue;
             
             // Chỉ xử lý khi thực sự thay đổi conversation
-            if (newConversationId !== oldConversationId) {
+            if (newConversationId && newConversationId !== oldConversationId) {
                 this.conversationId = newConversationId;
                 
-                // Cleanup socket listener cũ
-                this.socketService.off('newMessage');
-                
-                // Load messages và setup socket mới
+                // Load messages và setup socket mới (cleanup được xử lý trong setupSocketListener)
                 this.loadMessages(newConversationId);
+                this.needsFocus = true;
                 this.setupSocketListener(newConversationId);
             }
         }
@@ -203,6 +215,13 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
         if (this.pendingScroll && this.messagesContent?.nativeElement) {
             this.messagesContent.nativeElement.scrollTop = 0;
             this.pendingScroll = false;
+        }
+        
+        // Auto-focus khi có messages và cần focus
+        if (this.needsFocus && this.messageInput?.nativeElement && 
+            this.getMessagesData().homeMessagesData?.messages?.length > 0) {
+            this.messageInput.nativeElement.focus();
+            this.needsFocus = false;
         }
     }
 
@@ -346,8 +365,12 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
     @HostListener('document:click', ['$event'])
     onDocumentClick(event: MouseEvent) {
         const target = event.target as HTMLElement;
-        if (!target.closest('.message-actions')) {
+        if (!target.closest('.message-actions') && !target.closest('.emoji-picker-container') && !target.closest('.messenger-input-icon')) {
             this.closeMenu();
+            // Đóng emoji picker khi click bên ngoài
+            if (!target.closest('.emoji-picker-container') && !target.closest('button[title="Biểu tượng cảm xúc"]')) {
+                this.showEmojiPicker = false;
+            }
         }
     }
 
@@ -475,5 +498,24 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
                 behavior: 'smooth'
             });
         }
+    }
+
+        // Emoji picker state
+    showEmojiPicker = false;
+
+    // Toggle emoji picker
+    toggleEmojiPicker() {
+        this.showEmojiPicker = !this.showEmojiPicker;
+    }
+
+    addEmoji(event: any) {
+        this.newMessage += event.emoji.native;
+        this.showEmojiPicker = false; // Đóng picker sau khi chọn emoji
+        // Focus lại vào input sau khi chọn emoji
+        setTimeout(() => {
+            if (this.messageInput?.nativeElement) {
+                this.messageInput.nativeElement.focus();
+            }
+        }, 100);
     }
 }

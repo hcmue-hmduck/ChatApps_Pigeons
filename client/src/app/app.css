@@ -1,6 +1,5 @@
-.main {
-    display: flex;
+.app-container {
     width: 100%;
-    height: 100%;
-    position: fixed; /* Cố định vị trí Page*/
+    min-height: 100vh;
+    overflow: hidden;
 }

@@ -1,363 +1,220 @@
-/* CSS chung cho dot container */
-.dot-container {
-    position: absolute;
-    right: 19px;
-    bottom: 0px;
-    z-index: 99;
-    pointer-events: none;
-}
+/* Messenger Style - Exact Replica */
 
-.avatar-wrapper {
-    position: relative;
-    display: inline-block;
-}
-.status-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    border: 2.5px solid #fff;
-    background: #44b700;
-    box-shadow: 0 0 8px #44b70080;
-    pointer-events: none;
-    display: block;
-}
-.status-dot.online {
-    background: #44b700;
-    box-shadow: 0 0 8px #44b70080;
-}
-.status-dot.offline {
-    background: #bbb;
-    box-shadow: none;
-}
-/* Không có hội thoại */
-.no-conversation {
-    padding: 24px;
-    color: #888;
-    text-align: center;
-}
-
-/* Tên người gửi tin nhắn cuối */
-.msg-sender {
-    color: #1976d2;
-    font-weight: 500;
-    margin-right: 4px;
-}
-
-/* Tin nhắn chưa có nội dung */
-.no-message {
-    color: #aaa;
-}
-/* Hiển thị content tin nhắn với ellipsis, chừa chỗ cho msg-time */
-.conv-last {
-    display: flex;
-    align-items: center;
-    gap: 0;
-}
-
-.conv-last .msg-content {
-    display: inline-block;
-    max-width: 100%;
+/* Conversation Sidebar Layout */
+.conversation-sidebar {
+    height: 100vh;
+    max-height: 100vh;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    vertical-align: middle;
+    border-right: 1px solid #e4e6eb;
+}
+
+/* Messenger Header */
+.messenger-header {
+    padding: 20px 16px !important;
+    border-bottom: 1px solid #e4e6eb;
+}
+
+.messenger-header h5 {
     margin: 0;
-}
-
-.conv-last .msg-time {
-    margin-left: 2px;
-    white-space: nowrap;
-}
-.searchConversation {
-    padding: 0 14px 10px 14px;
-    margin-bottom: 8px;
-    box-sizing: border-box;
-}
-.searchConversation input[type="text"] {
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-    padding: 8px 14px;
-    border-radius: 8px;
-    border: 1.5px solid #e3e6ea;
-    background: #fff;
-    font-size: 1rem;
-    color: #222;
-    outline: none;
-    transition: border 0.18s, box-shadow 0.18s;
-    box-shadow: 0 1px 4px #0001;
-}
-.searchConversation input[type="text"]:focus {
-    border: 1.5px solid #1976d2;
-    box-shadow: 0 2px 8px #1976d220;
-}
-
-.filterConversation {
-    display: flex;
-    gap: 8px;
-    padding: 0 14px 10px 14px;
-    margin-bottom: 8px;
-    box-sizing: border-box;
-}
-.filterConversation button {
-    flex: 1 1 0;
-    padding: 7px 0;
-    border-radius: 8px;
-    border: 1.5px solid #e3e6ea;
-    background: #f7fafd;
-    color: #1976d2;
-    font-size: 1rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.18s, color 0.18s, border 0.18s;
-}
-.filterConversation button:hover, .filterConversation button:focus {
-    background: #e3f0fd;
-    color: #1565c0;
-    border: 1.5px solid #1976d2;
-}
-.header-actions {
-    display: flex;
-    gap: 8px;
-    margin-left: auto;
-    align-items: center;
-}
-.header-actions button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
     padding: 0;
-    font-size: 1.25rem;
-    border-radius: 50%;
-    background: linear-gradient(90deg, #1976d2 60%, #43a047 100%);
-    color: #fff;
-    border: none;
-    box-shadow: 0 2px 8px #1976d220;
-    cursor: pointer;
-    transition: background 0.2s, box-shadow 0.2s, transform 0.12s;
+    font-size: 28px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #0084ff 0%, #00c6ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.5px;
+    line-height: 1.2;
 }
-.header-actions button:hover {
-    background: linear-gradient(90deg, #1565c0 60%, #388e3c 100%);
-    box-shadow: 0 4px 16px #1976d230;
-    transform: scale(1.08);
-}
-.header-actions button:active {
-    transform: scale(0.96);
-}
-.header-actions button:first-child {
-    font-size: 1.1rem;
-    font-weight: bold;
-    background: #e3e6ea;
-    color: #1976d2;
-    box-shadow: none;
-    margin-right: 4px;
-    border: 1.5px solid #d0d7de;
-    transition: background 0.2s, color 0.2s, border 0.2s;
-}
-.header-actions button:first-child:hover {
-    background: #d0d7de;
-    color: #1565c0;
-    border: 1.5px solid #1976d2;
-}
-/* Avatar đơn (single) */
-.avatar-single {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    background: #bdbdbd;
-    margin-right: 16px;
-    object-fit: cover;
-    border: 2.5px solid #fff;
-    box-shadow: 0 1px 6px #0002;
-    display: block;
-    transition: box-shadow 0.18s;
-}
-.conversation-layout-header {
-    display: flex;
-    width: 100vw;
-    min-height: 100vh;
-    background: linear-gradient(90deg, #f0f2f5 60%, #fff 100%);
-}
-.sidebar {
-    flex: 0 0 400px;
-    width: 340px;
-    min-width: 240px;
-    max-width: 400px;
-    background: #f7fafd;
-    border-right: 1.5px solid #e3e6ea;
-    overflow-y: auto;
-    height: 100vh;
-    box-sizing: border-box;
-    position: sticky;
-    left: 0;
-    top: 0;
-    z-index: 2;
-    box-shadow: 2px 0 12px #0001;
-    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    transition: box-shadow 0.2s;
-}
-.message-content {
-    flex: 1 1 0%;
-    min-width: 0;
-    background: #fff;
-    height: 100vh;
-    overflow-y: auto;
-    box-sizing: border-box;
-    position: relative;
-    z-index: 1;
-    border-radius: 0 12px 12px 0;
-    box-shadow: 0 0 0 #0000;
-    transition: box-shadow 0.2s;
-}
-.conversation-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 18px 18px 10px 18px;
+
+/* Logo */
+.messenger-logo {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
     background: transparent;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    flex-shrink: 0;
+    transform: scale(1.9);
+}
+
+.messenger-logo:hover {
+    transform: scale(1.45) rotate(5deg);
+}
+
+/* Messenger Search Box */
+.messenger-search-box {
+    position: relative;
     margin-bottom: 8px;
 }
-.conversation-header h1 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #1976d2;
-    margin: 0;
-    letter-spacing: 0.5px;
-}
-.conversation-header button {
-    background: linear-gradient(90deg, #1976d2 60%, #43a047 100%);
-    color: #fff;
+
+.messenger-search-box input {
+    width: 100%;
+    padding: 10px 10px 10px 36px;
     border: none;
-    border-radius: 8px;
-    padding: 8px 18px;
-    font-size: 1rem;
-    font-weight: 500;
-    cursor: pointer;
-    box-shadow: 0 2px 8px #1976d220;
-    transition: background 0.2s, box-shadow 0.2s;
-    margin-left: 5px;
-}
-.conversation-header button:hover {
-    background: linear-gradient(90deg, #1565c0 60%, #388e3c 100%);
-    box-shadow: 0 4px 16px #1976d230;
+    border-radius: 50px;
+    background: #f0f2f5;
+    font-size: 15px;
+    color: #050505;
+    outline: none;
+    transition: background 0.2s;
 }
 
-.conversation-item {
+.messenger-search-box input:focus {
+    background: #e4e6eb;
+}
+
+.messenger-search-box input::placeholder {
+    color: #65676b;
+}
+
+.messenger-search-box i {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #65676b;
+    font-size: 16px;
+}
+
+/* Conversations List */
+.conversations-list {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Messenger Conversation Item */
+.messenger-conversation-item {
     display: flex;
     align-items: center;
-    padding: 12px 18px;
+    padding: 8px 8px;
+    margin: 0;
     cursor: pointer;
-    border-bottom: 1px solid #f0f0f0;
-    transition: background 0.18s, box-shadow 0.18s;
-    background: #fff;
     border-radius: 8px;
-    margin: 0 8px 8px 8px;
-    box-shadow: 0 1px 4px #0001;
+    transition: background-color 0.1s;
+    text-decoration: none;
+    color: inherit;
+    position: relative;
 }
-.conversation-item:hover {
-    background: #e3f0fd;
-    box-shadow: 0 2px 12px #1976d210;
+
+.messenger-conversation-item:hover {
+    background-color: #f2f3f5;
 }
-/* Avatar nhóm Messenger */
 
+.messenger-conversation-item.active {
+    background-color: #e7f3ff;
+}
 
+.messenger-conversation-item h6 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #050505;
+    margin: 0;
+}
 
-/* Messenger-style avatar group, không đè nhau */
+.messenger-conversation-item .text-muted {
+    font-size: 13px;
+    color: #65676b;
+}
 
-/* Messenger-style avatar group layout */
+.messenger-conversation-item .small {
+    font-size: 13px;
+}
+
+/* Status dot - Messenger style */
+.status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: none;
+    z-index: 10;
+}
+
+.status-dot.online {
+    background: #31a24c;
+}
+
+.status-dot.offline {
+    background: #bcc0c4;
+}
+
+/* Avatar group - Messenger style */
+.avatar-group-wrapper {
+    position: relative;
+    width: 56px;
+    height: 56px;
+}
+
 .avatar-group {
     position: relative;
-    width: 48px;
-    height: 48px;
+    width: 56px;
+    height: 56px;
     display: inline-block;
-    margin-right: 16px;
-    background: #fff;
-    border-radius: 50%;
-    overflow: visible;
 }
+
 .avatar-group-item {
     position: absolute;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
+    width: 28px;
+    height: 28px;
     object-fit: cover;
-    border: 2.5px solid #fff;
-    box-shadow: 0 1px 4px #0002;
-    background: #bdbdbd;
-    background-clip: padding-box;
-    transition: all 0.15s;
+    border: 2px solid #fff;
 }
-/* 4 người: 4 góc */
+
+/* 4 people: 4 corners */
 .avatar-group.four .avatar-pos-0 { left: 0; top: 0; z-index: 4; }
-.avatar-group.four .avatar-pos-1 { right: 0; top: 0; z-index: 2; }
-.avatar-group.four .avatar-pos-2 { left: 0; bottom: 0; z-index: 3; }
+.avatar-group.four .avatar-pos-1 { right: 0; top: 0; z-index: 3; }
+.avatar-group.four .avatar-pos-2 { left: 0; bottom: 0; z-index: 2; }
 .avatar-group.four .avatar-pos-3 { right: 0; bottom: 0; z-index: 1; }
 
-/* 3 người: 1 trên giữa, 2 dưới trái phải */
-.avatar-group.three .avatar-pos-0 { left: 12px; top: 0; z-index: 0; }
-.avatar-group.three .avatar-pos-1 { left: 0; bottom: 0; z-index: 1; }
-.avatar-group.three .avatar-pos-2 { right: 0; bottom: 0; z-index: 2; }
+/* 3 people: 1 top center, 2 bottom left/right */
+.avatar-group.three .avatar-pos-0 { left: 14px; top: 0; z-index: 3; }
+.avatar-group.three .avatar-pos-1 { left: 0; bottom: 0; z-index: 2; }
+.avatar-group.three .avatar-pos-2 { right: 0; bottom: 0; z-index: 1; }
 
-.conv-info {
-    flex: 1;
-    min-width: 0;
-}
-.conv-title {
-    font-weight: 600;
-    font-size: 17px;
-    color: #222;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.conv-type {
-    font-size: 12px;
-    color: #fff;
-    background: #1976d2;
-    border-radius: 8px;
-    padding: 2px 8px;
-    margin-left: 4px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-.conv-type.group { background: #43a047; }
-.conv-type.direct { background: #1976d2; }
-.conv-last {
-    color: #555;
-    font-size: 15px;
-    margin-top: 2px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.conv-participants {
-    display: flex;
-    align-items: center;
-    margin-top: 4px;
-    gap: 2px;
-}
-.conv-participant-avatar {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    object-fit: cover;
+/* Utilities */
+.min-w-0 { min-width: 0 !important; }
+.text-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bi { vertical-align: -0.125em; }
+
+/* Custom scrollbar - Messenger style */
+.conversations-list::-webkit-scrollbar {
+    width: 6px;
 }
 
-/* Thời gian tin nhắn (relativeTime) */
-.conv-last .msg-time {
-    display: inline-block;
-    padding: 0px;
-    font-size: 13px;
-    color: #555;
-    border-radius: 12px;
-    box-shadow: 0 1px 4px rgba(25, 118, 210, 0.12);
-    font-weight: 500;
-    letter-spacing: 0.5px;
-    transition: background 0.3s;
-    vertical-align: middle;
+.conversations-list::-webkit-scrollbar-track {
+    background: transparent;
 }
+
+.conversations-list::-webkit-scrollbar-thumb {
+    background: #bcc0c4;
+    border-radius: 10px;
+}
+
+.conversations-list::-webkit-scrollbar-thumb:hover {
+    background: #8a8d91;
+}
+
+/* Sidebar header icons - Messenger style */
+.sidebar-icon-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 20px;
+    background: #f0f2f5;
+    border: none;
+    color: #050505;
+    transition: background-color 0.1s;
+}
+
+.sidebar-icon-btn:hover {
+    background-color: #e4e6eb !important;
+}
+
+.sidebar-icon-btn:active {
+    background-color: #d8dadf !important;
+}
+
 
 
 

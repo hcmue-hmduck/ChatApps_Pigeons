@@ -1,16 +1,33 @@
-<div class="messages-layout-wrapper">
-    <div *ngIf="!isLoaded" style="padding: 24px; color: #888; text-align: center;">
-        Không có tin nhắn nào.
+<div class="d-flex flex-column vh-100 messages-wrapper">
+    <div *ngIf="!isLoaded" class="d-flex align-items-center justify-content-center h-100">
+        <div class="text-center text-muted">
+            <i class="bi bi-chat-text display-1 mb-3 opacity-25"></i>
+            <p>Không có tin nhắn nào.</p>
+        </div>
     </div>
     
     <ng-container *ngIf="getMessagesData().homeMessagesData?.messages?.length">
-        <div class="messages-title">
-            {{ getMessageInfor.title || 'Conversation' }}
+        <!-- Header -->
+        <div class="messenger-chat-header px-4 py-3 bg-white sticky-top">
+            <div class="d-flex align-items-center justify-content-between">
+                <h6 class="mb-0 fw-semibold">{{ getMessageInfor.title || 'Conversation' }}</h6>
+                <div class="d-flex gap-1">
+                    <button class="btn btn-sm p-0 d-flex align-items-center justify-content-center message-header-icon" title="Gọi điện thoại">
+                        <i class="bi bi-telephone-fill"></i>
+                    </button>
+                    <button class="btn btn-sm p-0 d-flex align-items-center justify-content-center message-header-icon" title="Gọi video">
+                        <i class="bi bi-camera-video-fill"></i>
+                    </button>
+                    <button class="btn btn-sm p-0 d-flex align-items-center justify-content-center message-header-icon" title="Thông tin">
+                        <i class="bi bi-info-circle-fill"></i>
+                    </button>
+                </div>
+            </div>
         </div>
         
-        <div class="messages-content" #messagesContent (scroll)="onMessagesScroll()">
-            <!-- Container chứa tin nhắn (reversed) -->
-            <div class="messages-container">
+        <!-- Messages Content -->
+        <div class="flex-grow-1 overflow-auto messages-content" #messagesContent (scroll)="onMessagesScroll()">
+            <div class="messages-container p-3">
                 <!-- Loading more indicator -->
                 <div *ngIf="isLoadingMore" class="loading-more">
                     <span>Đang tải thêm tin nhắn...</span>
@@ -114,28 +131,58 @@
             <i class="fas fa-chevron-down"></i>
             <span class="new-badge" *ngIf="hasNewMessage">New</span>
         </div>
-        
-        <div class="messages-input">
-            <button class="attach-btn" title="Đính kèm tệp" type="button">
-                <i class="fas fa-paperclip"></i>
-            </button>
-            <textarea class="msg-input" [(ngModel)]="newMessage" placeholder="Type a message..."
-                (keydown)="handleKeyDown($event)" rows="1"></textarea>
-            <button class="send-btn" (click)="handleSendBtn()" title="Gửi">
-                <i class="fas fa-paper-plane"></i>
-            </button>
+        <!-- Input Area -->
+        <div class="bg-white px-4 py-2 sticky-bottom messenger-input-wrapper">
+            <div class="d-flex align-items-end gap-2">
+                <div class="messenger-input-container flex-grow-1">
+                    <button class="messenger-input-icon" title="Đính kèm tệp" type="button">
+                        <i class="bi bi-plus-circle-fill"></i>
+                    </button>
+                    <textarea #messageInput
+                              class="messenger-input" 
+                              [(ngModel)]="newMessage" 
+                              placeholder="Aa"
+                              (keydown)="handleKeyDown($event)" 
+                              rows="1"
+                              autofocus></textarea>
+                    <button class="messenger-input-icon" title="Biểu tượng cảm xúc" type="button" (click)="toggleEmojiPicker()">
+                        <i class="bi bi-emoji-smile-fill"></i>
+                    </button>
+                    <div *ngIf="showEmojiPicker" class="emoji-picker-container">
+                        <emoji-mart 
+                            (emojiSelect)="addEmoji($event)" 
+                            [set]="'apple'"
+                            [perLine]="8"
+                            [emojiSize]="32"
+                            [sheetSize]="32"
+                            [showPreview]="false"
+                            [style]="{ width: '340px', height: '380px' }">
+                        </emoji-mart>
+                    </div>
+                </div>
+                <button class="messenger-send-btn" title="Gửi" (click)="handleSendBtn()" type="button">
+                    <i class="bi bi-send-fill"></i>
+                </button>
+            </div>
         </div>
     </ng-container>
 </div>
 
 <!-- Modal sửa tin nhắn -->
-<div class="edit-modal-backdrop" *ngIf="editingMessage">
-    <div class="edit-modal">
-        <div class="edit-modal-title">Sửa tin nhắn</div>
-        <textarea [(ngModel)]="editingContent" rows="3" class="edit-modal-input"></textarea>
-        <div class="edit-modal-actions">
-            <button (click)="saveEditModal()">Lưu</button>
-            <button (click)="closeEditModal()">Hủy</button>
+<div class="modal fade" [class.show]="editingMessage" [style.display]="editingMessage ? 'block' : 'none'" *ngIf="editingMessage">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title fw-semibold">Sửa tin nhắn</h5>
+                <button type="button" class="btn-close" (click)="closeEditModal()"></button>
+            </div>
+            <div class="modal-body">
+                <textarea [(ngModel)]="editingContent" rows="4" class="form-control" placeholder="Nhập nội dung..."></textarea>
+            </div>
+            <div class="modal-footer border-0">
+                <button class="btn btn-primary w-100" (click)="saveEditModal()">Lưu</button>
+            </div>
         </div>
     </div>
 </div>
+<div class="modal-backdrop fade" [class.show]="editingMessage" *ngIf="editingMessage"></div>
