@@ -38,6 +38,7 @@
                     <div *ngIf="shouldShowDateSeparator(msg, getMessagesData().homeMessagesData.messages[i-1])" class="date-separator">
                         <span>{{ formatDateLabel(msg.created_at) }}</span>
                     </div>
+                    
                     <ng-container *ngIf="msg.message_type === 'system'; else userMsg">
                         <div class="message-system">{{ msg.content }}</div>
                     </ng-container>
@@ -99,15 +100,14 @@
                             <div class="message-row other-row">
                                 <div *ngIf="getMessagesData().homeMessagesData.conversation_type === 'group' && 
                                             (i === 0 || getMessagesData().homeMessagesData.messages[i-1].sender_id !== msg.sender_id || 
-                                            getMessagesData().homeMessagesData.messages[i-1].message_type === 'system')"
+                                            getMessagesData().homeMessagesData.messages[i-1].message_type === 'system' ||
+                                            getMessageDate(msg.created_at) !== getMessageDate(getMessagesData().homeMessagesData.messages[i-1]?.created_at))"
                                     class="sender-name">
                                     {{ msg.sender_name }}
                                 </div>
                                 
                                 <div class="other-row-content">
-                                    <div *ngIf="i === getMessagesData().homeMessagesData.messages.length - 1 || 
-                                                getMessagesData().homeMessagesData.messages[i+1].sender_id !== msg.sender_id || 
-                                                getMessagesData().homeMessagesData.messages[i+1].message_type === 'system'"
+                                    <div *ngIf="isLastOfSenderOrDay(i, getMessagesData().homeMessagesData.messages)"
                                         class="avatar-container">
                                         <img class="avatar"
                                             [src]="msg.sender_avatar || 'https://i.pravatar.cc/40?img=' + msg.sender_id"
@@ -115,9 +115,7 @@
                                             (error)="msg.sender_avatar = 'https://i.pravatar.cc/40?u=' + msg.sender_id">
                                     </div>
                                     
-                                    <div *ngIf="!(i === getMessagesData().homeMessagesData.messages.length - 1 || 
-                                                getMessagesData().homeMessagesData.messages[i+1].sender_id !== msg.sender_id || 
-                                                getMessagesData().homeMessagesData.messages[i+1].message_type === 'system')"
+                                    <div *ngIf="!isLastOfSenderOrDay(i, getMessagesData().homeMessagesData.messages)"
                                         class="avatar-placeholder">
                                     </div>
                                     
@@ -147,9 +145,7 @@
                                                 </div>
                                             </ng-container>
                                         </div>
-                                        <div *ngIf="i === getMessagesData().homeMessagesData.messages.length - 1 || 
-                                                    getMessagesData().homeMessagesData.messages[i+1].sender_id !== msg.sender_id || 
-                                                    getMessagesData().homeMessagesData.messages[i+1].message_type === 'system'"
+                                        <div *ngIf="isLastOfSenderOrDay(i, getMessagesData().homeMessagesData.messages)"
                                             class="msg-timestamp other-timestamp">{{ formatTime(msg.created_at) }}
                                         </div>
                                     </div>
@@ -158,6 +154,7 @@
 
                         </ng-template>
                     </ng-template>
+                
                 </ng-container>
             </div> <!-- Kết thúc messages-container -->
         </div> <!-- Kết thúc messages-content -->

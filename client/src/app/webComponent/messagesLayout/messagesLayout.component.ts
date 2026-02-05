@@ -436,6 +436,18 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
         }
     }
 
+    // Kiểm tra xem tin nhắn hiện tại có phải là cuối chuỗi cùng sender hoặc là cuối ngày không
+    isLastOfSenderOrDay(i: number, messages: any[]): boolean {
+        if (i === messages.length - 1) return true;
+        const curr = messages[i];
+        const next = messages[i + 1];
+        // Nếu khác sender hoặc là system
+        if (next.sender_id !== curr.sender_id || next.message_type === 'system') return true;
+        // Nếu khác ngày
+        if (this.getMessageDate(curr.created_at) !== this.getMessageDate(next.created_at)) return true;
+        return false;
+    }
+
     deleteMessage(msg: any) {
         this.messagesService.deleteMessage(msg.id).subscribe({
             next: (response) => {
