@@ -105,6 +105,20 @@ io.on('connection', (socket) => {
         io.to(data.conversation_id).emit('updateConversation', data);
     });
 
+    // Cập nhật tin nhắn
+    socket.on('updateMessage', (data) => {
+        console.log('Received updateMessage event on server:', data);
+        // Broadcast tới tất cả clients trong conversation (trừ người gửi)
+        io.to(data.conversation_id).emit('updateMessage', data);
+    });
+
+    // Xóa tin nhắn
+    socket.on('deleteMessage', (data) => {
+        console.log('Received deleteMessage event on server:', data);
+        // Broadcast tới tất cả clients trong conversation (trừ người gửi)
+        socket.to(data.conversation_id).emit('deleteMessage', data);
+    });
+
     socket.on('disconnect', async () => {
         console.log('User disconnected:', socket.id);
         

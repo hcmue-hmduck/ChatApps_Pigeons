@@ -1,222 +1,687 @@
-/* Messenger Style - Exact Replica */
+/* Twitter Blue Color Scheme */
+:root {
+    --twitter-blue: #1DA1F2;
+    --twitter-blue-hover: #1a91da;
+    --twitter-blue-light: rgba(29, 161, 242, 0.1);
+    --twitter-blue-lighter: rgba(29, 161, 242, 0.05);
+}
 
-/* Conversation Sidebar Layout */
-.conversation-sidebar {
+/* Twitter Color Classes */
+.bg-twitter { background-color: var(--twitter-blue) !important; }
+.text-twitter { color: var(--twitter-blue) !important; }
+.btn-twitter { 
+    background-color: var(--twitter-blue) !important; 
+    border-color: var(--twitter-blue) !important;
+    color: white !important;
+}
+.btn-outline-twitter { 
+    color: var(--twitter-blue) !important; 
+    border-color: var(--twitter-blue) !important;
+}
+.btn-outline-twitter:hover { 
+    background-color: var(--twitter-blue-light) !important; 
+}
+
+/* Main Container */
+.modern-chat-container {
+    background: linear-gradient(135deg, #E8F5FD 0%, #F5F8FA 100%);
+}
+
+/* Sidebar - Slim Modern Design */
+.sidebar-modern {
     height: 100vh;
     max-height: 100vh;
     overflow: hidden;
-    border-right: 1px solid #e4e6eb;
-}
-
-/* Messenger Header */
-.messenger-header {
-    padding: 20px 16px !important;
-    border-bottom: 1px solid #e4e6eb;
-}
-
-.messenger-header h5 {
-    margin: 0;
-    padding: 0;
-    font-size: 28px;
-    font-weight: 700;
-    background: linear-gradient(135deg, #0084ff 0%, #00c6ff 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    letter-spacing: -0.5px;
-    line-height: 1.2;
-}
-
-/* Logo */
-.messenger-logo {
-    width: 80px;
-    height: 80px;
-    object-fit: contain;
-    background: transparent;
-    transition: all 0.3s ease;
-    cursor: pointer;
+    border-right: 1px solid #E1E8ED;
+    box-shadow: 2px 0 12px rgba(29, 161, 242, 0.08);
+    background: #ffffff;
+    width: var(--sidebar-width, 350px);
+    min-width: 280px;
+    flex: 0 0 var(--sidebar-width, 350px);
+    /* Sidebar width is now fixed and controlled by JS/localStorage */
     flex-shrink: 0;
-    transform: scale(1.9);
-}
-
-.messenger-logo:hover {
-    transform: scale(1.45) rotate(5deg);
-}
-
-/* Messenger Search Box */
-.messenger-search-box {
     position: relative;
-    margin-bottom: 8px;
+    z-index: 1;
 }
 
-.messenger-search-box input {
-    width: 100%;
-    padding: 10px 10px 10px 36px;
-    border: none;
-    border-radius: 50px;
-    background: #f0f2f5;
-    font-size: 15px;
-    color: #050505;
-    outline: none;
-    transition: background 0.2s;
+/* Modern Header */
+.messenger-header-modern {
+    padding: 1rem 0.75rem !important;
+    background: #ffffff;
+    border-bottom: 1px solid #E1E8ED;
 }
 
-.messenger-search-box input:focus {
-    background: #e4e6eb;
+.logo-wrapper {
+    width: 120px;
+    height: 120px;
 }
 
-.messenger-search-box input::placeholder {
-    color: #65676b;
+.messenger-logo-modern {
+    width: 120px;
+    height: 120px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 4px rgba(29, 161, 242, 0.2));
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: scale(1.8);
 }
 
-.messenger-search-box i {
-    position: absolute;
-    left: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #65676b;
-    font-size: 16px;
+.messenger-logo-modern:hover {
+    transform: scale(1.85) rotate(5deg);
+    filter: drop-shadow(0 4px 8px rgba(29, 161, 242, 0.3));
 }
 
-/* Conversations List */
-.conversations-list {
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+.logo-text {
+    font-size: 1.65rem;
+    color: var(--twitter-blue);
+    font-weight: 700;
+    letter-spacing: -0.5px;
 }
 
-/* Messenger Conversation Item */
-.messenger-conversation-item {
+.online-dot {
+    width: 8px;
+    height: 8px;
+    background-color: var(--twitter-blue) !important;
+}
+
+/* Modern Search */
+.messenger-search-modern input {
+    background: #F5F8FA;
+    border: 1px solid #E1E8ED;
+    border-radius: 20px;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+.messenger-search-modern input:focus {
+    background: #ffffff;
+    border-color: var(--twitter-blue);
+    box-shadow: 0 0 0 3px rgba(29, 161, 242, 0.1);
+}
+
+/* Filter Buttons */
+.filter-btn-icon {
+    width: 36px;
+    height: 36px;
+    padding: 0 !important;
     display: flex;
     align-items: center;
-    padding: 8px 8px;
-    margin: 0;
-    cursor: pointer;
-    border-radius: 8px;
-    transition: background-color 0.1s;
-    text-decoration: none;
-    color: inherit;
+    justify-content: center;
+    font-size: 16px !important;
+    transition: all 0.2s;
+}
+
+.filter-btn-icon.active {
+    background-color: var(--twitter-blue) !important;
+    border-color: var(--twitter-blue) !important;
+    color: white !important;
+}
+
+.filter-btn-icon:not(.active):hover {
+    border-color: var(--twitter-blue);
+    color: var(--twitter-blue);
+    background-color: var(--twitter-blue-lighter);
+    transform: scale(1.05);
+}
+
+/* Filter Groups */
+.filter-group {
+    padding: 0.25rem 0.75rem;
+    background: rgba(29, 161, 242, 0.15);
+    border-radius: 20px;
+    border: 1px solid rgba(29, 161, 242, 0.2);
+}
+
+.action-group {
+    padding: 0.25rem 0.75rem;
+    background: #E1E8ED;
+    border-radius: 20px;
+    border: 1px solid #D1D8DD;
+    transition: all 0.3s ease;
+}
+
+.action-group:hover {
+    background: rgba(29, 161, 242, 0.15);
+    border-color: rgba(29, 161, 242, 0.3);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(29, 161, 242, 0.15);
+}
+
+.filter-divider {
+    width: 2px;
+    height: 30px;
+    background: linear-gradient(to bottom, transparent, #657786, transparent);
+    flex-shrink: 0;
+}
+
+/* Modern Conversations List */
+.conversations-list-modern {
+    height: calc(100vh - 180px);
+}
+
+/* Modern Conversation Item */
+.conversation-item-modern {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border: none !important;
+    background: transparent;
     position: relative;
 }
 
-.messenger-conversation-item:hover {
-    background-color: #f2f3f5;
+.conversation-item-modern:hover {
+    background-color: var(--twitter-blue-lighter) !important;
+    transform: translateX(2px);
 }
 
-.messenger-conversation-item.active {
-    background-color: #e7f3ff;
+.conversation-item-modern.active {
+    background-color: var(--twitter-blue-lighter) !important;
+    border-left: 3px solid var(--twitter-blue) !important;
 }
 
-.messenger-conversation-item h6 {
+/* Conversation Title */
+.conversation-title {
     font-size: 15px;
+    color: #14171A;
+    flex: 1;
+    min-width: 0;
+}
+
+/* Message Preview - FIXED LAYOUT */
+.message-preview {
+    font-size: 13px;
+    line-height: 1.4;
+    width: 100%;
+}
+
+/* Message Line Container - Đảm bảo thời gian sát nội dung */
+.message-line-container {
+    display: flex;
+    align-items: baseline;
+    width: 100%;
+    gap: 4px; /* Khoảng cách rất nhỏ giữa nội dung và thời gian */
+}
+
+.message-content {
+    flex: 1;
+    min-width: 0; /* Cho phép text bị cắt */
+    display: flex;
+    align-items: baseline;
+    overflow: hidden;
+}
+
+.message-sender {
+    color: #14171A;
+    font-weight: 500;
+    flex-shrink: 0;
+    margin-right: 2px;
+    font-size: 13px;
+}
+
+.message-text {
+    color: #657786;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+}
+
+.message-time {
+    color: #657786;
+    font-size: 12px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    opacity: 0.9;
+}
+
+.no-message {
+    font-size: 11px;
+    color: #AAB8C2;
+}
+
+/* Unread Badge */
+.unread-badge {
     font-weight: 600;
-    color: #050505;
-    margin: 0;
+    animation: pulse-badge 2s infinite;
+    background-color: #FFAD1F !important;
 }
 
-.messenger-conversation-item .text-muted {
-    font-size: 13px;
-    color: #65676b;
+.unread-count {
+    background-color: var(--twitter-blue) !important;
 }
 
-.messenger-conversation-item .small {
-    font-size: 13px;
+@keyframes pulse-badge {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
 }
 
-/* Status dot - Messenger style */
-.status-dot {
-    width: 12px;
-    height: 12px;
+/* Avatar Styles */
+.avatar-wrapper {
+    position: relative;
+    width: 44px;
+    height: 44px;
+}
+
+.avatar-img {
+    width: 44px;
+    height: 44px;
+    object-fit: cover;
+    border: 2px solid #ffffff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+
+/* Avatar Group - Dynamic Layout */
+.avatar-group-modern {
+    position: relative;
+    width: 44px;
+    height: 44px;
+}
+
+.avatar-stack {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.avatar-stack-item {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    object-fit: cover;
+    border: 2px solid #ffffff;
     border-radius: 50%;
-    border: 2px solid #fff;
-    box-shadow: none;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Avatar "..." more indicator */
+.avatar-more {
+    background: linear-gradient(135deg, #657786 0%, #AAB8C2 100%);
+    font-size: 10px;
+    font-weight: 600;
+}
+
+/* Layout cho 1 avatar (single) */
+.avatar-stack[data-count="1"] .avatar-pos-0 {
+    width: 44px;
+    height: 44px;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+
+/* Layout cho 2 avatar (duo) */
+.avatar-stack[data-count="2"] .avatar-pos-0 {
+    top: 2px;
+    left: 2px;
+    width: 26px;
+    height: 26px;
+    z-index: 2;
+}
+
+.avatar-stack[data-count="2"] .avatar-pos-1 {
+    bottom: 2px;
+    right: 2px;
+    width: 26px;
+    height: 26px;
+    z-index: 1;
+}
+
+/* Layout cho 3 avatar (tam giác) */
+.avatar-stack[data-count="3"] .avatar-pos-0 {
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 24px;
+    height: 24px;
+    z-index: 3;
+}
+
+.avatar-stack[data-count="3"] .avatar-pos-1 {
+    bottom: 0;
+    left: 0;
+    width: 24px;
+    height: 24px;
+    z-index: 2;
+}
+
+.avatar-stack[data-count="3"] .avatar-pos-2 {
+    bottom: 0;
+    right: 0;
+    width: 24px;
+    height: 24px;
+    z-index: 1;
+}
+
+/* Layout cho 4 avatar (4 góc) */
+.avatar-stack[data-count="4"] .avatar-pos-0 {
+    top: 0;
+    left: 0;
+    width: 22px;
+    height: 22px;
+    z-index: 4;
+}
+
+.avatar-stack[data-count="4"] .avatar-pos-1 {
+    top: 0;
+    right: 0;
+    width: 22px;
+    height: 22px;
+    z-index: 3;
+}
+
+.avatar-stack[data-count="4"] .avatar-pos-2 {
+    bottom: 0;
+    left: 0;
+    width: 22px;
+    height: 22px;
+    z-index: 2;
+}
+
+.avatar-stack[data-count="4"] .avatar-pos-3 {
+    bottom: 0;
+    right: 0;
+    width: 22px;
+    height: 22px;
+    z-index: 1;
+}
+
+/* Layout cho >4 avatar (3 avatar + "...") */
+.avatar-stack[data-count="5"] .avatar-pos-0 {
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 24px;
+    height: 24px;
+    z-index: 4;
+}
+
+.avatar-stack[data-count="5"] .avatar-pos-1 {
+    bottom: 0;
+    left: 0;
+    width: 24px;
+    height: 24px;
+    z-index: 3;
+}
+
+.avatar-stack[data-count="5"] .avatar-pos-2 {
+    bottom: 0;
+    right: 0;
+    width: 24px;
+    height: 24px;
+    z-index: 2;
+}
+
+.avatar-stack[data-count="5"] .avatar-pos-3 {
+    bottom: 0;
+    right: 0;
+    width: 24px;
+    height: 24px;
+    z-index: 1;
+    background: linear-gradient(135deg, #657786 0%, #AAB8C2 100%);
+}
+
+/* Modern Status Dot */
+.status-dot-modern {
+    width: 10px;
+    height: 10px;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    transition: all 0.3s;
     z-index: 10;
 }
 
-.status-dot.online {
-    background: #31a24c;
+.status-dot-modern.online {
+    background: #17BF63;
+    animation: pulse 2s infinite;
 }
 
-.status-dot.offline {
-    background: #bcc0c4;
+.status-dot-modern.offline {
+    background: #AAB8C2;
 }
 
-/* Avatar group - Messenger style */
-.avatar-group-wrapper {
-    position: relative;
-    width: 56px;
-    height: 56px;
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(23, 191, 99, 0.4); }
+    70% { box-shadow: 0 0 0 4px rgba(23, 191, 99, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(23, 191, 99, 0); }
 }
 
-.avatar-group {
-    position: relative;
-    width: 56px;
-    height: 56px;
-    display: inline-block;
+/* Modern Icons */
+.sidebar-icon-btn-modern {
+    transition: all 0.2s;
+    background: #F5F8FA;
+    color: var(--twitter-blue);
+    border: 1px solid #E1E8ED;
 }
 
-.avatar-group-item {
-    position: absolute;
-    width: 28px;
-    height: 28px;
-    object-fit: cover;
-    border: 2px solid #fff;
+.sidebar-icon-btn-modern:hover {
+    background-color: var(--twitter-blue) !important;
+    color: white !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(29, 161, 242, 0.2);
+    border-color: transparent;
 }
 
-/* 4 people: 4 corners */
-.avatar-group.four .avatar-pos-0 { left: 0; top: 0; z-index: 4; }
-.avatar-group.four .avatar-pos-1 { right: 0; top: 0; z-index: 3; }
-.avatar-group.four .avatar-pos-2 { left: 0; bottom: 0; z-index: 2; }
-.avatar-group.four .avatar-pos-3 { right: 0; bottom: 0; z-index: 1; }
-
-/* 3 people: 1 top center, 2 bottom left/right */
-.avatar-group.three .avatar-pos-0 { left: 14px; top: 0; z-index: 3; }
-.avatar-group.three .avatar-pos-1 { left: 0; bottom: 0; z-index: 2; }
-.avatar-group.three .avatar-pos-2 { right: 0; bottom: 0; z-index: 1; }
-
-/* Utilities */
-.min-w-0 { min-width: 0 !important; }
-.text-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bi { vertical-align: -0.125em; }
-
-/* Custom scrollbar - Messenger style */
-.conversations-list::-webkit-scrollbar {
-    width: 6px;
+/* User Profile Footer */
+.user-profile-footer {
+    background: #F5F8FA;
+    border-top: 1px solid #E1E8ED;
+    padding: 11.25px 20px !important;
 }
 
-.conversations-list::-webkit-scrollbar-track {
+.user-avatar {
+    border: 2px solid #E1E8ED;
+    transition: all 0.3s;
+}
+
+.user-avatar:hover {
+    border-color: var(--twitter-blue);
+    transform: scale(1.05);
+}
+
+.user-name {
+    color: #14171A;
+}
+
+.user-status {
+    color: #17BF63;
+    font-weight: 500;
+}
+
+/* Welcome Screen */
+.welcome-screen {
+    background: linear-gradient(135deg, #F5F8FA 0%, #E8F5FD 100%);
+}
+
+.welcome-icon {
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0px); }
+}
+
+/* Empty State */
+.empty-state-icon {
+    opacity: 0.5;
+    transition: opacity 0.3s;
+}
+
+.empty-state-icon:hover {
+    opacity: 0.8;
+}
+
+.smaller {
+    font-size: 11px;
+    color: #657786;
+}
+
+/* Custom Scrollbar - Twitter Style */
+.conversations-list-modern::-webkit-scrollbar {
+    width: 4px;
+}
+
+.conversations-list-modern::-webkit-scrollbar-track {
     background: transparent;
 }
 
-.conversations-list::-webkit-scrollbar-thumb {
-    background: #bcc0c4;
+.conversations-list-modern::-webkit-scrollbar-thumb {
+    background-color: var(--twitter-blue);
     border-radius: 10px;
+    opacity: 0.3;
 }
 
-.conversations-list::-webkit-scrollbar-thumb:hover {
-    background: #8a8d91;
+.conversations-list-modern::-webkit-scrollbar-thumb:hover {
+    opacity: 0.5;
 }
 
-/* Sidebar header icons - Messenger style */
-.sidebar-icon-btn {
-    width: 36px;
-    height: 36px;
-    font-size: 20px;
-    background: #f0f2f5;
+/* Typography Enhancements */
+.text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.min-w-0 {
+    min-width: 0;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    /* Mobile - sidebar full width overlay */
+    .sidebar-modern {
+        width: 100%;
+        max-width: 320px;
+        min-width: 280px;
+        position: fixed;
+        z-index: 1050;
+        transform: translateX(-100%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 4px 0 20px rgba(29, 161, 242, 0.1);
+    }
+    
+    .sidebar-modern.show {
+        transform: translateX(0);
+    }
+    
+    .messenger-logo-modern {
+        transform: scale(1.6);
+    }
+    
+    .conversation-title {
+        max-width: 100px;
+    }
+    
+    .message-text {
+        max-width: 80px;
+    }
+    
+    /* Điều chỉnh avatar group cho mobile */
+    .avatar-stack-item {
+        width: 20px !important;
+        height: 20px !important;
+    }
+    
+    .avatar-stack-item.avatar-pos-0 {
+        width: 24px !important;
+        height: 24px !important;
+    }
+}
+
+/* Mobile toggle button */
+.mobile-sidebar-toggle {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 1040;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: var(--twitter-blue);
+    color: white;
     border: none;
-    color: #050505;
-    transition: background-color 0.1s;
+    box-shadow: 0 2px 10px rgba(29, 161, 242, 0.3);
+    display: none;
 }
 
-.sidebar-icon-btn:hover {
-    background-color: #e4e6eb !important;
+@media (max-width: 768px) {
+    .mobile-sidebar-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
 }
 
-.sidebar-icon-btn:active {
-    background-color: #d8dadf !important;
+/* Resize Handle */
+.resize-handle {
+    width: 4px;
+    background: #E1E8ED;
+    cursor: col-resize !important;
+    position: relative;
+    flex-shrink: 0;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    user-select: none;
 }
 
+.resize-handle::before {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 100%;
+    left: -4px;
+    cursor: col-resize !important;
+}
 
+.resize-handle::after {
+    content: '';
+    width: 3px;
+    height: 40px;
+    background: #AAB8C2;
+    border-radius: 2px;
+    transition: all 0.2s;
+    pointer-events: none;
+}
 
+.resize-handle:hover {
+    background: var(--twitter-blue-light);
+}
 
+.resize-handle:hover::after {
+    background: var(--twitter-blue);
+    height: 60px;
+    width: 4px;
+}
 
+.resize-handle.resizing {
+    background: var(--twitter-blue-light);
+}
 
+.resize-handle.resizing::after {
+    background: var(--twitter-blue);
+    height: 100%;
+    width: 4px;
+}
+
+/* Overlay khi đang resize */
+.resize-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    cursor: col-resize !important;
+    z-index: 9999;
+    background: rgba(29, 161, 242, 0.02);
+}
+
+@media (max-width: 768px) {
+    .resize-handle {
+        display: none;
+    }
+}

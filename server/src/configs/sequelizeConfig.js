@@ -42,6 +42,6 @@ async function testConnection() {
 // Keep-alive: gửi truy vấn nhỏ định kỳ để giữ kết nối luôn sống
 setInterval(() => {
     sequelize.query('SELECT 1');
-}, 10 * 1000); // 10 giây
+}, 5 * 60 * 1000); // 5 phút
 
 module.exports = { sequelize, testConnection };

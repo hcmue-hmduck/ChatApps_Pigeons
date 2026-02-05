@@ -40,6 +40,7 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
     hasMore = true; // Còn tin nhắn cũ hơn để load
     isLoadingMore = false; // Đang load thêm tin nhắn
     currentOffset = 0; // Vị trí hiện tại (số messages đã load)
+    lastMessageId = ''; // ID của tin nhắn cuối cùng đã load
     
     private scrollTimeout: any;
     private lastConversationId: string = ''; // Track conversation changes
@@ -137,16 +138,32 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
     trackByMessageId(index: number, message: any): any {
         return message.id;
     }
+    
+    // Handle file attachment
+    handleFileAttachment() {
+        // TODO: Implement file picker
+        console.log('File attachment clicked');
+    }
+    
+    // Handle voice recording
+    handleVoiceRecording() {
+        // TODO: Implement voice recording
+        console.log('Voice recording clicked');
+    }
 
     setupSocketListener(conversationId: string) {
         // Cleanup listener cũ trước khi setup mới
         this.socketService.off('newMessage');
+        this.socketService.off('updateMessage');
+        this.socketService.off('deleteMessage');
         
         this.socketService.emit('joinConversation', conversationId);
         
         // Setup listener cho tin nhắn mới
         this.socketService.on('newMessage', (data: any) => {
             console.log('New message received:', data);
+            this.lastMessageId = data.id;
+            console.log('Last message id updated to:', this.lastMessageId);
             if (data.conversation_id === conversationId) {
                 console.log('Adding message to conversation', conversationId, ':', data);
                 
@@ -174,6 +191,41 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
                         this.hasNewMessage = true;
                     }
                 }
+            }
+        });
+        
+        // Setup listener cho cập nhật tin nhắn
+        this.socketService.on('updateMessage', (data: any) => {
+            // this.lastMessageId = data.id;
+            // console.log('Last message id updated to:', this.lastMessageId);
+            if (data.conversation_id === conversationId) {
+                console.log('Updating message in conversations', data);
+                this.getMessagesData.update(old => ({
+                    ...old,
+                    homeMessagesData: {
+                        ...old.homeMessagesData,
+                        messages: old.homeMessagesData.messages.map((msg: any) => 
+                            msg.id === data.id 
+                                ? { ...msg, content: data.content, updated_at: data.updated_at }
+                                : msg
+                        )
+                    }
+                }));
+            }
+        });
+        
+        // Setup listener cho xóa tin nhắn
+        this.socketService.on('deleteMessage', (data: any) => {
+            this.lastMessageId = data.id;
+            console.log('Last message id updated to:', this.lastMessageId);
+            if (data.conversation_id === conversationId) {
+                this.getMessagesData.update(old => ({
+                    ...old,
+                    homeMessagesData: {
+                        ...old.homeMessagesData,
+                        messages: old.homeMessagesData.messages.filter((msg: any) => msg.id !== data.id)
+                    }
+                }));
             }
         });
     }
@@ -231,12 +283,15 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
         }
         // Cleanup socket listener để tránh memory leak
         this.socketService.off('newMessage');
+        this.socketService.off('updateMessage');
+        this.socketService.off('deleteMessage');
     }
 
     loadMessages(conversationId: string) {
         this.loading = true;
         this.messagesService.getMessages(conversationId).subscribe({
             next: (response) => {
+                this.lastMessageId = response.metadata?.homeMessagesData?.last_message_id || '';
                 this.getMessagesData.set(response.metadata || {});
                 this.loading = false;
                 
@@ -340,9 +395,10 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
                     sender_name: currentUser.full_name,
                     sender_avatar: currentUser.avatar_url,
                 };
+                this.lastMessageId = newMessage.id;
+                console.log('Last message id updated to:', this.lastMessageId);
                 this.socketService.emit('sendMessage', newMessage);
                 this.socketService.emit('updateConversation', newMessage);
-                console.log('New message added2:', newMessage);
             },
             error: (error) => {
                 this.loading = false;
@@ -377,14 +433,24 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
     deleteMessage(msg: any) {
         this.messagesService.deleteMessage(msg.id).subscribe({
             next: (response) => {
-                this.loadMessages(this.conversationId);
+                this.getMessagesData.update(old => ({
+                    ...old,
+                    homeMessagesData: {
+                        ...old.homeMessagesData,
+                        messages: old.homeMessagesData.messages.filter((m: any) => m.id !== msg.id)
+                    }
+                }));
+                
+                this.socketService.emit('deleteMessage', {
+                    conversation_id: this.conversationId,
+                    message_id: msg.id
+                });
             },
             error: (error) => {
                 console.error('Error deleting message:', error);
                 this.error = error.message;
             }
         });
-        console.log('Gỡ tin nhắn:', msg);
         this.closeMenu();
     }
 
@@ -415,17 +481,50 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
 
     saveEditModal() {
         if (this.editingMessage && this.editingContent.trim() !== '') {
-            this.messagesService.putMessage(this.editingMessage, this.editingContent).subscribe({
+            // Lưu vào local variable để tránh bị clear
+            const messageId = this.editingMessage;
+            const messageContent = this.editingContent;
+            
+            this.messagesService.putMessage(messageId, messageContent).subscribe({
                 next: (response) => {
-                    this.loadMessages(this.conversationId);
+                    this.getMessagesData.update(old => ({
+                        ...old,
+                        homeMessagesData: {
+                            ...old.homeMessagesData,
+                            messages: old.homeMessagesData.messages.map((msg: any) => 
+                                msg.id === messageId 
+                                    ? { ...msg, content: messageContent, updated_at: new Date().toISOString() }
+                                    : msg
+                            )
+                        }
+                    }));
+
+                    const currentUser = this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId) || {};
+                    const newMessage = {
+                        ...response.metadata.updatedMessage,
+                        sender_name: currentUser.full_name,
+                        sender_avatar: currentUser.avatar_url,
+                    };
+                    
+                    this.socketService.emit('updateMessage', newMessage);
+
+                    console.log('current edit id: ', messageId);
+                    console.log('last message id: ', this.lastMessageId);
+                    if (messageId === this.lastMessageId) {
+                        this.socketService.emit('updateConversation', newMessage);
+                    }   
+                    
+                    this.closeEditModal();
                 },
                 error: (error) => {
                     console.error('Error editing message:', error);
                     this.error = error.message;
+                    this.closeEditModal();
                 }
             });
+        } else {
+            this.closeEditModal();
         }
-        this.closeEditModal();
     }
 
     // Scroll methods

@@ -47,23 +47,25 @@
                             <!-- Tin nhắn của tôi -->
                             <div class="message-row me-row">
                                 <div class="me-row-content">
-                                    <div class="message-actions">
-                                        <button class="more-icon" title="Tùy chọn" (click)="toggleMenu(msg.id)">
-                                            <i class="fas fa-ellipsis-v"></i>
-                                        </button>
-                                        <div class="dropdown-menu" *ngIf="showMenuId === msg.id">
-                                            <button class="dropdown-item" *ngIf="msg.message_type === 'text'" (click)="openEditModal(msg)">Sửa</button>
-                                            <button class="dropdown-item" (click)="deleteMessage(msg)">Gỡ</button>
-                                            <button class="dropdown-item" (click)="forwardMessage(msg)">Chuyển tiếp</button>
-                                            <button class="dropdown-item" (click)="pinMessage(msg)">Ghim</button>
+                                    <div class="message-content-wrapper-me">
+                                        <div class="message-bubble-wrapper">
+                                            <div class="message-actions">
+                                                <button class="more-icon" title="Tùy chọn" (click)="toggleMenu(msg.id)">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <div class="dropdown-menu" *ngIf="showMenuId === msg.id">
+                                                    <button class="dropdown-item" *ngIf="msg.message_type === 'text'" (click)="openEditModal(msg)">Sửa</button>
+                                                    <button class="dropdown-item" (click)="deleteMessage(msg)">Gỡ</button>
+                                                    <button class="dropdown-item" (click)="forwardMessage(msg)">Chuyển tiếp</button>
+                                                    <button class="dropdown-item" (click)="pinMessage(msg)">Ghim</button>
+                                                </div>
+                                            </div>
+                                            <div class="me" [innerHTML]="msg.content.replace(/\n/g, '<br>')"></div>
                                         </div>
-                                    </div>
-                                    <div class="me-with-time">
-                                        <div class="me" [innerHTML]="msg.content.replace(/\n/g, '<br>')"></div>
                                         <div *ngIf="i === getMessagesData().homeMessagesData.messages.length - 1 || 
                                                     getMessagesData().homeMessagesData.messages[i+1].sender_id !== msg.sender_id || 
                                                     getMessagesData().homeMessagesData.messages[i+1].message_type === 'system'"
-                                             class="msg-timestamp me-timestamp">{{ formatTime(msg.created_at) }}</div>
+                                            class="msg-timestamp me-timestamp">{{ formatTime(msg.created_at) }}</div>
                                     </div>
                                 </div>
                             </div>
@@ -97,22 +99,23 @@
                                     </div>
                                     
                                     <div class="message-content-wrapper">
-                                        <div class="other-with-time">
+                                        <div class="message-bubble-wrapper">
                                             <div class="other" [innerHTML]="msg.content.replace(/\n/g, '<br>')"></div>
-                                            <div *ngIf="i === getMessagesData().homeMessagesData.messages.length - 1 || 
+                                            <div class="message-actions">
+                                                <button class="more-icon" title="Tùy chọn"
+                                                    (click)="toggleMenu(msg.id)">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <div class="dropdown-menu" *ngIf="showMenuId === msg.id">
+                                                    <button class="dropdown-item" (click)="forwardMessage(msg)">Chuyển tiếp</button>
+                                                    <button class="dropdown-item" (click)="pinMessage(msg)">Ghim</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div *ngIf="i === getMessagesData().homeMessagesData.messages.length - 1 || 
                                                         getMessagesData().homeMessagesData.messages[i+1].sender_id !== msg.sender_id || 
                                                         getMessagesData().homeMessagesData.messages[i+1].message_type === 'system'"
-                                                 class="msg-timestamp other-timestamp">{{ formatTime(msg.created_at) }}</div>
-                                        </div>
-                                        <div class="message-actions">
-                                            <button class="more-icon" title="Tùy chọn"
-                                                (click)="toggleMenu(msg.id)">
-                                                <i class="fas fa-ellipsis-v"></i>
-                                            </button>
-                                            <div class="dropdown-menu" *ngIf="showMenuId === msg.id">
-                                                <button class="dropdown-item" (click)="forwardMessage(msg)">Chuyển tiếp</button>
-                                                <button class="dropdown-item" (click)="pinMessage(msg)">Ghim</button>
-                                            </div>
+                                            class="msg-timestamp other-timestamp">{{ formatTime(msg.created_at) }}
                                         </div>
                                     </div>
                                 </div>
@@ -134,10 +137,18 @@
         <!-- Input Area -->
         <div class="bg-white px-4 py-2 sticky-bottom messenger-input-wrapper">
             <div class="d-flex align-items-end gap-2">
-                <div class="messenger-input-container flex-grow-1">
-                    <button class="messenger-input-icon" title="Đính kèm tệp" type="button">
-                        <i class="bi bi-plus-circle-fill"></i>
+                <!-- Left side icons -->
+                <div class="d-flex gap-1 pb-1">
+                    <button class="messenger-action-icon" title="Đính kèm tệp" type="button" (click)="handleFileAttachment()">
+                        <i class="bi bi-paperclip"></i>
                     </button>
+                    <button class="messenger-action-icon" title="Thu âm" type="button" (click)="handleVoiceRecording()">
+                        <i class="bi bi-mic-fill"></i>
+                    </button>
+                </div>
+                
+                <!-- Input container -->
+                <div class="messenger-input-container flex-grow-1">
                     <textarea #messageInput
                               class="messenger-input" 
                               [(ngModel)]="newMessage" 

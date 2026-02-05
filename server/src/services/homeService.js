@@ -75,8 +75,17 @@ class HomeService {
             }
         });
 
+        const currentUser = usersMap.get(userId);
+        const userInfo = currentUser ? {
+            id: currentUser.id,
+            full_name: currentUser.full_name,
+            avatar_url: currentUser.avatar_url,
+            email: currentUser.email,
+            status: currentUser.status
+        } : null;
+
         // 5. Tổng hợp dữ liệu cho sidebar (chỉ lọc 1 lần)
-        return conversations
+        const joinedConversations = conversations
             .filter(conv => participantsMap.has(conv.id) && 
                            participantsMap.get(conv.id).some(p => p.user_id === userId))
             .map(conv => {
@@ -101,6 +110,10 @@ class HomeService {
                     lastMessage: lastMessagesMap.get(conv.last_message_id) || null
                 };
             });
+        return {
+            userInfo,
+            joinedConversations
+        };
     }
 
     // Lấy tất cả messages trong 1 conversation (tối ưu: batch lấy user info)

@@ -31,17 +31,28 @@ export class ConversationLayoutComponent implements OnInit {
     private interval3600s: any;
 
     isLoaded = false;
-    loading = false;
+    loading = signal(false);
     error = '';
+    isFirstConversationReady = signal(false);
 
     getMessageInfor: any = {};
 
     user_name = '';
-    currentUserId : string = ''; 
+    currentUserId : string = '';
+    
+    // Resize sidebar variables
+    isResizing = false;
+    sidebarWidth = 500; // pixels (default 500px, ~35% of 1440px)
 
     constructor(private conversationService: Conversation, 
                 private socketService: SocketService,
-                private router: ActivatedRoute) {}
+                private router: ActivatedRoute) {
+        // Load sidebar width từ localStorage
+        const savedWidth = localStorage.getItem('sidebarWidth');
+        if (savedWidth) {
+            this.sidebarWidth = parseFloat(savedWidth);
+        }
+    }
 
     relativeTime(dateStr: string, tick1s: number, tick60s: number, tick3600s: number): string {
         if (!dateStr) return '';
@@ -91,13 +102,14 @@ export class ConversationLayoutComponent implements OnInit {
             this.onlineUsers.set(currentOnlineUsers);
         });
         
+        
         this.socketService.on('updateConversation', (data: any) => {
             console.log('Received updateConversation event:', data);
             const currentConversations = this.conversations();
-            if (currentConversations.homeConversationData) {
+            if (currentConversations.homeConversationData?.joinedConversations) {
                 // Đưa conversation vừa update lên đầu mảng
                 const updatedConversations = [
-                    ...currentConversations.homeConversationData
+                    ...currentConversations.homeConversationData.joinedConversations
                         .filter((conv: any) => conv.conversation_id === data.conversation_id)
                         .map((conv: any) => ({
                             ...conv,
@@ -109,15 +121,19 @@ export class ConversationLayoutComponent implements OnInit {
                                 updated_at: data.updated_at
                             }
                         })),
-                    ...currentConversations.homeConversationData
+                    ...currentConversations.homeConversationData.joinedConversations
                         .filter((conv: any) => conv.conversation_id !== data.conversation_id)
                 ];
                 this.conversations.set({
                     ...currentConversations,
-                    homeConversationData: updatedConversations
+                    homeConversationData: {
+                        ...currentConversations.homeConversationData,
+                        joinedConversations: updatedConversations
+                    }
                 });
             }
         });
+        console.log('Socket listeners for conversation layout set up.');
     }
 
     ngOnInit() {
@@ -134,15 +150,19 @@ export class ConversationLayoutComponent implements OnInit {
     ngAfterViewInit() {
         this.reloadSidebar();
         this.isLoaded = true;
-        // Interval 1s cho message mới (≤ 60s)
+        
+        // Áp dụng saved sidebar width ngay lập tức để tránh jump khi resize
+        this.updateSidebarWidth();
+        
+        // Interval 30s cho message mới (giảm tải CPU)
         this.interval1s = setInterval(() => {
             this.tick1s.update(v => v + 1);
-        }, 1000);
+        }, 30000);
         
-        // Interval 60s cho message từ 1 phút đến 1 giờ
+        // Interval 5 phút cho message từ 1 phút đến 1 giờ
         this.interval60s = setInterval(() => {
             this.tick60s.update(v => v + 1);
-        }, 60000);
+        }, 300000);
         
         // Interval 1 giờ cho message >= 1h
         this.interval3600s = setInterval(() => {
@@ -189,29 +209,33 @@ export class ConversationLayoutComponent implements OnInit {
     }
 
     loadConversations(userId: string) {
-        this.loading = true;
+        this.loading.set(true);
         this.conversationService.getConversations(userId).subscribe({
             next: (response) => {
                 console.log('Conversations loaded:', response);
                 this.conversations.set(response.metadata || {});
-                // Join vào TẤT CẢ conversation rooms để nhận update
+                
                 if (response.metadata?.homeConversationData) {
-                    response.metadata.homeConversationData.forEach((conv: any) => {
+                    // Tự động click vào conversation đầu tiên NGAY LẬP TỨC để tối ưu thời gian hiển thị
+                    if (!this.selectedConversationId && response.metadata.homeConversationData.joinedConversations.length > 0) {
+                        this.handleConversationID(response.metadata.homeConversationData.joinedConversations[0]);
+                    }
+                    
+                    // Join vào TẤT CẢ conversation rooms để nhận update (chạy sau để không block UI)
+                    response.metadata.homeConversationData.joinedConversations.forEach((conv: any) => {
                         this.socketService.emit('joinConversation', conv.conversation_id);
                     });
-                    
-                    // Tự động click vào conversation đầu tiên nếu chưa có conversation nào được chọn
-                    if (!this.selectedConversationId && response.metadata.homeConversationData.length > 0) {
-                        this.handleConversationID(response.metadata.homeConversationData[0]);
-                    }
                 }
                 
-                this.loading = false;
+                // Set flag sau khi load xong (bất kể có conversation hay không)
+                this.isFirstConversationReady.set(true);
+                this.loading.set(false);
             },
             error: (error) => { 
                 console.error('Error:', error);
                 this.error = error.message;
-                this.loading = false;
+                this.isFirstConversationReady.set(true); // Set flag cả khi error
+                this.loading.set(false);
             }
         });
     }
@@ -219,15 +243,20 @@ export class ConversationLayoutComponent implements OnInit {
     selectedConversationId : string = '';
     handleConversationID(conv: any) {
         this.socketService.off('newMessage'); // Ngắt kết nối sự kiện cũ trước khi tham gia phòng mới
-        // KHÔNG tắt updateConversation vì nó dùng để update sidebar
         
         this.selectedConversationId = conv.conversation_id;
         this.currentUserId = this.currentUserId;
-        const selectedConv = this.conversations().homeConversationData?.find((c: any) => c.conversation_id === this.selectedConversationId);
+        const selectedConv = this.conversations().homeConversationData.joinedConversations?.find((c: any) => c.conversation_id === this.selectedConversationId);
+        
         this.getMessageInfor = {
             title: selectedConv?.title,
             participants: selectedConv?.participants
         };
+        
+        // Đảm bảo flag được set cho các lần click sau
+        if (!this.isFirstConversationReady()) {
+            this.isFirstConversationReady.set(true);
+        }
     }
 
     createConversation() {
@@ -240,5 +269,57 @@ export class ConversationLayoutComponent implements OnInit {
 
     filter() {
 
+    }
+
+    startResize(event: MouseEvent) {
+        event.preventDefault();
+        this.isResizing = true;
+        
+        // Ngăn text selection khi đang resize
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = 'col-resize';
+        
+        const startX = event.clientX;
+        
+        // Lấy width thực tế từ DOM thay vì từ biến để tránh jump
+        const sidebar = document.querySelector('.sidebar-modern') as HTMLElement;
+        const startWidth = sidebar ? sidebar.offsetWidth : this.sidebarWidth;
+        
+        const mouseMoveHandler = (e: MouseEvent) => {
+            if (this.isResizing) {
+                const deltaX = e.clientX - startX;
+                const newWidth = startWidth + deltaX;
+                
+                // Giới hạn width từ 280px đến 60% màn hình
+                const maxWidth = window.innerWidth * 0.6;
+                if (newWidth >= 280 && newWidth <= maxWidth) {
+                    this.sidebarWidth = newWidth;
+                    this.updateSidebarWidth();
+                }
+            }
+        };
+        
+        const mouseUpHandler = () => {
+            this.isResizing = false;
+            document.body.style.userSelect = '';
+            document.body.style.cursor = '';
+            
+            // Lưu vào localStorage
+            localStorage.setItem('sidebarWidth', this.sidebarWidth.toString());
+            
+            document.removeEventListener('mousemove', mouseMoveHandler);
+            document.removeEventListener('mouseup', mouseUpHandler);
+        };
+        
+        document.addEventListener('mousemove', mouseMoveHandler);
+        document.addEventListener('mouseup', mouseUpHandler);
+    }
+    
+    private updateSidebarWidth() {
+        const sidebar = document.querySelector('.sidebar-modern') as HTMLElement;
+        if (sidebar) {
+            sidebar.style.setProperty('width', `${this.sidebarWidth}px`, 'important');
+            sidebar.style.setProperty('flex', `0 0 ${this.sidebarWidth}px`, 'important');
+        }
     }
 }

@@ -12,7 +12,7 @@
 }
 
 .messenger-chat-header h6 {
-    font-size: 15px;
+    font-size: 17px;
     font-weight: 600;
     color: #050505;
 }
@@ -93,6 +93,9 @@
 }
 
 .other-timestamp {
+    font-size: 0.7rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
     text-align: left;
 }
 
@@ -110,6 +113,10 @@
 }
 
 .other-with-time {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
     align-items: flex-start;
 }
 
@@ -134,8 +141,8 @@
     border: none;
     background: transparent;
     outline: none;
-    font-size: 15px;
-    line-height: 20px;
+    font-size: 16px;
+    line-height: 22px;
     resize: none;
     max-height: 100px;
     overflow-y: auto;
@@ -349,8 +356,7 @@
 
 .me-row-content {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    align-items: flex-end;
     max-width: 70%;
     margin-left: auto;
 }
@@ -371,7 +377,7 @@
 
 .other-row-content {
     display: flex;
-    align-items: flex-start;
+    align-items: flex-end;
     gap: 0;
     max-width: 70%;
     margin-right: auto;
@@ -384,7 +390,10 @@
     height: 28px;
     flex-shrink: 0;
     margin-right: 8px;
-    align-self: center;
+    align-self: flex-end;
+    margin-bottom: 20px;
+    position: relative;
+    top: 0;
 }
 
 .avatar {
@@ -402,23 +411,41 @@
     height: 28px;
     flex-shrink: 0;
     margin-right: 8px;
+    align-self: flex-end; 
+    /* margin-bottom: 6px; */
     visibility: hidden;
 }
 
 /* Message content wrapper */
 .message-content-wrapper {
     display: flex;
+    flex-direction: column;
     align-items: flex-start;
-    gap: 8px;
     flex: 1;
-    align-items: center;
+    min-width: 0;
+}
+
+.message-content-wrapper-me {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    flex: 1;
+    min-width: 0;
+}
+
+.message-bubble-wrapper {
+    display: flex;
+    align-items: center; /* Quan trọng: căn giữa theo chiều dọc */
+    gap: 8px;
+    width: 100%;
+    position: relative;
 }
 
 /* Message bubbles */
 .me, .other {
-    padding: 8px 12px;
-    font-size: 15px;
-    line-height: 1.35;
+    padding: 10px 14px;
+    font-size: 16px;
+    line-height: 1.4;
     word-break: break-word;
     word-wrap: break-word;
     overflow-wrap: break-word;
@@ -440,20 +467,26 @@
     color: #050505;
     border-radius: 18px 18px 18px 4px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-    max-width: 100%;
-    align-self: center;
-    margin-top: 0;
+    max-width: calc(100% - 40px); /* Trừ khoảng cho more-icon */
+    padding: 10px 14px;
+    font-size: 16px;
+    line-height: 1.4;
+    word-break: break-word;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    flex: 1;
+    min-width: 0;
 }
 
 /* Message Actions */
 .message-actions {
-    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1;
-    height: 100%;
-    align-self: center;
+    flex-shrink: 0;
+    width: 32px;
+    height: 100%; /* Chiều cao bằng với bong bóng */
+    position: relative;
 }
 
 .more-icon {
@@ -468,11 +501,19 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0;
     border: none;
     outline: none;
     width: 28px;
     height: 28px;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%); /* Căn giữa chính xác */
+    right: 0;
+}
+
+.message-bubble-wrapper:hover .more-icon {
+    opacity: 1;
+    visibility: visible;
 }
 
 .me-row:hover .more-icon,
@@ -508,6 +549,9 @@
     z-index: 1000;
     padding: 8px 0;
     animation: fadeIn 0.1s ease-out;
+    bottom: 100%;
+    right: 0;
+    margin-bottom: 8px;
 }
 
 .me-row .dropdown-menu {
@@ -517,9 +561,10 @@
 }
 
 .other-row .dropdown-menu {
-    bottom: 100%;
+    bottom: 50%;
     left: 36px;
-    margin-bottom: 8px;
+    margin-top: 0px;
+    transform: translateY(50%);
 }
 
 .dropdown-item {
@@ -820,4 +865,33 @@
         flex: 1;
         padding: 12px 16px;
     }
+}
+
+/* Messenger Action Icons (left side of input) */
+.messenger-action-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: transparent;
+    border: none;
+    color: #0084ff;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.messenger-action-icon:hover {
+    background-color: #f2f3f5;
+}
+
+.messenger-action-icon:active {
+    background-color: #e4e6eb;
+    transform: scale(0.95);
+}
+
+.messenger-action-icon i {
+    line-height: 1;
 }
