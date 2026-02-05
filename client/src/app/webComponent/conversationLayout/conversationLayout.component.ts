@@ -118,7 +118,8 @@ export class ConversationLayoutComponent implements OnInit {
                                 sender_id: data.sender_id,
                                 content: data.content,
                                 created_at: data.created_at,
-                                updated_at: data.updated_at
+                                updated_at: data.updated_at,
+                                is_deleted: data.is_deleted
                             }
                         })),
                     ...currentConversations.homeConversationData.joinedConversations

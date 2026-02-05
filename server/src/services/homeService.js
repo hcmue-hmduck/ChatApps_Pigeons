@@ -177,6 +177,10 @@ class HomeService {
         return await messagesService.updateMessage(messageId, messageData);
     }
 
+    async deleteMessageInConversation(messageId) {
+        return await messagesService.deleteMessage(messageId);
+    }
+
     async updateConversation(conversationId, conversationData) {
         return await conversationsService.updateConversation(conversationId, conversationData);
     }

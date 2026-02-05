@@ -55,6 +55,17 @@ class HomeController {
         }).send(res);
     }
 
+    async deleteHomeMessages(req, res) {
+        const messageId = req.params.messID;
+        const deleteResult = await homeService.deleteMessageInConversation(messageId);
+        new SuccessResponse({
+            message: 'Delete home message successfully',
+            metadata: {
+                deleteResult: deleteResult,
+            }
+        }).send(res);
+    }
+
     async putHomeConversation(req, res) {
         const conversationId = req.params.convID;
         const conversationData = req.body;

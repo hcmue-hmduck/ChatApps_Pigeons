@@ -44,12 +44,14 @@
                     
                     <ng-template #userMsg>
                         <ng-container *ngIf="currentUserId === msg.sender_id; else otherMsg">
+                            
                             <!-- Tin nhắn của tôi -->
                             <div class="message-row me-row">
                                 <div class="me-row-content">
                                     <div class="message-content-wrapper-me">
                                         <div class="message-bubble-wrapper">
-                                            <div class="message-actions">
+                                            <!-- Message actions chỉ hiện khi tin nhắn chưa bị xóa -->
+                                            <div *ngIf="!msg.is_deleted" class="message-actions">
                                                 <button class="more-icon" title="Tùy chọn" (click)="toggleMenu(msg.id)">
                                                     <i class="fas fa-ellipsis-v"></i>
                                                 </button>
@@ -60,8 +62,27 @@
                                                     <button class="dropdown-item" (click)="pinMessage(msg)">Ghim</button>
                                                 </div>
                                             </div>
-                                            <div class="me" [innerHTML]="msg.content.replace(/\n/g, '<br>')"></div>
+                                            
+                                            <div class="me-content">
+                                                <!-- Tin nhắn đã bị xóa -->
+                                                <ng-container *ngIf="msg.is_deleted; else notDeletedMe">
+                                                    <div class="me deleted-message">
+                                                        <span class="text-muted" style="color: white !important;">Tin nhắn đã được gỡ</span>
+                                                    </div>
+                                                </ng-container>
+                                                
+                                                <!-- Tin nhắn chưa bị xóa -->
+                                                <ng-template #notDeletedMe>
+                                                    
+                                                    <div *ngIf="msg.is_edited" class="edited-indicator">
+                                                        <i class="bi bi-pencil-fill text-muted" title="Đã chỉnh sửa"></i>
+                                                    </div>
+                                                    <div class="me" [innerHTML]="msg.content.replace(/\n/g, '<br>')"></div>
+                                                </ng-template>
+                                            </div>
                                         </div>
+                                        
+                                        <!-- Timestamp -->
                                         <div *ngIf="i === getMessagesData().homeMessagesData.messages.length - 1 || 
                                                     getMessagesData().homeMessagesData.messages[i+1].sender_id !== msg.sender_id || 
                                                     getMessagesData().homeMessagesData.messages[i+1].message_type === 'system'"
@@ -69,15 +90,17 @@
                                     </div>
                                 </div>
                             </div>
+
                         </ng-container>
                         
                         <ng-template #otherMsg>
+
                             <!-- Tin nhắn của người khác -->
                             <div class="message-row other-row">
                                 <div *ngIf="getMessagesData().homeMessagesData.conversation_type === 'group' && 
                                             (i === 0 || getMessagesData().homeMessagesData.messages[i-1].sender_id !== msg.sender_id || 
-                                             getMessagesData().homeMessagesData.messages[i-1].message_type === 'system')"
-                                     class="sender-name">
+                                            getMessagesData().homeMessagesData.messages[i-1].message_type === 'system')"
+                                    class="sender-name">
                                     {{ msg.sender_name }}
                                 </div>
                                 
@@ -85,7 +108,7 @@
                                     <div *ngIf="i === getMessagesData().homeMessagesData.messages.length - 1 || 
                                                 getMessagesData().homeMessagesData.messages[i+1].sender_id !== msg.sender_id || 
                                                 getMessagesData().homeMessagesData.messages[i+1].message_type === 'system'"
-                                         class="avatar-container">
+                                        class="avatar-container">
                                         <img class="avatar"
                                             [src]="msg.sender_avatar || 'https://i.pravatar.cc/40?img=' + msg.sender_id"
                                             [alt]="msg.sender_name"
@@ -95,31 +118,44 @@
                                     <div *ngIf="!(i === getMessagesData().homeMessagesData.messages.length - 1 || 
                                                 getMessagesData().homeMessagesData.messages[i+1].sender_id !== msg.sender_id || 
                                                 getMessagesData().homeMessagesData.messages[i+1].message_type === 'system')"
-                                         class="avatar-placeholder">
+                                        class="avatar-placeholder">
                                     </div>
                                     
                                     <div class="message-content-wrapper">
                                         <div class="message-bubble-wrapper">
-                                            <div class="other" [innerHTML]="msg.content.replace(/\n/g, '<br>')"></div>
-                                            <div class="message-actions">
-                                                <button class="more-icon" title="Tùy chọn"
-                                                    (click)="toggleMenu(msg.id)">
-                                                    <i class="fas fa-ellipsis-v"></i>
-                                                </button>
-                                                <div class="dropdown-menu" *ngIf="showMenuId === msg.id">
-                                                    <button class="dropdown-item" (click)="forwardMessage(msg)">Chuyển tiếp</button>
-                                                    <button class="dropdown-item" (click)="pinMessage(msg)">Ghim</button>
-                                                </div>
+                                            <!-- Nội dung tin nhắn -->
+                                            <div *ngIf="msg.is_deleted" class="deleted-indicator">
+                                                <span class="other" style="font-size: 16px">Tin nhắn đã được gỡ</span>
                                             </div>
+                                            
+                                            <ng-container *ngIf="!msg.is_deleted">
+                                                <div class="other" [innerHTML]="msg.content.replace(/\n/g, '<br>')"></div>
+                                                <div *ngIf="msg.is_edited" class="edited-indicator">
+                                                    <i class="bi bi-pencil-fill text-muted" title="Đã chỉnh sửa"></i>
+                                                </div>
+                                                
+                                                <!-- Message actions chỉ hiện khi tin nhắn chưa bị xóa -->
+                                                <div class="message-actions">
+                                                    <button class="more-icon" title="Tùy chọn"
+                                                        (click)="toggleMenu(msg.id)">
+                                                        <i class="fas fa-ellipsis-v"></i>
+                                                    </button>
+                                                    <div class="dropdown-menu" *ngIf="showMenuId === msg.id">
+                                                        <button class="dropdown-item" (click)="forwardMessage(msg)">Chuyển tiếp</button>
+                                                        <button class="dropdown-item" (click)="pinMessage(msg)">Ghim</button>
+                                                    </div>
+                                                </div>
+                                            </ng-container>
                                         </div>
                                         <div *ngIf="i === getMessagesData().homeMessagesData.messages.length - 1 || 
-                                                        getMessagesData().homeMessagesData.messages[i+1].sender_id !== msg.sender_id || 
-                                                        getMessagesData().homeMessagesData.messages[i+1].message_type === 'system'"
+                                                    getMessagesData().homeMessagesData.messages[i+1].sender_id !== msg.sender_id || 
+                                                    getMessagesData().homeMessagesData.messages[i+1].message_type === 'system'"
                                             class="msg-timestamp other-timestamp">{{ formatTime(msg.created_at) }}
                                         </div>
                                     </div>
                                 </div>
                             </div>
+
                         </ng-template>
                     </ng-template>
                 </ng-container>

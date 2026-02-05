@@ -5,7 +5,7 @@
             <div class="spinner-border text-twitter mb-3" style="width: 3rem; height: 3rem;" role="status">
                 <span class="visually-hidden">Loading...</span>
             </div>
-            <p class="text-muted mb-0">\u0110ang tải cuọc trò chuyện...</p>
+            <p class="text-muted mb-0">Đang tải cuộc trò chuyện...</p>
         </div>
     </div>
     
@@ -183,7 +183,10 @@
                                                                 <strong class="message-sender" *ngIf="getLastMessageSenderName(conv)">
                                                                     {{ getLastMessageSenderName(conv) }}
                                                                 </strong>
-                                                                <span class="message-text">{{ conv.lastMessage.content }}</span>
+                                                                <ng-container *ngIf="conv.lastMessage.is_deleted"> Tin nhắn đã được gỡ </ng-container>
+                                                                <ng-container *ngIf="!conv.lastMessage.is_deleted">
+                                                                    <span class="message-text">{{ conv.lastMessage.content }}</span>
+                                                                </ng-container>
                                                             </span>
                                                             <span class="message-time">
                                                                 {{ relativeTime(conv.lastMessage.created_at, tick1s(), tick60s(), tick3600s()) }}

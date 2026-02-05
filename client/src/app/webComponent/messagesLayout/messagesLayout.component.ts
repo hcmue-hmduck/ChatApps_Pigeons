@@ -206,11 +206,16 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
                         ...old.homeMessagesData,
                         messages: old.homeMessagesData.messages.map((msg: any) => 
                             msg.id === data.id 
-                                ? { ...msg, content: data.content, updated_at: data.updated_at }
+                                ? { ...msg, 
+                                    content: data.content, 
+                                    updated_at: data.updated_at, 
+                                    is_edited: data.is_edited,
+                                    is_deleted: data.is_deleted }
                                 : msg
                         )
                     }
                 }));
+                console.log('Updated messages:', this.getMessagesData().homeMessagesData.messages);
             }
         });
         
@@ -223,15 +228,16 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
                     ...old,
                     homeMessagesData: {
                         ...old.homeMessagesData,
-                        messages: old.homeMessagesData.messages.filter((msg: any) => msg.id !== data.id)
+                        messages: old.homeMessagesData.messages.map((m: any) =>
+                            m.id === data.id ? { ...m, is_deleted: true } : m
+                        )
                     }
                 }));
             }
         });
     }
 
-    ngOnInit() {
-        
+    ngOnInit() {   
         if (!this.isLoaded) {  
             this.isLoaded = true;
             this.loadMessages(this.conversationId);
@@ -433,18 +439,31 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
     deleteMessage(msg: any) {
         this.messagesService.deleteMessage(msg.id).subscribe({
             next: (response) => {
+                console.log('Message deleted successfully:', response);
                 this.getMessagesData.update(old => ({
                     ...old,
                     homeMessagesData: {
                         ...old.homeMessagesData,
-                        messages: old.homeMessagesData.messages.filter((m: any) => m.id !== msg.id)
+                        messages: old.homeMessagesData.messages.map((m: any) =>
+                            m.id === msg.id ? { ...m, is_deleted: true } : m
+                        )
                     }
                 }));
-                
-                this.socketService.emit('deleteMessage', {
-                    conversation_id: this.conversationId,
-                    message_id: msg.id
-                });
+
+                const currentUser = this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId) || {};
+                const newMessage = {
+                    ...response.metadata.deleteResult,
+                    sender_name: currentUser.full_name,
+                    sender_avatar: currentUser.avatar_url,
+                };
+                // this.lastMessageId = newMessage.id;
+                console.log('Last message id updated to:', this.lastMessageId);
+                console.log('Deleting message:', newMessage);
+                this.socketService.emit('deleteMessage', newMessage);
+
+                if (msg.id === this.lastMessageId) {
+                    this.socketService.emit('updateConversation', newMessage);
+                }   
             },
             error: (error) => {
                 console.error('Error deleting message:', error);

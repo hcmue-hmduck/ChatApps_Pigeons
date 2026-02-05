@@ -377,7 +377,7 @@
 
 .other-row-content {
     display: flex;
-    align-items: flex-end;
+    align-items: flex-start;
     gap: 0;
     max-width: 70%;
     margin-right: auto;
@@ -441,6 +441,32 @@
     position: relative;
 }
 
+/* Cho other-row - căn trái */
+.other-row .message-bubble-wrapper {
+    justify-content: flex-start; /* Căn trái */
+}
+
+.other-row .other-content {
+    order: 1; /* Bong bóng trước */
+}
+
+.other-row .message-actions {
+    order: 2; /* More-icon sau (bên phải) */
+}
+
+/* Cho me-row - căn phải */
+.me-row .message-bubble-wrapper {
+    justify-content: flex-end; /* Căn phải */
+}
+
+.me-row .message-actions {
+    order: 1; /* More-icon trước (bên trái) */
+}
+
+.me-row .me-content {
+    order: 2; /* Bong bóng sau (bên phải) */
+}
+
 /* Message bubbles */
 .me, .other {
     padding: 10px 14px;
@@ -460,6 +486,7 @@
     border-radius: 18px 18px 4px 18px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     max-width: 100%;
+    flex: 1;
 }
 
 .other {
@@ -467,13 +494,13 @@
     color: #050505;
     border-radius: 18px 18px 18px 4px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-    max-width: calc(100% - 40px); /* Trừ khoảng cho more-icon */
-    padding: 10px 14px;
+    /* max-width: calc(100% - 40px); Trừ khoảng cho more-icon */
+    /* padding: 10px 14px;
     font-size: 16px;
     line-height: 1.4;
     word-break: break-word;
     word-wrap: break-word;
-    overflow-wrap: break-word;
+    overflow-wrap: break-word; */
     flex: 1;
     min-width: 0;
 }
@@ -485,8 +512,9 @@
     justify-content: center;
     flex-shrink: 0;
     width: 32px;
-    height: 100%; /* Chiều cao bằng với bong bóng */
+    height: 100%;
     position: relative;
+    order: 1;
 }
 
 .more-icon {
@@ -508,7 +536,25 @@
     position: absolute;
     top: 50%;
     transform: translateY(-50%); /* Căn giữa chính xác */
-    right: 0;
+}
+
+.other-row .more-icon {
+    left: 0; /* Vị trí bên trái */
+    right: auto; /* Hủy right: 0 */
+}
+
+.me-row .more-icon {
+    right: 0; /* Vị trí bên phải */
+    left: auto; /* Hủy left: 0 */
+}
+
+.other-content, .me-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    order: 2; /* Nội dung tin nhắn sau more-icon */
 }
 
 .message-bubble-wrapper:hover .more-icon {
@@ -894,4 +940,17 @@
 
 .messenger-action-icon i {
     line-height: 1;
+}
+
+.edited-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 25px;
+}
+
+.edited-indicator i {
+  font-size: 12px;
+  color: #65676b;
+  opacity: 0.7;
 }
