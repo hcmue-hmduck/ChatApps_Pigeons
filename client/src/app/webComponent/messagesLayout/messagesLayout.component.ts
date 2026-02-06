@@ -648,4 +648,9 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
             }
         }, 100);
     }
+
+    replyMessage(messageId: string) {
+        console.log('Reply to message ID:', messageId);
+        this.closeMenu();
+    }
 }

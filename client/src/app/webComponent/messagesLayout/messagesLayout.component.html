@@ -56,6 +56,10 @@
                                                 <button class="more-icon" title="Tùy chọn" (click)="toggleMenu(msg.id)">
                                                     <i class="fas fa-ellipsis-v"></i>
                                                 </button>
+                                                 <button class="reply-icon" title="Trả lời"
+                                                        (click)="replyMessage(msg.id)">
+                                                        <i class="fas fa-reply"></i>
+                                                    </button>
                                                 <div class="dropdown-menu" *ngIf="showMenuId === msg.id">
                                                     <button class="dropdown-item" *ngIf="msg.message_type === 'text'" (click)="openEditModal(msg)">Sửa</button>
                                                     <button class="dropdown-item" (click)="deleteMessage(msg)">Gỡ</button>
@@ -134,6 +138,10 @@
                                                 
                                                 <!-- Message actions chỉ hiện khi tin nhắn chưa bị xóa -->
                                                 <div class="message-actions">
+                                                    <button class="reply-icon" title="Trả lời"
+                                                        (click)="replyMessage(msg.id)">
+                                                        <i class="fas fa-reply"></i>
+                                                    </button>
                                                     <button class="more-icon" title="Tùy chọn"
                                                         (click)="toggleMenu(msg.id)">
                                                         <i class="fas fa-ellipsis-v"></i>
