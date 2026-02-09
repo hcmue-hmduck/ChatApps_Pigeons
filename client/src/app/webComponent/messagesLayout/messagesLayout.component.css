@@ -1,23 +1,104 @@
-/* Messenger Style - Messages Area */
-
-/* Messages Wrapper */
-.messages-wrapper {
-    background: #fff;
+/* Reply info for my message */
+.me-reply-info {
+    background: #f5f5f5;
+    /* border-right: 3px solid #bdbdbd; */
+    padding: 6px 10px;
+    border-radius: 6px 6px 4px 6px;
+    margin-bottom: -16px;
+    height: 40px;
+    max-width: 100%;
+    width: fit-content;
 }
 
-/* Messenger Chat Header */
+
+/* Reply info for other message */
+.other-reply-info {
+    background: #f5f5f5;
+    padding: 6px 10px;
+    border-radius: 6px 6px 6px 0px;
+    margin-bottom: -16px;
+    height: 40px;
+    max-width: 100%;
+    width: fit-content;
+    /* word-break: break-word; */
+}
+
+
+
+/* ========================
+   Reply Preview (standalone block)
+   ======================== */
+.reply-preview {
+    background: #f0f2f5;
+    border: 1px solid #e4e6eb;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: flex-start;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 8px 12px 8px 10px;
+    position: relative;
+    overflow: hidden;
+    /* gap: 8px; */
+    width: 100%;
+    height: auto;
+}
+.reply-preview .flex-grow-1 {
+    min-width: 0;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    /* gap: 2px; */
+}
+.reply-preview .small {
+    font-size: 16px;
+    color: #65676b;
+    line-height: 1.3;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+.reply-preview .small b {
+    font-weight: 600;
+    color: #0084ff;
+}
+
+.reply-preview-content {
+    font-size: 16px;
+    color: #050505;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 1; /* Giới hạn 2 dòng */
+    -webkit-box-orient: vertical;
+    word-break: break-word;
+    white-space: normal; /* Thay đổi từ pre-line */
+}
+
+
+.messages-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+}
 .messenger-chat-header {
     border-bottom: 1px solid #e4e6eb;
     box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
-
 .messenger-chat-header h6 {
     font-size: 17px;
     font-weight: 600;
     color: #050505;
 }
-
-/* Header icons - Messenger style */
 .message-header-icon {
     width: 36px;
     height: 36px;
@@ -28,15 +109,12 @@
     font-size: 20px;
     transition: background-color 0.1s;
 }
-
 .message-header-icon:hover {
     background-color: #f2f3f5;
 }
-
 .message-header-icon:active {
     background-color: #e4e6eb;
 }
-
 .message-header-icon i {
     line-height: 1;
 }
@@ -48,13 +126,29 @@
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     background: #fff;
+    /* min-width: 0;
+    max-width: 100%; */
 }
 
 .messages-container {
+    background: #fff;
     display: flex;
     flex-direction: column;
-    min-height: min-content;
     padding: 12px 16px;
+    
+    /* min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box; 
+    min-width: 0; 
+    flex: 0 0 auto;
+    overflow: hidden;  */
+}
+
+/* THÊM: Fix cho toàn bộ wrapper */
+.d-flex.flex-column.vh-100.messages-wrapper {
+    width: 100%;
+    min-width: 0; /* Quan trọng */
+    overflow: hidden; /* Ngăn chặn tràn tổng thể */
 }
 
 /* Date separator */
@@ -122,8 +216,12 @@
 
 /* Messenger Input Area */
 .messenger-input-wrapper {
+    display: flex;
+    flex-direction: column;
     padding: 8px 16px !important;
     border-top: 1px solid #e4e6eb;
+    max-width: 100%;
+    min-width: 0;
 }
 
 .messenger-input-container {
@@ -359,6 +457,7 @@
     align-items: flex-end;
     max-width: 70%;
     margin-left: auto;
+    min-width: 0;
 }
 
 /* Other person's messages (left aligned) */
@@ -486,7 +585,9 @@
     border-radius: 18px 18px 4px 18px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     max-width: 100%;
-    flex: 1;
+    width: fit-content;
+    min-width: 0;
+    word-break: break-word;
 }
 
 .other {
@@ -494,8 +595,10 @@
     color: #050505;
     border-radius: 18px 18px 18px 4px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-    flex: 1;
+    max-width: 100%;
+    width: fit-content;
     min-width: 0;
+    word-break: break-word;
 }
 
 /* Message Actions */
@@ -567,7 +670,7 @@
     min-width: 0;
     display: flex;
     align-items: center;
-    gap: 8px;
+    /* gap: 8px; */
     order: 2; /* Nội dung tin nhắn sau more-icon */
 }
 
@@ -947,7 +1050,8 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.2s ease;
+    flex-shrink: 0;
+    transition: all 0.2s;
 }
 
 .messenger-action-icon:hover {
@@ -974,4 +1078,163 @@
   font-size: 12px;
   color: #65676b;
   opacity: 0.7;
+}
+
+
+
+/* ========================
+   Reply Preview Messenger Style
+   ======================== */
+
+/* Reply preview chung - Messenger style */
+.message-reply-preview {
+    display: flex;
+    max-width: 85%;
+    overflow: hidden;
+    cursor: pointer;
+    margin-bottom: 6px;
+    position: relative;
+    box-sizing: border-box;
+}
+
+/* OTHER MESSAGE - Căn trái */
+.other-row .message-reply-preview {
+    align-self: flex-start;
+    justify-content: flex-start;
+    margin-left: 0;
+    margin-right: auto;
+}
+
+/* ME MESSAGE - Căn phải (hoàn toàn ngược lại) */
+.me-row .message-reply-preview {
+    align-self: flex-end;
+    justify-content: flex-end;
+    margin-left: auto;
+    margin-right: 0;
+}
+
+/* Reply sender text */
+.reply-sender {
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.2;
+    display: flex;
+    align-items: center;
+    margin-top: 4px;
+    margin-bottom: 0px;
+    white-space: nowrap; /* Không cho xuống dòng, chỉ hiện ... */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+/* OTHER: Icon căn trái */
+.other-row .reply-sender {
+    color: #0084ff;
+    flex-direction: row;
+    justify-content: flex-start;
+}
+
+/* ME: Icon căn phải (đảo ngược thứ tự) */
+.me-row .reply-sender {
+    color: #0084ff;
+    flex-direction: row;
+    justify-content: flex-start;
+}
+
+/* Icon reply */
+.reply-sender i {
+    opacity: 0.8;
+    font-size: 10px;
+    margin: 0 4px;
+    flex-shrink: 0;
+}
+
+/* Nội dung tin nhắn reply */
+.reply-content-truncated {
+    font-size: 13px;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    word-break: break-word;
+    max-height: 20px;
+}
+
+/* OTHER: Màu chữ xám đậm */
+.other-row .reply-content-truncated {
+    color: #65676b;
+}
+
+/* ME: Màu chữ trắng trong suốt */
+.me-row .reply-content-truncated {
+    color: #65676b;
+}
+
+/* Hiệu ứng hover */
+.message-reply-preview:hover .reply-info {
+    opacity: 0.9;
+}
+
+.other-row .message-reply-preview:hover .reply-info {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.me-row .message-reply-preview:hover .reply-info {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+/* Đảm bảo phần reply preview không làm vỡ layout */
+.me-content {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    width: 100%;    
+    max-width: 100%;
+    min-width: 0;
+}
+
+.other-content {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
+/* Sửa lại vị trí edited indicator cho ME message */
+.me-row .edited-indicator {
+    order: 3;
+    align-self: flex-end;
+    margin-top: 4px;
+    margin-right: 0;
+}
+
+.other-row .edited-indicator {
+    order: 3;
+    align-self: flex-start;
+    margin-top: 4px;
+    margin-left: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .message-reply-preview {
+        max-width: 90%;
+    }
+    
+    .reply-info {
+        padding: 6px 10px;
+    }
+    
+    .reply-sender {
+        font-size: 11px;
+    }
+    
+    .reply-content-truncated {
+        font-size: 12px;
+    }
 }

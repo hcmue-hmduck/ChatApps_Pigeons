@@ -33,8 +33,8 @@ class HomeController {
 
     async postHomeMessages(req, res) {
         const conversationId = req.params.convID;
-        const { senderId, content } = req.body;
-        const newMessage = await homeService.postMessageToConversation(conversationId, senderId, content);
+        const { senderId, content,  parent_message_id} = req.body;
+        const newMessage = await homeService.postMessageToConversation(conversationId, senderId, content, parent_message_id);
         new SuccessResponse({
             message: 'Post home message successfully',
             metadata: {

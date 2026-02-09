@@ -116,24 +116,12 @@
                                                             </div>
                                                             
                                                             <!-- 4 participants: 4 góc -->
-                                                            <div class="avatar-stack" *ngIf="(conv.participants?.length || 0) === 4" [attr.data-count]="4">
+                                                            <div class="avatar-stack" *ngIf="(conv.participants?.length || 0) > 3" [attr.data-count]="4">
                                                                 <ng-container *ngFor="let p of (conv.participants || []).slice(0,4); let i = index">
                                                                     <img class="avatar-stack-item rounded-circle border border-2 border-white avatar-pos-{{i}}"
                                                                         [src]="p.avatar_url || 'https://i.pravatar.cc/150?img=1'" 
                                                                         [alt]="p.full_name">
                                                                 </ng-container>
-                                                            </div>
-                                                            
-                                                            <!-- >4 participants: 3 avatar + "..." -->
-                                                            <div class="avatar-stack" *ngIf="(conv.participants?.length || 0) > 4" [attr.data-count]="5">
-                                                                <ng-container *ngFor="let p of (conv.participants || []).slice(0,3); let i = index">
-                                                                    <img class="avatar-stack-item rounded-circle border border-2 border-white avatar-pos-{{i}}"
-                                                                        [src]="p.avatar_url || 'https://i.pravatar.cc/150?img=1'" 
-                                                                        [alt]="p.full_name">
-                                                                </ng-container>
-                                                                <div class="avatar-stack-item avatar-more rounded-circle border border-2 border-white bg-secondary text-white d-flex align-items-center justify-content-center avatar-pos-3">
-                                                                    <small style="font-size: 10px; font-weight: 600;">...</small>
-                                                                </div>
                                                             </div>
                                                             
                                                             <!-- 1-2 participants: fallback (single/duo) -->
@@ -217,7 +205,7 @@
                 <!-- User Profile Footer -->
                 <div class="mt-auto border-top bg-white p-3 user-profile-footer">
                     <div class="d-flex align-items-center">
-                        <img [src]="conversations().homeConversationData?.userInfo?.avatar_url || 'https://i.pravatar.cc/150?img=8'" alt="User" class="rounded-circle me-2 user-avatar" width="36" height="36">
+                        <img [src]="conversations().homeConversationData?.userInfo?.avatar_url" alt="User" class="rounded-circle me-2 user-avatar" width="36" height="36">
                         <div class="flex-grow-1">
                             <div class="fw-medium small user-name">{{ conversations().homeConversationData?.userInfo?.full_name || 'User' }}</div>
                             <div class="text-muted small user-status" style="font-size: 11px;">{{ conversations().homeConversationData?.userInfo?.status || 'offline' }}</div>

@@ -204,15 +204,34 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
                     ...old,
                     homeMessagesData: {
                         ...old.homeMessagesData,
-                        messages: old.homeMessagesData.messages.map((msg: any) => 
-                            msg.id === data.id 
-                                ? { ...msg, 
-                                    content: data.content, 
-                                    updated_at: data.updated_at, 
-                                    is_edited: data.is_edited,
-                                    is_deleted: data.is_deleted }
-                                : msg
-                        )
+                        // messages: old.homeMessagesData.messages.map((msg: any) => 
+                        //     msg.id === data.id 
+                        //         ? { ...msg, 
+                        //             content: data.content, 
+                        //             updated_at: data.updated_at, 
+                        //             is_edited: data.is_edited,
+                        //             is_deleted: data.is_deleted }
+                        //         : msg
+                        // )
+                        messages: old.homeMessagesData.messages.map((msg: any) => {
+                            if (msg.id === data.id) {
+                                return {
+                                    ...msg,
+                                    content: data.content,
+                                    updated_at: new Date().toISOString()
+                                };
+                            } else if (msg.parent_message_id === data.id) {
+                                return {
+                                    ...msg,
+                                    parent_message_info: {
+                                        ...msg.parent_message_info,
+                                        parent_message_content: data.content
+                                    }
+                                };
+                            } else {
+                                return msg;
+                            }
+                        })
                     }
                 }));
                 console.log('Updated messages:', this.getMessagesData().homeMessagesData.messages);
@@ -376,12 +395,17 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
     handleSendBtn() {
         if (!this.newMessage.trim()) return;
         const messageContent = this.newMessage;
+        const replyTo = this.replyToMessage ? this.replyToMessage.id : undefined;
         this.newMessage = '';
+        this.replyToMessage = null;
         this.loading = true;
         this.error = '';
-        this.messagesService.postMessage(this.conversationId, this.currentUserId, messageContent).subscribe({
+        this.messagesService.postMessage(this.conversationId, this.currentUserId, messageContent, replyTo).subscribe({
             next: (response) => {
                 this.loading = false;
+                response.metadata.newMessage.created_at = new Date().toISOString(); // K được xoá, t fix cái lỗi vô đạo bất lương này 10h liền đấy !!!!!!
+                response.metadata.newMessage.updated_at = new Date().toISOString();
+        
                 console.log('Message sent successfully:', response);
                 this.conversationService.putConversation(this.conversationId, { lastMessage: response.metadata.id }).subscribe({ next: (res) => { /* Conversation updated */},
                     error: (err) => { console.error('Error updating conversation:', err); } });
@@ -395,9 +419,12 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
                         ]
                     },
                 }));
+
+                console.log('Updated messages:', this.getMessagesData().homeMessagesData.messages);
                 const currentUser = this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId) || {};
                 const newMessage = {
                     ...response.metadata.newMessage,
+                    parent_message_id: replyTo,
                     sender_name: currentUser.full_name,
                     sender_avatar: currentUser.avatar_url,
                 };
@@ -448,7 +475,7 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
         return false;
     }
 
-    deleteMessage(msg: any) {
+    deleteMessage(msg: any) { // có bug
         this.messagesService.deleteMessage(msg.id).subscribe({
             next: (response) => {
                 console.log('Message deleted successfully:', response);
@@ -515,36 +542,57 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
             // Lưu vào local variable để tránh bị clear
             const messageId = this.editingMessage;
             const messageContent = this.editingContent;
-            
+
             this.messagesService.putMessage(messageId, messageContent).subscribe({
                 next: (response) => {
                     this.getMessagesData.update(old => ({
                         ...old,
                         homeMessagesData: {
                             ...old.homeMessagesData,
-                            messages: old.homeMessagesData.messages.map((msg: any) => 
-                                msg.id === messageId 
-                                    ? { ...msg, content: messageContent, updated_at: new Date().toISOString() }
-                                    : msg
-                            )
+                            messages: old.homeMessagesData.messages.map((msg: any) => {
+                                if (msg.id === messageId) {
+                                    return {
+                                        ...msg,
+                                        content: messageContent,
+                                        updated_at: new Date().toISOString()
+                                    };
+                                } else if (msg.parent_message_id === messageId) {
+                                    console.log('Updating parent message content for message:', msg.id);
+                                    console.log('New parent message content:', messageContent);
+                                    return {
+                                        ...msg,
+                                        parent_message_info: {
+                                            ...msg.parent_message_info,
+                                            parent_message_content: messageContent
+                                        }
+                                    };
+                                } else {
+                                    return msg;
+                                }
+                            })
                         }
                     }));
 
+                    console.log('Message edited successfully:', response);
+                    console.log('Updated messages:', this.getMessagesData().homeMessagesData);
+
                     const currentUser = this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId) || {};
+                    const updatedMsg = this.getMessagesData().homeMessagesData.messages.find((m: any) => m.parent_message_id === messageId);
                     const newMessage = {
                         ...response.metadata.updatedMessage,
                         sender_name: currentUser.full_name,
                         sender_avatar: currentUser.avatar_url,
+                        parent_message_info: updatedMsg?.parent_message_info || response.metadata.updatedMessage.parent_message_info
                     };
-                    
+                    console.log('Editing message:', newMessage);
                     this.socketService.emit('updateMessage', newMessage);
 
                     console.log('current edit id: ', messageId);
                     console.log('last message id: ', this.lastMessageId);
                     if (messageId === this.lastMessageId) {
                         this.socketService.emit('updateConversation', newMessage);
-                    }   
-                    
+                    }
+
                     this.closeEditModal();
                 },
                 error: (error) => {
@@ -649,8 +697,18 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
         }, 100);
     }
 
-    replyMessage(messageId: string) {
-        console.log('Reply to message ID:', messageId);
-        this.closeMenu();
+    // Reply state
+    replyToMessage: any = null;
+
+    // Khi click nút reply
+    replyMessage(msgId: string) {
+        this.messageInput?.nativeElement?.focus();
+        const messages = this.getMessagesData().homeMessagesData?.messages || [];
+        this.replyToMessage = messages.find((m: any) => m.id === msgId);
+    }
+
+    // Đóng khung reply
+    cancelReply() {
+        this.replyToMessage = null;
     }
 }

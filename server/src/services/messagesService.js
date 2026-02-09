@@ -33,6 +33,7 @@ class MessagesService {
 
     // Tạo message mới
     async createMessage(messageData) {
+        console.log('Creating message with data:', messageData);
         return await messagesModel.create(messageData);
     }
 

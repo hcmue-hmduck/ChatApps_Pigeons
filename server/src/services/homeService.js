@@ -137,16 +137,45 @@ class HomeService {
         // Lấy tất cả sender_id duy nhất
         const senderIds = [...new Set(messages.map(m => m.sender_id))];
         const senders = await usersService.getAllUsers({ id: senderIds });
-        
+
         // Map sender info theo id (dùng Map thay vì object)
         const senderMap = new Map(senders.map(u => [u.id, u]));
-        
+
+        // Lấy tất cả parent_message_id khác null
+        const parentMessageIds = [...new Set(messages.map(m => m.parent_message_id).filter(id => !!id))];
+        let parentMessagesMap = new Map();
+        if (parentMessageIds.length > 0) {
+            // Lấy tất cả parent messages
+            const parentMessages = await messagesService.getMessagesByIds(parentMessageIds);
+            // Lấy user info cho parent messages
+            const parentSenderIds = [...new Set(parentMessages.map(pm => pm.sender_id))];
+            let parentSenders = [];
+            if (parentSenderIds.length > 0) {
+                parentSenders = await usersService.getAllUsers({ id: parentSenderIds });
+            }
+            const parentSenderMap = new Map(parentSenders.map(u => [u.id, u]));
+            // Map parent message info
+            parentMessagesMap = new Map(parentMessages.map(pm => {
+                const sender = parentSenderMap.get(pm.sender_id);
+                return [pm.id, {
+                    parent_message_id: pm.id,
+                    parent_message_content: pm.content,
+                    parent_message_sender_id: pm.sender_id,
+                    parent_message_name: sender ? sender.full_name : ''
+                }];
+            }));
+        }
+
         // Gắn info vào từng message
         messages.forEach(m => {
             const sender = senderMap.get(m.sender_id);
             m.dataValues.sender_name = sender ? sender.full_name : '';
             m.dataValues.sender_avatar = sender ? sender.avatar_url : '';
             m.dataValues.sender_status = sender ? sender.status : '';
+            // Nếu có parent_message_id thì gắn thêm obj parent_message_info
+            if (m.parent_message_id && parentMessagesMap.has(m.parent_message_id)) {
+                m.dataValues.parent_message_info = parentMessagesMap.get(m.parent_message_id);
+            }
         });
 
         return {
@@ -156,13 +185,14 @@ class HomeService {
         };
     }
 
-    async postMessageToConversation(conversationId, senderId, content) {
+    async postMessageToConversation(conversationId, senderId, content, parent_message_id = null) {
         // Tạo message mới
         const newMessage = await messagesService.createMessage({
             conversation_id: conversationId,
             sender_id: senderId,
             content: content,
-            timestamp: new Date()
+            parent_message_id: parent_message_id,
+            time_sent: new Date()
         });
 
         // Cập nhật last_message_id trong conversation
@@ -170,7 +200,28 @@ class HomeService {
             last_message_id: newMessage.id
         });
 
-        return newMessage;
+        // return newMessage;
+
+        // Nếu có parent_message_id thì trả về thêm parent_message_info
+        let parent_message_info = null;
+        if (parent_message_id) {
+            // Lấy parent message
+            const parentMessage = await messagesService.getMessageById(parent_message_id);
+            if (parentMessage) {
+                // Lấy sender info cho parent message
+                const parentSender = await usersService.getUserById(parentMessage.sender_id);
+                parent_message_info = {
+                    parent_message_content: parentMessage.content,
+                    parent_message_sender_id: parentMessage.sender_id,
+                    parent_message_name: parentSender ? parentSender.full_name : ''
+                };
+            }
+        }
+
+        return {
+            ...newMessage.dataValues,
+            parent_message_info: parent_message_info
+        }
     }
 
     async updateMessageInConversation(messageId, messageData) {
