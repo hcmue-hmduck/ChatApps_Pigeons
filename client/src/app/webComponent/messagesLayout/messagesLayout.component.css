@@ -45,6 +45,7 @@
     width: 100%;
     height: auto;
 }
+
 .reply-preview .flex-grow-1 {
     min-width: 0;
     max-width: 100%;
@@ -52,6 +53,7 @@
     flex-direction: column;
     /* gap: 2px; */
 }
+
 .reply-preview .small {
     font-size: 16px;
     color: #65676b;
@@ -62,6 +64,7 @@
     text-overflow: ellipsis;
     min-width: 0;
 }
+
 .reply-preview .small b {
     font-weight: 600;
     color: #0084ff;
@@ -75,10 +78,12 @@
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
-    -webkit-line-clamp: 1; /* Giới hạn 2 dòng */
+    -webkit-line-clamp: 1;
+    /* Giới hạn 2 dòng */
     -webkit-box-orient: vertical;
     word-break: break-word;
-    white-space: normal; /* Thay đổi từ pre-line */
+    white-space: normal;
+    /* Thay đổi từ pre-line */
 }
 
 
@@ -90,15 +95,18 @@
     min-width: 0;
     overflow: hidden;
 }
+
 .messenger-chat-header {
     border-bottom: 1px solid #e4e6eb;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
+
 .messenger-chat-header h6 {
     font-size: 17px;
     font-weight: 600;
     color: #050505;
 }
+
 .message-header-icon {
     width: 36px;
     height: 36px;
@@ -109,12 +117,15 @@
     font-size: 20px;
     transition: background-color 0.1s;
 }
+
 .message-header-icon:hover {
     background-color: #f2f3f5;
 }
+
 .message-header-icon:active {
     background-color: #e4e6eb;
 }
+
 .message-header-icon i {
     line-height: 1;
 }
@@ -135,7 +146,7 @@
     display: flex;
     flex-direction: column;
     padding: 12px 16px;
-    
+
     /* min-width: 0;
     max-width: 100%;
     box-sizing: border-box; 
@@ -147,8 +158,10 @@
 /* THÊM: Fix cho toàn bộ wrapper */
 .d-flex.flex-column.vh-100.messages-wrapper {
     width: 100%;
-    min-width: 0; /* Quan trọng */
-    overflow: hidden; /* Ngăn chặn tràn tổng thể */
+    min-width: 0;
+    /* Quan trọng */
+    overflow: hidden;
+    /* Ngăn chặn tràn tổng thể */
 }
 
 /* Date separator */
@@ -295,6 +308,7 @@
         opacity: 0;
         transform: translateY(10px) scale(0.95);
     }
+
     to {
         opacity: 1;
         transform: translateY(0) scale(1);
@@ -510,7 +524,7 @@
     height: 28px;
     flex-shrink: 0;
     margin-right: 8px;
-    align-self: flex-end; 
+    align-self: flex-end;
     /* margin-bottom: 6px; */
     visibility: hidden;
 }
@@ -534,7 +548,8 @@
 
 .message-bubble-wrapper {
     display: flex;
-    align-items: center; /* Quan trọng: căn giữa theo chiều dọc */
+    align-items: center;
+    /* Quan trọng: căn giữa theo chiều dọc */
     gap: 8px;
     width: 100%;
     position: relative;
@@ -542,32 +557,43 @@
 
 /* Cho other-row - căn trái */
 .other-row .message-bubble-wrapper {
-    justify-content: flex-start; /* Căn trái */
+    justify-content: flex-start;
+    /* Căn trái */
+    width: fit-content;
+    /* Chỉ rộng bằng nội dung để edited indicator position đúng */
 }
 
 .other-row .other-content {
-    order: 1; /* Bong bóng trước */
+    order: 1;
+    /* Bong bóng trước */
 }
 
 .other-row .message-actions {
-    order: 2; /* More-icon sau (bên phải) */
+    order: 2;
+    /* More-icon sau (bên phải) */
 }
 
 /* Cho me-row - căn phải */
 .me-row .message-bubble-wrapper {
-    justify-content: flex-end; /* Căn phải */
+    justify-content: flex-end;
+    /* Căn phải */
+    width: fit-content;
+    /* Chỉ rộng bằng nội dung, không bị ảnh hưởng bởi me-reply-info */
 }
 
 .me-row .message-actions {
-    order: 1; /* More-icon trước (bên trái) */
+    order: 1;
+    /* More-icon trước (bên trái) */
 }
 
 .me-row .me-content {
-    order: 2; /* Bong bóng sau (bên phải) */
+    order: 2;
+    /* Bong bóng sau (bên phải) */
 }
 
 /* Message bubbles */
-.me, .other {
+.me,
+.other {
     padding: 10px 14px;
     font-size: 16px;
     line-height: 1.4;
@@ -601,6 +627,7 @@
     word-break: break-word;
 }
 
+
 /* Message Actions */
 .message-actions {
     display: flex;
@@ -608,9 +635,10 @@
     justify-content: center;
     flex-shrink: 0;
     width: auto;
-    height: 100%;
     position: relative;
     order: 1;
+    align-self: center;
+    /* Always center vertically with message bubble */
 }
 
 .more-icon {
@@ -634,7 +662,7 @@
     transform: none;
 }
 
-.reply-icon{
+.reply-icon {
     opacity: 0;
     visibility: hidden;
     cursor: pointer;
@@ -656,22 +684,28 @@
 }
 
 .other-row .more-icon {
-    left: 0; /* Vị trí bên trái */
-    right: auto; /* Hủy right: 0 */
+    left: 0;
+    /* Vị trí bên trái */
+    right: auto;
+    /* Hủy right: 0 */
 }
 
 .me-row .more-icon {
-    right: 0; /* Vị trí bên phải */
-    left: auto; /* Hủy left: 0 */
+    right: 0;
+    /* Vị trí bên phải */
+    left: auto;
+    /* Hủy left: 0 */
 }
 
-.other-content, .me-content {
+.other-content,
+.me-content {
     flex: 1;
     min-width: 0;
     display: flex;
     align-items: center;
     /* gap: 8px; */
-    order: 2; /* Nội dung tin nhắn sau more-icon */
+    order: 2;
+    /* Nội dung tin nhắn sau more-icon */
 }
 
 .message-bubble-wrapper:hover .more-icon,
@@ -682,6 +716,7 @@
     opacity: 1 !important;
     visibility: visible !important;
 }
+
 .other-row:hover .reply-icon {
     opacity: 1 !important;
     visibility: visible !important;
@@ -765,6 +800,7 @@
         opacity: 0;
         transform: scale(0.95);
     }
+
     to {
         opacity: 1;
         transform: scale(1);
@@ -794,6 +830,7 @@
         opacity: 0;
         transform: translateY(10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -851,8 +888,15 @@
 }
 
 @keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.1); }
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.1);
+    }
 }
 
 
@@ -864,42 +908,42 @@
         margin-right: 6px;
         margin-top: 6px;
     }
-    
+
     .avatar-placeholder {
         width: 24px;
         height: 24px;
         margin-right: 6px;
     }
-    
+
     .other {
         padding: 6px 10px;
         font-size: 14px;
         min-height: 40px;
     }
-    
+
     .other-row .dropdown-menu {
         left: 30px;
     }
-    
+
     .other-row .sender-name {
         margin-left: 30px;
     }
-    
+
     .message-content-wrapper {
         min-height: 40px;
     }
-    
+
     .scroll-to-bottom {
         width: 36px;
         height: 36px;
         bottom: 70px;
         right: 16px;
     }
-    
+
     .scroll-to-bottom i {
         font-size: 16px;
     }
-    
+
     .messages-container {
         padding: 5px 5px 10px 5px;
     }
@@ -1003,8 +1047,13 @@
 
 /* Hiệu ứng animation */
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 @keyframes slideUp {
@@ -1012,6 +1061,7 @@
         opacity: 0;
         transform: translateY(20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -1025,12 +1075,12 @@
         padding: 20px;
         margin: 10px;
     }
-    
+
     .edit-modal-actions {
         flex-direction: row;
         gap: 10px;
     }
-    
+
     .edit-modal-actions button {
         flex: 1;
         padding: 12px 16px;
@@ -1068,16 +1118,18 @@
 }
 
 .edited-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: 25px;
+    position: absolute;
+    bottom: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    /* Don't interfere with mouse events */
 }
 
 .edited-indicator i {
-  font-size: 12px;
-  color: #65676b;
-  opacity: 0.7;
+    font-size: 10px;
+    opacity: 0.8;
 }
 
 
@@ -1122,7 +1174,8 @@
     align-items: center;
     margin-top: 4px;
     margin-bottom: 0px;
-    white-space: nowrap; /* Không cho xuống dòng, chỉ hiện ... */
+    white-space: nowrap;
+    /* Không cho xuống dòng, chỉ hiện ... */
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 100%;
@@ -1191,7 +1244,7 @@
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    width: 100%;    
+    width: 100%;
     max-width: 100%;
     min-width: 0;
 }
@@ -1205,35 +1258,49 @@
     min-width: 0;
 }
 
-/* Sửa lại vị trí edited indicator cho ME message */
-.me-row .edited-indicator {
-    order: 3;
-    align-self: flex-end;
-    margin-top: 4px;
-    margin-right: 0;
+/* Message bubble wrapper - positioning context for edited indicator */
+.message-bubble-wrapper {
+    position: relative;
 }
 
-.other-row .edited-indicator {
-    order: 3;
-    align-self: flex-start;
-    margin-top: 4px;
-    margin-left: 0;
+/* Edited indicator - positioned under more-icon */
+.edited-indicator {
+    position: absolute;
+    top: 100%;
+    font-size: 11px;
+    margin-top: -6px;
+    color: #65676b;
+    opacity: 0.8;
+    line-height: 1.2;
+    white-space: nowrap;
 }
+
+.me-edited-indicator {
+    left: 0;
+    /* Under more-icon on the left for me messages (order: 1) */
+}
+
+.other-edited-indicator {
+    right: 0;
+    /* Under message-actions on the right for other messages (order: 2) */
+}
+
+
 
 /* Responsive */
 @media (max-width: 768px) {
     .message-reply-preview {
         max-width: 90%;
     }
-    
+
     .reply-info {
         padding: 6px 10px;
     }
-    
+
     .reply-sender {
         font-size: 11px;
     }
-    
+
     .reply-content-truncated {
         font-size: 12px;
     }

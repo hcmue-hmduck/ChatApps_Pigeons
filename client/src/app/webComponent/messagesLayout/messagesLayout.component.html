@@ -5,26 +5,29 @@
             <p>Không có tin nhắn nào.</p>
         </div>
     </div>
-    
+
     <ng-container *ngIf="getMessagesData().homeMessagesData?.messages?.length">
         <!-- Header -->
         <div class="messenger-chat-header px-4 py-3 bg-white sticky-top">
             <div class="d-flex align-items-center justify-content-between">
                 <h6 class="mb-0 fw-semibold">{{ getMessageInfor.title || 'Conversation' }}</h6>
                 <div class="d-flex gap-1">
-                    <button class="btn btn-sm p-0 d-flex align-items-center justify-content-center message-header-icon" title="Gọi điện thoại">
+                    <button class="btn btn-sm p-0 d-flex align-items-center justify-content-center message-header-icon"
+                        title="Gọi điện thoại">
                         <i class="bi bi-telephone-fill"></i>
                     </button>
-                    <button class="btn btn-sm p-0 d-flex align-items-center justify-content-center message-header-icon" title="Gọi video">
+                    <button class="btn btn-sm p-0 d-flex align-items-center justify-content-center message-header-icon"
+                        title="Gọi video">
                         <i class="bi bi-camera-video-fill"></i>
                     </button>
-                    <button class="btn btn-sm p-0 d-flex align-items-center justify-content-center message-header-icon" title="Thông tin">
+                    <button class="btn btn-sm p-0 d-flex align-items-center justify-content-center message-header-icon"
+                        title="Thông tin">
                         <i class="bi bi-info-circle-fill"></i>
                     </button>
                 </div>
             </div>
         </div>
-        
+
         <!-- Messages Content -->
         <div class="flex-grow-1 overflow-auto messages-content" #messagesContent (scroll)="onMessagesScroll()">
             <div class="messages-container p-3">
@@ -32,20 +35,22 @@
                 <div *ngIf="isLoadingMore" class="loading-more">
                     <span>Đang tải thêm tin nhắn...</span>
                 </div>
-                
-                <ng-container *ngFor="let msg of getMessagesData().homeMessagesData.messages; let i = index; trackBy: trackByMessageId">
+
+                <ng-container
+                    *ngFor="let msg of getMessagesData().homeMessagesData.messages; let i = index; trackBy: trackByMessageId">
                     <!-- Date separator -->
-                    <div *ngIf="shouldShowDateSeparator(msg, getMessagesData().homeMessagesData.messages[i-1])" class="date-separator">
+                    <div *ngIf="shouldShowDateSeparator(msg, getMessagesData().homeMessagesData.messages[i-1])"
+                        class="date-separator">
                         <span>{{ formatDateLabel(msg.created_at) }}</span>
                     </div>
-                    
+
                     <ng-container *ngIf="msg.message_type === 'system'; else userMsg">
                         <div class="message-system">{{ msg.content }}</div>
                     </ng-container>
-                    
+
                     <ng-template #userMsg>
                         <ng-container *ngIf="currentUserId === msg.sender_id; else otherMsg">
-                            
+
                             <!-- Tin nhắn của tôi -->
                             <div class="message-row me-row">
                                 <div class="me-row-content">
@@ -53,7 +58,9 @@
                                         <ng-container *ngIf="msg.parent_message_id">
                                             <div class="reply-sender">
                                                 <i class="fas fa-reply me-1"></i>
-                                                {{ msg.parent_message_info.parent_message_sender_id === currentUserId ? 'Bạn đã trả lời chính mình' : 'Bạn đã trả lời ' + msg.parent_message_info.parent_message_name }}
+                                                {{ msg.parent_message_info.parent_message_sender_id === currentUserId ?
+                                                'Bạn đã trả lời chính mình' : 'Bạn đã trả lời ' +
+                                                msg.parent_message_info.parent_message_name }}
                                             </div>
                                             <div class="me-reply-info">
                                                 <div class="reply-content-truncated">
@@ -68,34 +75,42 @@
                                                 <button class="more-icon" title="Tùy chọn" (click)="toggleMenu(msg.id)">
                                                     <i class="fas fa-ellipsis-v"></i>
                                                 </button>
-                                                 <button class="reply-icon" title="Trả lời"
+                                                <button class="reply-icon" title="Trả lời"
                                                     (click)="replyMessage(msg.id)">
                                                     <i class="fas fa-reply"></i>
                                                 </button>
                                                 <div class="dropdown-menu" *ngIf="showMenuId === msg.id">
-                                                    <button class="dropdown-item" *ngIf="msg.message_type === 'text'" (click)="openEditModal(msg)">Sửa</button>
-                                                    <button class="dropdown-item" (click)="deleteMessage(msg)">Gỡ</button>
-                                                    <button class="dropdown-item" (click)="forwardMessage(msg)">Chuyển tiếp</button>
-                                                    <button class="dropdown-item" (click)="pinMessage(msg)">Ghim</button>
+                                                    <button class="dropdown-item" *ngIf="msg.message_type === 'text'"
+                                                        (click)="openEditModal(msg)">Sửa</button>
+                                                    <button class="dropdown-item"
+                                                        (click)="deleteMessage(msg)">Gỡ</button>
+                                                    <button class="dropdown-item" (click)="forwardMessage(msg)">Chuyển
+                                                        tiếp</button>
+                                                    <button class="dropdown-item"
+                                                        (click)="pinMessage(msg)">Ghim</button>
                                                 </div>
                                             </div>
-                                            
+
                                             <div class="me-content">
                                                 <!-- Tin nhắn đã bị xóa -->
                                                 <ng-container *ngIf="msg.is_deleted; else notDeletedMe">
                                                     <span class="me">Tin nhắn đã được gỡ</span>
                                                 </ng-container>
-                                                
+
                                                 <!-- Tin nhắn chưa bị xóa -->
                                                 <ng-template #notDeletedMe>
-                                                    <div *ngIf="msg.is_edited" class="edited-indicator">
-                                                        <i class="bi bi-pencil-fill text-muted" title="Đã chỉnh sửa"></i>
+                                                    <div class="me" [innerHTML]="msg.content.replace(/\n/g, '<br>')">
                                                     </div>
-                                                    <div class="me" [innerHTML]="msg.content.replace(/\n/g, '<br>')"></div>
                                                 </ng-template>
                                             </div>
+
+                                            <!-- Edited indicator - under more-icon -->
+                                            <div *ngIf="msg.is_edited && !msg.is_deleted"
+                                                class="edited-indicator me-edited-indicator">
+                                                Đã chỉnh sửa
+                                            </div>
                                         </div>
-                                        
+
                                         <!-- Timestamp -->
                                         <div *ngIf="i === getMessagesData().homeMessagesData.messages.length - 1 || 
                                                     getMessagesData().homeMessagesData.messages[i+1].sender_id !== msg.sender_id || 
@@ -106,7 +121,7 @@
                             </div>
 
                         </ng-container>
-                        
+
                         <ng-template #otherMsg>
                             <!-- Tin nhắn của người khác -->
                             <div class="message-row other-row">
@@ -117,7 +132,7 @@
                                     class="sender-name">
                                     {{ msg.sender_name }}
                                 </div>
-                                
+
                                 <div class="other-row-content">
                                     <div *ngIf="isLastOfSenderOrDay(i, getMessagesData().homeMessagesData.messages)"
                                         class="avatar-container">
@@ -126,11 +141,11 @@
                                             [alt]="msg.sender_name"
                                             (error)="msg.sender_avatar = 'https://i.pravatar.cc/40?u=' + msg.sender_id">
                                     </div>
-                                    
+
                                     <div *ngIf="!isLastOfSenderOrDay(i, getMessagesData().homeMessagesData.messages)"
                                         class="avatar-placeholder">
                                     </div>
-                                    
+
                                     <div class="message-content-wrapper">
                                         <ng-container *ngIf="!msg.is_deleted && msg.parent_message_id">
                                             <div class="reply-sender">
@@ -139,11 +154,14 @@
                                                     Bạn đã trả lời {{ msg.parent_message_info.parent_message_name }}
                                                 </ng-container>
                                                 <ng-container *ngIf="msg.sender_id !== currentUserId">
-                                                    <ng-container *ngIf="msg.parent_message_info.parent_message_sender_id === currentUserId">
+                                                    <ng-container
+                                                        *ngIf="msg.parent_message_info.parent_message_sender_id === currentUserId">
                                                         {{ msg.sender_name }} đã trả lời bạn
                                                     </ng-container>
-                                                    <ng-container *ngIf="msg.parent_message_info.parent_message_sender_id !== currentUserId">
-                                                        {{ msg.sender_name }} đã trả lời {{ msg.parent_message_info.parent_message_name }}
+                                                    <ng-container
+                                                        *ngIf="msg.parent_message_info.parent_message_sender_id !== currentUserId">
+                                                        {{ msg.sender_name }} đã trả lời {{
+                                                        msg.parent_message_info.parent_message_name }}
                                                     </ng-container>
                                                 </ng-container>
                                             </div>
@@ -153,20 +171,19 @@
                                                 </div>
                                             </div>
                                         </ng-container>
-                                        
+
                                         <div class="message-bubble-wrapper">
                                             <!-- Nội dung tin nhắn -->
                                             <div *ngIf="msg.is_deleted" class="deleted-indicator">
                                                 <span class="other" style="font-size: 16px">Tin nhắn đã được gỡ</span>
                                             </div>
-                                            
+
+
                                             <ng-container *ngIf="!msg.is_deleted">
                                                 <!-- Đã di chuyển reply info lên trên -->
-                                                <div class="other" [innerHTML]="msg.content.replace(/\n/g, '<br>')"></div>
-                                                <div *ngIf="msg.is_edited" class="edited-indicator">
-                                                    <i class="bi bi-pencil-fill text-muted" title="Đã chỉnh sửa"></i>
+                                                <div class="other" [innerHTML]="msg.content.replace(/\n/g, '<br>')">
                                                 </div>
-                                                
+
                                                 <!-- Message actions chỉ hiện khi tin nhắn chưa bị xóa -->
                                                 <div class="message-actions">
                                                     <button class="reply-icon" title="Trả lời"
@@ -178,12 +195,21 @@
                                                         <i class="fas fa-ellipsis-v"></i>
                                                     </button>
                                                     <div class="dropdown-menu" *ngIf="showMenuId === msg.id">
-                                                        <button class="dropdown-item" (click)="forwardMessage(msg)">Chuyển tiếp</button>
-                                                        <button class="dropdown-item" (click)="pinMessage(msg)">Ghim</button>
+                                                        <button class="dropdown-item"
+                                                            (click)="forwardMessage(msg)">Chuyển tiếp</button>
+                                                        <button class="dropdown-item"
+                                                            (click)="pinMessage(msg)">Ghim</button>
                                                     </div>
                                                 </div>
                                             </ng-container>
+
+                                            <!-- Edited indicator - under more-icon -->
+                                            <div *ngIf="msg.is_edited && !msg.is_deleted"
+                                                class="edited-indicator other-edited-indicator">
+                                                Đã chỉnh sửa
+                                            </div>
                                         </div>
+
                                         <div *ngIf="isLastOfSenderOrDay(i, getMessagesData().homeMessagesData.messages)"
                                             class="msg-timestamp other-timestamp">{{ formatTime(msg.created_at) }}
                                         </div>
@@ -192,34 +218,35 @@
                             </div>
                         </ng-template>
                     </ng-template>
-                
+
                 </ng-container>
             </div> <!-- Kết thúc messages-container -->
         </div> <!-- Kết thúc messages-content -->
 
         <!-- Nút scroll to bottom -->
-        <div class="scroll-to-bottom" 
-            [class.visible]="showScrollToBottom"
-            (click)="scrollToBottomClicked()"
+        <div class="scroll-to-bottom" [class.visible]="showScrollToBottom" (click)="scrollToBottomClicked()"
             title="Cuộn xuống dưới cùng">
             <i class="fas fa-chevron-down"></i>
             <span class="new-badge" *ngIf="hasNewMessage">New</span>
         </div>
         <!-- Input Area -->
         <div class="bg-white px-4 py-2 sticky-bottom messenger-input-wrapper">
-            
+
             <div *ngIf="replyToMessage" class="reply-preview mb-2 d-flex align-items-center px-2 py-1 rounded">
                 <div class="flex-grow-1">
-                    <div class="small text-muted">Đang trả lời <b>{{ replyToMessage.sender_id === currentUserId ? 'chính mình' : replyToMessage.sender_name }}</b></div>
+                    <div class="small text-muted">Đang trả lời <b>{{ replyToMessage.sender_id === currentUserId ? 'chính
+                            mình' : replyToMessage.sender_name }}</b></div>
                     <div class="reply-preview-content text-truncate">{{ replyToMessage.content }}</div>
                 </div>
-                <button class="btn btn-sm ms-2 cancel-reply-btn" (click)="cancelReply()" title="Hủy trả lời"><i class="bi bi-x-lg"></i></button>
+                <button class="btn btn-sm ms-2 cancel-reply-btn" (click)="cancelReply()" title="Hủy trả lời"><i
+                        class="bi bi-x-lg"></i></button>
             </div>
 
             <div class="d-flex align-items-end gap-2">
                 <!-- Left side icons -->
                 <div class="d-flex gap-1 pb-1">
-                    <button class="messenger-action-icon" title="Đính kèm tệp" type="button" (click)="handleFileAttachment()">
+                    <button class="messenger-action-icon" title="Đính kèm tệp" type="button"
+                        (click)="handleFileAttachment()">
                         <i class="bi bi-paperclip"></i>
                     </button>
                     <button class="messenger-action-icon" title="Thu âm" type="button" (click)="handleVoiceRecording()">
@@ -228,25 +255,15 @@
                 </div>
                 <!-- Input container -->
                 <div class="messenger-input-container flex-grow-1">
-                    <textarea #messageInput
-                              class="messenger-input" 
-                              [(ngModel)]="newMessage" 
-                              placeholder="Aa"
-                              (keydown)="handleKeyDown($event)" 
-                              rows="1"
-                              autofocus></textarea>
-                    <button class="messenger-input-icon" title="Biểu tượng cảm xúc" type="button" (click)="toggleEmojiPicker()">
+                    <textarea #messageInput class="messenger-input" [(ngModel)]="newMessage" placeholder="Aa"
+                        (keydown)="handleKeyDown($event)" rows="1" autofocus></textarea>
+                    <button class="messenger-input-icon" title="Biểu tượng cảm xúc" type="button"
+                        (click)="toggleEmojiPicker()">
                         <i class="bi bi-emoji-smile-fill"></i>
                     </button>
                     <div *ngIf="showEmojiPicker" class="emoji-picker-container">
-                        <emoji-mart 
-                            (emojiSelect)="addEmoji($event)" 
-                            [set]="'apple'"
-                            [perLine]="8"
-                            [emojiSize]="32"
-                            [sheetSize]="32"
-                            [showPreview]="false"
-                            [style]="{ width: '340px', height: '380px' }">
+                        <emoji-mart (emojiSelect)="addEmoji($event)" [set]="'apple'" [perLine]="8" [emojiSize]="32"
+                            [sheetSize]="32" [showPreview]="false" [style]="{ width: '340px', height: '380px' }">
                         </emoji-mart>
                     </div>
                 </div>
@@ -259,7 +276,8 @@
 </div>
 
 <!-- Modal sửa tin nhắn -->
-<div class="modal fade" [class.show]="editingMessage" [style.display]="editingMessage ? 'block' : 'none'" *ngIf="editingMessage">
+<div class="modal fade" [class.show]="editingMessage" [style.display]="editingMessage ? 'block' : 'none'"
+    *ngIf="editingMessage">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header border-0">
@@ -267,7 +285,8 @@
                 <button type="button" class="btn-close" (click)="closeEditModal()"></button>
             </div>
             <div class="modal-body">
-                <textarea [(ngModel)]="editingContent" rows="4" class="form-control" placeholder="Nhập nội dung..."></textarea>
+                <textarea [(ngModel)]="editingContent" rows="4" class="form-control"
+                    placeholder="Nhập nội dung..."></textarea>
             </div>
             <div class="modal-footer border-0">
                 <button class="btn btn-primary w-100" (click)="saveEditModal()">Lưu</button>
