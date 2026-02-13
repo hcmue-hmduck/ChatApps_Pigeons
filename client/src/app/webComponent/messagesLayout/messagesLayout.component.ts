@@ -185,13 +185,24 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
                 const messageExists = currentMessages.some((msg: any) => msg.id === data.id);
                 
                 if (!messageExists) {
+                    // Ensure parent_message_info includes parent_message_id for socket messages too
+                    const messageToAdd = {
+                        ...data,
+                        parent_message_info: data.parent_message_info 
+                            ? {
+                                ...data.parent_message_info,
+                                parent_message_id: data.parent_message_id
+                            }
+                            : null
+                    };
+
                     this.getMessagesData.update(old => ({
                         ...old,
                         homeMessagesData: {
                             ...old.homeMessagesData,
                             messages: [
                                 ...currentMessages,
-                                data
+                                messageToAdd
                             ]
                         }
                     }));
@@ -260,9 +271,23 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
                     ...old,
                     homeMessagesData: {
                         ...old.homeMessagesData,
-                        messages: old.homeMessagesData.messages.map((m: any) =>
-                            m.id === data.id ? { ...m, is_deleted: true } : m
-                        )
+                        messages: old.homeMessagesData.messages.map((m: any) => {
+                            // Mark the deleted message itself
+                            if (m.id === data.id) {
+                                return { ...m, is_deleted: true };
+                            }
+                            // Update messages that have this deleted message as parent
+                            if (m.parent_message_info && m.parent_message_info.parent_message_id === data.id) {
+                                return {
+                                    ...m,
+                                    parent_message_info: {
+                                        ...m.parent_message_info,
+                                        parent_message_is_deleted: true
+                                    }
+                                };
+                            }
+                            return m;
+                        })
                     }
                 }));
             }
@@ -423,13 +448,25 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
                 console.log('Message sent successfully:', response);
                 this.conversationService.putConversation(this.conversationId, { lastMessage: response.metadata.id }).subscribe({ next: (res) => { /* Conversation updated */},
                     error: (err) => { console.error('Error updating conversation:', err); } });
+                // Ensure parent_message_info includes parent_message_id
+                const messageToAdd = {
+                    ...response.metadata.newMessage,
+                    // If this is a reply, ensure parent_message_info has parent_message_id
+                    parent_message_info: response.metadata.newMessage.parent_message_info 
+                        ? {
+                            ...response.metadata.newMessage.parent_message_info,
+                            parent_message_id: response.metadata.newMessage.parent_message_id
+                        }
+                        : null
+                };
+
                 this.getMessagesData.update( old => ({
                     ...old,
                     homeMessagesData: {
                         ...this.getMessagesData().homeMessagesData,
                         messages: [
                             ...this.getMessagesData().homeMessagesData.messages,
-                            response.metadata.newMessage,
+                            messageToAdd,
                         ]
                     },
                 }));
@@ -439,6 +476,7 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
                 const newMessage = {
                     ...response.metadata.newMessage,
                     parent_message_id: replyTo,
+                    parent_message_info: response.metadata.newMessage.parent_message_info || null,
                     sender_name: currentUser.full_name,
                     sender_avatar: currentUser.avatar_url,
                 };
@@ -497,9 +535,23 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
                     ...old,
                     homeMessagesData: {
                         ...old.homeMessagesData,
-                        messages: old.homeMessagesData.messages.map((m: any) =>
-                            m.id === msg.id ? { ...m, is_deleted: true } : m
-                        )
+                        messages: old.homeMessagesData.messages.map((m: any) => {
+                            // Mark the deleted message itself
+                            if (m.id === msg.id) {
+                                return { ...m, is_deleted: true };
+                            }
+                            // Update messages that have this deleted message as parent
+                            if (m.parent_message_info && m.parent_message_info.parent_message_id === msg.id) {
+                                return {
+                                    ...m,
+                                    parent_message_info: {
+                                        ...m.parent_message_info,
+                                        parent_message_is_deleted: true
+                                    }
+                                };
+                            }
+                            return m;
+                        })
                     }
                 }));
 

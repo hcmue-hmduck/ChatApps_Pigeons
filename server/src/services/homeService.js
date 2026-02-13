@@ -207,6 +207,7 @@ class HomeService {
                     parent_message_id: parentMsg.id,
                     parent_message_content: parentMsg.content,
                     parent_message_sender_id: parentMsg.sender_id,
+                    parent_message_is_deleted: parentMsg.is_deleted,
                     parent_message_name: parentSender ? parentSender.full_name : 'Unknown'
                 };
             }
@@ -221,36 +222,33 @@ class HomeService {
     }
 
     async postMessageToConversation(conversationId, senderId, content, parent_message_id = null) {
-        // Tạo message mới
-        const newMessage = await messagesService.createMessage({
-            conversation_id: conversationId,
-            sender_id: senderId,
-            content: content,
-            parent_message_id: parent_message_id,
-            time_sent: new Date()
-        });
+        // Parallel query: Tạo message mới và lấy parent message info (nếu có)
+        const [newMessage, parentMessage] = await Promise.all([
+            messagesService.createMessage({
+                conversation_id: conversationId,
+                sender_id: senderId,
+                content: content,
+                parent_message_id: parent_message_id,
+                time_sent: new Date()
+            }),
+            parent_message_id ? messagesService.getMessageById(parent_message_id) : Promise.resolve(null)
+        ]);
 
         // Cập nhật last_message_id trong conversation
         await conversationsService.updateConversation(conversationId, {
             last_message_id: newMessage.id
         });
 
-        // return newMessage;
-
-        // Nếu có parent_message_id thì trả về thêm parent_message_info
+        // Nếu có parent message, lấy sender info
         let parent_message_info = null;
-        if (parent_message_id) {
-            // Lấy parent message
-            const parentMessage = await messagesService.getMessageById(parent_message_id);
-            if (parentMessage) {
-                // Lấy sender info cho parent message
-                const parentSender = await usersService.getUserById(parentMessage.sender_id);
-                parent_message_info = {
-                    parent_message_content: parentMessage.content,
-                    parent_message_sender_id: parentMessage.sender_id,
-                    parent_message_name: parentSender ? parentSender.full_name : ''
-                };
-            }
+        if (parentMessage) {
+            const parentSender = await usersService.getUserById(parentMessage.sender_id);
+            parent_message_info = {
+                parent_message_content: parentMessage.content,
+                parent_message_sender_id: parentMessage.sender_id,
+                parent_message_is_deleted: parentMessage.is_deleted,
+                parent_message_name: parentSender ? parentSender.full_name : ''
+            };
         }
 
         return {

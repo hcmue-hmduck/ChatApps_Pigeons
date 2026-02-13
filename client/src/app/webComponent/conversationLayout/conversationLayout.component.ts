@@ -1,4 +1,4 @@
-import { Component, signal, OnInit, OnDestroy, ViewEncapsulation } from '@angular/core';
+import { Component, signal, OnInit, OnDestroy, ViewEncapsulation, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MessagesLayoutComponent } from '../messagesLayout/messagesLayout.component';
 import { Conversation } from '../../services/conversation';
@@ -11,7 +11,8 @@ import { SocketService } from '../../services/socket';
     imports: [CommonModule, MessagesLayoutComponent],
     templateUrl: './conversationLayout.component.html',
     styleUrls: ['./conversationLayout.component.css'],
-    encapsulation: ViewEncapsulation.None
+    encapsulation: ViewEncapsulation.None,
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 
 export class ConversationLayoutComponent implements OnInit {
@@ -46,7 +47,8 @@ export class ConversationLayoutComponent implements OnInit {
 
     constructor(private conversationService: Conversation, 
                 private socketService: SocketService,
-                private router: ActivatedRoute) {
+                private router: ActivatedRoute,
+                private cdr: ChangeDetectorRef) {
         // Load sidebar width từ localStorage
         const savedWidth = localStorage.getItem('sidebarWidth');
         if (savedWidth) {
@@ -158,16 +160,19 @@ export class ConversationLayoutComponent implements OnInit {
         // Interval 30s cho message mới (giảm tải CPU)
         this.interval1s = setInterval(() => {
             this.tick1s.update(v => v + 1);
+            this.cdr.markForCheck(); // Mark for change detection
         }, 30000);
         
         // Interval 5 phút cho message từ 1 phút đến 1 giờ
         this.interval60s = setInterval(() => {
             this.tick60s.update(v => v + 1);
+            this.cdr.markForCheck(); // Mark for change detection
         }, 300000);
         
         // Interval 1 giờ cho message >= 1h
         this.interval3600s = setInterval(() => {
             this.tick3600s.update(v => v + 1);
+            this.cdr.markForCheck(); // Mark for change detection
         }, 3600000);
     }
 

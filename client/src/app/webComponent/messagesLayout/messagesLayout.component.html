@@ -145,7 +145,12 @@
                                             <div class="me-reply-info"
                                                 (click)="scrollToMessage(msg.parent_message_info.parent_message_id)">
                                                 <div class="reply-content-truncated">
-                                                    {{ msg.parent_message_info.parent_message_content }}
+                                                    <ng-container
+                                                        *ngIf="!msg.parent_message_info.parent_message_is_deleted">{{
+                                                        msg.parent_message_info.parent_message_content }}</ng-container>
+                                                    <ng-container
+                                                        *ngIf="msg.parent_message_info.parent_message_is_deleted">Tin
+                                                        nhắn đã bị gỡ</ng-container>
                                                 </div>
                                             </div>
                                         </ng-container>
@@ -229,7 +234,7 @@
                                     </div>
 
                                     <div class="message-content-wrapper">
-                                        <ng-container *ngIf="!msg.is_deleted && msg.parent_message_id">
+                                        <ng-container *ngIf="msg.parent_message_id">
                                             <div class="reply-sender">
                                                 <i class="fas fa-reply me-1"></i>
                                                 <ng-container *ngIf="msg.sender_id === currentUserId">
@@ -250,7 +255,12 @@
                                             <div class="other-reply-info"
                                                 (click)="scrollToMessage(msg.parent_message_info.parent_message_id)">
                                                 <div class="reply-content-truncated">
-                                                    {{ msg.parent_message_info.parent_message_content }}
+                                                    <ng-container
+                                                        *ngIf="!msg.parent_message_info.parent_message_is_deleted">{{
+                                                        msg.parent_message_info.parent_message_content }}</ng-container>
+                                                    <ng-container
+                                                        *ngIf="msg.parent_message_info.parent_message_is_deleted">Tin
+                                                        nhắn đã bị gỡ</ng-container>
                                                 </div>
                                             </div>
                                         </ng-container>
