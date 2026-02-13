@@ -249,10 +249,19 @@ export class ConversationLayoutComponent implements OnInit {
         this.currentUserId = this.currentUserId;
         const selectedConv = this.conversations().homeConversationData.joinedConversations?.find((c: any) => c.conversation_id === this.selectedConversationId);
         
+        // Get other participant for direct conversations
+        const otherParticipant = selectedConv?.type === 'direct' ? this.getOtherParticipant(selectedConv) : null;
+        
         this.getMessageInfor = {
             title: selectedConv?.title,
-            participants: selectedConv?.participants
+            participants: selectedConv?.participants,
+            user_info: this.conversations().homeConversationData.userInfo,
+            type: selectedConv?.type,
+            avatar_url: selectedConv?.avatar_url,
+            other_participant: otherParticipant
         };
+
+        console.log('Message Infor: ', this.getMessageInfor);
         
         // Đảm bảo flag được set cho các lần click sau
         if (!this.isFirstConversationReady()) {

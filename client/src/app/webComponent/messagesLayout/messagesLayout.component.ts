@@ -26,6 +26,7 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
     @Input() conversationId: string = '';
     @Input() currentUserId: any = {};
     @Input() getMessageInfor: any = {};
+    @Input() onlineUsers: Set<string> = new Set();
     
     @ViewChild('messagesContent') messagesContent!: ElementRef<HTMLDivElement>;
     @ViewChild('messageInput', { static: false }) messageInput!: ElementRef<HTMLTextAreaElement>;
@@ -33,6 +34,11 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
     autoScroll = true;
     isNearBottom = true;
     showScrollToBottom = false;
+
+    // Check if a user is online
+    isUserOnline(userId: string): boolean {
+        return this.onlineUsers.has(userId);
+    }
     isLoaded = false;
     hasNewMessage = false; // Track new messages when scrolled up
     
@@ -53,6 +59,13 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
 
     // Menu state
     showMenuId: string | number | null = null;
+
+    // Highlight state for reply navigation
+    highlightedMessageId: string | null = null;
+    private highlightTimeout: any;
+
+    // Pinned messages
+    pinnedMessages: any[] = [];
 
     // Helper method to check if should show date separator
     shouldShowDateSeparator(currentMsg: any, prevMsg: any): boolean {
@@ -318,6 +331,7 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
             next: (response) => {
                 this.lastMessageId = response.metadata?.homeMessagesData?.last_message_id || '';
                 this.getMessagesData.set(response.metadata || {});
+                this.pinnedMessages = response.metadata?.homeMessagesData?.pinnedMessages || [];
                 this.loading = false;
                 
                 // Clear cache khi load conversation mới
@@ -519,6 +533,7 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
 
     pinMessage(msg: any) {
         console.log('Ghim tin nhắn:', msg);
+        console.log('Curren user', this.currentUserId);
         this.closeMenu();
     }
 
@@ -710,5 +725,36 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
     // Đóng khung reply
     cancelReply() {
         this.replyToMessage = null;
+    }
+
+    // Scroll to specific message and highlight it
+    scrollToMessage(messageId: string) {
+        if (!messageId) return;
+        
+        // Find the message element
+        const messageElement = document.getElementById(`message-${messageId}`);
+        if (!messageElement) {
+            console.warn('Message not found:', messageId);
+            return;
+        }
+        
+        // Clear previous highlight timeout
+        if (this.highlightTimeout) {
+            clearTimeout(this.highlightTimeout);
+        }
+        
+        // Scroll to message with smooth behavior
+        messageElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+        });
+        
+        // Trigger highlight animation
+        this.highlightedMessageId = messageId;
+        
+        // Remove highlight after 2 seconds
+        this.highlightTimeout = setTimeout(() => {
+            this.highlightedMessageId = null;
+        }, 2000);
     }
 }

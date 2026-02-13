@@ -40,9 +40,15 @@ const PinnedMessages = sequelize.define("PinnedMessages", {
         defaultValue: 0,
         allowNull: false,
         field: 'order_index'
+    },
+    is_deleted: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+        allowNull: false,
+        field: 'is_deleted'
     }
 }, {
-    tableName: 'pinned_messages',
+    tableName: 'pinnedmessages',
     timestamps: false,
     freezeTableName: true,
     indexes: [

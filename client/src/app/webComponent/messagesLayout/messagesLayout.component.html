@@ -10,7 +10,72 @@
         <!-- Header -->
         <div class="messenger-chat-header px-4 py-3 bg-white sticky-top">
             <div class="d-flex align-items-center justify-content-between">
-                <h6 class="mb-0 fw-semibold">{{ getMessageInfor.title || 'Conversation' }}</h6>
+                <!-- Left: Avatar & Title -->
+                <div class="d-flex align-items-center">
+                    <!-- Avatar Section -->
+                    <div class="position-relative me-3" *ngIf="getMessageInfor?.participants">
+                        <!-- Case 1: Conversation has custom avatar -->
+                        <ng-container *ngIf="getMessageInfor.avatar_url && getMessageInfor.avatar_url.trim()">
+                            <img [src]="getMessageInfor.avatar_url" [alt]="getMessageInfor.title"
+                                class="rounded-circle header-user-avatar" width="40" height="40">
+                        </ng-container>
+
+                        <!-- Case 2: No custom avatar -->
+                        <ng-container *ngIf="!getMessageInfor.avatar_url || !getMessageInfor.avatar_url.trim()">
+                            <!-- Group with 3+ participants: Stacked Avatars -->
+                            <div class="avatar-group-modern" *ngIf="(getMessageInfor.participants?.length || 0) >= 3">
+                                <!-- 3 participants: triangle layout -->
+                                <div class="avatar-stack" *ngIf="(getMessageInfor.participants?.length || 0) === 3"
+                                    [attr.data-count]="3">
+                                    <ng-container
+                                        *ngFor="let p of getMessageInfor.participants.slice(0,3); let i = index">
+                                        <img class="avatar-stack-item rounded-circle border border-2 border-white avatar-pos-{{i}}"
+                                            [src]="p.avatar_url || 'https://i.pravatar.cc/150?img=1'"
+                                            [alt]="p.full_name">
+                                    </ng-container>
+                                </div>
+
+                                <!-- 4+ participants: 4-corner layout -->
+                                <div class="avatar-stack" *ngIf="(getMessageInfor.participants?.length || 0) > 3"
+                                    [attr.data-count]="4">
+                                    <ng-container
+                                        *ngFor="let p of getMessageInfor.participants.slice(0,4); let i = index">
+                                        <img class="avatar-stack-item rounded-circle border border-2 border-white avatar-pos-{{i}}"
+                                            [src]="p.avatar_url || 'https://i.pravatar.cc/150?img=1'"
+                                            [alt]="p.full_name">
+                                    </ng-container>
+                                </div>
+                            </div>
+
+                            <!-- Direct conversation: Show OTHER participant's avatar -->
+                            <div
+                                *ngIf="(getMessageInfor.participants?.length || 0) < 3 && getMessageInfor?.other_participant">
+                                <img [src]="getMessageInfor.other_participant.avatar_url"
+                                    [alt]="getMessageInfor.other_participant.full_name"
+                                    class="rounded-circle header-user-avatar" width="40" height="40">
+                                <span class="position-absolute bottom-0 end-0 header-status-dot"
+                                    [class.online]="isUserOnline(getMessageInfor.other_participant.user_id)"
+                                    [class.offline]="!isUserOnline(getMessageInfor.other_participant.user_id)"></span>
+                            </div>
+                        </ng-container>
+                    </div>
+
+                    <!-- Title & Status -->
+                    <div>
+                        <h6 class="mb-0 fw-semibold">{{ getMessageInfor.title || 'Conversation' }}</h6>
+                        <!-- Group: Show member count -->
+                        <small class="message-preview" *ngIf="getMessageInfor?.type === 'group'">
+                            {{ getMessageInfor.participants?.length || 0 }} thành viên
+                        </small>
+                        <!-- Direct: Show other user's status -->
+                        <small class="message-preview"
+                            *ngIf="getMessageInfor?.type === 'direct' && getMessageInfor?.other_participant">
+                            {{ isUserOnline(getMessageInfor.other_participant.user_id) ? 'online' : 'offline' }}
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Right: Action Buttons -->
                 <div class="d-flex gap-1">
                     <button class="btn btn-sm p-0 d-flex align-items-center justify-content-center message-header-icon"
                         title="Gọi điện thoại">
@@ -25,6 +90,20 @@
                         <i class="bi bi-info-circle-fill"></i>
                     </button>
                 </div>
+            </div>
+        </div>
+
+        <!-- Pinned Messages Bar -->
+        <div class="telegram-pinned-bar" *ngIf="pinnedMessages && pinnedMessages.length > 0"
+            (click)="scrollToMessage(pinnedMessages[0].message_id)">
+            <div class="pin-left-decor"></div>
+            <div class="pin-content-wrapper">
+                <div class="pin-title">{{ pinnedMessages[0].pinned_by_name }} đã ghim tin nhắn với tiêu đề "{{
+                    pinnedMessages[0].note }}"</div>
+                <div class="pin-text-preview">{{ pinnedMessages[0].content }}</div>
+            </div>
+            <div class="pin-right-icon">
+                <i class="fas fa-thumbtack"></i>
             </div>
         </div>
 
@@ -52,7 +131,8 @@
                         <ng-container *ngIf="currentUserId === msg.sender_id; else otherMsg">
 
                             <!-- Tin nhắn của tôi -->
-                            <div class="message-row me-row">
+                            <div class="message-row me-row" id="message-{{msg.id}}"
+                                [class.highlighted]="highlightedMessageId === msg.id">
                                 <div class="me-row-content">
                                     <div class="message-content-wrapper-me">
                                         <ng-container *ngIf="msg.parent_message_id">
@@ -62,7 +142,8 @@
                                                 'Bạn đã trả lời chính mình' : 'Bạn đã trả lời ' +
                                                 msg.parent_message_info.parent_message_name }}
                                             </div>
-                                            <div class="me-reply-info">
+                                            <div class="me-reply-info"
+                                                (click)="scrollToMessage(msg.parent_message_info.parent_message_id)">
                                                 <div class="reply-content-truncated">
                                                     {{ msg.parent_message_info.parent_message_content }}
                                                 </div>
@@ -124,7 +205,8 @@
 
                         <ng-template #otherMsg>
                             <!-- Tin nhắn của người khác -->
-                            <div class="message-row other-row">
+                            <div class="message-row other-row" id="message-{{msg.id}}"
+                                [class.highlighted]="highlightedMessageId === msg.id">
                                 <div *ngIf="getMessagesData().homeMessagesData.conversation_type === 'group' && 
                                             (i === 0 || getMessagesData().homeMessagesData.messages[i-1].sender_id !== msg.sender_id || 
                                             getMessagesData().homeMessagesData.messages[i-1].message_type === 'system' ||
@@ -165,7 +247,8 @@
                                                     </ng-container>
                                                 </ng-container>
                                             </div>
-                                            <div class="other-reply-info">
+                                            <div class="other-reply-info"
+                                                (click)="scrollToMessage(msg.parent_message_info.parent_message_id)">
                                                 <div class="reply-content-truncated">
                                                     {{ msg.parent_message_info.parent_message_content }}
                                                 </div>

@@ -8,6 +8,12 @@
     height: 40px;
     max-width: 100%;
     width: fit-content;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.me-reply-info:hover {
+    background-color: rgba(0, 0, 0, 0.08);
 }
 
 
@@ -20,7 +26,13 @@
     height: 40px;
     max-width: 100%;
     width: fit-content;
+    cursor: pointer;
+    transition: background-color 0.2s;
     /* word-break: break-word; */
+}
+
+.other-reply-info:hover {
+    background-color: rgba(0, 0, 0, 0.08);
 }
 
 
@@ -105,6 +117,154 @@
     font-size: 17px;
     font-weight: 600;
     color: #050505;
+}
+
+/* Header User Avatar */
+.header-user-avatar {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border: 2px solid #e5e7eb;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s;
+}
+
+.header-user-avatar:hover {
+    border-color: #0084ff;
+    transform: scale(1.05);
+}
+
+/* Header Status Dot */
+.header-status-dot {
+    width: 12px;
+    height: 12px;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+}
+
+.header-status-dot.online {
+    background: #31a24c;
+}
+
+.header-status-dot.offline {
+    background: #b0b3b8;
+}
+
+/* Message preview text styling (matching conversationLayout) */
+.message-preview {
+    font-size: 13px;
+    line-height: 1.4;
+    color: #65676b;
+}
+
+/* Avatar Group - Dynamic Layout (for header) */
+.avatar-group-modern {
+    position: relative;
+    width: 44px;
+    height: 44px;
+}
+
+.avatar-stack {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.avatar-stack-item {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    object-fit: cover;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Layout cho 1 avatar (single) */
+.avatar-stack[data-count="1"] .avatar-pos-0 {
+    width: 44px;
+    height: 44px;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+
+/* Layout cho 2 avatar (duo) */
+.avatar-stack[data-count="2"] .avatar-pos-0 {
+    top: 2px;
+    left: 2px;
+    width: 26px;
+    height: 26px;
+    z-index: 2;
+}
+
+.avatar-stack[data-count="2"] .avatar-pos-1 {
+    bottom: 2px;
+    right: 2px;
+    width: 26px;
+    height: 26px;
+    z-index: 1;
+}
+
+/* Layout cho 3 avatar (tam giác) */
+.avatar-stack[data-count="3"] .avatar-pos-0 {
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 24px;
+    height: 24px;
+    z-index: 3;
+}
+
+.avatar-stack[data-count="3"] .avatar-pos-1 {
+    bottom: 0;
+    left: 0;
+    width: 24px;
+    height: 24px;
+    z-index: 2;
+}
+
+.avatar-stack[data-count="3"] .avatar-pos-2 {
+    bottom: 0;
+    right: 0;
+    width: 24px;
+    height: 24px;
+    z-index: 1;
+}
+
+/* Layout cho 4 avatar (4 góc) */
+.avatar-stack[data-count="4"] .avatar-pos-0 {
+    top: 0;
+    left: 0;
+    width: 22px;
+    height: 22px;
+    z-index: 4;
+}
+
+.avatar-stack[data-count="4"] .avatar-pos-1 {
+    top: 0;
+    right: 0;
+    width: 22px;
+    height: 22px;
+    z-index: 3;
+}
+
+.avatar-stack[data-count="4"] .avatar-pos-2 {
+    bottom: 0;
+    left: 0;
+    width: 22px;
+    height: 22px;
+    z-index: 2;
+}
+
+.avatar-stack[data-count="4"] .avatar-pos-3 {
+    bottom: 0;
+    right: 0;
+    width: 22px;
+    height: 22px;
+    z-index: 1;
 }
 
 .message-header-icon {
@@ -1268,7 +1428,8 @@
     position: absolute;
     top: 100%;
     font-size: 11px;
-    margin-top: -6px;
+    /* margin-top: -10px; */
+    margin: -10px -3px 0 -2px;
     color: #65676b;
     opacity: 0.8;
     line-height: 1.2;
@@ -1304,4 +1465,95 @@
     .reply-content-truncated {
         font-size: 12px;
     }
+}
+
+/* Highlight animation for reply navigation - Messenger style blink */
+.highlighted {
+    animation: messageBlink 1.5s ease-in-out;
+}
+
+@keyframes messageBlink {
+
+    0%,
+    100% {
+        background-color: transparent;
+    }
+
+    16%,
+    50%,
+    83% {
+        background-color: rgba(0, 0, 0, 0.1);
+    }
+
+    33%,
+    66% {
+        background-color: transparent;
+    }
+}
+
+/* Pinned Messages Bar (Telegram Style) */
+/* Pinned Messages Bar (Telegram Style - Grid Layout for Robust Truncation) */
+.telegram-pinned-bar {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    padding: 8px 16px;
+    background-color: #fff;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    position: relative;
+    transition: background-color 0.2s;
+    height: 50px;
+}
+
+.telegram-pinned-bar:hover {
+    background-color: #f5f5f5;
+}
+
+.pin-left-decor {
+    width: 2px;
+    height: 32px;
+    background-color: #3390ec;
+    /* Telegram blue */
+    border-radius: 2px;
+    margin-right: 12px;
+}
+
+.pin-content-wrapper {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+    min-width: 0;
+    /* Critical for truncation */
+}
+
+.pin-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #3390ec;
+    /* Telegram blue */
+    line-height: 1.2;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pin-text-preview {
+    font-size: 13px;
+    color: #707579;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+}
+
+.pin-right-icon {
+    font-size: 16px;
+    color: #707579;
+    margin-left: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
