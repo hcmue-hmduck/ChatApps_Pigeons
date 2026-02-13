@@ -60,6 +60,7 @@
     <div class="message-content">
             <messages-layout *ngIf="selectedConversationId" 
                             [conversationId]="selectedConversationId"
+                            [conversationType]="selectedConversationType"
                             [currentUserId]="currentUserId"
                             [getMessageInfor]="getMessageInfor"/>
     </div>

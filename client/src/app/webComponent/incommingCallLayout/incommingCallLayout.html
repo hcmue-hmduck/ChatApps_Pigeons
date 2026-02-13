@@ -1,0 +1,21 @@
+@let call = callSessionData();
+
+@if (call) {
+    <div class="incoming-overlay">
+        <div class="incoming-card" [class.is-missed]="call.status === 'missed'">
+            @if (call.status !== 'missed') {
+                <div class="incoming-badge">Cuộc gọi đến</div>
+                <div class="incoming-actions">
+                    <button class="action-button decline" (click)="handleDecline()">Từ chối</button>
+                    <button class="action-button accept" (click)="handleAccept()">Chấp nhận</button>
+                </div>
+            } @else {
+                <div class="incoming-badge missed">Cuộc gọi nhỡ</div>
+                <div class="incoming-subtitle missed-text">Người dùng đã gác máy</div>
+                <div class="incoming-actions">
+                    <button class="action-button close" (click)="closeOverlay()">Đóng</button>
+                </div>
+            }
+        </div>
+    </div>
+}

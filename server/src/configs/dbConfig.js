@@ -42,20 +42,20 @@ async function connectToDB() {
     }
 
     // Kết nối MongoDB
-    try {
-        await mongoose.connect(process.env.MongoDB_URL);
-        mongoConnected = true;
-    } catch (err) {
-        console.error('MongoDB connection error:', err.message, '\nMongoDB_URL:', process.env.MongoDB_URL);
-    }
+    // try {
+    //     await mongoose.connect(process.env.MongoDB_URL);
+    //     mongoConnected = true;
+    // } catch (err) {
+    //     console.error('MongoDB connection error:', err.message, '\nMongoDB_URL:', process.env.MongoDB_URL);
+    // }
 
     // Kiểm tra kết quả
     if (!pgConnected) {
         throw new Error('Failed to connect to PostgreSQL.');
     }
-    if (!mongoConnected) {
-        throw new Error('Failed to connect to MongoDB.');
-    }
+    // if (!mongoConnected) {
+    //     throw new Error('Failed to connect to MongoDB.');
+    // }
 
     console.log('All databases connected successfully.');
 }

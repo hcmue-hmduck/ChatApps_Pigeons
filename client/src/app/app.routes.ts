@@ -3,6 +3,7 @@ import { ConversationLayoutComponent } from './webComponent/conversationLayout/c
 import { UserAdminLayoutComponent } from './webComponent/userAdminLayout/userAdminLayout.component';
 import { HomeLayoutComponent } from './webComponent/homeLayout/homeLayout.component';
 import { MessagesLayoutComponent } from './webComponent/messagesLayout/messagesLayout.component';
+import { CallLayoutComponent } from './webComponent/callLayout/callLayout';
 
 export const routes: Routes = [
     {
@@ -20,5 +21,9 @@ export const routes: Routes = [
     {
         path: 'messages/:id',
         component: MessagesLayoutComponent
+    },
+    {
+        path: 'call-display',
+        component: CallLayoutComponent
     }
 ];

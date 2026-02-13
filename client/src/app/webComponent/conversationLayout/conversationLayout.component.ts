@@ -1,25 +1,27 @@
-import { Component, signal, OnInit, OnDestroy } from '@angular/core';
+import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MessagesLayoutComponent } from '../messagesLayout/messagesLayout.component';
 import { Conversation } from '../../services/conversation';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SocketService } from '../../services/socket';
+import { AuthService } from '../../services/authService';
 
 @Component({
     selector: 'conversation-layout',
     standalone: true,
     imports: [CommonModule, MessagesLayoutComponent],
     templateUrl: './conversationLayout.component.html',
-    styleUrls: ['./conversationLayout.component.css']
+    styleUrls: ['./conversationLayout.component.css'],
 })
-
 export class ConversationLayoutComponent implements OnInit {
     protected readonly title = signal('client');
     conversations = signal<any>({});
-    
+
+    authService = inject(AuthService);
+
     // Signals để trigger re-render cho các conversation khác nhau
-    tick1s = signal(0);   // Cho message <= 60s
-    tick60s = signal(0);  // Cho message > 60s và < 1h
+    tick1s = signal(0); // Cho message <= 60s
+    tick60s = signal(0); // Cho message > 60s và < 1h
     tick3600s = signal(0); // Cho message >= 1h
 
     private interval1s: any;
@@ -33,11 +35,13 @@ export class ConversationLayoutComponent implements OnInit {
     getMessageInfor: any = {};
 
     user_name = '';
-    currentUserId : string = ''; 
+    currentUserId: string = '';
 
-    constructor(private conversationService: Conversation, 
-                private socketService: SocketService,
-                private router: ActivatedRoute) {}
+    constructor(
+        private conversationService: Conversation,
+        private socketService: SocketService,
+        private router: ActivatedRoute,
+    ) {}
 
     relativeTime(dateStr: string, tick1s: number, tick60s: number, tick3600s: number): string {
         if (!dateStr) return '';
@@ -84,15 +88,16 @@ export class ConversationLayoutComponent implements OnInit {
                                 sender_id: data.sender_id,
                                 content: data.content,
                                 created_at: data.created_at,
-                                updated_at: data.updated_at
-                            }
+                                updated_at: data.updated_at,
+                            },
                         })),
-                    ...currentConversations.homeConversationData
-                        .filter((conv: any) => conv.conversation_id !== data.conversation_id)
+                    ...currentConversations.homeConversationData.filter(
+                        (conv: any) => conv.conversation_id !== data.conversation_id,
+                    ),
                 ];
                 this.conversations.set({
                     ...currentConversations,
-                    homeConversationData: updatedConversations
+                    homeConversationData: updatedConversations,
                 });
             }
         });
@@ -103,6 +108,7 @@ export class ConversationLayoutComponent implements OnInit {
             this.isLoaded = true;
             this.currentUserId = this.router.snapshot.paramMap.get('id') || '';
             this.loadConversations(this.currentUserId);
+            this.authService.setUserInfor(this.currentUserId);
         }
     }
 
@@ -111,17 +117,17 @@ export class ConversationLayoutComponent implements OnInit {
         this.isLoaded = true;
         // Interval 1s cho message mới (≤ 60s)
         this.interval1s = setInterval(() => {
-            this.tick1s.update(v => v + 1);
+            this.tick1s.update((v) => v + 1);
         }, 1000);
-        
+
         // Interval 60s cho message từ 1 phút đến 1 giờ
         this.interval60s = setInterval(() => {
-            this.tick60s.update(v => v + 1);
+            this.tick60s.update((v) => v + 1);
         }, 60000);
-        
+
         // Interval 1 giờ cho message >= 1h
         this.interval3600s = setInterval(() => {
-            this.tick3600s.update(v => v + 1);
+            this.tick3600s.update((v) => v + 1);
         }, 3600000);
     }
 
@@ -137,7 +143,12 @@ export class ConversationLayoutComponent implements OnInit {
 
     // Trả về tên người gửi last message cho 1 conversation
     getLastMessageSenderName(conv: any): string {
-        if (!conv || !conv.lastMessage || (conv.participants.length < 3 && conv.lastMessage.sender_id !== this.currentUserId)) return '';
+        if (
+            !conv ||
+            !conv.lastMessage ||
+            (conv.participants.length < 3 && conv.lastMessage.sender_id !== this.currentUserId)
+        )
+            return '';
         if (conv.lastMessage.sender_id === this.currentUserId) return 'Bạn: ';
         const sender = conv.participants.find((p: any) => p.user_id === conv.lastMessage.sender_id);
         return sender && sender.full_name ? sender.full_name + ': ' : 'Ẩn danh';
@@ -160,40 +171,39 @@ export class ConversationLayoutComponent implements OnInit {
                         this.socketService.emit('joinConversation', conv.conversation_id);
                     });
                 }
-                
+
                 this.loading = false;
             },
-            error: (error) => { 
+            error: (error) => {
                 console.error('Error:', error);
                 this.error = error.message;
                 this.loading = false;
-            }
+            },
         });
     }
-    
-    selectedConversationId : string = '';
+
+    selectedConversationId: string = '';
+    selectedConversationType = '';
     handleConversationID(conv: any) {
         this.socketService.off('newMessage'); // Ngắt kết nối sự kiện cũ trước khi tham gia phòng mới
         // KHÔNG tắt updateConversation vì nó dùng để update sidebar
-        
+
         this.selectedConversationId = conv.conversation_id;
+        this.selectedConversationType = conv.type;
+
         this.currentUserId = this.currentUserId;
-        const selectedConv = this.conversations().homeConversationData?.find((c: any) => c.conversation_id === this.selectedConversationId);
+        const selectedConv = this.conversations().homeConversationData?.find(
+            (c: any) => c.conversation_id === this.selectedConversationId,
+        );
         this.getMessageInfor = {
             title: selectedConv?.title,
-            participants: selectedConv?.participants
+            participants: selectedConv?.participants,
         };
     }
 
-    createConversation() {
+    createConversation() {}
 
-    }
+    openSetting() {}
 
-    openSetting() {
-
-    }
-
-    filter() {
-
-    }
+    filter() {}
 }
