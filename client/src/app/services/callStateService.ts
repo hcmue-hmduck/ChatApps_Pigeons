@@ -8,8 +8,8 @@ export interface RemoteParticipant {
     stream: MediaStream;
 }
 
-const DIRECT_CALL = 'direct',
-    GROUP_CALL = 'group';
+// const DIRECT_CALL = 'direct',
+//     GROUP_CALL = 'group';
 
 @Injectable({
     providedIn: 'root',
@@ -23,7 +23,7 @@ export class CallStateService {
     isCameraOn = signal<boolean>(true);
     isMicOn = signal<boolean>(true);
     conversationId = '';
-    conversationType = DIRECT_CALL;
+    conversationType = '';
 
     cleanUp() {
         this.localStream()
@@ -42,7 +42,7 @@ export class CallStateService {
         this.isCameraOn.set(true);
         this.isMicOn.set(true);
         this.conversationId = '';
-        this.conversationType = DIRECT_CALL;
+        this.conversationType = '';
     }
 
     addVideoTrackToLocalStream(videoTrack: MediaStreamTrack) {

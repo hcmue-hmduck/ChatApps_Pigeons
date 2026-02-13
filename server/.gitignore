@@ -1,3 +1,6 @@
 node_modules
 .env
 ScriptDB_ChatPigeons.sql
+uploads
+./src/views/
+.DS_Store

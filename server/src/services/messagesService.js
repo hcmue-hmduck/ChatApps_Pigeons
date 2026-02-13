@@ -16,19 +16,24 @@ class MessagesService {
     // Thêm vào class MessagesService
     async getMessagesByIds(ids) {
         return await messagesModel.findAll({
-            where: { id: ids, is_deleted: false }
+            where: { id: ids }
         });
     }
 
-    async getAllMessagesByConversationId(conversationId) {
-        return await messagesModel.findAll({
-            where: { conversation_id: conversationId, is_deleted: false },
-            order: [['created_at', 'ASC']]
+    async getAllMessagesByConversationId(conversationId, limit = 100, offset = 0) {
+        const messages = await messagesModel.findAll({
+            where: { conversation_id: conversationId },
+            order: [['created_at', 'DESC']], // Lấy tin nhắn mới nhất trước
+            limit: limit, // Giới hạn số lượng tin nhắn
+            offset: offset // Bỏ qua số tin nhắn đầu (cho pagination)
         });
+        // Đảo ngược lại để hiển thị theo thứ tự cũ nhất đến mới nhất
+        return messages.reverse();
     }
 
     // Tạo message mới
     async createMessage(messageData) {
+        console.log('Creating message with data:', messageData);
         return await messagesModel.create(messageData);
     }
 
@@ -48,13 +53,12 @@ class MessagesService {
         const message = await messagesModel.findByPk(messageId);
         if (message) {
             // Soft delete - chỉ đánh dấu is_deleted = true
-            await message.update({ 
+            return await message.update({ 
                 is_deleted: true,
                 updated_at: new Date()
             });
-            return true;
         }
-        return false;
+        return null;
     }
 }
 

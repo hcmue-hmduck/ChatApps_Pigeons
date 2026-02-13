@@ -103,7 +103,14 @@ const User = sequelize.define('User', {
     last_online_at: {
         type: DataTypes.DATE,
         allowNull: true,
-        field: 'last_online_at'
+        field: 'last_online_at',
+        get() {
+            const rawValue = this.getDataValue('last_online_at');
+            if (!rawValue) return null;
+            const d = new Date(rawValue);
+            const pad = n => n.toString().padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${d.getMilliseconds().toString().padStart(3, '0')}`;
+        }
     },
     
     // Created At

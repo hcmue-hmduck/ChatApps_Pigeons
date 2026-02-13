@@ -51,7 +51,9 @@ export class LivekitCallService {
                     const initializeVideo = this.callState.isCameraOn();
                     if (initializeVideo)
                         await this.room.localParticipant.enableCameraAndMicrophone();
-                    else this.room.localParticipant.setMicrophoneEnabled(true);
+                    else {
+                        await this.room.localParticipant.setMicrophoneEnabled(true);
+                    }
 
                     this.updateRemoteParticipants();
 

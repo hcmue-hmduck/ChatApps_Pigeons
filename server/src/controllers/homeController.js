@@ -20,7 +20,9 @@ class HomeController {
     }
 
     async getHomeMessages(req, res) {
-        const homeMessagesData = await homeService.getMessagesByConversation(req.params.convID);
+        const limit = parseInt(req.query.limit) || 100;
+        const offset = parseInt(req.query.offset) || 0;
+        const homeMessagesData = await homeService.getMessagesByConversation(req.params.convID, limit, offset);
         new SuccessResponse({
             message: 'Get home messages successfully',
             metadata: {
@@ -31,8 +33,8 @@ class HomeController {
 
     async postHomeMessages(req, res) {
         const conversationId = req.params.convID;
-        const { senderId, content } = req.body;
-        const newMessage = await homeService.postMessageToConversation(conversationId, senderId, content);
+        const { senderId, content,  parent_message_id} = req.body;
+        const newMessage = await homeService.postMessageToConversation(conversationId, senderId, content, parent_message_id);
         new SuccessResponse({
             message: 'Post home message successfully',
             metadata: {
@@ -49,6 +51,17 @@ class HomeController {
             message: 'Put home message successfully',
             metadata: {
                 updatedMessage: updatedMessage,
+            }
+        }).send(res);
+    }
+
+    async deleteHomeMessages(req, res) {
+        const messageId = req.params.messID;
+        const deleteResult = await homeService.deleteMessageInConversation(messageId);
+        new SuccessResponse({
+            message: 'Delete home message successfully',
+            metadata: {
+                deleteResult: deleteResult,
             }
         }).send(res);
     }

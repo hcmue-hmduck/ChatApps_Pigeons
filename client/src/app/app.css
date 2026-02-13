@@ -1,6 +1,9 @@
-.main {
+.app-container {
     display: flex;
-    width: 100%;
+    flex-direction: column;
     height: 100%;
-    position: fixed; /* Cố định vị trí Page*/
+    max-width: 100%;
+    min-width: 0;
+    min-height: 100vh;
+    overflow: hidden;
 }

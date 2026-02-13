@@ -21,7 +21,7 @@ export class IncommingCallLayout {
 
     constructor() {
         if (isPlatformBrowser(this.platformId)) {
-            this.ringtone = new Audio('sounds/ringtone.mp3');
+            this.ringtone = new Audio('assets/sounds/ringtone.mp3');
             this.ringtone.loop = true;
         }
 

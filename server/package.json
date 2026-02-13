@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/HMD-CVA/ChatApps_Pigeons#readme",
   "dependencies": {
+    "cloudinary": "^2.9.0",
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
@@ -28,6 +29,7 @@
     "mongoose": "^9.1.5",
     "morgan": "^1.10.1",
     "mssql": "^12.2.0",
+    "multer": "^2.0.2",
     "pg": "^8.17.2",
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.7",

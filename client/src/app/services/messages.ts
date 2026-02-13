@@ -12,12 +12,14 @@ export class Messages {
     constructor(private http: HttpClient) { }
 
     // Lấy tất cả messages của users này
-    getMessages(conversationId: string): Observable<any> {
-        return this.http.get(`${this.apiUrl}/${conversationId}`);
+    getMessages(conversationId: string, limit: number = 50, offset: number = 0): Observable<any> {
+        return this.http.get(`${this.apiUrl}/${conversationId}?limit=${limit}&offset=${offset}`);
     }
 
-    postMessage(conversationId: string, senderId:string, content: string): Observable<any> {
-        return this.http.post(`${this.apiUrl}/${conversationId}`, { senderId, content });
+    postMessage(conversationId: string, senderId: string, content: string, replyTo?: string): Observable<any> {
+        const body: any = { senderId, content };
+        if (replyTo) body.parent_message_id = replyTo;
+        return this.http.post(`${this.apiUrl}/${conversationId}`, body);
     }
 
     putMessage(messageId: string, content: string): Observable<any> {
