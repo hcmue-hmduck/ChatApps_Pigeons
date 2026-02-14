@@ -251,21 +251,13 @@ export class MessagesLayoutComponent
                     ...old,
                     homeMessagesData: {
                         ...old.homeMessagesData,
-                        // messages: old.homeMessagesData.messages.map((msg: any) =>
-                        //     msg.id === data.id
-                        //         ? { ...msg,
-                        //             content: data.content,
-                        //             updated_at: data.updated_at,
-                        //             is_edited: data.is_edited,
-                        //             is_deleted: data.is_deleted }
-                        //         : msg
-                        // )
                         messages: old.homeMessagesData.messages.map((msg: any) => {
                             if (msg.id === data.id) {
                                 return {
                                     ...msg,
                                     content: data.content,
                                     updated_at: new Date().toISOString(),
+                                    is_edited: true
                                 };
                             } else if (msg.parent_message_id === data.id) {
                                 return {
@@ -680,6 +672,7 @@ export class MessagesLayoutComponent
                                         ...msg,
                                         content: messageContent,
                                         updated_at: new Date().toISOString(),
+                                        is_edited: true
                                     };
                                 } else if (msg.parent_message_id === messageId) {
                                     console.log(
