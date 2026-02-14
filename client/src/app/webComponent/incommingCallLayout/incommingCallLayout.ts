@@ -3,6 +3,7 @@ import { Component, effect, inject, PLATFORM_ID, signal } from '@angular/core';
 import { CallSessionData } from '../../models/callSessionData.model';
 import { AuthService } from '../../services/authService';
 import { WebRtcService } from '../../services/webRTCService';
+import { CallStateService } from '../../services/callStateService';
 
 @Component({
     selector: 'app-incomming-call-layout',
@@ -12,6 +13,7 @@ import { WebRtcService } from '../../services/webRTCService';
 })
 export class IncommingCallLayout {
     webRTCService = inject(WebRtcService);
+    callState = inject(CallStateService);
     authService = inject(AuthService);
     callSessionData = signal<CallSessionData | null>(null);
     userId = '';
@@ -26,7 +28,7 @@ export class IncommingCallLayout {
         }
 
         effect(() => {
-            const callSessionData = this.webRTCService.callSessionData();
+            const callSessionData = this.callState.callSessionData();
             this.userId = this.authService.getUserId();
 
             if (callSessionData && callSessionData.inviterId !== this.userId) {
@@ -43,11 +45,11 @@ export class IncommingCallLayout {
     }
 
     playRingTone() {
-        if (this.ringtone) {
-            this.ringtone.play().catch((error) => {
-                console.warn(error);
-            });
-        }
+        // if (this.ringtone) {
+        //     this.ringtone.play().catch((error) => {
+        //         console.warn(error);
+        //     });
+        // }
     }
 
     stopRingtone() {
@@ -86,14 +88,14 @@ export class IncommingCallLayout {
         if (this.callSessionData) {
             const { conversationId, conversationType } = this.callSessionData()!;
             this.webRTCService.declineIncomingCall(conversationId, conversationType);
-            this.webRTCService.callSessionData.set(null);
+            this.callState.callSessionData.set(null);
             this.stopRingtone();
             this.stopVibrating();
         }
     }
 
     closeOverlay() {
-        this.webRTCService.callSessionData.set(null);
+        this.callState.callSessionData.set(null);
     }
 
     openCallWindow({ initializeVideo }: { initializeVideo: boolean }) {
@@ -112,7 +114,7 @@ export class IncommingCallLayout {
                 (event.source as Window)?.postMessage(payload, window.location.origin);
 
                 window.removeEventListener('message', listener);
-                this.webRTCService.callSessionData.set(null);
+                this.callState.callSessionData.set(null);
             }
         };
 
@@ -130,4 +132,6 @@ export class IncommingCallLayout {
             features,
         );
     }
+
+
 }

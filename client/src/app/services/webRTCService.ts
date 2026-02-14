@@ -12,25 +12,36 @@ const DIRECT_CALL = 'direct',
     providedIn: 'root',
 })
 export class WebRtcService {
-    callState = inject(CallStateService);
-    p2p = inject(P2PCallService);
-    livekit = inject(LivekitCallService);
-    socketService = inject(SocketService);
-    authService = inject(AuthService);
-    isDirectCall = true;
-
-    // Expose signals for components
-    callSessionData = this.callState.callSessionData;
-    callEnded = this.callState.callEnded;
-    isDeclined = this.callState.isDeclined;
-    localStream = this.callState.localStream;
-    remoteParticipants = this.callState.remoteParticipants;
-    isCameraOn = this.callState.isCameraOn;
-    isMicOn = this.callState.isMicOn;
+    private callState = inject(CallStateService);
+    private p2p = inject(P2PCallService);
+    private livekit = inject(LivekitCallService);
+    private socketService = inject(SocketService);
+    private authService = inject(AuthService);
+    private isDirectCall = true;
 
     constructor() {
+        this.socketService.on('call:busyUpdated', (data) => {
+            if (data.userId === this.authService.getUserId()) {
+                this.callState.isBusy.set(data.isBusy);
+            }
+        });
+
         // Client 2 nhận offer từ Client 1
+        // instance này ở tab cha
         this.socketService.on('directCall:offerAwaiting', (data) => {
+            const userId = this.authService.getUserId();
+            if (userId === data.inviterId) return;
+
+            console.log('Receive offer...');
+            if (this.callState.isBusy()) {
+                this.socketService.emit('directCall:remoteBusy', {
+                    conversationId: data.conversationId,
+                    remoteId: userId,
+                });
+                console.log('emit cho thằng kia, remote là ', userId);
+                return;
+            }
+
             this.callState.conversationId = data.conversationId;
             this.p2p.setFriendInfo(data.inviterName, data.inviterAvatarUrl);
 
@@ -56,6 +67,19 @@ export class WebRtcService {
             this.p2p.addIceCandidate(iceCandidate);
         });
 
+        this.socketService.on('directCall:remoteBusy', (remoteId) => {
+            if (this.authService.getUserId() !== remoteId) {
+                this.callState.isRemoteBusy.set(true);
+                console.log('set remote busy:::', remoteId);
+            }
+        });
+
+        this.socketService.on('call:cleanup', (userId) => {
+            if (this.authService.getUserId() === userId) {
+                this.cleanupCall();
+            }
+        });
+
         // SFU join room
         this.socketService.on('groupCall:joinRoom', (data) => {
             this.callState.conversationId = data.conversationId;
@@ -76,7 +100,7 @@ export class WebRtcService {
         });
 
         // Gọi nhỡ
-        this.socketService.on('call:missedCall', () => {
+        this.socketService.on('call:missedCall', (conversationId) => {
             if (this.callState.callSessionData()) {
                 this.callState.callSessionData.update((curent) => {
                     if (!curent) return null;
@@ -86,7 +110,7 @@ export class WebRtcService {
                         status: 'missed',
                     };
                 });
-            } else if (this.isDirectCall) {
+            } else if (this.isDirectCall && this.callState.conversationId === conversationId) {
                 this.cleanupCall();
             }
         });
@@ -102,7 +126,7 @@ export class WebRtcService {
         this.callState.conversationType = conversationType;
         this.callState.isCameraOn.set(initializeVideo);
 
-        console.log('initializeVideo:', initializeVideo);
+        this.updateUserBusyState(true);
 
         if (conversationType === DIRECT_CALL) {
             this.isDirectCall = true;
@@ -126,6 +150,8 @@ export class WebRtcService {
         this.callState.conversationType = conversationType;
         this.callState.isCameraOn.set(initializeVideo);
 
+        this.updateUserBusyState(true);
+
         if (conversationType === DIRECT_CALL) {
             this.isDirectCall = true;
             this.p2p.answerOffer(offer!);
@@ -133,14 +159,21 @@ export class WebRtcService {
     }
 
     declineIncomingCall(conversationId: string, conversationType: string) {
-        if (conversationType === DIRECT_CALL)
+        if (conversationType === DIRECT_CALL) {
             this.socketService.emit('call:endCall', this.callState.conversationId);
-        this.socketService.emit('call:declineCall', conversationId);
+            this.socketService.emit('call:declineCall', conversationId);
+        }
         this.cleanupCall();
     }
 
     end() {
         this.socketService.emit('call:cancelCall', this.callState.conversationId);
+
+        this.socketService.emit('call:cleanup', {
+            conversationId: this.callState.conversationId,
+            userId: this.authService.getUserId(),
+        });
+
         this.cleanupCall();
     }
 
@@ -164,5 +197,13 @@ export class WebRtcService {
         this.callState.cleanUp();
         this.p2p.cleanUp();
         this.livekit.cleanUp();
+    }
+
+    updateUserBusyState(isBusy: boolean) {
+        this.socketService.emit('call:busyUpdated', {
+            conversationId: this.callState.conversationId,
+            userId: this.authService.getUserId(),
+            isBusy: isBusy,
+        });
     }
 }

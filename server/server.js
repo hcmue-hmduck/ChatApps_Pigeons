@@ -1,5 +1,5 @@
 const express = require('express');
-const {createServer} = require('https');
+const { createServer } = require('https');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const { engine } = require('express-handlebars');
@@ -83,26 +83,23 @@ io.on('connection', (socket) => {
         }
         onlineUsers.get(userId).add(socket.id);
         socketToUser.set(socket.id, userId);
-        
+
         console.log(`User ${userId} is online (${onlineUsers.get(userId).size} connections)`);
-        
+
         // Gửi danh sách tất cả users đang online cho user mới login
         const allOnlineUserIds = Array.from(onlineUsers.keys());
         socket.emit('onlineUsersList', allOnlineUserIds);
-        
+
         // Chỉ emit nếu đây là connection đầu tiên (user mới online)
         if (onlineUsers.get(userId).size === 1) {
             // Cập nhật status thành online vào database
             try {
-                await usersModel.update(
-                    { status: 'online' },
-                    { where: { id: userId } }
-                );
+                await usersModel.update({ status: 'online' }, { where: { id: userId } });
                 console.log(`Updated status to online for user ${userId}`);
             } catch (error) {
                 console.error(`Error updating status for user ${userId}:`, error);
             }
-            
+
             io.emit('userStatusChanged', { userId, status: 'online' });
         }
     });
@@ -140,32 +137,32 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', async () => {
         console.log('User disconnected:', socket.id);
-        
+
         const userId = socketToUser.get(socket.id);
         if (userId && onlineUsers.has(userId)) {
             onlineUsers.get(userId).delete(socket.id);
             socketToUser.delete(socket.id);
-            
+
             console.log(`User ${userId} connection removed (${onlineUsers.get(userId).size} remaining)`);
-            
+
             // Chỉ emit offline nếu không còn connection nào
             if (onlineUsers.get(userId).size === 0) {
                 onlineUsers.delete(userId);
-                
+
                 // Cập nhật last_online_at vào database
                 try {
                     await usersModel.update(
-                        { 
+                        {
                             status: 'offline',
-                            last_online_at: new Date() 
+                            last_online_at: new Date(),
                         },
-                        { where: { id: userId } }
+                        { where: { id: userId } },
                     );
                     console.log(`Updated last_online_at for user ${userId}`);
                 } catch (error) {
                     console.error(`Error updating last_online_at for user ${userId}:`, error);
                 }
-                
+
                 io.emit('userStatusChanged', { userId, status: 'offline' });
             }
         }
@@ -192,21 +189,34 @@ io.on('connection', (socket) => {
         socket.to(conversationId).emit('directCall:newIceCandidate', iceCandidate);
     });
 
-    socket.on('call:endCall', (conversationId) => {
-        socket.to(conversationId).emit('call:endCall');
+    socket.on('directCall:remoteBusy', ({ conversationId, remoteId }) => {
+        socket.to(conversationId).emit('directCall:remoteBusy', remoteId);
     });
 
     socket.on('groupCall:inviteToJoinTheRoom', (data) => {
         socket.to(data.conversationId).emit('groupCall:joinRoom', data);
     });
 
+    socket.on('call:endCall', (conversationId) => {
+        socket.to(conversationId).emit('call:endCall');
+    });
+
     socket.on('call:cancelCall', (conversationId) => {
-        socket.to(conversationId).emit('call:missedCall');
+        socket.to(conversationId).emit('call:missedCall', conversationId);
     });
 
     socket.on('call:declineCall', (conversationId) => {
-        socket.to(conversationId).emit('call:declineCall')
-    })
+        socket.to(conversationId).emit('call:declineCall');
+    });
+
+    socket.on('call:busyUpdated', ({ conversationId, ...data }) => {
+        socket.to(conversationId).emit('call:busyUpdated', data);
+    });
+
+    socket.on('call:cleanup', ({ conversationId, userId }) => {
+        socket.to(conversationId).emit('call:cleanup', userId);
+        console.log('clean up', conversationId)
+    });
 });
 
 app.use((req, res, next) => {

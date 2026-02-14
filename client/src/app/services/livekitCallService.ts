@@ -10,10 +10,10 @@ import { SocketService } from './socket';
     providedIn: 'root',
 })
 export class LivekitCallService {
-    livekitService = inject(LivekitService);
-    socketService = inject(SocketService);
-    callState = inject(CallStateService);
-    authService = inject(AuthService);
+    private livekitService = inject(LivekitService);
+    private socketService = inject(SocketService);
+    private callState = inject(CallStateService);
+    private authService = inject(AuthService);
 
     private wsUrl = environment.livekit_wsUrl;
     private room: Room | null = null;

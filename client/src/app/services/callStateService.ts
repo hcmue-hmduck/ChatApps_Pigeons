@@ -8,9 +8,6 @@ export interface RemoteParticipant {
     stream: MediaStream;
 }
 
-// const DIRECT_CALL = 'direct',
-//     GROUP_CALL = 'group';
-
 @Injectable({
     providedIn: 'root',
 })
@@ -22,6 +19,9 @@ export class CallStateService {
     remoteParticipants = signal<RemoteParticipant[]>([]);
     isCameraOn = signal<boolean>(true);
     isMicOn = signal<boolean>(true);
+    isRemoteBusy = signal<boolean>(false);
+    isBusy = signal<boolean>(false);
+
     conversationId = '';
     conversationType = '';
 
@@ -41,8 +41,12 @@ export class CallStateService {
         this.remoteParticipants.set([]);
         this.isCameraOn.set(true);
         this.isMicOn.set(true);
+        this.isBusy.set(false);
+        this.isRemoteBusy.set(false);
         this.conversationId = '';
         this.conversationType = '';
+
+        console.log('clean up call state', this.isRemoteBusy());
     }
 
     addVideoTrackToLocalStream(videoTrack: MediaStreamTrack) {

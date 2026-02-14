@@ -1,5 +1,8 @@
 <div class="video-call-overlay">
-    @if (callState.isDeclined()) {
+    @if (callState.isRemoteBusy()) {
+        <h1>Nó đang bận</h1>
+    }
+    @else if (callState.isDeclined()) {
         <h1>Đã bị từ chối</h1>
     } @else if (callState.callEnded()) {
         <h1>Cuộc gọi đã kết thúc</h1>

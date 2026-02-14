@@ -7,9 +7,9 @@ import { AuthService } from './authService';
     providedIn: 'root',
 })
 export class P2PCallService {
-    socketService = inject(SocketService);
-    callState = inject(CallStateService);
-    authService = inject(AuthService);
+    private socketService = inject(SocketService);
+    private callState = inject(CallStateService);
+    private authService = inject(AuthService);
 
     private peerConnection: RTCPeerConnection | null = null;
     private remoteIceCandidates: RTCIceCandidate[] = [];
