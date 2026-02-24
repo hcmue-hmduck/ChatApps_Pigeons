@@ -1,11 +1,14 @@
 import { Injectable, signal } from '@angular/core';
-import { CallSessionData } from '../models/callSessionData.model';
+import { CallSessionData, GROUP_CALL } from '../models/callSessionData.model';
 
 export interface RemoteParticipant {
     participantId: string;
     participantName: string;
     participantAvatarUrl: string;
-    stream: MediaStream;
+    audioStream: MediaStream;
+    videoStream: MediaStream;
+    hasAudio: boolean;
+    hasVideo: boolean;
 }
 
 @Injectable({
@@ -30,8 +33,9 @@ export class CallStateService {
             ?.getTracks()
             .forEach((track) => track.stop());
 
-        this.remoteParticipants().forEach(({ stream }) => {
-            stream.getTracks().forEach((track) => track.stop());
+        this.remoteParticipants().forEach(({ audioStream, videoStream }) => {
+            audioStream.getTracks().forEach((track) => track.stop());
+            videoStream.getTracks().forEach((track) => track.stop());
         });
 
         this.callSessionData.set(null);
@@ -61,4 +65,25 @@ export class CallStateService {
         videoTrack?.forEach((track) => localStream?.removeTrack(track));
         this.localStream.set(localStream);
     }
+
+    extractAudioStream(stream: MediaStream) {
+        const audioStream = new MediaStream();
+        const audioTrack = stream.getAudioTracks();
+
+        if (audioTrack) audioTrack.forEach((track) => audioStream.addTrack(track));
+        return audioStream;
+    }
+
+    extractVideoStream(stream: MediaStream) {
+        const videoStream = new MediaStream();
+        const videoTrack = stream.getVideoTracks();
+
+        if (videoTrack) videoTrack.forEach((track) => videoStream.addTrack(track));
+        return videoStream;
+    }
+
+    getGroupName() {
+        if(this.conversationType !== GROUP_CALL) return ''
+        return ''
+    } 
 }

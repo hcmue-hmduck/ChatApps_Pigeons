@@ -8,14 +8,23 @@ class HomeController {
         if (homeConversationData.length === 0) {
             return new SuccessResponse({
                 message: 'No home data found',
-                metadata: {}
+                metadata: {},
             }).send(res);
         }
         new SuccessResponse({
             message: 'Get home data successfully',
             metadata: {
                 homeConversationData: homeConversationData,
-            }
+            },
+        }).send(res);
+    }
+
+    async getConversatonNameById(req, res) {
+        const conversationId = req.params.convID;
+        const groupName = await homeService.getConversationNameById(conversationId);
+        new SuccessResponse({
+            message: 'Get conversation name successfully',
+            metadata: groupName,
         }).send(res);
     }
 
@@ -27,19 +36,24 @@ class HomeController {
             message: 'Get home messages successfully',
             metadata: {
                 homeMessagesData: homeMessagesData,
-            }
+            },
         }).send(res);
     }
 
     async postHomeMessages(req, res) {
         const conversationId = req.params.convID;
-        const { senderId, content,  parent_message_id} = req.body;
-        const newMessage = await homeService.postMessageToConversation(conversationId, senderId, content, parent_message_id);
+        const { senderId, content, parent_message_id } = req.body;
+        const newMessage = await homeService.postMessageToConversation(
+            conversationId,
+            senderId,
+            content,
+            parent_message_id,
+        );
         new SuccessResponse({
             message: 'Post home message successfully',
             metadata: {
                 newMessage: newMessage,
-            }
+            },
         }).send(res);
     }
 
@@ -51,7 +65,7 @@ class HomeController {
             message: 'Put home message successfully',
             metadata: {
                 updatedMessage: updatedMessage,
-            }
+            },
         }).send(res);
     }
 
@@ -62,7 +76,7 @@ class HomeController {
             message: 'Delete home message successfully',
             metadata: {
                 deleteResult: deleteResult,
-            }
+            },
         }).send(res);
     }
 
@@ -74,7 +88,7 @@ class HomeController {
             message: 'Put home conversation successfully',
             metadata: {
                 updatedConversation: updatedConversation,
-            }
+            },
         }).send(res);
     }
 }

@@ -4,16 +4,23 @@ import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 @Injectable({
-  providedIn: 'root',
+    providedIn: 'root',
 })
-
 export class Conversation {
     private apiUrl = `${environment.apiUrl}/home/conversation`;
-    constructor(private http: HttpClient) { }
+    constructor(private http: HttpClient) {}
 
     // Lấy tất cả conversations của users này
     getConversations(userId: string): Observable<any> {
         return this.http.get(`${this.apiUrl}/${userId}`);
+    }
+
+    getConversationById(conversationId: string): Observable<any> {
+        return this.http.get(`${this.apiUrl}/${conversationId}`);
+    }
+
+    getConversationNameById(conversationId: string): Observable<any> {
+        return this.http.get(`${this.apiUrl}/name/${conversationId}`);
     }
 
     postConversation(participantIds: string[]): Observable<any> {

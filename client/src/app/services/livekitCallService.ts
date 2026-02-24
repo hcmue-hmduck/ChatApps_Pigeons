@@ -5,6 +5,9 @@ import { AuthService } from './authService';
 import { CallStateService } from './callStateService';
 import { LivekitService } from './livekitService';
 import { SocketService } from './socket';
+import { lastValueFrom } from 'rxjs';
+import { GROUP_CALL } from '../models/callSessionData.model';
+import { Conversation } from './conversation';
 
 @Injectable({
     providedIn: 'root',
@@ -14,11 +17,33 @@ export class LivekitCallService {
     private socketService = inject(SocketService);
     private callState = inject(CallStateService);
     private authService = inject(AuthService);
+    private conversationService = inject(Conversation);
 
     private wsUrl = environment.livekit_wsUrl;
     private room: Room | null = null;
     private localLiveKitStream: MediaStream | null = null;
     private remoteParticipantsMap = new Map<string, any>();
+
+    constructor() {
+        this.socketService.on('groupCall:joinRoom', async (data) => {
+            this.callState.conversationId = data.conversationId;
+            const res = await lastValueFrom(
+                this.conversationService.getConversationNameById(data.conversationId),
+            );
+            const groupName = res?.metadata?.name;
+
+            this.callState.callSessionData.set({
+                conversationId: data.conversationId,
+                conversationType: GROUP_CALL,
+                inviterName: data.inviterName,
+                inviterAvatarUrl: data.inviterAvatarUrl,
+                inviterId: data.inviterId,
+                status: 'comming',
+                initializeVideo: data.initializeVideo,
+                groupName,
+            });
+        });
+    }
 
     call() {
         this.joinRoom({ isInviter: true });
@@ -80,7 +105,10 @@ export class LivekitCallService {
                 participantId,
                 participantName,
                 participantAvatarUrl,
-                stream,
+                audioStream: this.callState.extractAudioStream(stream),
+                videoStream: this.callState.extractVideoStream(stream),
+                hasAudio: stream.getAudioTracks().length > 0,
+                hasVideo: stream.getVideoTracks().length > 0,
             }),
         );
 
@@ -151,8 +179,8 @@ export class LivekitCallService {
             }
 
             // kết thúc cuộc gọi nếu phòng chỉ còn 1 người
-            const totalRemoteParticipants = Number(this.room?.remoteParticipants.size);
-            if (!totalRemoteParticipants) this.callState.cleanUp();
+            // const totalRemoteParticipants = Number(this.room?.remoteParticipants.size);
+            // if (!totalRemoteParticipants) this.callState.cleanUp();
         });
 
         this.room?.on('participantDisconnected', (participant) => {

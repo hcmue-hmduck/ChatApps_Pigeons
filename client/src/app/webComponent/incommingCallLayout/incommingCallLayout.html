@@ -4,12 +4,45 @@
     <div class="incoming-overlay">
         <div class="incoming-card" [class.is-missed]="call.status === 'missed'">
             @if (call.status !== 'missed') {
+                <button class="incoming-close" type="button" (click)="handleDecline()">×</button>
                 <div class="incoming-badge">Cuộc gọi đến</div>
+                <div class="incoming-avatar-wrap">
+                    <img
+                        class="incoming-avatar"
+                        [src]="call.inviterAvatarUrl"
+                        (error)="call.inviterAvatarUrl = avatarUrlDefault"
+                    />
+                </div>
+
+                @if (call.conversationType === directCallType) {
+                    <div class="incoming-name">{{ call.inviterName }} đang gọi cho bạn</div>
+                } @else {
+                    <div class="incoming-name">{{ call.inviterName }} mời bạn vào cuộc gọi nhóm</div>
+                    <div class="incoming-subtitle">{{ call.groupName }}</div>
+                }
+
+                <!-- <div class="incoming-subtitle secure-text">
+                    <span class="lock-icon">🔒</span>
+                    <span>Được mã hóa đầu cuối</span>
+                </div> -->
                 <div class="incoming-actions">
-                    <button class="action-button decline" (click)="handleDecline()">Từ chối</button>
-                    <button class="action-button accept" (click)="handleAccept()">Chấp nhận</button>
+                    <div class="action-item">
+                        <button class="action-button decline" type="button" (click)="handleDecline()">✕</button>
+                        <span>Từ chối</span>
+                    </div>
+                    <div class="action-item">
+                        <button class="action-button accept" type="button" (click)="handleAccept()">
+                            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                <path
+                                    d="M15 8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8zm2 2.5 4-2.5v8l-4-2.5v-3z"
+                                />
+                            </svg>
+                        </button>
+                        <span>Chấp nhận</span>
+                    </div>
                 </div>
             } @else {
+                <button class="incoming-close" type="button" (click)="closeOverlay()">×</button>
                 <div class="incoming-badge missed">Cuộc gọi nhỡ</div>
                 <div class="incoming-subtitle missed-text">Người dùng đã gác máy</div>
                 <div class="incoming-actions">

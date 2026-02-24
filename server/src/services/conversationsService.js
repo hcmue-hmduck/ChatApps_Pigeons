@@ -1,17 +1,24 @@
-const conversationsModel = require('../models/conversationsModel'); 
+const conversationsModel = require('../models/conversationsModel');
 
 class ConversationsService {
     // Lấy tất cả conversations
     async getAllConversations() {
         return await conversationsModel.findAll({
             where: { is_active: true },
-            order: [['updated_at', 'DESC']]
+            order: [['updated_at', 'DESC']],
         });
     }
 
     // Lấy conversation theo ID
     async getConversationById(conversationId) {
         return await conversationsModel.findByPk(conversationId);
+    }
+
+    // Lấy conversation theo ID
+    async getConversationNameById(conversationId) {
+        return await conversationsModel.findByPk(conversationId, {
+            attributes: ['name'],
+        });
     }
 
     // Tạo conversation mới
@@ -36,9 +43,9 @@ class ConversationsService {
         const conversation = await conversationsModel.findByPk(conversationId);
         if (conversation) {
             // Soft delete - chỉ đánh dấu is_active = false
-            await conversation.update({ 
+            await conversation.update({
                 is_active: false,
-                updated_at: new Date().toISOString()
+                updated_at: new Date().toISOString(),
             });
             return true;
         }

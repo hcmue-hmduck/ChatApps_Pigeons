@@ -1,7 +1,9 @@
 import { inject, Injectable } from '@angular/core';
-import { SocketService } from './socket';
-import { CallStateService } from './callStateService';
 import { AuthService } from './authService';
+import { CallStateService } from './callStateService';
+import { SocketService } from './socket';
+import { DIRECT_CALL } from '../models/callSessionData.model';
+import { Participant } from 'livekit-client';
 
 @Injectable({
     providedIn: 'root',
@@ -12,14 +14,66 @@ export class P2PCallService {
     private authService = inject(AuthService);
 
     private peerConnection: RTCPeerConnection | null = null;
+    private dataChannel: RTCDataChannel | null = null;
     private remoteIceCandidates: RTCIceCandidate[] = [];
     private localIceCandidates: RTCIceCandidate[] = [];
     private canSendLocalIceCandidates = false;
+
+    private friendId = '';
     private friendName = '';
     private friendAvatarUrl = '';
-    private remoteStream: MediaStream | null = null;
 
-    setFriendInfo(name: string, avatar: string) {
+    constructor() {
+        // Client 2 nhận offer từ Client 1
+        // instance này ở tab cha
+        this.socketService.on('directCall:offerAwaiting', (data) => {
+            const userId = this.authService.getUserId();
+            if (userId === data.inviterId) return;
+
+            console.log('Receive offer...');
+            if (this.callState.isBusy()) {
+                this.socketService.emit('directCall:remoteBusy', {
+                    conversationId: data.conversationId,
+                    remoteId: userId,
+                });
+                return;
+            }
+
+            this.callState.conversationId = data.conversationId;
+
+            this.callState.callSessionData.set({
+                conversationId: data.conversationId,
+                conversationType: DIRECT_CALL,
+                inviterName: data.inviterName,
+                inviterAvatarUrl: data.inviterAvatarUrl,
+                inviterId: data.inviterId,
+                offer: data.offer,
+                status: 'comming',
+                initializeVideo: data.initializeVideo,
+            });
+        });
+
+        // Client 1 nhận answer từ Client 2
+        this.socketService.on('directCall:answerResponse', async (data) => {
+            this.setFriendInfo(data.answererId, data.answererName, data.answererAvatarUrl);
+            await this.handleAnswer(data);
+        });
+
+        // Nhận ICE candidate từ client kia
+        this.socketService.on('directCall:newIceCandidate', (iceCandidate) => {
+            this.addIceCandidate(iceCandidate);
+        });
+
+        this.socketService.on('directCall:remoteBusy', (remoteId) => {
+            if (this.authService.getUserId() !== remoteId) {
+                this.callState.isRemoteBusy.set(true);
+                console.log('set remote busy:::', remoteId);
+            }
+        });
+    }
+
+    setFriendInfo(id: string, name: string, avatar: string) {
+        this.friendId = id;
         this.friendName = name;
         this.friendAvatarUrl = avatar;
     }
@@ -50,8 +104,11 @@ export class P2PCallService {
 
     async getUserMedia() {
         try {
-            const initializeVideo = this.callState.isCameraOn()
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: initializeVideo });
+            const initializeVideo = this.callState.isCameraOn();
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: true,
+                video: initializeVideo,
+            });
             this.callState.localStream.set(stream);
         } catch (error) {
             console.log('GUM error');
@@ -132,21 +189,42 @@ export class P2PCallService {
                     stream.addTrack(event.track);
                 }
 
+                console.log('Nhận track....');
+                stream
+                    .getAudioTracks()
+                    .some((track) => console.log(`stream.getAudioTracks().some`, track.enabled));
+                stream
+                    .getVideoTracks()
+                    .some((track) => console.log(`stream.getVideoTracks().some`, track.enabled));
+
                 const currentParticipants = this.callState.remoteParticipants();
-                const p2pUser = currentParticipants.find((p) => p.participantId === 'p2p');
+                const p2pUser = currentParticipants[0];
 
                 if (!p2pUser) {
+                    const audioStream = this.callState.extractAudioStream(stream);
+                    const videoStream = this.callState.extractVideoStream(stream);
+
                     this.callState.remoteParticipants.set([
                         {
-                            participantId: 'p2p',
+                            participantId: this.friendId,
                             participantName: this.friendName,
                             participantAvatarUrl: this.friendAvatarUrl,
-                            stream,
+                            audioStream,
+                            videoStream,
+                            hasAudio: audioStream.getTracks().length > 0,
+                            hasVideo: videoStream.getTracks().length > 0,
                         },
                     ]);
                 } else {
-                    const existStream = p2pUser.stream;
-                    if (!existStream.getTracks().find((track) => track.id === event.track.id))
+                    let existStream: MediaStream | null = null;
+
+                    if (event.track.kind === 'audio') existStream = p2pUser.audioStream;
+                    else if (event.track.kind === 'video') existStream = p2pUser.videoStream;
+
+                    if (
+                        existStream &&
+                        !existStream.getTracks().find((track) => track.id === event.track.id)
+                    )
                         existStream.addTrack(event.track);
                     this.callState.remoteParticipants.set([...currentParticipants]);
                 }
@@ -154,7 +232,19 @@ export class P2PCallService {
                 console.log('Track received...');
             });
 
-            if (isOfferer) this.addLocalTrackAsTransceivers();
+            if (isOfferer) {
+                this.addLocalTrackAsTransceivers();
+                this.dataChannel = this.peerConnection.createDataChannel('chat', {
+                    ordered: true,
+                    maxRetransmits: 3,
+                });
+                this.setupDataChannel();
+            } else {
+                this.peerConnection.ondatachannel = (event) => {
+                    this.dataChannel = event.channel;
+                    this.setupDataChannel();
+                };
+            }
         } catch (error) {
             throw error;
         }
@@ -181,7 +271,9 @@ export class P2PCallService {
         } else {
             const tranceiver = this.peerConnection.addTransceiver('video', {
                 direction: 'sendrecv',
+                streams: [stream],
             });
+            if (tranceiver.sender.track) tranceiver.sender.track.enabled = false;
             tranceiver.sender.replaceTrack(null);
         }
     }
@@ -195,21 +287,27 @@ export class P2PCallService {
         this.peerConnection.getTransceivers().forEach((transceiver) => {
             const kind = transceiver.receiver.track.kind;
 
-            const audioTrack = stream.getAudioTracks()[0];
-            const videoTrack = stream.getVideoTracks()[0];
-
             if (kind === 'audio') {
+                const audioTrack = stream.getAudioTracks()[0];
                 transceiver.sender.replaceTrack(audioTrack);
                 transceiver.direction = 'sendrecv';
             } else if (kind === 'video') {
+                const videoTrack = stream.getVideoTracks()[0];
                 transceiver.sender.replaceTrack(videoTrack);
                 transceiver.direction = 'sendrecv';
             }
         });
     }
 
-    async answerOffer(offer: RTCSessionDescriptionInit) {
+    async answerOffer(
+        offer: RTCSessionDescriptionInit,
+        inviterName: string,
+        inviterId: string,
+        inviterAvatarUrl: string,
+    ) {
         try {
+            this.setFriendInfo(inviterId, inviterName, inviterAvatarUrl);
+
             await this.getUserMedia();
             await this.createRTCPeerConnection({ isOfferer: false });
 
@@ -224,10 +322,11 @@ export class P2PCallService {
             this.canSendLocalIceCandidates = true;
             this.sendLocalIceCandidates();
 
-            const { userName, userAvatarUrl } = this.authService.getUserInfor();
+            const { userName, userAvatarUrl, userId } = this.authService.getUserInfor();
             this.socketService.emit('directCall:newAnswer', {
                 answer,
                 conversationId: this.callState.conversationId,
+                answererId: userId,
                 answererName: userName,
                 answererAvatarUrl: userAvatarUrl,
             });
@@ -244,20 +343,6 @@ export class P2PCallService {
 
             this.canSendLocalIceCandidates = true;
             this.sendLocalIceCandidates();
-
-            this.friendName = data.answererName;
-            this.friendAvatarUrl = data.answererAvatarUrl;
-
-            if (this.remoteStream) {
-                this.callState.remoteParticipants.set([
-                    {
-                        participantId: 'p2p',
-                        participantName: data.answererName,
-                        participantAvatarUrl: data.answererAvatarUrl,
-                        stream: this.remoteStream!,
-                    },
-                ]);
-            }
         } catch (error) {
             console.error(error);
             throw error;
@@ -335,10 +420,7 @@ export class P2PCallService {
                                 `Relay address: ${localCandidate.address}:${localCandidate.port}`,
                             );
                         } else {
-                            console.log(
-                                '%c USING P2P (NO TURN QUOTA)',
-                                'color: #00ff00;',
-                            );
+                            console.log('%c USING P2P (NO TURN QUOTA)', 'color: #00ff00;');
                         }
                     }
                 }
@@ -352,6 +434,8 @@ export class P2PCallService {
         if (enable) this.enableCamera();
         else this.disableCamera();
         this.callState.isCameraOn.set(enable);
+
+        this.sendMediaState();
     }
 
     async enableCamera() {
@@ -365,7 +449,7 @@ export class P2PCallService {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true });
             const videoTrack = stream.getVideoTracks()[0];
             await transceiver.sender.replaceTrack(videoTrack);
-            // transceiver.direction = 'sendrecv';
+            transceiver.direction = 'sendrecv';
 
             this.callState.addVideoTrackToLocalStream(videoTrack);
         } catch (error) {
@@ -409,6 +493,8 @@ export class P2PCallService {
         else audioTrack.enabled = false;
 
         this.callState.isMicOn.set(enable);
+
+        this.sendMediaState();
     }
 
     cleanUp() {
@@ -416,9 +502,50 @@ export class P2PCallService {
         this.peerConnection = null;
         this.remoteIceCandidates = [];
         this.localIceCandidates = [];
-        this.remoteStream = null;
         this.canSendLocalIceCandidates = false;
         this.friendName = '';
         this.friendAvatarUrl = '';
+    }
+
+    setupDataChannel() {
+        if (!this.dataChannel) return;
+
+        this.dataChannel.onopen = () => {
+            this.sendMediaState();
+        };
+
+        this.dataChannel.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'mediaState') this.handleMediaState(data);
+        };
+
+        this.dataChannel.onerror = (error) => {
+            console.error('📡 Data channel error:', error);
+        };
+    }
+
+    sendMediaState() {
+        if (!this.dataChannel || this.dataChannel.readyState !== 'open') return;
+
+        const state = {
+            type: 'mediaState',
+            hasAudio: this.callState.isMicOn(),
+            hasVideo: this.callState.isCameraOn(),
+        };
+
+        this.dataChannel.send(JSON.stringify(state));
+    }
+
+    handleMediaState(data: any) {
+        this.callState.remoteParticipants.update((participants) => {
+            return participants.map((p) => {
+                return {
+                    ...p,
+                    hasAudio: data.hasAudio,
+                    hasVideo: data.hasVideo,
+                };
+            });
+        });
     }
 }

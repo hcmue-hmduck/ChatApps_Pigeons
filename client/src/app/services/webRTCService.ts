@@ -1,12 +1,10 @@
 import { inject, Injectable } from '@angular/core';
+import { DIRECT_CALL, GROUP_CALL } from '../models/callSessionData.model';
 import { AuthService } from './authService';
 import { CallStateService } from './callStateService';
 import { LivekitCallService } from './livekitCallService';
 import { P2PCallService } from './p2pCallService';
 import { SocketService } from './socket';
-
-const DIRECT_CALL = 'direct',
-    GROUP_CALL = 'group';
 
 @Injectable({
     providedIn: 'root',
@@ -26,72 +24,10 @@ export class WebRtcService {
             }
         });
 
-        // Client 2 nhận offer từ Client 1
-        // instance này ở tab cha
-        this.socketService.on('directCall:offerAwaiting', (data) => {
-            const userId = this.authService.getUserId();
-            if (userId === data.inviterId) return;
-
-            console.log('Receive offer...');
-            if (this.callState.isBusy()) {
-                this.socketService.emit('directCall:remoteBusy', {
-                    conversationId: data.conversationId,
-                    remoteId: userId,
-                });
-                console.log('emit cho thằng kia, remote là ', userId);
-                return;
-            }
-
-            this.callState.conversationId = data.conversationId;
-            this.p2p.setFriendInfo(data.inviterName, data.inviterAvatarUrl);
-
-            this.callState.callSessionData.set({
-                conversationId: data.conversationId,
-                conversationType: DIRECT_CALL,
-                inviterName: data.inviterName,
-                inviterAvatarUrl: data.inviterAvatarUrl,
-                inviterId: data.inviterId,
-                offer: data.offer,
-                status: 'comming',
-                initializeVideo: data.initializeVideo,
-            });
-        });
-
-        // Client 1 nhận answer từ Client 2
-        this.socketService.on('directCall:answerResponse', async (data) => {
-            await this.p2p.handleAnswer(data);
-        });
-
-        // Nhận ICE candidate từ client kia
-        this.socketService.on('directCall:newIceCandidate', (iceCandidate) => {
-            this.p2p.addIceCandidate(iceCandidate);
-        });
-
-        this.socketService.on('directCall:remoteBusy', (remoteId) => {
-            if (this.authService.getUserId() !== remoteId) {
-                this.callState.isRemoteBusy.set(true);
-                console.log('set remote busy:::', remoteId);
-            }
-        });
-
         this.socketService.on('call:cleanup', (userId) => {
             if (this.authService.getUserId() === userId) {
                 this.cleanupCall();
             }
-        });
-
-        // SFU join room
-        this.socketService.on('groupCall:joinRoom', (data) => {
-            this.callState.conversationId = data.conversationId;
-            this.callState.callSessionData.set({
-                conversationId: data.conversationId,
-                conversationType: GROUP_CALL,
-                inviterName: data.inviterName,
-                inviterAvatarUrl: data.inviterAvatarUrl,
-                inviterId: data.inviterId,
-                status: 'comming',
-                initializeVideo: data.initializeVideo,
-            });
         });
 
         // Nhận tín hiệu kết thúc cuộc gọi
@@ -144,6 +80,10 @@ export class WebRtcService {
         conversationType: string,
         offer: RTCSessionDescriptionInit | null,
         initializeVideo: boolean,
+        // for P2P
+        inviterName: string,
+        inviterId: string,
+        inviterAvatarUrl: string,
     ) {
         console.log('Accept incomming call');
         this.callState.conversationId = conversationId;
@@ -154,7 +94,7 @@ export class WebRtcService {
 
         if (conversationType === DIRECT_CALL) {
             this.isDirectCall = true;
-            this.p2p.answerOffer(offer!);
+            this.p2p.answerOffer(offer!, inviterName, inviterId, inviterAvatarUrl);
         } else if (conversationType === GROUP_CALL) this.livekit.joinRoom({ isInviter: false });
     }
 

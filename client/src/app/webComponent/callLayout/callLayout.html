@@ -1,50 +1,68 @@
 <div class="video-call-overlay">
     @if (callState.isRemoteBusy()) {
         <h1>Nó đang bận</h1>
-    }
-    @else if (callState.isDeclined()) {
+    } @else if (callState.isDeclined()) {
         <h1>Đã bị từ chối</h1>
     } @else if (callState.callEnded()) {
         <h1>Cuộc gọi đã kết thúc</h1>
-    } @else if (callState.remoteParticipants(); as participants) {
-        @if (participants.length === 0) {
-            <div class="status-panel">
-                <div class="status-title">Đang chờ người nhận cuộc gọi</div>
-                <div class="status-desc">
-                    Hãy giữ máy, hệ thống sẽ kết nối ngay khi người kia nhấc máy.
-                </div>
-                <div class="status-dots" aria-hidden="true">
-                    <span></span><span></span><span></span>
-                </div>
-            </div>
-        } @else {
-            <div class="remote-grid">
-                @for (participant of participants; track participant.participantId) {
-                    <div class="remote-tile">
+    } @else {
+        <div
+            class="call-container"
+            [class.two-people]="isTwoPeople()"
+            [class.group-call]="isGroupCall()"
+        >
+            @for (participant of callState.remoteParticipants(); track participant.participantId) {
+                <div class="remote-container">
+                    <audio [srcObject]="participant.audioStream" autoplay></audio>
+
+                    @if (participant.hasVideo) {
                         <video
                             class="remote-video"
+                            [srcObject]="participant.videoStream"
                             autoplay
                             playsinline
-                            [muted]="false"
-                            [srcObject]="participant.stream"
                         ></video>
-                        <div class="remote-label">{{ participant.participantName }}</div>
+                    } @else {
+                        <div class="avatar-container">
+                            <img
+                                [src]="participant.participantAvatarUrl"
+                                (error)="(avatarUrlDefault)"
+                                [alt]="participant.participantName"
+                                class="avatar-image"
+                            />
+                        </div>
+                    }
+
+                    <div class="name">{{ participant.participantName }}</div>
+                </div>
+            }
+
+            <div class="local-container">
+                @if (callState.isCameraOn()) {
+                    <video
+                        class="local-video"
+                        [srcObject]="callState.localStream()"
+                        autoplay
+                        playsinline
+                    ></video>
+                } @else {
+                    <div class="avatar-container">
+                        <img
+                            [src]="userAvatarUrl()"
+                            (error)="(avatarUrlDefault)"
+                            alt="Bạn"
+                            class="avatar-image"
+                        />
                     </div>
                 }
-                <button (click)="toggleCamera()" style="padding: 10px">Camera</button>
-                <button (click)="toggleMicrophone()" style="padding: 10px">Microphone</button>
+                <div class="name">Bạn</div>
             </div>
-        }
 
-        <div class="local-preview">
-            <video
-                class="local-video"
-                autoplay
-                playsinline
-                [muted]="true"
-                [srcObject]="callState.localStream()"
-            ></video>
-            <span class="local-label">Bạn</span>
+            <div class="controls">
+                <div class="btn" (click)="toggleCamera()">📹</div>
+                <div class="btn" (click)="toggleMicrophone()">🎤</div>
+                <div class="btn end" (click)="endCall()">📞</div>
+            </div>
         </div>
     }
 </div>

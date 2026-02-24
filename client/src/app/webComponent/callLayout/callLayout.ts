@@ -1,4 +1,4 @@
-import { Component, HostListener, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, HostListener, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../services/authService';
 import { SocketService } from '../../services/socket';
@@ -18,6 +18,32 @@ export class CallLayoutComponent implements OnInit {
     activatedRoute = inject(ActivatedRoute);
     callState = inject(CallStateService);
 
+    readonly avatarUrlDefault = '/assets/AvatarDefault.jpg';
+
+    userAvatarUrl = computed<string>(() => {
+        return this.authService.getUserInfor().userAvatarUrl;
+    });
+
+    remoteCount = computed<number>(() => {
+        return this.callState.remoteParticipants().length;
+    });
+
+    totalCount = computed<number>(() => {
+        return this.remoteCount() + (this.callState.localStream() ? 1 : 0);
+    });
+
+    isWaiting = computed(() => {
+        return this.totalCount() === 1;
+    });
+
+    isTwoPeople = computed(() => {
+        return this.totalCount() === 2;
+    });
+
+    isGroupCall = computed(() => {
+        return this.totalCount() > 2;
+    });
+
     ngOnInit(): void {
         const navigation = performance.getEntriesByType(
             'navigation',
@@ -31,14 +57,30 @@ export class CallLayoutComponent implements OnInit {
             if (event.origin !== window.location.origin) return;
             if (event.data.type !== 'sendCallData') return;
 
-            const { conversationType, conversationId, userId, initializeVideo } = event.data;
+            const {
+                conversationType,
+                conversationId,
+                userId,
+                initializeVideo,
+                inviterName,
+                inviterId,
+                inviterAvatarUrl,
+            } = event.data;
             await this.authService.setUserInfor(userId);
             this.socketService.emit('joinConversation', conversationId);
 
             const mode = this.activatedRoute.snapshot.queryParamMap.get('mode');
             if (mode === 'accept') {
                 const { offer } = event.data;
-                this.webRTCService.acceptIncomingCall(conversationId, conversationType, offer, initializeVideo);
+                this.webRTCService.acceptIncomingCall(
+                    conversationId,
+                    conversationType,
+                    offer,
+                    initializeVideo,
+                    inviterName,
+                    inviterId,
+                    inviterAvatarUrl,
+                );
             } else this.webRTCService.call(conversationId, conversationType, initializeVideo);
 
             window.removeEventListener('message', listener);
@@ -49,8 +91,9 @@ export class CallLayoutComponent implements OnInit {
         window.opener.postMessage({ type: 'getCallData' }, window.location.origin);
     }
 
-    handleCancel() {
-        this.webRTCService.end();
+    endCall() {
+        // this.webRTCService.end();
+        console.log('RemoteParticipant:::', this.callState.remoteParticipants());
     }
 
     toggleCamera() {

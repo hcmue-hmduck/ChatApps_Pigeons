@@ -1,6 +1,6 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Component, effect, inject, PLATFORM_ID, signal } from '@angular/core';
-import { CallSessionData } from '../../models/callSessionData.model';
+import { CallSessionData, DIRECT_CALL } from '../../models/callSessionData.model';
 import { AuthService } from '../../services/authService';
 import { WebRtcService } from '../../services/webRTCService';
 import { CallStateService } from '../../services/callStateService';
@@ -18,8 +18,12 @@ export class IncommingCallLayout {
     callSessionData = signal<CallSessionData | null>(null);
     userId = '';
     ringtone: HTMLAudioElement | undefined;
+
     private vibrateIntervalId: number | null = null;
     private platformId = inject(PLATFORM_ID);
+
+    readonly directCallType = DIRECT_CALL
+    readonly avatarUrlDefault = '/assets/AvatarDefault.jpg'
 
     constructor() {
         if (isPlatformBrowser(this.platformId)) {
@@ -109,6 +113,9 @@ export class IncommingCallLayout {
                     userId: this.userId,
                     ...(this.callSessionData()?.offer && { offer: this.callSessionData()?.offer }),
                     initializeVideo,
+                    inviterName: this.callSessionData()?.inviterName,
+                    inviterAvatarUrl: this.callSessionData()?.inviterAvatarUrl,
+                    inviterId: this.callSessionData()?.inviterId,
                 };
 
                 (event.source as Window)?.postMessage(payload, window.location.origin);

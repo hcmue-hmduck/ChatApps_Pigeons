@@ -8,7 +8,9 @@ router.put('/messages/:messID', homeController.putHomeMessages);
 router.post('/messages/:convID', homeController.postHomeMessages); 
 router.get('/messages/:convID', homeController.getHomeMessages);
 router.get('/conversation/:userID', homeController.getHomeConversation);
+router.get('/conversation/name/:convID', homeController.getConversatonNameById);
 router.put('/conversation/:convID', homeController.putHomeConversation);
+
 
 
 module.exports = router;
