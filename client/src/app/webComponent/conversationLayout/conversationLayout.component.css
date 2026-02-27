@@ -174,14 +174,13 @@
    PANEL 2 — CONVERSATIONS LIST
    ============================================================ */
 .conv-panel {
-  width: var(--conv-sidebar-width);
-  min-width: 260px;
+  width: 350px;
+  flex: 0 0 350px;
   height: 100vh;
   display: flex;
   flex-direction: column;
   background: var(--conv-bg);
   border-right: 1px solid var(--border);
-  flex-shrink: 0;
   overflow: hidden;
   position: relative;
 }
@@ -641,39 +640,6 @@
   font-size: 13px;
 }
 
-/* ============================================================
-   PANEL 3 — RESIZE HANDLE
-   ============================================================ */
-.resize-handle {
-  width: 4px;
-  background: transparent;
-  cursor: col-resize !important;
-  flex-shrink: 0;
-  position: relative;
-  z-index: 5;
-  transition: background 0.2s;
-}
-
-.resize-handle::before {
-  content: '';
-  position: absolute;
-  width: 20px;
-  height: 100%;
-  left: -8px;
-  cursor: col-resize !important;
-}
-
-.resize-handle:hover,
-.resize-handle.resizing {
-  background: var(--accent-light);
-}
-
-.resize-overlay {
-  position: fixed;
-  inset: 0;
-  cursor: col-resize !important;
-  z-index: 9999;
-}
 
 /* ============================================================
    CHAT AREA (messages-layout component)

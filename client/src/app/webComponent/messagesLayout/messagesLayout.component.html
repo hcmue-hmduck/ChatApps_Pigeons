@@ -133,15 +133,15 @@
 
                                         <!-- Reply preview -->
                                         <ng-container *ngIf="msg.parent_message_id">
+                                            <div class="reply-sender-label me-label">
+                                                <i class="fas fa-reply me-1"></i>
+                                                {{ msg.parent_message_info.parent_message_sender_id ===
+                                                currentUserId ?
+                                                'Bạn đã trả lời chính mình' :
+                                                'Bạn đã trả lời ' + msg.parent_message_info.parent_message_name }}
+                                            </div>
                                             <div class="reply-info-me"
                                                 (click)="scrollToMessage(msg.parent_message_info.parent_message_id)">
-                                                <div class="reply-sender-label">
-                                                    <i class="fas fa-reply me-1"></i>
-                                                    {{ msg.parent_message_info.parent_message_sender_id ===
-                                                    currentUserId ?
-                                                    'Bạn đã trả lời chính mình' :
-                                                    'Bạn đã trả lời ' + msg.parent_message_info.parent_message_name }}
-                                                </div>
                                                 <div class="reply-content-preview">
                                                     <ng-container
                                                         *ngIf="!msg.parent_message_info.parent_message_is_deleted">
@@ -189,7 +189,7 @@
                                             <div class="bubble-me" [class.bubble-deleted]="msg.is_deleted">
                                                 <span *ngIf="msg.is_deleted">Tin nhắn đã được gỡ</span>
                                                 <div *ngIf="!msg.is_deleted"
-                                                    [innerHTML]="msg.content.replace(/\n/g, '<br>')"></div>
+                                                    [innerHTML]="(msg.content || '').replace(/\n/g, '<br>')"></div>
                                             </div>
                                         </div>
 
@@ -241,25 +241,25 @@
 
                                         <!-- Reply preview -->
                                         <ng-container *ngIf="msg.parent_message_id">
+                                            <div class="reply-sender-label other-label">
+                                                <i class="fas fa-reply me-1"></i>
+                                                <ng-container *ngIf="msg.sender_id === currentUserId">
+                                                    Bạn đã trả lời {{ msg.parent_message_info.parent_message_name }}
+                                                </ng-container>
+                                                <ng-container *ngIf="msg.sender_id !== currentUserId">
+                                                    <ng-container
+                                                        *ngIf="msg.parent_message_info.parent_message_sender_id === currentUserId">
+                                                        {{ msg.sender_name }} đã trả lời bạn
+                                                    </ng-container>
+                                                    <ng-container
+                                                        *ngIf="msg.parent_message_info.parent_message_sender_id !== currentUserId">
+                                                        {{ msg.sender_name }} đã trả lời {{
+                                                        msg.parent_message_info.parent_message_name }}
+                                                    </ng-container>
+                                                </ng-container>
+                                            </div>
                                             <div class="reply-info-other"
                                                 (click)="scrollToMessage(msg.parent_message_info.parent_message_id)">
-                                                <div class="reply-sender-label">
-                                                    <i class="fas fa-reply me-1"></i>
-                                                    <ng-container *ngIf="msg.sender_id === currentUserId">
-                                                        Bạn đã trả lời {{ msg.parent_message_info.parent_message_name }}
-                                                    </ng-container>
-                                                    <ng-container *ngIf="msg.sender_id !== currentUserId">
-                                                        <ng-container
-                                                            *ngIf="msg.parent_message_info.parent_message_sender_id === currentUserId">
-                                                            {{ msg.sender_name }} đã trả lời bạn
-                                                        </ng-container>
-                                                        <ng-container
-                                                            *ngIf="msg.parent_message_info.parent_message_sender_id !== currentUserId">
-                                                            {{ msg.sender_name }} đã trả lời {{
-                                                            msg.parent_message_info.parent_message_name }}
-                                                        </ng-container>
-                                                    </ng-container>
-                                                </div>
                                                 <div class="reply-content-preview">
                                                     <ng-container
                                                         *ngIf="!msg.parent_message_info.parent_message_is_deleted">
@@ -281,7 +281,7 @@
                                             </ng-container>
                                             <ng-container *ngIf="!msg.is_deleted">
                                                 <div class="bubble-other"
-                                                    [innerHTML]="msg.content.replace(/\n/g, '<br>')">
+                                                    [innerHTML]="(msg.content || '').replace(/\n/g, '<br>')">
                                                 </div>
 
                                                 <!-- Actions (right of bubble for other) -->

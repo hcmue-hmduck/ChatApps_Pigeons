@@ -509,12 +509,11 @@
     background: #d8dadf;
 }
 
-/* Sender name */
+/* Sender name (Moved outside of the reply quote box) */
 .reply-sender-label {
     font-size: 12px;
-    font-weight: 700;
-    color: #0084ff;
-    margin-bottom: 3px;
+    color: var(--msg-secondary);
+    margin-bottom: 4px;
     display: flex;
     align-items: center;
     gap: 5px;
@@ -523,10 +522,12 @@
     text-overflow: ellipsis;
 }
 
-/* Hide icon — Messenger doesn't show it */
-.reply-sender-label i.fas.fa-reply {
+
+
+/* Hide icon — Messenger doesn't show it (Removed per user request) */
+/* .reply-sender-label i.fas.fa-reply {
     display: none;
-}
+} */
 
 /* Quoted content */
 .reply-content-preview {
