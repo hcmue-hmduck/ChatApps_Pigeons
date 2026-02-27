@@ -169,6 +169,7 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
         this.socketService.off('newMessage');
         this.socketService.off('updateMessage');
         this.socketService.off('deleteMessage');
+        this.socketService.off('pinMessage');
         
         this.socketService.emit('joinConversation', conversationId);
         
@@ -220,6 +221,7 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
         
         // Setup listener cho cập nhật tin nhắn
         this.socketService.on('updateMessage', (data: any) => {
+            console.log('Updating message in conversations', data);
             // this.lastMessageId = data.id;
             // console.log('Last message id updated to:', this.lastMessageId);
             if (data.conversation_id === conversationId) {
@@ -251,6 +253,13 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
                     }
                 }));
                 console.log('Updated messages:', this.getMessagesData().homeMessagesData.messages);
+            }
+        });
+        
+        // Setup listener cho pin tin nhắn
+        this.socketService.on('pinMessage', (data: any) => {
+            if (data.conversation_id === conversationId) {
+                this.pinnedMessages = [data, ...this.pinnedMessages];
             }
         });
         
@@ -577,7 +586,29 @@ export class MessagesLayoutComponent implements OnInit, OnChanges, AfterViewInit
 
     pinMessage(msg: any) {
         console.log('Ghim tin nhắn:', msg);
-        console.log('Curren user', this.currentUserId);
+        this.messagesService.pinMessage(msg.id, this.conversationId, this.currentUserId, msg.content, 1).subscribe({
+            next: (response) => {
+                const currentUser = this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId) || {};
+                const newPinMessage = {
+                    ...response.metadata.newPinMessage,
+                    pinned_by_name: currentUser.full_name,
+                    sender_name: currentUser.full_name,
+                    sender_id: currentUser.user_id,
+                    sender_avatar: currentUser.avatar_url,
+                    // Gắn thêm content của message gốc để hiển thị
+                    content: msg.content,
+                };
+
+                // Cập nhật local state ngay lập tức
+                this.pinnedMessages = [newPinMessage, ...this.pinnedMessages];
+
+                // Broadcast cho người khác trong conversation
+                this.socketService.emit('pinMessage', newPinMessage);
+            },
+            error: (error) => {
+                console.error('Lỗi khi ghim tin nhắn:', error);
+            }
+        });
         this.closeMenu();
     }
 

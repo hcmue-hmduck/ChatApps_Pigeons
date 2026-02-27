@@ -297,7 +297,7 @@ export class ConversationLayoutComponent implements OnInit {
         const startX = event.clientX;
         
         // Lấy width thực tế từ DOM thay vì từ biến để tránh jump
-        const sidebar = document.querySelector('.sidebar-modern') as HTMLElement;
+        const sidebar = document.querySelector('.conv-panel') as HTMLElement;
         const startWidth = sidebar ? sidebar.offsetWidth : this.sidebarWidth;
         
         const mouseMoveHandler = (e: MouseEvent) => {
@@ -331,7 +331,7 @@ export class ConversationLayoutComponent implements OnInit {
     }
     
     private updateSidebarWidth() {
-        const sidebar = document.querySelector('.sidebar-modern') as HTMLElement;
+        const sidebar = document.querySelector('.conv-panel') as HTMLElement;
         if (sidebar) {
             sidebar.style.setProperty('width', `${this.sidebarWidth}px`, 'important');
             sidebar.style.setProperty('flex', `0 0 ${this.sidebarWidth}px`, 'important');

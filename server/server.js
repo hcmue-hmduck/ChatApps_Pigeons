@@ -17,10 +17,10 @@ const app = express();
 const server = createServer(app);
 const io = Server(server, {
     cors: {
-        origin: [process.env.LINK_CLIENT, 
-                process.env.LINK_SERVER,
-                process.env.LINK_CLIENT_PROD,
-                process.env.LINK_SERVER_PROD],
+        origin: [process.env.LINK_CLIENT,
+        process.env.LINK_SERVER,
+        process.env.LINK_CLIENT_PROD,
+        process.env.LINK_SERVER_PROD],
         methods: ['GET', 'POST'],
         credentials: true
     }
@@ -28,12 +28,12 @@ const io = Server(server, {
 const PORT = process.env.PORT || 8888;
 
 // CORS - Cho phép Angular gọi API
-app.use(cors({  
-  origin: [process.env.LINK_CLIENT, 
-          process.env.LINK_SERVER,
-          process.env.LINK_CLIENT_PROD,
-          process.env.LINK_SERVER_PROD],
-  credentials: true
+app.use(cors({
+    origin: [process.env.LINK_CLIENT,
+    process.env.LINK_SERVER,
+    process.env.LINK_CLIENT_PROD,
+    process.env.LINK_SERVER_PROD],
+    credentials: true
 }));
 
 // Middleware parse JSON và URL-encoded data
@@ -64,13 +64,13 @@ io.on('connection', (socket) => {
         }
         onlineUsers.get(userId).add(socket.id);
         socketToUser.set(socket.id, userId);
-        
+
         console.log(`User ${userId} is online (${onlineUsers.get(userId).size} connections)`);
-        
+
         // Gửi danh sách tất cả users đang online cho user mới login
         const allOnlineUserIds = Array.from(onlineUsers.keys());
         socket.emit('onlineUsersList', allOnlineUserIds);
-        
+
         // Chỉ emit nếu đây là connection đầu tiên (user mới online)
         if (onlineUsers.get(userId).size === 1) {
             // Cập nhật status thành online vào database
@@ -83,7 +83,7 @@ io.on('connection', (socket) => {
             } catch (error) {
                 console.error(`Error updating status for user ${userId}:`, error);
             }
-            
+
             io.emit('userStatusChanged', { userId, status: 'online' });
         }
     });
@@ -119,26 +119,33 @@ io.on('connection', (socket) => {
         socket.to(data.conversation_id).emit('deleteMessage', data);
     });
 
+    // Ghim tin nhắn
+    socket.on('pinMessage', (data) => {
+        console.log('Received pinMessage event on server:', data);
+        // Broadcast tới tất cả clients trong conversation (trừ người gửi)
+        socket.to(data.conversation_id).emit('pinMessage', data);
+    });
+
     socket.on('disconnect', async () => {
         console.log('User disconnected:', socket.id);
-        
+
         const userId = socketToUser.get(socket.id);
         if (userId && onlineUsers.has(userId)) {
             onlineUsers.get(userId).delete(socket.id);
             socketToUser.delete(socket.id);
-            
+
             console.log(`User ${userId} connection removed (${onlineUsers.get(userId).size} remaining)`);
-            
+
             // Chỉ emit offline nếu không còn connection nào
             if (onlineUsers.get(userId).size === 0) {
                 onlineUsers.delete(userId);
-                
+
                 // Cập nhật last_online_at vào database
                 try {
                     await usersModel.update(
-                        { 
+                        {
                             status: 'offline',
-                            last_online_at: new Date() 
+                            last_online_at: new Date()
                         },
                         { where: { id: userId } }
                     );
@@ -146,7 +153,7 @@ io.on('connection', (socket) => {
                 } catch (error) {
                     console.error(`Error updating last_online_at for user ${userId}:`, error);
                 }
-                
+
                 io.emit('userStatusChanged', { userId, status: 'offline' });
             }
         }
@@ -155,10 +162,10 @@ io.on('connection', (socket) => {
 
 
 async function startServer() {
-  await connectToDB();
-  server.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-  });
+    await connectToDB();
+    server.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
+    });
 }
 
 startServer();

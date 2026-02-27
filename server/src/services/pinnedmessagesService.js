@@ -2,6 +2,7 @@ const pinnedmessagesModel = require('../models/pinnedmessagesModel');
 
 class PinnedMessagesService {
     async createPinnedMessage(data) {
+        console.log("data: ", data);
         return await pinnedmessagesModel.create(data);
     }
 

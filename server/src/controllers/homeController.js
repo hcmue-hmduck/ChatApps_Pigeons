@@ -33,7 +33,7 @@ class HomeController {
 
     async postHomeMessages(req, res) {
         const conversationId = req.params.convID;
-        const { senderId, content,  parent_message_id} = req.body;
+        const { senderId, content, parent_message_id } = req.body;
         const newMessage = await homeService.postMessageToConversation(conversationId, senderId, content, parent_message_id);
         new SuccessResponse({
             message: 'Post home message successfully',
@@ -74,6 +74,17 @@ class HomeController {
             message: 'Put home conversation successfully',
             metadata: {
                 updatedConversation: updatedConversation,
+            }
+        }).send(res);
+    }
+
+    async postHomePinMessage(req, res) {
+        const pinMessageData = req.body;
+        const newPinMessage = await homeService.createPinMessage(pinMessageData);
+        new SuccessResponse({
+            message: 'Create pin message successfully',
+            metadata: {
+                newPinMessage: newPinMessage,
             }
         }).send(res);
     }
