@@ -1,294 +1,201 @@
-<div class="container-fluid p-0 vh-100 modern-chat-container">
-    <!-- Loading Screen khi chưa có data -->
-    <div *ngIf="loading() || !isFirstConversationReady()"
-        class="h-100 d-flex flex-column align-items-center justify-content-center bg-white">
-        <div class="text-center">
-            <div class="spinner-border text-twitter mb-3" style="width: 3rem; height: 3rem;" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="text-muted mb-0">Đang tải cuộc trò chuyện...</p>
-        </div>
+<!-- ============================================================
+     PIGEONS CHAT - 3-PANEL LAYOUT
+     Panel 1: Icon Sidebar | Panel 2: Conversations | Panel 3: Messages
+     ============================================================ -->
+<div class="chat-root">
+
+    <!-- ===================== FULL-PAGE LOADING ===================== -->
+    <div *ngIf="loading() || !isFirstConversationReady()" class="full-loading"
+        style="position:fixed;inset:0;background:#fff;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;">
+        <div class="spinner-accent"></div>
+        <p style="color:#6b7280;font-size:14px;margin:0;">Đang tải cuộc trò chuyện...</p>
     </div>
 
-    <!-- Main UI khi đã có data -->
-    <div *ngIf="!loading() && isFirstConversationReady()" class="d-flex h-100">
-        <!-- Sidebar - Slim Design -->
-        <div class="d-flex flex-column bg-light sidebar-modern">
-            <div class="d-flex flex-column h-100">
+    <!-- ===================== PANEL 1: ICON SIDEBAR ===================== -->
+    <aside class="icon-sidebar">
+        <!-- Logo -->
+        <img src="assets/PigeonLogo.png" alt="Pigeons" class="sidebar-logo">
 
-                <!-- Compact Header -->
-                <div class="px-3 py-3 sticky-top bg-white border-bottom messenger-header-modern">
-                    <div class="d-flex align-items-center mb-2">
-                        <div class="logo-wrapper position-relative me-2">
-                            <img src="assets/PigeonLogo.png" alt="Messenger" class="messenger-logo-modern">
-                        </div>
-                        <h5 class="mb-0 fw-bold text-twitter logo-text">ChatPigeons</h5>
+        <!-- Nav Icons -->
+        <nav class="nav-icons">
+            <button class="sidebar-nav-btn active" title="Tin nhắn">
+                <i class="bi bi-chat-dots-fill"></i>
+                <span class="nav-tooltip">Tin nhắn</span>
+            </button>
+            <button class="sidebar-nav-btn" title="Gọi">
+                <i class="bi bi-telephone-fill"></i>
+                <span class="nav-tooltip">Gọi</span>
+            </button>
+            <button class="sidebar-nav-btn" title="Liên hệ">
+                <i class="bi bi-people-fill"></i>
+                <span class="nav-tooltip">Liên hệ</span>
+            </button>
+        </nav>
+
+        <!-- Bottom: user avatar + logout -->
+        <div class="sidebar-bottom">
+            <img [src]="conversations().homeConversationData?.userInfo?.avatar_url || 'https://i.pravatar.cc/40'"
+                alt="avatar" class="sidebar-user-avatar"
+                title="{{ conversations().homeConversationData?.userInfo?.full_name }}">
+            <button class="sidebar-logout-btn" title="Đăng xuất">
+                <i class="bi bi-box-arrow-right"></i>
+                <span class="nav-tooltip">Đăng xuất</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- ===================== PANEL 2: CONVERSATIONS ===================== -->
+    <section class="conv-panel" *ngIf="!loading() && isFirstConversationReady()">
+        <!-- Header -->
+        <div class="conv-header">
+            <h5>Tin nhắn</h5>
+            <div class="conv-search-wrap">
+                <i class="bi bi-search"></i>
+                <input type="text" class="conv-search-input" placeholder="Tìm kiếm...">
+            </div>
+        </div>
+
+        <!-- Filter row -->
+        <div class="conv-filter-row">
+            <button class="filter-chip active">Tất cả</button>
+            <button class="filter-chip">Chưa đọc</button>
+            <button class="filter-chip">Nhóm</button>
+            <div class="conv-actions">
+                <button class="conv-action-btn" title="Tạo chat mới" (click)="createConversation()">
+                    <i class="bi bi-pencil-square"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Section label -->
+        <div class="conv-section-label">
+            Gần đây
+            <span class="conv-count-badge">
+                {{ conversations().homeConversationData?.joinedConversations?.length || 0 }}
+            </span>
+        </div>
+
+        <!-- Conversations list -->
+        <div class="conv-list">
+            <!-- Loading spinner -->
+            <div *ngIf="!isLoaded" class="loading-state">
+                <div class="spinner-accent" style="width:28px;height:28px;border-width:2px;"></div>
+                <span>Đang tải...</span>
+            </div>
+
+            <!-- Conversation items -->
+            <ng-container *ngIf="conversations().homeConversationData?.joinedConversations?.length > 0">
+                <a *ngFor="let conv of conversations().homeConversationData.joinedConversations"
+                    href="javascript:void(0)" class="conv-item"
+                    [class.active]="selectedConversationId === conv.conversation_id"
+                    (click)="handleConversationID(conv)">
+
+                    <!-- Avatar -->
+                    <div class="conv-avatar-col">
+                        <!-- Group with custom avatar -->
+                        <ng-container *ngIf="conv.type === 'group' && conv.avatar_url && conv.avatar_url.trim()">
+                            <div class="avatar-wrapper">
+                                <img [src]="conv.avatar_url" [alt]="conv.title" class="avatar-img">
+                                <span class="status-dot" [class.online]="hasOnlineUser(conv)"
+                                    [class.offline]="!hasOnlineUser(conv)"></span>
+                            </div>
+                        </ng-container>
+
+                        <!-- Group without custom avatar: stacked avatars -->
+                        <ng-container *ngIf="conv.type === 'group' && (!conv.avatar_url || !conv.avatar_url.trim())">
+                            <div class="avatar-group-modern">
+                                <div class="avatar-stack" *ngIf="(conv.participants?.length || 0) === 3"
+                                    [attr.data-count]="3">
+                                    <ng-container *ngFor="let p of (conv.participants || []).slice(0,3); let i=index">
+                                        <img class="avatar-stack-item avatar-pos-{{i}}"
+                                            [src]="p.avatar_url || 'https://i.pravatar.cc/40?img=1'"
+                                            [alt]="p.full_name">
+                                    </ng-container>
+                                </div>
+                                <div class="avatar-stack" *ngIf="(conv.participants?.length || 0) > 3"
+                                    [attr.data-count]="4">
+                                    <ng-container *ngFor="let p of (conv.participants || []).slice(0,4); let i=index">
+                                        <img class="avatar-stack-item avatar-pos-{{i}}"
+                                            [src]="p.avatar_url || 'https://i.pravatar.cc/40?img=1'"
+                                            [alt]="p.full_name">
+                                    </ng-container>
+                                </div>
+                                <div class="avatar-stack" *ngIf="(conv.participants?.length || 0) < 3"
+                                    [attr.data-count]="conv.participants?.length || 0">
+                                    <ng-container *ngFor="let p of (conv.participants || []).slice(0,2); let i=index">
+                                        <img class="avatar-stack-item avatar-pos-{{i}}"
+                                            [src]="p.avatar_url || 'https://i.pravatar.cc/40?img=1'"
+                                            [alt]="p.full_name">
+                                    </ng-container>
+                                </div>
+                                <span class="status-dot" [class.online]="hasOnlineUser(conv)"
+                                    [class.offline]="!hasOnlineUser(conv)"></span>
+                            </div>
+                        </ng-container>
+
+                        <!-- Direct conversation -->
+                        <ng-container *ngIf="conv.type === 'direct' && getOtherParticipant(conv) as other">
+                            <div class="avatar-wrapper">
+                                <img [src]="other.avatar_url || 'https://i.pravatar.cc/46?img=1'"
+                                    [alt]="other.full_name" class="avatar-img">
+                                <span class="status-dot" [class.online]="isUserOnline(other.user_id)"
+                                    [class.offline]="!isUserOnline(other.user_id)"></span>
+                            </div>
+                        </ng-container>
                     </div>
 
-                    <!-- Enhanced Search -->
-                    <div class="position-relative">
-                        <div class="messenger-search-modern">
-                            <i
-                                class="bi bi-search position-absolute start-0 top-50 translate-middle-y ms-3 text-muted"></i>
-                            <input type="text" class="form-control ps-5 py-2" placeholder="Search messages..." />
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Filter Tabs -->
-                <div class="px-3 py-2 border-bottom bg-white">
-                    <div class="d-flex justify-content-between align-items-center gap-3">
-                        <!-- Left: Filter buttons -->
-                        <div class="d-flex gap-2 filter-group">
-                            <button class="btn btn-sm btn-twitter rounded-circle filter-btn-icon active"
-                                data-filter="all" title="All">
-                                <i class="bi bi-chat-dots"></i>
-                            </button>
-                            <button class="btn btn-sm btn-outline-twitter rounded-circle filter-btn-icon"
-                                data-filter="unseen" title="Unseen">
-                                <i class="bi bi-eye-slash"></i>
-                            </button>
-                            <button class="btn btn-sm btn-outline-twitter rounded-circle filter-btn-icon"
-                                data-filter="groups" title="Groups">
-                                <i class="bi bi-people"></i>
-                            </button>
-                        </div>
-
-                        <!-- Divider -->
-                        <div class="filter-divider"></div>
-
-                        <!-- Right: Action buttons -->
-                        <div class="d-flex gap-2 action-group">
-                            <button class="btn btn-sm btn-outline-twitter rounded-circle filter-btn-icon"
-                                title="New Chat" (click)="createConversation()">
-                                <i class="bi bi-chat-left-text-fill"></i>
-                            </button>
-                            <button class="btn btn-sm btn-outline-twitter rounded-circle filter-btn-icon"
-                                title="Settings">
-                                <i class="bi bi-gear-fill"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Compact Conversations List -->
-                <div class="flex-grow-1 overflow-hidden conversations-list-modern">
-                    <div class="h-100 d-flex flex-column">
-                        <!-- Unread Count -->
-                        <div class="px-3 py-2 d-flex align-items-center justify-content-between">
-                            <span class="text-muted small fw-medium">RECENT CHATS</span>
-                            <span class="badge bg-twitter rounded-pill unread-count" style="font-size: 11px;">
-                                {{ conversations().homeConversationData?.joinedConversations?.length || 0 }}
+                    <!-- Info -->
+                    <div class="conv-info">
+                        <div class="conv-info-top">
+                            <span class="conv-name">{{ conv.title }}</span>
+                            <span class="conv-time" *ngIf="conv.lastMessage">
+                                {{ relativeTime(conv.lastMessage.created_at, tick1s(), tick60s(), tick3600s()) }}
                             </span>
                         </div>
-
-                        <!-- Conversations -->
-                        <div class="flex-grow-1 overflow-auto">
-                            <div *ngIf="!isLoaded" class="text-center text-muted py-5">
-                                <div class="spinner-border spinner-border-sm text-twitter mb-3" role="status">
-                                    <span class="visually-hidden">Loading...</span>
-                                </div>
-                                <p class="small mb-0">Loading conversations...</p>
-                            </div>
-
-                            <div class="list-group list-group-flush px-2"
-                                *ngIf="conversations().homeConversationData?.joinedConversations && conversations().homeConversationData.joinedConversations.length > 0">
-                                <ng-container
-                                    *ngFor="let conv of conversations().homeConversationData.joinedConversations">
-                                    <a href="javascript:void(0)" (click)="handleConversationID(conv)"
-                                        class="list-group-item list-group-item-action border-0 rounded-3 mb-1 p-2 conversation-item-modern"
-                                        [class.active]="selectedConversationId === conv.conversation_id">
-
-                                        <div class="d-flex align-items-center">
-                                            <!-- Avatar with Status -->
-                                            <div class="position-relative me-2 flex-shrink-0">
-                                                <!-- Group Conversation -->
-                                                <ng-container *ngIf="conv.type === 'group'">
-                                                    <ng-container
-                                                        *ngIf="conv.avatar_url && conv.avatar_url.trim(); else noAvatar">
-                                                        <div class="avatar-wrapper">
-                                                            <img [src]="conv.avatar_url" [alt]="conv.title"
-                                                                class="rounded-circle avatar-img">
-                                                            <span
-                                                                class="position-absolute bottom-0 end-0 status-dot-modern"
-                                                                [ngClass]="hasOnlineUser(conv) ? 'online' : 'offline'"></span>
-                                                        </div>
-                                                    </ng-container>
-                                                    <ng-template #noAvatar>
-                                                        <div class="avatar-group-modern">
-                                                            <!-- 3 participants: tam giác -->
-                                                            <div class="avatar-stack"
-                                                                *ngIf="(conv.participants?.length || 0) === 3"
-                                                                [attr.data-count]="3">
-                                                                <ng-container
-                                                                    *ngFor="let p of (conv.participants || []).slice(0,3); let i = index">
-                                                                    <img class="avatar-stack-item rounded-circle border border-2 border-white avatar-pos-{{i}}"
-                                                                        [src]="p.avatar_url || 'https://i.pravatar.cc/150?img=1'"
-                                                                        [alt]="p.full_name">
-                                                                </ng-container>
-                                                            </div>
-
-                                                            <!-- 4 participants: 4 góc -->
-                                                            <div class="avatar-stack"
-                                                                *ngIf="(conv.participants?.length || 0) > 3"
-                                                                [attr.data-count]="4">
-                                                                <ng-container
-                                                                    *ngFor="let p of (conv.participants || []).slice(0,4); let i = index">
-                                                                    <img class="avatar-stack-item rounded-circle border border-2 border-white avatar-pos-{{i}}"
-                                                                        [src]="p.avatar_url || 'https://i.pravatar.cc/150?img=1'"
-                                                                        [alt]="p.full_name">
-                                                                </ng-container>
-                                                            </div>
-
-                                                            <!-- 1-2 participants: fallback (single/duo) -->
-                                                            <div class="avatar-stack"
-                                                                *ngIf="(conv.participants?.length || 0) < 3"
-                                                                [attr.data-count]="conv.participants?.length || 0">
-                                                                <ng-container
-                                                                    *ngFor="let p of (conv.participants || []).slice(0,2); let i = index">
-                                                                    <img class="avatar-stack-item rounded-circle border border-2 border-white avatar-pos-{{i}}"
-                                                                        [src]="p.avatar_url || 'https://i.pravatar.cc/150?img=1'"
-                                                                        [alt]="p.full_name">
-                                                                </ng-container>
-                                                            </div>
-
-                                                            <span
-                                                                class="position-absolute bottom-0 end-0 status-dot-modern"
-                                                                [ngClass]="hasOnlineUser(conv) ? 'online' : 'offline'"></span>
-                                                        </div>
-                                                    </ng-template>
-                                                </ng-container>
-
-                                                <!-- Direct Conversation -->
-                                                <ng-container
-                                                    *ngIf="conv.type === 'direct' && getOtherParticipant(conv) as other">
-                                                    <div class="avatar-wrapper">
-                                                        <img [src]="other.avatar_url || 'https://i.pravatar.cc/150?img=1'"
-                                                            [alt]="other.full_name || 'avatar'"
-                                                            class="rounded-circle avatar-img">
-                                                        <span class="position-absolute bottom-0 end-0 status-dot-modern"
-                                                            [ngClass]="isUserOnline(other.user_id) ? 'online' : 'offline'"></span>
-                                                    </div>
-                                                </ng-container>
-                                            </div>
-
-                                            <!-- Conversation Info -->
-                                            <div class="flex-grow-1 min-w-0">
-                                                <div class="d-flex align-items-center justify-content-between mb-1">
-                                                    <h6 class="mb-0 fw-semibold text-truncate me-2 conversation-title">
-                                                        {{ conv.title }}
-                                                    </h6>
-                                                    <span *ngIf="conv.unread_count > 0"
-                                                        class="badge bg-danger rounded-pill unread-badge"
-                                                        style="font-size: 10px; min-width: 18px; height: 18px;">
-                                                        {{ conv.unread_count }}
-                                                    </span>
-                                                </div>
-
-                                                <div class="text-muted message-preview">
-                                                    <ng-container *ngIf="conv.lastMessage">
-                                                        <div class="message-line-container">
-                                                            <span class="message-content">
-                                                                <strong class="message-sender"
-                                                                    *ngIf="getLastMessageSenderName(conv)">
-                                                                    {{ getLastMessageSenderName(conv) }}
-                                                                </strong>
-                                                                <ng-container *ngIf="conv.lastMessage.is_deleted"> Tin
-                                                                    nhắn đã được gỡ </ng-container>
-                                                                <ng-container *ngIf="!conv.lastMessage.is_deleted">
-                                                                    <span class="message-text">{{
-                                                                        conv.lastMessage.content }}</span>
-                                                                </ng-container>
-                                                            </span>
-                                                            <span class="message-time">
-                                                                {{ relativeTime(conv.lastMessage.created_at, tick1s(),
-                                                                tick60s(), tick3600s()) }}
-                                                            </span>
-                                                        </div>
-                                                    </ng-container>
-                                                    <span *ngIf="!conv.lastMessage"
-                                                        class="text-muted small fst-italic no-message">No messages
-                                                        yet</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </a>
+                        <div class="conv-info-bottom">
+                            <span class="conv-last-msg">
+                                <ng-container *ngIf="conv.lastMessage">
+                                    <span class="sender-bold" *ngIf="getLastMessageSenderName(conv)">{{
+                                        getLastMessageSenderName(conv) }}&nbsp;</span>
+                                    <ng-container *ngIf="conv.lastMessage.is_deleted">Tin nhắn đã được gỡ</ng-container>
+                                    <ng-container *ngIf="!conv.lastMessage.is_deleted">{{ conv.lastMessage.content
+                                        }}</ng-container>
                                 </ng-container>
-                            </div>
-
-                            <!-- Empty State -->
-                            <div *ngIf="conversations().homeConversationData?.joinedConversations && conversations().homeConversationData.joinedConversations.length === 0"
-                                class="text-center text-muted py-5">
-                                <div class="empty-state-icon mb-3">
-                                    <i class="bi bi-chat-left-text display-6 opacity-25"></i>
-                                </div>
-                                <p class="small mb-2">No conversations yet</p>
-                                <p class="text-muted smaller">Start a new chat by clicking the + button</p>
-                            </div>
+                                <span *ngIf="!conv.lastMessage" style="font-style:italic;color:#9ca3af;">Chưa có tin
+                                    nhắn</span>
+                            </span>
+                            <span class="unread-badge" *ngIf="conv.unread_count > 0">{{ conv.unread_count }}</span>
                         </div>
                     </div>
-                </div>
+                </a>
+            </ng-container>
 
-                <!-- User Profile Footer -->
-                <div class="mt-auto border-top bg-white p-3 user-profile-footer">
-                    <div class="d-flex align-items-center">
-                        <img [src]="conversations().homeConversationData?.userInfo?.avatar_url" alt="User"
-                            class="rounded-circle me-2 user-avatar" width="36" height="36">
-                        <div class="flex-grow-1">
-                            <div class="fw-medium small user-name">{{
-                                conversations().homeConversationData?.userInfo?.full_name || 'User' }}</div>
-                            <div class="text-muted small user-status" style="font-size: 11px;">{{
-                                conversations().homeConversationData?.userInfo?.status || 'offline' }}</div>
-                        </div>
-                        <div class="dropdown">
-                            <button class="btn btn-link text-muted p-0" type="button" data-bs-toggle="dropdown"
-                                title="More options">
-                                <i class="bi bi-three-dots-vertical"></i>
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="#"><i class="bi bi-person me-2"></i>Profile</a></li>
-                                <li><a class="dropdown-item" href="#"><i class="bi bi-gear me-2"></i>Settings</a></li>
-                                <li>
-                                    <hr class="dropdown-divider">
-                                </li>
-                                <li><a class="dropdown-item text-danger" href="#"><i
-                                            class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
+            <!-- Empty state -->
+            <div *ngIf="conversations().homeConversationData?.joinedConversations?.length === 0" class="empty-state">
+                <i class="bi bi-chat-left-text"></i>
+                <p>Chưa có cuộc trò chuyện nào</p>
+                <p style="font-size:12px;margin-top:4px;">Nhấn ✏️ để bắt đầu chat mới</p>
             </div>
         </div>
+    </section>
 
-        <!-- Resize Handle -->
-        <div class="resize-handle" (mousedown)="startResize($event)" [class.resizing]="isResizing"></div>
+    <!-- ===================== PANEL 3: CHAT AREA ===================== -->
+    <main class="chat-area" *ngIf="!loading() && isFirstConversationReady()">
+        <!-- Messages component -->
+        <messages-layout *ngIf="selectedConversationId && isFirstConversationReady"
+            [conversationId]="selectedConversationId" [currentUserId]="currentUserId"
+            [getMessageInfor]="getMessageInfor" [onlineUsers]="onlineUsers()"
+            [conversationType]="selectedConversationType">
+        </messages-layout>
 
-        <!-- Main Chat Area -->
-        <div class="flex-grow-1 bg-white d-flex flex-column">
-            <div class="flex-grow-1 overflow-hidden">
-                <messages-layout *ngIf="selectedConversationId && isFirstConversationReady"
-                    [conversationId]="selectedConversationId" [conversationType]="selectedConversationType" [currentUserId]="currentUserId"
-                    [getMessageInfor]="getMessageInfor" [onlineUsers]="onlineUsers()" />
-
-                <!-- Welcome Screen when no conversation selected -->
-                <div *ngIf="!selectedConversationId || !isFirstConversationReady"
-                    class="h-100 d-flex flex-column align-items-center justify-content-center bg-light welcome-screen">
-                    <div class="text-center px-4">
-                        <div class="welcome-icon mb-4">
-                            <i class="bi bi-chat-left-dots display-1 text-twitter opacity-75"></i>
-                        </div>
-                        <h3 class="fw-bold mb-3">Welcome to ChatPigeons</h3>
-                        <p class="text-muted mb-4">Select a conversation or start a new chat</p>
-                        <button class="btn btn-twitter px-4 rounded-pill" (click)="createConversation()">
-                            <i class="bi bi-plus-lg me-2"></i> Start New Chat
-                        </button>
-                    </div>
-                </div>
-            </div>
+        <!-- Welcome screen when no conversation selected -->
+        <div *ngIf="!selectedConversationId || !isFirstConversationReady" class="welcome-screen">
+            <div class="welcome-icon"><i class="bi bi-chat-heart-fill"></i></div>
+            <h3>Chào mừng đến ChatPigeons!</h3>
+            <p>Chọn một cuộc trò chuyện hoặc bắt đầu chat mới</p>
+            <button class="btn-start" (click)="createConversation()">
+                <i class="bi bi-plus-lg"></i>&nbsp; Bắt đầu chat mới
+            </button>
         </div>
-    </div>
-    <!-- End Main UI -->
+    </main>
 </div>
-
-<!-- Resize Overlay -->
-<div class="resize-overlay" *ngIf="isResizing"></div>

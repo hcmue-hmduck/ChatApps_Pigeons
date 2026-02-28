@@ -135,6 +135,13 @@ io.on('connection', (socket) => {
         socket.to(data.conversation_id).emit('deleteMessage', data);
     });
 
+    // Ghim tin nhắn
+    socket.on('pinMessage', (data) => {
+        console.log('Received pinMessage event on server:', data);
+        // Broadcast tới tất cả clients trong conversation (trừ người gửi)
+        socket.to(data.conversation_id).emit('pinMessage', data);
+    });
+
     socket.on('disconnect', async () => {
         console.log('User disconnected:', socket.id);
 

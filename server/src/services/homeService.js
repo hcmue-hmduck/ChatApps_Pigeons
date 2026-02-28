@@ -216,7 +216,7 @@ class HomeService {
         return {
             ...conversation.dataValues,
             messages,
-            pinnedMessages: pinnedMessages || [],
+            pinnedMessages: (pinnedMessages || []).map((pin) => ({ ...pin.dataValues })),
             hasMore: messages.length === limit, // Nếu trả về đủ limit thì có thể còn nữa
         };
     }
@@ -271,6 +271,10 @@ class HomeService {
 
     async getConversationNameById(conversationId) {
         return await conversationsService.getConversationNameById(conversationId);
+    }
+
+    async createPinMessage(pinMessageData) {
+        return await pinnedmessagesService.createPinnedMessage(pinMessageData);
     }
 
     async startCall({ conversation_id, caller_id, call_type, media_type }) {

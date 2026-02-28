@@ -156,6 +156,17 @@ class HomeController {
             metadata: await homeService.checkMissedCall(call_id),
         }).send(res);
     }
+
+    async postHomePinMessage(req, res) {
+        const pinMessageData = req.body;
+        const newPinMessage = await homeService.createPinMessage(pinMessageData);
+        new SuccessResponse({
+            message: 'Create pin message successfully',
+            metadata: {
+                newPinMessage: newPinMessage,
+            },
+        }).send(res);
+    }
 }
 
 module.exports = new HomeController();
