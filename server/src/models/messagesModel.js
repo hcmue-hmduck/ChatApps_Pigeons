@@ -24,7 +24,7 @@ const Message = sequelize.define('Message', {
         defaultValue: 'text',
         field: 'message_type',
         validate: {
-            isIn: [['text', 'image', 'file', 'audio', 'video', 'sticker', 'system']]
+            isIn: [['text', 'image', 'file', 'audio', 'video', 'sticker', 'call','system']]
         }
     },
     content: {
@@ -56,6 +56,11 @@ const Message = sequelize.define('Message', {
         type: DataTypes.INTEGER,
         allowNull: true,
         field: 'duration'
+    },
+    call_id: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        field: 'call_id'
     },
     is_edited: {
         type: DataTypes.BOOLEAN,
@@ -110,8 +115,17 @@ const Message = sequelize.define('Message', {
     indexes: [
         { fields: ['conversation_id', 'created_at'] },
         { fields: ['sender_id'] },
-        { fields: ['parent_message_id'] }
+        { fields: ['parent_message_id'] },
+        { fields: ['call_id'] }
     ]
 });
+
+// Associate với Call
+Message.associate = (models) => {
+    Message.belongsTo(models.Call, {
+        foreignKey: 'call_id',
+        as: 'call'
+    });
+};
 
 module.exports = Message;

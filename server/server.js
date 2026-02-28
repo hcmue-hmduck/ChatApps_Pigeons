@@ -5,7 +5,7 @@ const cors = require('cors');
 const { engine } = require('express-handlebars');
 const path = require('path');
 const Server = require('socket.io');
-const usersModel = require('./src/models/usersModel');
+const models = require('./src/models/index');  // Khởi tạo tất cả associations
 const fs = require('fs');
 const morgan = require('morgan');
 
@@ -94,7 +94,7 @@ io.on('connection', (socket) => {
         if (onlineUsers.get(userId).size === 1) {
             // Cập nhật status thành online vào database
             try {
-                await usersModel.update({ status: 'online' }, { where: { id: userId } });
+                await models.User.update({ status: 'online' }, { where: { id: userId } });
                 console.log(`Updated status to online for user ${userId}`);
             } catch (error) {
                 console.error(`Error updating status for user ${userId}:`, error);
@@ -151,7 +151,7 @@ io.on('connection', (socket) => {
 
                 // Cập nhật last_online_at vào database
                 try {
-                    await usersModel.update(
+                    await models.User.update(
                         {
                             status: 'offline',
                             last_online_at: new Date(),

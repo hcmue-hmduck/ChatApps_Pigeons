@@ -24,6 +24,7 @@ export class WebRtcService {
             }
         });
 
+        // cleanup tab cha 
         this.socketService.on('call:cleanup', (userId) => {
             if (this.authService.getUserId() === userId) {
                 this.cleanupCall();

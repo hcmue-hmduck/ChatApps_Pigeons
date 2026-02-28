@@ -3,6 +3,8 @@ const participantsService = require('./participantsService');
 const messagesService = require('./messagesService');
 const conversationsService = require('./conversationsService');
 const pinnedmessagesService = require('./pinnedmessagesService');
+const { sequelize } = require('../configs/sequelizeConfig.js');
+const callService = require('./callService.js');
 
 class HomeService {
     // Lấy tất cả messages của 1 user theo userId
@@ -269,6 +271,54 @@ class HomeService {
 
     async getConversationNameById(conversationId) {
         return await conversationsService.getConversationNameById(conversationId);
+    }
+
+    async startCall({ conversation_id, caller_id, call_type, media_type }) {
+        return await sequelize.transaction(async (t) => {
+            const { id } = await callService.startCall(
+                { conversation_id, caller_id, call_type, media_type },
+                { transaction: t },
+            );
+
+            const messageData = {
+                conversation_id,
+                sender_id: caller_id,
+                message_type: 'call',
+                call_id: id,
+            };
+
+            return await messagesService.createMessage(messageData, { transaction: t });
+        });
+    }
+
+    async acceptCall({ user_id, conversation_id }) {
+        if (!user_id || !conversation_id) throw new Error('params is not found');
+        return await messagesService.createMessage({
+            conversation_id,
+            sender_id: user_id,
+            message_type: 'system',
+            content: 'đã tham gia cuộc gọi.',
+        });
+    }
+
+    async checkOngoingCall(call_id) {
+        return await callService.updateStatusCall({ call_id, status: 'ongoing' });
+    }
+
+    async checkCompletedCall(call_id) {
+        return await callService.updateStatusCall({ call_id, status: 'completed' });
+    }
+
+    async checkDeclinedCall(call_id) {
+        return await callService.updateStatusCall({ call_id, status: 'declined' });
+    }
+
+    async checkCancelledCall(call_id) {
+        return await callService.updateStatusCall({ call_id, status: 'cancelled' });
+    }
+
+    async checkMissedCall(call_id) {
+        return await callService.updateStatusCall({ call_id, status: 'missed' });
     }
 }
 
