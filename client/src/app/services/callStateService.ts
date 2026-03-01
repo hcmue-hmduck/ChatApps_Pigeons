@@ -27,6 +27,7 @@ export class CallStateService {
 
     conversationId = '';
     conversationType = '';
+    callId = '';
 
     cleanUp() {
         this.localStream()
@@ -49,6 +50,7 @@ export class CallStateService {
         this.isRemoteBusy.set(false);
         this.conversationId = '';
         this.conversationType = '';
+        this.callId = '';
 
         console.log('clean up call state', this.isRemoteBusy());
     }

@@ -118,7 +118,7 @@
 
                     <!-- System message -->
                     <ng-container *ngIf="msg.message_type === 'system'; else userMsg">
-                        <div class="message-system">{{ msg.content }}</div>
+                        <div class="message-system">{{ msg.sender_name + ' ' + msg.content }}</div>
                     </ng-container>
 
                     <ng-template #userMsg>
@@ -158,39 +158,69 @@
                                         <!-- Bubble + actions -->
                                         <div class="bubble-row">
                                             <!-- Actions (left of bubble for me) -->
-                                            <div *ngIf="!msg.is_deleted" class="message-actions">
-                                                <button class="action-btn" title="Trả lời"
-                                                    (click)="replyMessage(msg.id)">
-                                                    <i class="fas fa-reply"></i>
-                                                </button>
-                                                <button class="action-btn" title="Tùy chọn"
-                                                    (click)="toggleMenu(msg.id)">
-                                                    <i class="fas fa-ellipsis-v"></i>
-                                                </button>
-                                                <!-- Dropdown -->
-                                                <div class="msg-dropdown" *ngIf="showMenuId === msg.id">
-                                                    <button class="dropdown-item" *ngIf="msg.message_type === 'text'"
-                                                        (click)="openEditModal(msg)">
-                                                        <i class="bi bi-pencil me-2"></i>Sửa
+                                            <ng-container *ngIf="msg.message_type !== 'call'; else callTemplate">
+                                                <div *ngIf="!msg.is_deleted" class="message-actions">
+                                                    <button class="action-btn" title="Trả lời"
+                                                        (click)="replyMessage(msg.id)">
+                                                        <i class="fas fa-reply"></i>
                                                     </button>
-                                                    <button class="dropdown-item danger" (click)="deleteMessage(msg)">
-                                                        <i class="bi bi-trash me-2"></i>Gỡ
+                                                    <button class="action-btn" title="Tùy chọn"
+                                                        (click)="toggleMenu(msg.id)">
+                                                        <i class="fas fa-ellipsis-v"></i>
                                                     </button>
-                                                    <button class="dropdown-item" (click)="forwardMessage(msg)">
-                                                        <i class="bi bi-forward me-2"></i>Chuyển tiếp
-                                                    </button>
-                                                    <button class="dropdown-item" (click)="pinMessage(msg)">
-                                                        <i class="bi bi-pin-angle me-2"></i>Ghim
+                                                    <!-- Dropdown -->
+                                                    <div class="msg-dropdown" *ngIf="showMenuId === msg.id">
+                                                        <button class="dropdown-item" *ngIf="msg.message_type === 'text'"
+                                                            (click)="openEditModal(msg)">
+                                                            <i class="bi bi-pencil me-2"></i>Sửa
+                                                        </button>
+                                                        <button class="dropdown-item danger" (click)="deleteMessage(msg)">
+                                                            <i class="bi bi-trash me-2"></i>Gỡ
+                                                        </button>
+                                                        <button class="dropdown-item" (click)="forwardMessage(msg)">
+                                                            <i class="bi bi-forward me-2"></i>Chuyển tiếp
+                                                        </button>
+                                                        <button class="dropdown-item" (click)="pinMessage(msg)">
+                                                            <i class="bi bi-pin-angle me-2"></i>Ghim
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Bubble -->
+                                                <div class="bubble-me" [class.bubble-deleted]="msg.is_deleted">
+                                                    <span *ngIf="msg.is_deleted">Tin nhắn đã được gỡ</span>
+                                                    <div *ngIf="!msg.is_deleted"
+                                                        [innerHTML]="(msg.content || '').replace(/\n/g, '<br>')"></div>
+                                                </div>
+                                            </ng-container>
+
+                                            <ng-template #callTemplate>
+                                                <div class="call-bubble-content">
+                                                    <!-- Call icon -->
+                                                    <div class="call-icon-wrapper">
+                                                        <i [className]="getCallIcon(msg.call)"></i>
+                                                    </div>
+                                                    
+                                                    <!-- Main content -->
+                                                    <div class="call-main-content">
+                                                        <div class="call-type-label">
+                                                            {{getCallMainContent(msg.call)}}
+                                                        </div>
+                                                        
+                                                        <!-- Call description -->
+                                                        <div class="call-description">
+                                                             {{ getCallDescription(msg.call) }}
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <!-- Call action button -->
+                                                    <button class="call-action-btn" title="Gọi lại" (click)="handleVoiceCall()">
+                                                        <i class="bi bi-arrow-repeat"></i>
                                                     </button>
                                                 </div>
-                                            </div>
-
-                                            <!-- Bubble -->
-                                            <div class="bubble-me" [class.bubble-deleted]="msg.is_deleted">
-                                                <span *ngIf="msg.is_deleted">Tin nhắn đã được gỡ</span>
-                                                <div *ngIf="!msg.is_deleted"
-                                                    [innerHTML]="(msg.content || '').replace(/\n/g, '<br>')"></div>
-                                            </div>
+                                            </ng-template>
+                                             
+                                            
                                         </div>
 
                                         <!-- Edited badge -->
@@ -276,35 +306,67 @@
                                         <!-- Bubble + actions -->
                                         <div class="bubble-row">
                                             <!-- Bubble -->
-                                            <ng-container *ngIf="msg.is_deleted">
-                                                <div class="bubble-other bubble-deleted">Tin nhắn đã được gỡ</div>
-                                            </ng-container>
-                                            <ng-container *ngIf="!msg.is_deleted">
-                                                <div class="bubble-other"
-                                                    [innerHTML]="(msg.content || '').replace(/\n/g, '<br>')">
-                                                </div>
 
-                                                <!-- Actions (right of bubble for other) -->
-                                                <div class="message-actions">
-                                                    <button class="action-btn" title="Trả lời"
-                                                        (click)="replyMessage(msg.id)">
-                                                        <i class="fas fa-reply"></i>
-                                                    </button>
-                                                    <button class="action-btn" title="Tùy chọn"
-                                                        (click)="toggleMenu(msg.id)">
-                                                        <i class="fas fa-ellipsis-v"></i>
-                                                    </button>
-                                                    <!-- Dropdown -->
-                                                    <div class="msg-dropdown" *ngIf="showMenuId === msg.id">
-                                                        <button class="dropdown-item" (click)="forwardMessage(msg)">
-                                                            <i class="bi bi-forward me-2"></i>Chuyển tiếp
-                                                        </button>
-                                                        <button class="dropdown-item" (click)="pinMessage(msg)">
-                                                            <i class="bi bi-pin-angle me-2"></i>Ghim
-                                                        </button>
+                                            <ng-container *ngIf="msg.message_type !== 'call'; else callTemplate">
+                                                <ng-container *ngIf="msg.is_deleted">
+                                                    <div class="bubble-other bubble-deleted">Tin nhắn đã được gỡ</div>
+                                                </ng-container>
+                                                <ng-container *ngIf="!msg.is_deleted">
+                                                    <div class="bubble-other"
+                                                        [innerHTML]="(msg.content || '').replace(/\n/g, '<br>')">
                                                     </div>
-                                                </div>
+
+                                                    <!-- Actions (right of bubble for other) -->
+                                                    <div class="message-actions">
+                                                        <button class="action-btn" title="Trả lời"
+                                                            (click)="replyMessage(msg.id)">
+                                                            <i class="fas fa-reply"></i>
+                                                        </button>
+                                                        <button class="action-btn" title="Tùy chọn"
+                                                            (click)="toggleMenu(msg.id)">
+                                                            <i class="fas fa-ellipsis-v"></i>
+                                                        </button>
+                                                        <!-- Dropdown -->
+                                                        <div class="msg-dropdown" *ngIf="showMenuId === msg.id">
+                                                            <button class="dropdown-item" (click)="forwardMessage(msg)">
+                                                                <i class="bi bi-forward me-2"></i>Chuyển tiếp
+                                                            </button>
+                                                            <button class="dropdown-item" (click)="pinMessage(msg)">
+                                                                <i class="bi bi-pin-angle me-2"></i>Ghim
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </ng-container>
                                             </ng-container>
+
+                                            <ng-template #callTemplate>
+                                                <div class="call-bubble-content">
+                                                    <!-- Call icon -->
+                                                    <div class="call-icon-wrapper">
+                                                        <i [className]="getCallIcon(msg.call)"></i>
+                                                    </div>
+                                                    
+                                                    <!-- Main content -->
+                                                    <div class="call-main-content">
+                                                        <div class="call-type-label">
+                                                            {{getCallMainContent(msg.call)}}
+                                                        </div>
+                                                        
+                                                        <!-- Call description -->
+                                                        <div class="call-description">
+                                                            <ng-container *ngIf="!msg.call.duration_seconds">
+                                                                {{ getCallDescription(msg.call) }}
+                                                            </ng-container>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <!-- Call action button -->
+                                                    <button class="call-action-btn" title="Gọi lại" (click)="handleVoiceCall()">
+                                                        <i class="bi bi-arrow-repeat"></i>
+                                                    </button>
+                                                </div>
+                                            </ng-template>
+                                            
                                         </div>
 
                                         <!-- Edited badge -->

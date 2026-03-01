@@ -27,6 +27,7 @@ export class LivekitCallService {
     constructor() {
         this.socketService.on('groupCall:joinRoom', async (data) => {
             this.callState.conversationId = data.conversationId;
+            this.callState.callId = data.callId;
             const res = await lastValueFrom(
                 this.conversationService.getConversationNameById(data.conversationId),
             );
@@ -35,6 +36,7 @@ export class LivekitCallService {
             this.callState.callSessionData.set({
                 conversationId: data.conversationId,
                 conversationType: GROUP_CALL,
+                callId: data.callId,
                 inviterName: data.inviterName,
                 inviterAvatarUrl: data.inviterAvatarUrl,
                 inviterId: data.inviterId,
@@ -85,6 +87,7 @@ export class LivekitCallService {
                     if (isInviter)
                         this.socketService.emit('groupCall:inviteToJoinTheRoom', {
                             conversationId: this.callState.conversationId,
+                            callId: this.callState.callId,
                             inviterId: userId,
                             inviterName: userName,
                             inviterAvatarUrl: userAvatarUrl,

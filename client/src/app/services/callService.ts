@@ -1,0 +1,30 @@
+import { HttpClient } from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
+import { Observable, throwError } from 'rxjs';
+import { environment } from '../../environments/environment';
+import { AuthService } from './authService';
+
+@Injectable({
+    providedIn: 'root',
+})
+export class CallService {
+    private apiUrl = `${environment.apiUrl}/home/call`;
+    private httpClient = inject(HttpClient);
+    private authService = inject(AuthService);
+    private CALL_TYPE = ['group', 'direct'];
+
+    startCall(
+        conversation_id: string,
+        call_type: string,
+        media_type: 'video' | 'audio',
+    ): Observable<any> {
+        if (!this.CALL_TYPE.includes(call_type)) return throwError(() => new Error('Cannot start call'));
+        const caller_id = this.authService.getUserId();
+        if (!caller_id) return throwError(() => new Error('Cannot start call'));
+        return this.httpClient.post(`${this.apiUrl}/${conversation_id}`, {
+            caller_id,
+            call_type,
+            media_type,
+        });
+    }
+}

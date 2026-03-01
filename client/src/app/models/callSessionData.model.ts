@@ -1,6 +1,7 @@
 export interface CallSessionData {
     conversationId: string;
     conversationType: string;
+    callId: string,
     inviterName: string;        
     inviterAvatarUrl: string;
     inviterId: string;
@@ -12,3 +13,5 @@ export interface CallSessionData {
 
 export const DIRECT_CALL = 'direct';
 export const GROUP_CALL = 'group';
+export const AUDIO_CALL = 'audio';
+export const VIDEO_CALL = 'video';

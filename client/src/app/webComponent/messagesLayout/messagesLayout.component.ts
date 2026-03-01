@@ -22,6 +22,8 @@ import { Messages } from '../../services/messages';
 import { SocketService } from '../../services/socket';
 import { WebRtcService } from '../../services/webRTCService';
 import { PickerModule } from '@ctrl/ngx-emoji-mart';
+import { CallService } from '../../services/callService';
+import { AUDIO_CALL, GROUP_CALL, VIDEO_CALL } from '../../models/callSessionData.model';
 
 @Component({
     selector: 'messages-layout',
@@ -34,6 +36,7 @@ export class MessagesLayoutComponent
     implements OnInit, OnChanges, AfterViewInit, AfterViewChecked, OnDestroy
 {
     protected readonly title = signal('client');
+    callService = inject(CallService)
 
     getMessagesData = signal<any>({});
 
@@ -903,7 +906,7 @@ export class MessagesLayoutComponent
     }
 
     webRTCService = inject(WebRtcService);
-    async openCallWindow({ initializeVideo }: { initializeVideo: boolean }) {
+    async openCallWindow({ initializeVideo, callId }: { initializeVideo: boolean, callId: string }) {
         const listener = (event: MessageEvent) => {
             if (event.origin !== window.location.origin) return;
 
@@ -913,6 +916,7 @@ export class MessagesLayoutComponent
                     conversationType: this.conversationType,
                     conversationId: this.conversationId,
                     userId: this.currentUserId,
+                    callId,
                     // offer: null,
                     initializeVideo,
                 };
@@ -939,10 +943,114 @@ export class MessagesLayoutComponent
     }
 
     handleVoiceCall() {
-        this.openCallWindow({ initializeVideo: false });
+        this.callService.startCall(this.conversationId, this.conversationType, 'audio').subscribe({
+            next: ({metadata}) => {
+                const callId = metadata.id;
+                if(!callId) {
+                    console.log('Call is not found'); 
+                    return;
+                }
+                this.openCallWindow({ initializeVideo: false, callId });
+            },
+            error: (error) => console.log(error)
+        })
     }
 
     handleVideoCall() {
-        this.openCallWindow({ initializeVideo: true });
+        this.callService.startCall(this.conversationId, this.conversationType, 'video').subscribe({
+            next: ({metadata}) => {
+                const callId = metadata.id;
+                if(!callId) {
+                    console.log('Call is not found'); 
+                    return;
+                }
+                this.openCallWindow({ initializeVideo: true, callId });
+            },
+            error: (error) => console.log(error)
+        })
+    }
+
+    getCallIcon(callInfo: any): string {
+        if (!callInfo) return 'bi bi-telephone-fill call-icon audio';
+        
+        const { media_type, status, call_type } = callInfo;
+        
+        // Icon cho cuộc gọi video
+        if (media_type === 'video') {
+            if (status === 'missed' || status === 'declined') {
+                return 'bi bi-camera-video-fill call-icon video-missed';
+            }
+            return 'bi bi-camera-video-fill call-icon video';
+        }
+        
+        // Icon cho cuộc gọi audio
+        if (status === 'missed' || status === 'declined') {
+            return 'bi bi-telephone-fill call-icon audio-missed';
+        }
+        return 'bi bi-telephone-fill call-icon audio';
+    }
+
+    getCallMainContent(callInfo: any): string {
+        if (!callInfo) return 'Cuộc gọi';
+        
+        const { call_type, media_type, status } = callInfo;
+        let callMainContent = '';
+        
+        if (call_type === 'group') {
+            // Cuộc gọi nhóm
+            callMainContent = media_type === 'audio' 
+                ? 'Cuộc gọi thoại nhóm' 
+                : 'Cuộc gọi video nhóm';
+        } else {
+            // Cuộc gọi trực tiếp
+            if (status === 'completed') {
+                callMainContent = media_type === 'audio' 
+                    ? 'Cuộc gọi thoại' 
+                    : 'Cuộc gọi video';
+            } else if (status === 'missed') {
+                callMainContent = 'Cuộc gọi nhỡ';
+            } else if (status === 'declined') {
+                callMainContent = 'Đã từ chối';
+            } else if (status === 'cancelled') {
+                callMainContent = 'Đã hủy';
+            } else {
+                callMainContent = media_type === 'audio' 
+                    ? 'Cuộc gọi thoại' 
+                    : 'Cuộc gọi video';
+            }
+        }
+        
+        return callMainContent;
+    }
+
+    getCallDescription(callInfo: any): string {
+        if (!callInfo) return '';
+        
+        // Nếu có thời lượng cuộc gọi
+        if (callInfo.duration_seconds && callInfo.duration_seconds > 0) {
+            return this.formatCallDuration(callInfo.duration_seconds);
+        }
+        
+        // Nếu không có thời lượng, hiển thị thời gian tạo
+        if (callInfo.started_at) {
+            return this.formatTime(callInfo.started_at);
+        }
+        
+        return '';
+    }
+
+    // Format call duration (seconds to mm:ss or HH:mm:ss)
+    formatCallDuration(durationSeconds: number): string {
+        if (!durationSeconds || durationSeconds <= 0) return '00:00';
+
+        const hours = Math.floor(durationSeconds / 3600);
+        const minutes = Math.floor((durationSeconds % 3600) / 60);
+        const seconds = durationSeconds % 60;
+
+        if (hours > 0) {
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
 }

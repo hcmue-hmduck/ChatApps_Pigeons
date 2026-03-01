@@ -1,9 +1,8 @@
 import { inject, Injectable } from '@angular/core';
+import { DIRECT_CALL } from '../models/callSessionData.model';
 import { AuthService } from './authService';
 import { CallStateService } from './callStateService';
 import { SocketService } from './socket';
-import { DIRECT_CALL } from '../models/callSessionData.model';
-import { Participant } from 'livekit-client';
 
 @Injectable({
     providedIn: 'root',
@@ -40,10 +39,12 @@ export class P2PCallService {
             }
 
             this.callState.conversationId = data.conversationId;
+            this.callState.callId = data.callId;
 
             this.callState.callSessionData.set({
                 conversationId: data.conversationId,
                 conversationType: DIRECT_CALL,
+                callId: data.callId,
                 inviterName: data.inviterName,
                 inviterAvatarUrl: data.inviterAvatarUrl,
                 inviterId: data.inviterId,
@@ -91,6 +92,7 @@ export class P2PCallService {
             this.socketService.emit('directCall:newOffer', {
                 offer,
                 conversationId: this.callState.conversationId,
+                callId: this.callState.callId,
                 inviterName: userName,
                 inviterAvatarUrl: userAvatarUrl,
                 inviterId: userId,

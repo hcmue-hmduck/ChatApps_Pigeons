@@ -1182,3 +1182,143 @@
 .modal-save-btn:hover {
     background: var(--msg-accent-hover);
 }
+
+/* ============================================================
+   CALL BUBBLE STYLES
+   ============================================================ */
+.call-bubble-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 260px;
+    padding: 8px 4px;
+}
+
+/* Call icon wrapper */
+.call-icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    transition: all 0.2s;
+}
+
+/* Call icons */
+.call-icon {
+    font-size: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.call-icon.video {
+    color: #0084ff;
+}
+
+.call-icon.audio {
+    color: #31a24c;
+}
+
+.call-icon.video-missed,
+.call-icon.audio-missed {
+    color: #e74c3c;
+}
+
+/* Call main content */
+.call-main-content {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 1;
+    min-width: 0;
+}
+
+.call-type-label {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0;
+    padding: 0;
+    color: inherit;
+    line-height: 1.3;
+}
+
+.call-description {
+    font-size: 12px;
+    opacity: 0.75;
+    margin: 0;
+    padding: 0;
+    color: inherit;
+    line-height: 1.2;
+}
+
+/* Call action button */
+.call-action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.12);
+    color: inherit;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.call-action-btn:hover {
+    background: rgba(255, 255, 255, 0.22);
+    transform: scale(1.1);
+}
+
+.call-action-btn:active {
+    transform: scale(0.95);
+}
+
+/* Style adjustments for call bubbles */
+.bubble-me .call-bubble-content,
+.bubble-other .call-bubble-content {
+    padding: 10px 12px;
+}
+
+/* Hover effect for icon wrapper */
+.call-bubble-content:hover .call-icon-wrapper {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+/* Responsive adjustments for mobile */
+@media (max-width: 480px) {
+    .call-bubble-content {
+        min-width: 220px;
+        gap: 10px;
+    }
+
+    .call-icon-wrapper {
+        width: 40px;
+        height: 40px;
+    }
+
+    .call-icon {
+        font-size: 18px;
+    }
+
+    .call-type-label {
+        font-size: 13px;
+    }
+
+    .call-description {
+        font-size: 11px;
+    }
+
+    .call-action-btn {
+        width: 34px;
+        height: 34px;
+        font-size: 14px;
+    }
+}

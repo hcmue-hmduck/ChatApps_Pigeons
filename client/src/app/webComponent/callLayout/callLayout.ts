@@ -65,6 +65,7 @@ export class CallLayoutComponent implements OnInit {
                 inviterName,
                 inviterId,
                 inviterAvatarUrl,
+                callId
             } = event.data;
             await this.authService.setUserInfor(userId);
             this.socketService.emit('joinConversation', conversationId);
@@ -75,13 +76,14 @@ export class CallLayoutComponent implements OnInit {
                 this.webRTCService.acceptIncomingCall(
                     conversationId,
                     conversationType,
+                    callId,
                     offer,
                     initializeVideo,
                     inviterName,
                     inviterId,
                     inviterAvatarUrl,
                 );
-            } else this.webRTCService.call(conversationId, conversationType, initializeVideo);
+            } else this.webRTCService.call(conversationId, conversationType, callId, initializeVideo);
 
             window.removeEventListener('message', listener);
         };

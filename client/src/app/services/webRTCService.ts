@@ -58,9 +58,10 @@ export class WebRtcService {
         });
     }
 
-    call(conversationId: string, conversationType: string, initializeVideo: boolean) {
+    call(conversationId: string, conversationType: string, callId:string, initializeVideo: boolean) {
         this.callState.conversationId = conversationId;
         this.callState.conversationType = conversationType;
+        this.callState.callId = callId;
         this.callState.isCameraOn.set(initializeVideo);
 
         this.updateUserBusyState(true);
@@ -79,6 +80,7 @@ export class WebRtcService {
     acceptIncomingCall(
         conversationId: string,
         conversationType: string,
+        callId: string,
         offer: RTCSessionDescriptionInit | null,
         initializeVideo: boolean,
         // for P2P
@@ -89,6 +91,7 @@ export class WebRtcService {
         console.log('Accept incomming call');
         this.callState.conversationId = conversationId;
         this.callState.conversationType = conversationType;
+        this.callState.callId = callId;
         this.callState.isCameraOn.set(initializeVideo);
 
         this.updateUserBusyState(true);
