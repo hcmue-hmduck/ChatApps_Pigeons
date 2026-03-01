@@ -7,51 +7,40 @@ const { sequelize } = require('../configs/sequelizeConfig.js');
 const callService = require('./callService.js');
 
 class HomeService {
-    // Lấy tất cả messages của 1 user theo userId
-    async getMessagesByUser(userId) {
-        // Giả sử bạn có hàm getAllMessages trong messagesService
-        return await messagesService.getAllMessages({ sender_id: userId });
-    }
-
-    // Lấy tất cả participant record của 1 user
-    async getParticipantsByUser(userId) {
-        // Giả sử bạn có hàm getAllParticipants trong participantsService
-        return await participantsService.getAllParticipants({ user_id: userId });
-    }
-
-    // Lấy danh sách conversations của user để hiển thị sidebar
+    // Lấy danh sách conversations của user để hiển thị sidebars
     async getAllUserMessagesInJoinedConversations(userId) {
         // 1. Lấy tất cả participant record của user
         const userParticipants = await participantsService.getAllParticipants({ user_id: userId });
-        const conversationIds = userParticipants.map((p) => p.conversation_id);
-        if (conversationIds.length === 0) return [];
+        const conversationIds = userParticipants.map(p => p.conversation_id);
+        if (conversationIds.length === 0) return { userInfo: null, joinedConversations: [] };
 
-        // 2. Batch query song song các thông tin cần thiết
+        // 2. Batch query song song: conversations + toàn bộ participants trong các conversations đó
         const [conversations, allParticipants] = await Promise.all([
             conversationsService.getAllConversations({ id: conversationIds }),
             participantsService.getAllParticipants({ conversation_id: conversationIds }),
         ]);
 
-        // 3. Song song hóa query users và lastMessages
-        const userIds = [...new Set(allParticipants.map((p) => p.user_id))];
-        const lastMessageIds = conversations.map((conv) => conv.last_message_id).filter((id) => !!id);
+        // 3. Thu thập userIds duy nhất → batch query users song song với lastMessages
+        const userIds = [...new Set(allParticipants.map(p => p.user_id))];
+        const lastMessageIds = conversations
+            .map(conv => conv.last_message_id)
+            .filter(Boolean);
 
         const [users, lastMessagesArr] = await Promise.all([
             usersService.getAllUsers({ id: userIds }),
             lastMessageIds.length > 0 ? messagesService.getMessagesByIds(lastMessageIds) : Promise.resolve([]),
         ]);
 
-        // 4. Tạo Map để lookup nhanh O(1) thay vì find O(n)
-        const lastMessagesMap = new Map(lastMessagesArr.map((msg) => [msg.id, msg]));
-        const usersMap = new Map(users.map((u) => [u.id, u]));
-        const participantsMap = new Map();
-        const conversationsMap = new Map(conversations.map((c) => [c.id, c]));
-        const ownerInfoMap = new Map(); // Lưu riêng owner info cho từng conversation
+        // 4. Tạo Map để lookup O(1)
+        const lastMessagesMap = new Map(lastMessagesArr.map(msg => [msg.id, msg]));
+        const usersMap = new Map(users.map(u => [u.id, u]));
+        const conversationsMap = new Map(conversations.map(c => [c.id, c]));
 
-        allParticipants.forEach((p) => {
-            if (!participantsMap.has(p.conversation_id)) {
-                participantsMap.set(p.conversation_id, []);
-            }
+        // Build participantsMap & ownerInfoMap trong 1 lần duyệt
+        const participantsMap = new Map();
+        const ownerInfoMap = new Map();
+
+        allParticipants.forEach(p => {
             const user = usersMap.get(p.user_id);
             const conv = conversationsMap.get(p.conversation_id);
             const isOwner = conv && conv.created_by === p.user_id;
@@ -68,14 +57,17 @@ class HomeService {
                       owner: isOwner,
                   };
 
+            if (!participantsMap.has(p.conversation_id)) {
+                participantsMap.set(p.conversation_id, []);
+            }
             participantsMap.get(p.conversation_id).push(participantInfo);
 
-            // Lưu riêng owner info để tránh phải find sau
             if (isOwner) {
                 ownerInfoMap.set(p.conversation_id, participantInfo);
             }
         });
 
+        // Build userInfo cho current user
         const currentUser = usersMap.get(userId);
         const userInfo = currentUser
             ? {
@@ -87,41 +79,31 @@ class HomeService {
               }
             : null;
 
-        // 5. Tổng hợp dữ liệu cho sidebar (chỉ lọc 1 lần)
-        const joinedConversations = conversations
-            .filter(
-                (conv) =>
-                    participantsMap.has(conv.id) && participantsMap.get(conv.id).some((p) => p.user_id === userId),
-            )
-            .map((conv) => {
-                const convParticipants = participantsMap.get(conv.id);
-                // Xác định tiêu đề hội thoại
-                let title = conv.name;
-                if (!title) {
-                    const other = convParticipants.find((u) => u.user_id !== userId);
-                    title = other ? other.full_name : 'Cuộc trò chuyện';
-                }
+        // 5. Tổng hợp sidebar — conversations đã filter theo conversationIds của user nên không cần .some()
+        const joinedConversations = conversations.map(conv => {
+            const convParticipants = participantsMap.get(conv.id) || [];
 
-                // Lấy owner info từ map (đã lưu sẵn, không cần find)
-                const ownerInfo = ownerInfoMap.get(conv.id) || null;
+            let title = conv.name;
+            if (!title) {
+                const other = convParticipants.find(p => p.user_id !== userId);
+                title = other ? other.full_name : 'Cuộc trò chuyện';
+            }
 
-                return {
-                    conversation_id: conv.id,
-                    title,
-                    avatar_url: conv.avatar_url,
-                    type: conv.conversation_type,
-                    ownerInfo,
-                    participants: convParticipants,
-                    lastMessage: lastMessagesMap.get(conv.last_message_id) || null,
-                };
-            });
-        return {
-            userInfo,
-            joinedConversations,
-        };
+            return {
+                conversation_id: conv.id,
+                title,
+                avatar_url: conv.avatar_url,
+                type: conv.conversation_type,
+                ownerInfo: ownerInfoMap.get(conv.id) || null,
+                participants: convParticipants,
+                lastMessage: lastMessagesMap.get(conv.last_message_id) || null
+            };
+        });
+
+        return { userInfo, joinedConversations };
     }
 
-    // Lấy tất cả messages trong 1 conversation (tối ưu: batch lấy user info)
+    // Lấy tất cả messages trong 1 conversation (có phân trang)
     async getMessagesByConversation(conversationId, limit = 100, offset = 0) {
         // 1. Song song hóa queries ban đầu
         const [conversation, messages, pinnedMessages] = await Promise.all([
@@ -130,7 +112,13 @@ class HomeService {
             pinnedmessagesService.getPinnedMessagesByConversationId(conversationId),
         ]);
 
-        if (messages.length === 0 && (!pinnedMessages || pinnedMessages.length === 0)) {
+        if (!conversation) {
+            throw new Error(`Conversation ${conversationId} not found`);
+        }
+
+        const safePinned = pinnedMessages || [];
+
+        if (messages.length === 0 && safePinned.length === 0) {
             return {
                 ...conversation.dataValues,
                 messages: [],
@@ -139,121 +127,131 @@ class HomeService {
             };
         }
 
-        // 2. Thu thập IDs cần thiết để query bổ sung (Messages & Users)
-        const messageSenderIds = messages.map((m) => m.sender_id);
-        const pinnedExecutorIds = (pinnedMessages || []).map((p) => p.pinned_by);
+        // 2. Thu thập tất cả IDs cần thiết
+        const messageSenderIds = messages.map(m => m.sender_id);
+        const pinnedExecutorIds = safePinned.map(p => p.pinned_by);
+        const parentMessageIds = messages.map(m => m.parent_message_id).filter(Boolean);
+        const pinnedTargetMessageIds = safePinned.map(p => p.message_id).filter(Boolean);
+        const refMessageIds = [...new Set([...parentMessageIds, ...pinnedTargetMessageIds])];
 
-        // IDs của các tin nhắn liên quan (Parent messages + Pinned target messages)
-        const parentMessageIds = messages.map((m) => m.parent_message_id).filter((id) => !!id);
-        const pinnedTargetMessageIds = (pinnedMessages || []).map((p) => p.message_id);
-        // Loại bỏ trùng lặp và null/undefined
-        const refMessageIds = [...new Set([...parentMessageIds, ...pinnedTargetMessageIds])].filter((id) => !!id);
+        // 3. Query song song: refMessages + "known users" (sender + pinner)
+        //    Không cần đợi refMessages mới query users — query trước users đã biết,
+        //    rồi chỉ query thêm sender của refMessages nếu chưa có trong set
+        const knownUserIds = [...new Set([...messageSenderIds, ...pinnedExecutorIds])];
 
-        // 3. Batch query các tin nhắn liên quan (nếu có)
-        let refMessages = [];
-        if (refMessageIds.length > 0) {
-            refMessages = await messagesService.getMessagesByIds(refMessageIds);
-        }
+        const [refMessages, knownUsers] = await Promise.all([
+            refMessageIds.length > 0
+                ? messagesService.getMessagesByIds(refMessageIds)
+                : Promise.resolve([]),
+            knownUserIds.length > 0
+                ? usersService.getAllUsers({ id: knownUserIds })
+                : Promise.resolve([])
+        ]);
 
-        // Tạo Map cho referinced messages
-        const refMessagesMap = new Map(refMessages.map((m) => [m.id, m]));
+        // 4. Lấy thêm users từ refMessages nếu chưa có (tránh query trùng)
+        const knownUserIdSet = new Set(knownUserIds);
+        const refSenderIds = refMessages
+            .map(m => m.sender_id)
+            .filter(id => id && !knownUserIdSet.has(id));
+        const uniqueRefSenderIds = [...new Set(refSenderIds)];
 
-        // 4. Thu thập User IDs từ messages liên quan
-        const refMessageSenderIds = refMessages.map((m) => m.sender_id);
+        const refSenderUsers = uniqueRefSenderIds.length > 0
+            ? await usersService.getAllUsers({ id: uniqueRefSenderIds })
+            : [];
 
-        // 5. Batch query TẤT CẢ users (sender, pinner, ref_sender)
-        const allUserIds = [...new Set([...messageSenderIds, ...pinnedExecutorIds, ...refMessageSenderIds])];
+        // 5. Merge tất cả users vào 1 Map
+        const userMap = new Map([
+            ...knownUsers.map(u => [u.id, u]),
+            ...refSenderUsers.map(u => [u.id, u])
+        ]);
+        const refMessagesMap = new Map(refMessages.map(m => [m.id, m]));
 
-        let allUsers = [];
-        if (allUserIds.length > 0) {
-            allUsers = await usersService.getAllUsers({ id: allUserIds });
-        }
-        const userMap = new Map(allUsers.map((u) => [u.id, u]));
+        // 6. Map Pinned Messages → plain objects
+        const mappedPinnedMessages = safePinned.map(pin => {
+            const pinner = userMap.get(pin.pinned_by);
+            const targetMsg = refMessagesMap.get(pin.message_id);
+            const sender = targetMsg ? userMap.get(targetMsg.sender_id) : null;
 
-        // 6. Map dữ liệu vào kết quả
-        // 6.1 Map info cho Pinned Messages
-        if (pinnedMessages) {
-            pinnedMessages.forEach((pin) => {
-                // Info người ghim (pinned_by là User ID, pinned_by_name là tên người ghim)
-                const pinner = userMap.get(pin.pinned_by);
-                pin.dataValues.pinned_by_name = pinner ? pinner.full_name : 'Unknown';
+            return {
+                ...pin.dataValues,
+                pinned_by_name: pinner ? pinner.full_name : 'Unknown',
+                content: targetMsg ? targetMsg.content : 'Tin nhắn không tồn tại hoặc đã bị xóa',
+                sender_id: targetMsg ? targetMsg.sender_id : null,
+                sender_name: sender ? sender.full_name : 'Unknown'
+            };
+        });
 
-                // Info tin nhắn được ghim
-                const targetMsg = refMessagesMap.get(pin.message_id);
-                if (targetMsg) {
-                    pin.dataValues.content = targetMsg.content;
-                    pin.dataValues.sender_id = targetMsg.sender_id;
-                    const sender = userMap.get(targetMsg.sender_id);
-                    pin.dataValues.sender_name = sender ? sender.full_name : 'Unknown';
-                } else {
-                    pin.dataValues.content = 'Tin nhắn không tồn tại hoặc đã bị xóa';
-                }
-            });
-        }
-
-        // 6.2 Map info cho Messages chính
-        messages.forEach((m) => {
+        // 7. Map Messages chính → plain objects
+        const mappedMessages = messages.map(m => {
             const sender = userMap.get(m.sender_id);
-            m.dataValues.sender_name = sender ? sender.full_name : '';
-            m.dataValues.sender_avatar = sender ? sender.avatar_url : '';
-            m.dataValues.sender_status = sender ? sender.status : '';
+            const result = {
+                ...m.dataValues,
+                sender_name: sender ? sender.full_name : '',
+                sender_avatar: sender ? sender.avatar_url : '',
+                sender_status: sender ? sender.status : '',
+                parent_message_info: null
+            };
 
-            // Map parent info nếu có
-            if (m.parent_message_id && refMessagesMap.has(m.parent_message_id)) {
+            if (m.parent_message_id) {
                 const parentMsg = refMessagesMap.get(m.parent_message_id);
-                const parentSender = userMap.get(parentMsg.sender_id);
-
-                m.dataValues.parent_message_info = {
-                    parent_message_id: parentMsg.id,
-                    parent_message_content: parentMsg.content,
-                    parent_message_sender_id: parentMsg.sender_id,
-                    parent_message_is_deleted: parentMsg.is_deleted,
-                    parent_message_name: parentSender ? parentSender.full_name : 'Unknown',
-                };
+                if (parentMsg) {
+                    const parentSender = userMap.get(parentMsg.sender_id);
+                    result.parent_message_info = {
+                        parent_message_id: parentMsg.id,
+                        parent_message_content: parentMsg.content,
+                        parent_message_sender_id: parentMsg.sender_id,
+                        parent_message_is_deleted: parentMsg.is_deleted,
+                        parent_message_name: parentSender ? parentSender.full_name : 'Unknown'
+                    };
+                }
             }
+
+            return result;
         });
 
         return {
             ...conversation.dataValues,
-            messages,
-            pinnedMessages: (pinnedMessages || []).map((pin) => ({ ...pin.dataValues })),
-            hasMore: messages.length === limit, // Nếu trả về đủ limit thì có thể còn nữa
+            messages: mappedMessages,
+            pinnedMessages: mappedPinnedMessages,
+            hasMore: messages.length === limit
         };
     }
 
     async postMessageToConversation(conversationId, senderId, content, parent_message_id = null) {
-        // Parallel query: Tạo message mới và lấy parent message info (nếu có)
+        // 1. Tạo message mới + lấy parent message (song song)
         const [newMessage, parentMessage] = await Promise.all([
             messagesService.createMessage({
                 conversation_id: conversationId,
                 sender_id: senderId,
-                content: content,
-                parent_message_id: parent_message_id,
-                time_sent: new Date(),
+                content,
+                parent_message_id,
+                time_sent: new Date()
             }),
-            parent_message_id ? messagesService.getMessageById(parent_message_id) : Promise.resolve(null),
+            parent_message_id
+                ? messagesService.getMessageById(parent_message_id)
+                : Promise.resolve(null)
         ]);
 
-        // Cập nhật last_message_id trong conversation
-        await conversationsService.updateConversation(conversationId, {
-            last_message_id: newMessage.id,
-        });
+        // 2. Update conversation + lấy parent sender (song song — không phụ thuộc nhau)
+        const [, parentSender] = await Promise.all([
+            conversationsService.updateConversation(conversationId, {
+                last_message_id: newMessage.id
+            }),
+            parentMessage
+                ? usersService.getUserById(parentMessage.sender_id)
+                : Promise.resolve(null)
+        ]);
 
-        // Nếu có parent message, lấy sender info
-        let parent_message_info = null;
-        if (parentMessage) {
-            const parentSender = await usersService.getUserById(parentMessage.sender_id);
-            parent_message_info = {
-                parent_message_content: parentMessage.content,
-                parent_message_sender_id: parentMessage.sender_id,
-                parent_message_is_deleted: parentMessage.is_deleted,
-                parent_message_name: parentSender ? parentSender.full_name : '',
-            };
-        }
+        const parent_message_info = parentMessage ? {
+            parent_message_content: parentMessage.content,
+            parent_message_sender_id: parentMessage.sender_id,
+            parent_message_is_deleted: parentMessage.is_deleted,
+            parent_message_name: parentSender ? parentSender.full_name : ''
+        } : null;
 
         return {
             ...newMessage.dataValues,
-            parent_message_info: parent_message_info,
+            parent_message_info
         };
     }
 
