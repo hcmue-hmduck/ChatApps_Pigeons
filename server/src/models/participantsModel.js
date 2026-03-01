@@ -29,26 +29,12 @@ const Participant = sequelize.define('Participant', {
     joined_at: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
-        field: 'joined_at',
-        // get() {
-        //     const rawValue = this.getDataValue('joined_at');
-        //     if (!rawValue) return null;
-        //     const d = new Date(rawValue);
-        //     const pad = n => n.toString().padStart(2, '0');
-        //     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${d.getMilliseconds().toString().padStart(3, '0')}`;
-        // }
+        field: 'joined_at'
     },
     left_at: {
         type: DataTypes.DATE,
         allowNull: true,
-        field: 'left_at',
-        // get() {
-        //     const rawValue = this.getDataValue('left_at');
-        //     if (!rawValue) return null;
-        //     const d = new Date(rawValue);
-        //     const pad = n => n.toString().padStart(2, '0');
-        //     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${d.getMilliseconds().toString().padStart(3, '0')}`;
-        // }
+        field: 'left_at'
     },
     nick_name: {
         type: DataTypes.STRING(100),
