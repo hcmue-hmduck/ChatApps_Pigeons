@@ -9,7 +9,6 @@ const sequelize = new Sequelize(
     {
         host: process.env.SERVER_NAME,
         dialect: 'postgres',
-        timezone: '+07:00',
         logging: false,  // Bật log SQL queries để debug
         pool: {
             max: 5,
@@ -21,7 +20,7 @@ const sequelize = new Sequelize(
             ssl: {
                 require: true,
                 rejectUnauthorized: false
-            }
+            },
         },
         define: {
             schema: 'ChatPigeons'  // Mặc định tất cả model sẽ dùng schema này
