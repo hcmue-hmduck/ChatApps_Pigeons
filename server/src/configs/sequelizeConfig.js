@@ -9,6 +9,7 @@ const sequelize = new Sequelize(
     {
         host: process.env.SERVER_NAME,
         dialect: 'postgres',
+        timezone: 'Asia/Ho_Chi_Minh',
         logging: false,  // Bật log SQL queries để debug
         pool: {
             max: 5,
