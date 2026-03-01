@@ -83,6 +83,8 @@ class HomeService {
                   avatar_url: currentUser.avatar_url,
                   email: currentUser.email,
                   status: currentUser.status,
+                  birthday: currentUser.birthday,
+                  gender: currentUser.gender,
               }
             : null;
 

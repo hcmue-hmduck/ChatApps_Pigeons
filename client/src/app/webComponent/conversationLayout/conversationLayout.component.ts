@@ -325,6 +325,8 @@ export class ConversationLayoutComponent implements OnInit {
                 bio: user?.bio || '',
                 email: user?.email || '',
                 phone_number: user?.phone_number || '',
+                birthday: user?.birthday ? new Date(user.birthday).toISOString().split('T')[0] : '',
+                gender: user?.gender || '',
             };
         }
         this.isEditingProfile.update(v => !v);

@@ -1193,16 +1193,16 @@
   font-size: 13px !important;
   border-radius: 9px !important;
   border: 1.5px solid #e2e8f0 !important;
-  background: #f8fafc !important;
+  background-color: #f8fafc !important;
   color: #1e293b !important;
   padding: 8px 12px !important;
-  transition: border-color .15s, box-shadow .15s, background .15s !important;
+  transition: border-color .15s, box-shadow .15s, background-color .15s !important;
 }
 
 .pf-input:focus {
   border-color: #7c3aed !important;
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.14) !important;
-  background: #fff !important;
+  background-color: #fff !important;
   outline: none !important;
 }
 
@@ -1227,4 +1227,44 @@
     opacity: 1;
     transform: translateY(0) scale(1);
   }
+}
+
+/* Gender icon colors */
+.pf-row-icon-gender {
+  background: #f0f9ff;
+  color: #0284c7;
+}
+
+.pf-gender-male .pf-row-icon {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.pf-gender-female .pf-row-icon {
+  background: #fdf2f8;
+  color: #c026d3;
+}
+
+/* Gender chips */
+.pf-gender-chip {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 20px;
+}
+
+.pf-gender-male {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.pf-gender-female {
+  background: #fce7f3;
+  color: #be185d;
+}
+
+.pf-gender-other {
+  background: #f1f5f9;
+  color: #475569;
 }

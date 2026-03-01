@@ -58,6 +58,18 @@ const User = sequelize.define('User', {
         field: 'phone_number'
     },
 
+    birthday: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        field: 'birthday'
+    },
+
+    gender: {
+        type: DataTypes.STRING(10),
+        allowNull: true,
+        field: 'gender'
+    },
+
     // Status
     status: {
         type: DataTypes.STRING(20),
