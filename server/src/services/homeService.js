@@ -5,7 +5,7 @@ const conversationsService = require('./conversationsService');
 const pinnedmessagesService = require('./pinnedmessagesService');
 
 class HomeService {
-    // Lấy danh sách conversations của user để hiển thị sidebar
+    // Lấy danh sách conversations của user để hiển thị sidebars
     async getAllUserMessagesInJoinedConversations(userId) {
         // 1. Lấy tất cả participant record của user
         const userParticipants = await participantsService.getAllParticipants({ user_id: userId });
