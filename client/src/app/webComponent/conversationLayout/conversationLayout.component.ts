@@ -8,7 +8,8 @@ import {
     ChangeDetectorRef,
     inject,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MessagesLayoutComponent } from '../messagesLayout/messagesLayout.component';
 import { Conversation } from '../../services/conversation';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -18,7 +19,7 @@ import { AuthService } from '../../services/authService';
 @Component({
     selector: 'conversation-layout',
     standalone: true,
-    imports: [CommonModule, MessagesLayoutComponent],
+    imports: [CommonModule, FormsModule, DatePipe, MessagesLayoutComponent],
     templateUrl: './conversationLayout.component.html',
     styleUrls: ['./conversationLayout.component.css'],
     encapsulation: ViewEncapsulation.None,
@@ -27,6 +28,11 @@ import { AuthService } from '../../services/authService';
 export class ConversationLayoutComponent implements OnInit {
     protected readonly title = signal('client');
     conversations = signal<any>({});
+    showProfileModal = signal<boolean>(false);
+    isEditingProfile = signal<boolean>(false);
+    showChangePassword = signal<boolean>(false);
+    editForm: any = {};
+    changePassForm = { oldPass: '', newPass: '', confirmPass: '' };
 
     authService = inject(AuthService);
 
@@ -50,12 +56,12 @@ export class ConversationLayoutComponent implements OnInit {
     getMessageInfor: any = {};
 
     user_name = '';
-    currentUserId : string = '';
-    
-    constructor(private conversationService: Conversation, 
-                private socketService: SocketService,
-                private router: ActivatedRoute,
-                private cdr: ChangeDetectorRef) {
+    currentUserId: string = '';
+
+    constructor(private conversationService: Conversation,
+        private socketService: SocketService,
+        private router: ActivatedRoute,
+        private cdr: ChangeDetectorRef) {
     }
 
     relativeTime(dateStr: string, tick1s: number, tick60s: number, tick3600s: number): string {
@@ -156,7 +162,7 @@ export class ConversationLayoutComponent implements OnInit {
     ngAfterViewInit() {
         this.reloadSidebar();
         this.isLoaded = true;
-        
+
         // Interval 30s cho message mới (giảm tải CPU)
         this.interval1s = setInterval(() => {
             this.tick1s.update((v) => v + 1);
@@ -292,10 +298,56 @@ export class ConversationLayoutComponent implements OnInit {
         }
     }
 
-    createConversation() {}
+    createConversation() { }
 
-    openSetting() {}
+    openSetting() { }
 
-    filter() {}
+    filter() { }
+
+    openProfileModal() {
+        this.showProfileModal.set(true);
+        this.isEditingProfile.set(false);
+        this.showChangePassword.set(false);
+    }
+
+    closeProfileModal() {
+        this.showProfileModal.set(false);
+        this.isEditingProfile.set(false);
+        this.showChangePassword.set(false);
+    }
+
+    toggleEditProfile() {
+        const user = this.conversations().homeConversationData?.userInfo;
+        if (!this.isEditingProfile()) {
+            // Sao chép dữ liệu hiện tại vào form
+            this.editForm = {
+                full_name: user?.full_name || '',
+                bio: user?.bio || '',
+                email: user?.email || '',
+                phone_number: user?.phone_number || '',
+            };
+        }
+        this.isEditingProfile.update(v => !v);
+    }
+
+    saveProfile() {
+        // TODO: gọi API cập nhật profile
+        console.log('Saving profile:', this.editForm);
+        this.isEditingProfile.set(false);
+    }
+
+    toggleChangePassword() {
+        this.showChangePassword.update(v => !v);
+        if (!this.showChangePassword()) {
+            this.changePassForm = { oldPass: '', newPass: '', confirmPass: '' };
+        }
+    }
+
+    saveChangePassword() {
+        // TODO: gọi API đổi mật khẩu
+        console.log('Changing password:', this.changePassForm);
+        this.showChangePassword.set(false);
+        this.changePassForm = { oldPass: '', newPass: '', confirmPass: '' };
+    }
 
 }

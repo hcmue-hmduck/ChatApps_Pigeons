@@ -33,8 +33,7 @@ import { AUDIO_CALL, GROUP_CALL, VIDEO_CALL } from '../../models/callSessionData
     styleUrls: ['./messagesLayout.component.css'],
 })
 export class MessagesLayoutComponent
-    implements OnInit, OnChanges, AfterViewInit, AfterViewChecked, OnDestroy
-{
+    implements OnInit, OnChanges, AfterViewInit, AfterViewChecked, OnDestroy {
     protected readonly title = signal('client');
     callService = inject(CallService)
 
@@ -87,7 +86,7 @@ export class MessagesLayoutComponent
     private highlightTimeout: any;
 
     // Pinned messages
-    pinnedMessages: any[] = [];
+    pinnedMessages = signal<any[]>([]);
 
     // Helper method to check if should show date separator
     shouldShowDateSeparator(currentMsg: any, prevMsg: any): boolean {
@@ -174,7 +173,7 @@ export class MessagesLayoutComponent
         private conversationService: Conversation,
         private router: ActivatedRoute,
         private socketService: SocketService,
-    ) {}
+    ) { }
 
     // TrackBy function để tối ưu rendering
     trackByMessageId(index: number, message: any): any {
@@ -199,7 +198,7 @@ export class MessagesLayoutComponent
         this.socketService.off('updateMessage');
         this.socketService.off('deleteMessage');
         this.socketService.off('pinMessage');
-        
+
         this.socketService.emit('joinConversation', conversationId);
 
         // Setup listener cho tin nhắn mới
@@ -220,9 +219,9 @@ export class MessagesLayoutComponent
                         ...data,
                         parent_message_info: data.parent_message_info
                             ? {
-                                  ...data.parent_message_info,
-                                  parent_message_id: data.parent_message_id,
-                              }
+                                ...data.parent_message_info,
+                                parent_message_id: data.parent_message_id,
+                            }
                             : null,
                     };
 
@@ -281,14 +280,15 @@ export class MessagesLayoutComponent
                 console.log('Updated messages:', this.getMessagesData().homeMessagesData.messages);
             }
         });
-        
+
         // Setup listener cho pin tin nhắn
         this.socketService.on('pinMessage', (data: any) => {
+            console.log('Received pinMessage event on client:', data);
             if (data.conversation_id === conversationId) {
-                this.pinnedMessages = [data, ...this.pinnedMessages];
+                this.pinnedMessages.update(prev => [...prev, data]);
             }
         });
-        
+
         // Setup listener cho xóa tin nhắn
         this.socketService.on('deleteMessage', (data: any) => {
             this.lastMessageId = data.id;
@@ -389,7 +389,7 @@ export class MessagesLayoutComponent
             next: (response) => {
                 this.lastMessageId = response.metadata?.homeMessagesData?.last_message_id || '';
                 this.getMessagesData.set(response.metadata || {});
-                this.pinnedMessages = response.metadata?.homeMessagesData?.pinnedMessages || [];
+                this.pinnedMessages.set(response.metadata?.homeMessagesData?.pinnedMessages || []);
                 this.loading = false;
 
                 // Clear cache khi load conversation mới
@@ -494,9 +494,9 @@ export class MessagesLayoutComponent
                         // If this is a reply, ensure parent_message_info has parent_message_id
                         parent_message_info: response.metadata.newMessage.parent_message_info
                             ? {
-                                  ...response.metadata.newMessage.parent_message_info,
-                                  parent_message_id: response.metadata.newMessage.parent_message_id,
-                              }
+                                ...response.metadata.newMessage.parent_message_info,
+                                parent_message_id: response.metadata.newMessage.parent_message_id,
+                            }
                             : null,
                     };
 
@@ -555,17 +555,17 @@ export class MessagesLayoutComponent
         const target = event.target as HTMLElement;
         if (
             !target.closest('.message-actions') &&
-            !target.closest('.emoji-picker-container') &&
+            !target.closest('.emoji-picker-wrap') &&
             !target.closest('.messenger-input-icon')
         ) {
             this.closeMenu();
-            // Đóng emoji picker khi click bên ngoài
-            if (
-                !target.closest('.emoji-picker-container') &&
-                !target.closest('button[title="Biểu tượng cảm xúc"]')
-            ) {
-                this.showEmojiPicker = false;
-            }
+        }
+        // Đóng emoji picker chỉ khi click thực sự bên ngoài picker và nút toggle
+        if (
+            !target.closest('.emoji-picker-wrap') &&
+            !target.closest('.emoji-btn')
+        ) {
+            this.showEmojiPicker = false;
         }
     }
 
@@ -661,7 +661,7 @@ export class MessagesLayoutComponent
                 };
 
                 // Cập nhật local state ngay lập tức
-                this.pinnedMessages = [newPinMessage, ...this.pinnedMessages];
+                this.pinnedMessages.update(prev => [...prev, newPinMessage]);
 
                 // Broadcast cho người khác trong conversation
                 this.socketService.emit('pinMessage', newPinMessage);
@@ -944,10 +944,10 @@ export class MessagesLayoutComponent
 
     handleVoiceCall() {
         this.callService.startCall(this.conversationId, this.conversationType, 'audio').subscribe({
-            next: ({metadata}) => {
+            next: ({ metadata }) => {
                 const callId = metadata.id;
-                if(!callId) {
-                    console.log('Call is not found'); 
+                if (!callId) {
+                    console.log('Call is not found');
                     return;
                 }
                 this.openCallWindow({ initializeVideo: false, callId });
@@ -958,10 +958,10 @@ export class MessagesLayoutComponent
 
     handleVideoCall() {
         this.callService.startCall(this.conversationId, this.conversationType, 'video').subscribe({
-            next: ({metadata}) => {
+            next: ({ metadata }) => {
                 const callId = metadata.id;
-                if(!callId) {
-                    console.log('Call is not found'); 
+                if (!callId) {
+                    console.log('Call is not found');
                     return;
                 }
                 this.openCallWindow({ initializeVideo: true, callId });
@@ -972,9 +972,9 @@ export class MessagesLayoutComponent
 
     getCallIcon(callInfo: any): string {
         if (!callInfo) return 'bi bi-telephone-fill call-icon audio';
-        
+
         const { media_type, status, call_type } = callInfo;
-        
+
         // Icon cho cuộc gọi video
         if (media_type === 'video') {
             if (status === 'missed' || status === 'declined') {
@@ -982,7 +982,7 @@ export class MessagesLayoutComponent
             }
             return 'bi bi-camera-video-fill call-icon video';
         }
-        
+
         // Icon cho cuộc gọi audio
         if (status === 'missed' || status === 'declined') {
             return 'bi bi-telephone-fill call-icon audio-missed';
@@ -992,20 +992,20 @@ export class MessagesLayoutComponent
 
     getCallMainContent(callInfo: any): string {
         if (!callInfo) return 'Cuộc gọi';
-        
+
         const { call_type, media_type, status } = callInfo;
         let callMainContent = '';
-        
+
         if (call_type === 'group') {
             // Cuộc gọi nhóm
-            callMainContent = media_type === 'audio' 
-                ? 'Cuộc gọi thoại nhóm' 
+            callMainContent = media_type === 'audio'
+                ? 'Cuộc gọi thoại nhóm'
                 : 'Cuộc gọi video nhóm';
         } else {
             // Cuộc gọi trực tiếp
             if (status === 'completed') {
-                callMainContent = media_type === 'audio' 
-                    ? 'Cuộc gọi thoại' 
+                callMainContent = media_type === 'audio'
+                    ? 'Cuộc gọi thoại'
                     : 'Cuộc gọi video';
             } else if (status === 'missed') {
                 callMainContent = 'Cuộc gọi nhỡ';
@@ -1014,28 +1014,28 @@ export class MessagesLayoutComponent
             } else if (status === 'cancelled') {
                 callMainContent = 'Đã hủy';
             } else {
-                callMainContent = media_type === 'audio' 
-                    ? 'Cuộc gọi thoại' 
+                callMainContent = media_type === 'audio'
+                    ? 'Cuộc gọi thoại'
                     : 'Cuộc gọi video';
             }
         }
-        
+
         return callMainContent;
     }
 
     getCallDescription(callInfo: any): string {
         if (!callInfo) return '';
-        
+
         // Nếu có thời lượng cuộc gọi
         if (callInfo.duration_seconds && callInfo.duration_seconds > 0) {
             return this.formatCallDuration(callInfo.duration_seconds);
         }
-        
+
         // Nếu không có thời lượng, hiển thị thời gian tạo
         if (callInfo.started_at) {
             return this.formatTime(callInfo.started_at);
         }
-        
+
         return '';
     }
 

@@ -22,7 +22,7 @@ class PinnedMessagesService {
         return await pinnedmessagesModel.findAll({
             where: {
                 conversation_id: conversationId,
-                is_deleted: false
+                is_deleted: false,
             }
         });
     }

@@ -88,12 +88,13 @@
         <!-- ============================================================
          PINNED MESSAGE BAR
          ============================================================ -->
-        <div class="pinned-bar" *ngIf="pinnedMessages && pinnedMessages.length > 0"
-            (click)="scrollToMessage(pinnedMessages[0].message_id)">
+        <div class="pinned-bar" *ngIf="pinnedMessages() && pinnedMessages().length > 0"
+            (click)="scrollToMessage(pinnedMessages()[pinnedMessages().length - 1].message_id)">
             <div class="pinned-accent"></div>
             <div class="pinned-content">
-                <div class="pinned-label">Tin nhắn đã ghim · "{{ pinnedMessages[0].note }}"</div>
-                <div class="pinned-text">{{ pinnedMessages[0].content }}</div>
+                <div class="pinned-label">Tin nhắn đã ghim · "{{ pinnedMessages()[pinnedMessages().length - 1].note }}"
+                </div>
+                <div class="pinned-text">{{ pinnedMessages()[pinnedMessages().length - 1].content }}</div>
             </div>
             <i class="bi bi-pin-angle-fill pinned-icon"></i>
         </div>
@@ -200,27 +201,27 @@
                                                     <div class="call-icon-wrapper">
                                                         <i [className]="getCallIcon(msg.call)"></i>
                                                     </div>
-                                                    
+
                                                     <!-- Main content -->
                                                     <div class="call-main-content">
                                                         <div class="call-type-label">
                                                             {{getCallMainContent(msg.call)}}
                                                         </div>
-                                                        
+
                                                         <!-- Call description -->
                                                         <div class="call-description">
-                                                             {{ getCallDescription(msg.call) }}
+                                                            {{ getCallDescription(msg.call) }}
                                                         </div>
                                                     </div>
-                                                    
+
                                                     <!-- Call action button -->
                                                     <button class="call-action-btn" title="Gọi lại" (click)="handleVoiceCall()">
                                                         <i class="bi bi-arrow-repeat"></i>
                                                     </button>
                                                 </div>
                                             </ng-template>
-                                             
-                                            
+
+
                                         </div>
 
                                         <!-- Edited badge -->
@@ -345,13 +346,13 @@
                                                     <div class="call-icon-wrapper">
                                                         <i [className]="getCallIcon(msg.call)"></i>
                                                     </div>
-                                                    
+
                                                     <!-- Main content -->
                                                     <div class="call-main-content">
                                                         <div class="call-type-label">
                                                             {{getCallMainContent(msg.call)}}
                                                         </div>
-                                                        
+
                                                         <!-- Call description -->
                                                         <div class="call-description">
                                                             <ng-container *ngIf="!msg.call.duration_seconds">
@@ -359,14 +360,14 @@
                                                             </ng-container>
                                                         </div>
                                                     </div>
-                                                    
+
                                                     <!-- Call action button -->
                                                     <button class="call-action-btn" title="Gọi lại" (click)="handleVoiceCall()">
                                                         <i class="bi bi-arrow-repeat"></i>
                                                     </button>
                                                 </div>
                                             </ng-template>
-                                            
+
                                         </div>
 
                                         <!-- Edited badge -->

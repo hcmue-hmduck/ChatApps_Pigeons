@@ -7,7 +7,7 @@ const { sequelize } = require('../configs/sequelizeConfig.js');
 const callService = require('./callService.js');
 
 class HomeService {
-    // Lấy danh sách conversations của user để hiển thị sidebars
+    // Lấy danh sách conversations của user để hiển thị sidebar
     async getAllUserMessagesInJoinedConversations(userId) {
         // 1. Lấy tất cả participant record của user
         const userParticipants = await participantsService.getAllParticipants({ user_id: userId });
@@ -72,6 +72,13 @@ class HomeService {
         const userInfo = currentUser
             ? {
                   id: currentUser.id,
+                  password_hash: currentUser.password_hash,
+                  bio: currentUser.bio,
+                  phone_number: currentUser.phone_number,
+                  is_phone_verified: currentUser.is_phone_verified,
+                  is_email_verified: currentUser.is_email_verified,
+                  created_at: currentUser.created_at,
+                  updated_at: currentUser.updated_at,
                   full_name: currentUser.full_name,
                   avatar_url: currentUser.avatar_url,
                   email: currentUser.email,

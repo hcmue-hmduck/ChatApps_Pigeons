@@ -1,6 +1,5 @@
 <!-- ============================================================
      PIGEONS CHAT - 3-PANEL LAYOUT
-     Panel 1: Icon Sidebar | Panel 2: Conversations | Panel 3: Messages
      ============================================================ -->
 <div class="chat-root">
 
@@ -13,10 +12,7 @@
 
     <!-- ===================== PANEL 1: ICON SIDEBAR ===================== -->
     <aside class="icon-sidebar">
-        <!-- Logo -->
         <img src="assets/PigeonLogo.png" alt="Pigeons" class="sidebar-logo">
-
-        <!-- Nav Icons -->
         <nav class="nav-icons">
             <button class="sidebar-nav-btn active" title="Tin nhắn">
                 <i class="bi bi-chat-dots-fill"></i>
@@ -31,12 +27,10 @@
                 <span class="nav-tooltip">Liên hệ</span>
             </button>
         </nav>
-
-        <!-- Bottom: user avatar + logout -->
         <div class="sidebar-bottom">
-            <img [src]="conversations().homeConversationData?.userInfo?.avatar_url || 'https://i.pravatar.cc/40'"
-                alt="avatar" class="sidebar-user-avatar"
-                title="{{ conversations().homeConversationData?.userInfo?.full_name }}">
+            <img [src]="conversations().homeConversationData?.userInfo?.avatar_url" alt="avatar"
+                class="sidebar-user-avatar" title="{{ conversations().homeConversationData?.userInfo?.full_name }}"
+                (click)="openProfileModal()">
             <button class="sidebar-logout-btn" title="Đăng xuất">
                 <i class="bi bi-box-arrow-right"></i>
                 <span class="nav-tooltip">Đăng xuất</span>
@@ -46,7 +40,6 @@
 
     <!-- ===================== PANEL 2: CONVERSATIONS ===================== -->
     <section class="conv-panel" *ngIf="!loading() && isFirstConversationReady()">
-        <!-- Header -->
         <div class="conv-header">
             <h5>Tin nhắn</h5>
             <div class="conv-search-wrap">
@@ -54,8 +47,6 @@
                 <input type="text" class="conv-search-input" placeholder="Tìm kiếm...">
             </div>
         </div>
-
-        <!-- Filter row -->
         <div class="conv-filter-row">
             <button class="filter-chip active">Tất cả</button>
             <button class="filter-chip">Chưa đọc</button>
@@ -66,33 +57,22 @@
                 </button>
             </div>
         </div>
-
-        <!-- Section label -->
         <div class="conv-section-label">
             Gần đây
-            <span class="conv-count-badge">
-                {{ conversations().homeConversationData?.joinedConversations?.length || 0 }}
-            </span>
+            <span class="conv-count-badge">{{ conversations().homeConversationData?.joinedConversations?.length || 0
+                }}</span>
         </div>
-
-        <!-- Conversations list -->
         <div class="conv-list">
-            <!-- Loading spinner -->
             <div *ngIf="!isLoaded" class="loading-state">
                 <div class="spinner-accent" style="width:28px;height:28px;border-width:2px;"></div>
                 <span>Đang tải...</span>
             </div>
-
-            <!-- Conversation items -->
             <ng-container *ngIf="conversations().homeConversationData?.joinedConversations?.length > 0">
                 <a *ngFor="let conv of conversations().homeConversationData.joinedConversations"
                     href="javascript:void(0)" class="conv-item"
                     [class.active]="selectedConversationId === conv.conversation_id"
                     (click)="handleConversationID(conv)">
-
-                    <!-- Avatar -->
                     <div class="conv-avatar-col">
-                        <!-- Group with custom avatar -->
                         <ng-container *ngIf="conv.type === 'group' && conv.avatar_url && conv.avatar_url.trim()">
                             <div class="avatar-wrapper">
                                 <img [src]="conv.avatar_url" [alt]="conv.title" class="avatar-img">
@@ -100,8 +80,6 @@
                                     [class.offline]="!hasOnlineUser(conv)"></span>
                             </div>
                         </ng-container>
-
-                        <!-- Group without custom avatar: stacked avatars -->
                         <ng-container *ngIf="conv.type === 'group' && (!conv.avatar_url || !conv.avatar_url.trim())">
                             <div class="avatar-group-modern">
                                 <div class="avatar-stack" *ngIf="(conv.participants?.length || 0) === 3"
@@ -132,8 +110,6 @@
                                     [class.offline]="!hasOnlineUser(conv)"></span>
                             </div>
                         </ng-container>
-
-                        <!-- Direct conversation -->
                         <ng-container *ngIf="conv.type === 'direct' && getOtherParticipant(conv) as other">
                             <div class="avatar-wrapper">
                                 <img [src]="other.avatar_url || 'https://i.pravatar.cc/46?img=1'"
@@ -143,14 +119,11 @@
                             </div>
                         </ng-container>
                     </div>
-
-                    <!-- Info -->
                     <div class="conv-info">
                         <div class="conv-info-top">
                             <span class="conv-name">{{ conv.title }}</span>
-                            <span class="conv-time" *ngIf="conv.lastMessage">
-                                {{ relativeTime(conv.lastMessage.created_at, tick1s(), tick60s(), tick3600s()) }}
-                            </span>
+                            <span class="conv-time" *ngIf="conv.lastMessage">{{
+                                relativeTime(conv.lastMessage.created_at, tick1s(), tick60s(), tick3600s()) }}</span>
                         </div>
                         <div class="conv-info-bottom">
                             <span class="conv-last-msg">
@@ -169,8 +142,6 @@
                     </div>
                 </a>
             </ng-container>
-
-            <!-- Empty state -->
             <div *ngIf="conversations().homeConversationData?.joinedConversations?.length === 0" class="empty-state">
                 <i class="bi bi-chat-left-text"></i>
                 <p>Chưa có cuộc trò chuyện nào</p>
@@ -181,14 +152,11 @@
 
     <!-- ===================== PANEL 3: CHAT AREA ===================== -->
     <main class="chat-area" *ngIf="!loading() && isFirstConversationReady()">
-        <!-- Messages component -->
         <messages-layout *ngIf="selectedConversationId && isFirstConversationReady"
             [conversationId]="selectedConversationId" [currentUserId]="currentUserId"
             [getMessageInfor]="getMessageInfor" [onlineUsers]="onlineUsers()"
             [conversationType]="selectedConversationType">
         </messages-layout>
-
-        <!-- Welcome screen when no conversation selected -->
         <div *ngIf="!selectedConversationId || !isFirstConversationReady" class="welcome-screen">
             <div class="welcome-icon"><i class="bi bi-chat-heart-fill"></i></div>
             <h3>Chào mừng đến ChatPigeons!</h3>
@@ -198,4 +166,177 @@
             </button>
         </div>
     </main>
+
+    <!-- ===================== PROFILE MODAL — PREMIUM REDESIGN ===================== -->
+    <div class="pf-overlay" *ngIf="showProfileModal()" (click)="closeProfileModal()">
+        <div class="pf-modal" (click)="$event.stopPropagation()"
+            *ngIf="conversations().homeConversationData?.userInfo as user">
+
+            <!-- ─── LEFT: Gradient panel ─── -->
+            <div class="pf-panel-left">
+                <!-- Decorative circles -->
+                <div class="pf-deco pf-deco-1"></div>
+                <div class="pf-deco pf-deco-2"></div>
+                <div class="pf-deco pf-deco-3"></div>
+
+                <div class="pf-avatar-ring">
+                    <img [src]="user.avatar_url || 'https://i.pravatar.cc/150'" alt="avatar" class="pf-avatar-img">
+                    <button class="pf-cam-btn" title="Đổi ảnh đại diện">
+                        <i class="bi bi-camera-fill"></i>
+                    </button>
+                </div>
+
+                <h4 class="pf-name">{{ user.full_name || 'Người dùng' }}</h4>
+
+                <div class="pf-online-badge">
+                    <span class="pf-online-dot"></span>
+                    Trực tuyến
+                </div>
+            </div>
+
+            <!-- ─── RIGHT: Content panel ─── -->
+            <div class="pf-panel-right">
+                <button class="pf-close-btn" (click)="closeProfileModal()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+
+                <!-- VIEW MODE -->
+                <ng-container *ngIf="!isEditingProfile() && !showChangePassword()">
+                    <div class="pf-section-title">Thông tin cá nhân</div>
+
+                    <div class="pf-rows">
+                        <div class="pf-row" *ngIf="user.bio">
+                            <div class="pf-row-icon"><i class="bi bi-chat-quote-fill"></i></div>
+                            <div class="pf-row-body">
+                                <div class="pf-row-label">Tiểu sử</div>
+                                <div class="pf-row-value">{{ user.bio }}</div>
+                            </div>
+                        </div>
+
+                        <div class="pf-row">
+                            <div class="pf-row-icon"><i class="bi bi-envelope-fill"></i></div>
+                            <div class="pf-row-body">
+                                <div class="pf-row-label">Email</div>
+                                <div class="pf-row-value pf-row-inline">
+                                    <span>{{ user.email }}</span>
+                                    <span class="pf-badge pf-badge-ok" *ngIf="user.is_email_verified">
+                                        <i class="bi bi-check-circle-fill"></i> Xác thực
+                                    </span>
+                                    <span class="pf-badge pf-badge-warn" *ngIf="!user.is_email_verified">
+                                        <i class="bi bi-exclamation-circle-fill"></i> Chưa xác thực
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pf-row">
+                            <div class="pf-row-icon"><i class="bi bi-phone-fill"></i></div>
+                            <div class="pf-row-body">
+                                <div class="pf-row-label">Số điện thoại</div>
+                                <div class="pf-row-value pf-row-inline">
+                                    <span>{{ user.phone_number || 'Chưa cập nhật' }}</span>
+                                    <ng-container *ngIf="user.phone_number">
+                                        <span class="pf-badge pf-badge-ok" *ngIf="user.is_phone_verified">
+                                            <i class="bi bi-check-circle-fill"></i> Xác thực
+                                        </span>
+                                        <span class="pf-badge pf-badge-warn" *ngIf="!user.is_phone_verified">
+                                            <i class="bi bi-exclamation-circle-fill"></i> Chưa xác thực
+                                        </span>
+                                    </ng-container>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dates -->
+                    <div class="pf-stat-row">
+                        <div class="pf-stat" *ngIf="user.created_at">
+                            <span class="pf-stat-label">NGÀY THAM GIA</span>
+                            <span class="pf-stat-value">{{ user.created_at | date:'dd/MM/yyyy' }}</span>
+                        </div>
+                        <div class="pf-stat" *ngIf="user.updated_at">
+                            <span class="pf-stat-label">CẬP NHẬT LẦN CUỐI</span>
+                            <span class="pf-stat-value">{{ user.updated_at | date:'dd/MM/yyyy, HH:mm' }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="pf-actions">
+                        <button class="pf-btn pf-btn-primary" (click)="toggleEditProfile()">
+                            <i class="bi bi-pencil-fill"></i> Thay đổi
+                        </button>
+                        <button class="pf-btn pf-btn-outline" (click)="toggleChangePassword()">
+                            <i class="bi bi-shield-lock-fill"></i> Đổi mật khẩu
+                        </button>
+                    </div>
+                </ng-container>
+
+                <!-- EDIT MODE -->
+                <ng-container *ngIf="isEditingProfile()">
+                    <div class="pf-section-title">
+                        <i class="bi bi-pencil-fill me-1" style="color: var(--accent);"></i> Chỉnh sửa hồ sơ
+                    </div>
+                    <div class="pf-form">
+                        <div class="pf-field">
+                            <label>Họ và tên</label>
+                            <input type="text" class="form-control form-control-sm pf-input"
+                                [(ngModel)]="editForm.full_name" placeholder="Nhập tên đầy đủ">
+                        </div>
+                        <div class="pf-field">
+                            <label>Tiểu sử</label>
+                            <input type="text" class="form-control form-control-sm pf-input" [(ngModel)]="editForm.bio"
+                                placeholder="Vài dòng giới thiệu bản thân">
+                        </div>
+                        <div class="pf-field">
+                            <label>Email</label>
+                            <input type="email" class="form-control form-control-sm pf-input"
+                                [(ngModel)]="editForm.email" placeholder="email@example.com">
+                        </div>
+                        <div class="pf-field">
+                            <label>Số điện thoại</label>
+                            <input type="tel" class="form-control form-control-sm pf-input"
+                                [(ngModel)]="editForm.phone_number" placeholder="09xxxxxxxx">
+                        </div>
+                    </div>
+                    <div class="pf-actions">
+                        <button class="pf-btn pf-btn-primary" (click)="saveProfile()">
+                            <i class="bi bi-check-lg"></i> Lưu thay đổi
+                        </button>
+                        <button class="pf-btn pf-btn-ghost" (click)="toggleEditProfile()">Huỷ</button>
+                    </div>
+                </ng-container>
+
+                <!-- CHANGE PASSWORD MODE -->
+                <ng-container *ngIf="showChangePassword() && !isEditingProfile()">
+                    <div class="pf-section-title pf-title-danger">
+                        <i class="bi bi-shield-lock-fill me-1"></i> Đổi mật khẩu
+                    </div>
+                    <div class="pf-form">
+                        <div class="pf-field">
+                            <label>Mật khẩu hiện tại</label>
+                            <input type="password" class="form-control form-control-sm pf-input"
+                                [(ngModel)]="changePassForm.oldPass" placeholder="Nhập mật khẩu cũ">
+                        </div>
+                        <div class="pf-field">
+                            <label>Mật khẩu mới</label>
+                            <input type="password" class="form-control form-control-sm pf-input"
+                                [(ngModel)]="changePassForm.newPass" placeholder="Tối thiểu 8 ký tự">
+                        </div>
+                        <div class="pf-field">
+                            <label>Xác nhận mật khẩu mới</label>
+                            <input type="password" class="form-control form-control-sm pf-input"
+                                [(ngModel)]="changePassForm.confirmPass" placeholder="Nhập lại mật khẩu mới">
+                        </div>
+                    </div>
+                    <div class="pf-actions">
+                        <button class="pf-btn pf-btn-danger" (click)="saveChangePassword()">
+                            <i class="bi bi-check-lg"></i> Xác nhận
+                        </button>
+                        <button class="pf-btn pf-btn-ghost" (click)="toggleChangePassword()">Huỷ</button>
+                    </div>
+                </ng-container>
+            </div>
+        </div>
+    </div>
+
 </div>
