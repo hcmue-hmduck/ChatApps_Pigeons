@@ -1,10 +1,20 @@
+const { Op } = require('sequelize');
 const usersModel = require('../models/usersModel');
 
 class UsersService {
-    // Lấy tất cả users
-    async getAllUsers() {
+    // Lấy users theo điều kiện filter
+    // Hỗ trợ: { id: [array] } hoặc bất kỳ where object nào
+    async getAllUsers(where = {}) {
+        const resolvedWhere = { is_active: true };
+
+        if (where.id) {
+            resolvedWhere.id = Array.isArray(where.id)
+                ? { [Op.in]: where.id }
+                : where.id;
+        }
+
         return await usersModel.findAll({
-            where: { is_active: true },
+            where: resolvedWhere,
             order: [['full_name', 'ASC']]
         });
     }
@@ -35,8 +45,7 @@ class UsersService {
     async deleteUser(userId) {
         const user = await usersModel.findByPk(userId);
         if (user) {
-            // Soft delete - chỉ đánh dấu is_active = false
-            await user.update({ 
+            await user.update({
                 is_active: false,
                 updated_at: new Date().toISOString()
             });

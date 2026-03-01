@@ -1,9 +1,9 @@
 const participantsModel = require('../models/participantsModel');
 
 class ParticipantsService {
-    // Lấy tất cả participants
-    async getAllParticipants() {
-        return await participantsModel.findAll();
+    // Lấy participants theo điều kiện filter (where object)
+    async getAllParticipants(where = {}) {
+        return await participantsModel.findAll({ where });
     }
 
     // Lấy participant theo ID
@@ -39,8 +39,7 @@ class ParticipantsService {
     async deleteParticipant(participantId) {
         const participant = await participantsModel.findByPk(participantId);
         if (participant) {
-            // Soft delete - chỉ đánh dấu is_active = false
-            await participant.update({ 
+            await participant.update({
                 is_active: false,
                 updated_at: new Date().toISOString()
             });

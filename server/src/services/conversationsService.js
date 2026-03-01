@@ -1,10 +1,20 @@
-const conversationsModel = require('../models/conversationsModel'); 
+const { Op } = require('sequelize');
+const conversationsModel = require('../models/conversationsModel');
 
 class ConversationsService {
-    // Lấy tất cả conversations
-    async getAllConversations() {
+    // Lấy conversations theo điều kiện filter
+    // Hỗ trợ: { id: [array] } hoặc bất kỳ where object nào
+    async getAllConversations(where = {}) {
+        const resolvedWhere = { is_active: true };
+
+        if (where.id) {
+            resolvedWhere.id = Array.isArray(where.id)
+                ? { [Op.in]: where.id }
+                : where.id;
+        }
+
         return await conversationsModel.findAll({
-            where: { is_active: true },
+            where: resolvedWhere,
             order: [['updated_at', 'DESC']]
         });
     }
@@ -35,8 +45,7 @@ class ConversationsService {
     async deleteConversation(conversationId) {
         const conversation = await conversationsModel.findByPk(conversationId);
         if (conversation) {
-            // Soft delete - chỉ đánh dấu is_active = false
-            await conversation.update({ 
+            await conversation.update({
                 is_active: false,
                 updated_at: new Date().toISOString()
             });
