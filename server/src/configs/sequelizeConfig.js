@@ -21,7 +21,7 @@ const sequelize = new Sequelize(
             ssl: {
                 require: true,
                 rejectUnauthorized: false
-            }
+            },
         },
         define: {
             schema: 'ChatPigeons'  // Mặc định tất cả model sẽ dùng schema này
