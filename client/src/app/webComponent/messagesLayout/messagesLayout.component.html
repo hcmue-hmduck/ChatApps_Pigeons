@@ -181,7 +181,7 @@
 
                     <!-- System message -->
                     <ng-container *ngIf="msg.message_type === 'system'; else userMsg">
-                        <div class="message-system">{{ msg.sender_name + ' ' + msg.content }}</div>
+                        <div class="message-system">{{ msg.content }}</div>
                     </ng-container>
 
                     <ng-template #userMsg>

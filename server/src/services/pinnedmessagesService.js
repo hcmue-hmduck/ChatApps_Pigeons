@@ -5,10 +5,10 @@ class PinnedMessagesService {
         return await pinnedmessagesModel.create(data);
     }
 
-    async deletePinnedMessage(data) {
-        return await pinnedmessagesModel.update({ is_deleted: true }, {
+    async deletePinnedMessage(pinMessageId) {
+        return await pinnedmessagesModel.destroy({
             where: {
-                id: data.id
+                id: pinMessageId
             }
         });
     }

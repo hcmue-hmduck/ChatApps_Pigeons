@@ -22,8 +22,9 @@ export class Messages {
         senderId: string,
         content: string,
         replyTo?: string,
+        message_type?: string,
     ): Observable<any> {
-        const body: any = { senderId, content };
+        const body: any = { senderId, content, message_type };
         if (replyTo) body.parent_message_id = replyTo;
         return this.http.post(`${this.apiUrl}/${conversationId}`, body);
     }
@@ -41,6 +42,6 @@ export class Messages {
     }
 
     unpinMessage(pinMessageId: string): Observable<any> {
-        return this.http.put(`${this.apiUrl}/pinmessage/${pinMessageId}`, { is_deleted: 'true' });
+        return this.http.delete(`${this.apiUrl}/pinmessage/${pinMessageId}`);
     }
 }

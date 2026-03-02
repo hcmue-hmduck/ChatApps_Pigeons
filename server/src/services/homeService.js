@@ -227,7 +227,7 @@ class HomeService {
         };
     }
 
-    async postMessageToConversation(conversationId, senderId, content, parent_message_id = null) {
+    async postMessageToConversation(conversationId, senderId, content, parent_message_id = null, message_type = 'text') {
         // 1. Tạo message mới + lấy parent message (song song)
         const [newMessage, parentMessage] = await Promise.all([
             messagesService.createMessage({
@@ -235,6 +235,7 @@ class HomeService {
                 sender_id: senderId,
                 content,
                 parent_message_id,
+                message_type,
                 time_sent: new Date()
             }),
             parent_message_id
@@ -287,6 +288,10 @@ class HomeService {
 
     async updatePinMessage(pinMessageId, pinMessageData) {
         return await pinnedmessagesService.updatePinnedMessage(pinMessageId, pinMessageData);
+    }
+
+    async deletePinMessage(pinMessageId) {
+        return await pinnedmessagesService.deletePinnedMessage(pinMessageId);
     }
 
     async startCall({ conversation_id, caller_id, call_type, media_type }) {

@@ -109,6 +109,58 @@ export class MessagesLayoutComponent
                 this.pinnedMessages.update(prev => prev.filter(p => p.id !== pm.id));
 
                 this.socketService.emit('unpinMessage', pm);
+
+                const messageContent = pm.pinned_by_name + " đã bỏ ghim tin nhắn: " + pm.content;
+                const message_type = 'system';
+                this.messagesService.postMessage(this.conversationId, this.currentUserId, messageContent, undefined, message_type).subscribe({
+                    next: (response) => {
+                        console.log('Message posted successfully:', response);
+                        response.metadata.newMessage.created_at = new Date().toISOString(); // K được xoá, t fix cái lỗi vô đạo bất lương này 10h liền đấy !!!!!!
+                        response.metadata.newMessage.updated_at = new Date().toISOString();
+
+                        console.log('Message sent successfully:', response);
+                        this.conversationService
+                            .putConversation(this.conversationId, { lastMessage: response.metadata.id })
+                            .subscribe({
+                                next: (res) => {
+                                    /* Conversation updated */
+                                },
+                                error: (err) => {
+                                    console.error('Error updating conversation:', err);
+                                },
+                            });
+                       
+                        const newMessage = {
+                            ...response.metadata.newMessage,
+                        };
+
+                        this.getMessagesData.update((old) => ({
+                            ...old,
+                            homeMessagesData: {
+                                ...this.getMessagesData().homeMessagesData,
+                                messages: [
+                                    ...this.getMessagesData().homeMessagesData.messages,
+                                    newMessage,
+                                ],
+                            },
+                        }));
+
+                        console.log(
+                            'Updated messages:',
+                            this.getMessagesData().homeMessagesData.messages,
+                        );
+                        
+                        this.lastMessageId = newMessage.id;
+                        console.log('Last message id updated to:', this.lastMessageId);
+                        this.socketService.emit('sendMessage', newMessage);
+                        this.socketService.emit('updateConversation', newMessage);
+
+                    },
+                    error: (error) => {
+                        console.error('Error posting message:', error);
+                        this.error = error.message;
+                    }
+                })
             },
             error: (error) => {
                 console.error('Error unpinning message:', error);
@@ -501,12 +553,13 @@ export class MessagesLayoutComponent
         if (!this.newMessage.trim()) return;
         const messageContent = this.newMessage;
         const replyTo = this.replyToMessage ? this.replyToMessage.id : undefined;
+        const messageType = 'text';
         this.newMessage = '';
         this.replyToMessage = null;
         this.loading = true;
         this.error = '';
         this.messagesService
-            .postMessage(this.conversationId, this.currentUserId, messageContent, replyTo)
+            .postMessage(this.conversationId, this.currentUserId, messageContent, replyTo, messageType)
             .subscribe({
                 next: (response) => {
                     this.loading = false;
@@ -711,6 +764,57 @@ export class MessagesLayoutComponent
 
                 // Broadcast cho người khác trong conversation
                 this.socketService.emit('pinMessage', newPinMessage);
+
+                const messageContent = newPinMessage.pinned_by_name + " đã ghim tin nhắn: " + newPinMessage.content;
+                const message_type = 'system';
+                this.messagesService.postMessage(this.conversationId, this.currentUserId, messageContent, undefined, message_type).subscribe({
+                    next: (response) => {
+                        console.log('Message posted successfully:', response);
+                        response.metadata.newMessage.created_at = new Date().toISOString(); // K được xoá, t fix cái lỗi vô đạo bất lương này 10h liền đấy !!!!!!
+                        response.metadata.newMessage.updated_at = new Date().toISOString();
+
+                        console.log('Message sent successfully:', response);
+                        this.conversationService
+                            .putConversation(this.conversationId, { lastMessage: response.metadata.id })
+                            .subscribe({
+                                next: (res) => {
+                                    /* Conversation updated */
+                                },
+                                error: (err) => {
+                                    console.error('Error updating conversation:', err);
+                                },
+                            });
+                       
+                        const newMessage = {
+                            ...response.metadata.newMessage,
+                        };
+
+                        this.getMessagesData.update((old) => ({
+                            ...old,
+                            homeMessagesData: {
+                                ...this.getMessagesData().homeMessagesData,
+                                messages: [
+                                    ...this.getMessagesData().homeMessagesData.messages,
+                                    newMessage,
+                                ],
+                            },
+                        }));
+
+                        console.log(
+                            'Updated messages:',
+                            this.getMessagesData().homeMessagesData.messages,
+                        );
+                        
+                        this.lastMessageId = newMessage.id;
+                        console.log('Last message id updated to:', this.lastMessageId);
+                        this.socketService.emit('sendMessage', newMessage);
+                        this.socketService.emit('updateConversation', newMessage);
+                    },
+                    error: (error) => {
+                        console.error('Error posting message:', error);
+                        this.error = error.message;
+                    }
+                })
             },
             error: (error) => {
                 console.error('Lỗi khi ghim tin nhắn:', error);

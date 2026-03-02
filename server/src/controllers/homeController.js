@@ -43,12 +43,14 @@ class HomeController {
 
     async postHomeMessages(req, res) {
         const conversationId = req.params.convID;
-        const { senderId, content, parent_message_id } = req.body;
+        const { senderId, content, parent_message_id, message_type } = req.body;
+        
         const newMessage = await homeService.postMessageToConversation(
             conversationId,
             senderId,
             content,
             parent_message_id,
+            message_type
         );
         new SuccessResponse({
             message: 'Post home message successfully',
@@ -177,6 +179,17 @@ class HomeController {
             message: 'Put home pin message successfully',
             metadata: {
                 updatedMessage: updatedMessage,
+            },
+        }).send(res);
+    }
+
+    async deleteHomePinMessage(req, res) {
+        const messageId = req.params.pinMessID;
+        const deleteResult = await homeService.deletePinMessage(messageId);
+        new SuccessResponse({
+            message: 'Delete home pin message successfully',
+            metadata: {
+                deleteResult: deleteResult,
             },
         }).send(res);
     }

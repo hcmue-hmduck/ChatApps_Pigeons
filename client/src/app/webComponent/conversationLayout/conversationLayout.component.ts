@@ -199,6 +199,7 @@ export class ConversationLayoutComponent implements OnInit {
         if (
             !conv ||
             !conv.lastMessage ||
+            conv.lastMessage.message_type === 'system' ||
             (conv.participants.length < 3 && conv.lastMessage.sender_id !== this.currentUserId)
         )
             return '';
