@@ -333,6 +333,15 @@ export class MessagesLayoutComponent
                                     sender_name: data.full_name,
                                     sender_avatar: data.avatar_url
                                 };
+                            } else if (m.parent_message_info?.parent_message_sender_id === data.user_id) {
+                                return {
+                                    ...m,
+                                    parent_message_info: {
+                                        ...m.parent_message_info,
+                                        parent_message_name: data.full_name,
+                                        parent_message_avatar: data.avatar_url
+                                    }
+                                };
                             }
                             return m;
                         }),
@@ -347,6 +356,16 @@ export class MessagesLayoutComponent
                             ...m,
                             pinned_by_name: data.full_name,
                             pinned_by_avatar: data.avatar_url
+                        };
+                    }
+
+                    if (m.parent_message_info?.parent_message_sender_id === data.user_id) {
+                        return {
+                            ...m,
+                            parent_message_info: {
+                                ...m.parent_message_info,
+                                parent_message_name: data.full_name
+                            }
                         };
                     }
                     return m;
