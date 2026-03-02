@@ -27,7 +27,6 @@ let server;
 
 if (process.env.RENDER === 'true') {
     server = http.createServer(app);
-    console.log('Running on Render (HTTP)');
 } else {
     server = https.createServer(
         {
@@ -36,16 +35,7 @@ if (process.env.RENDER === 'true') {
         },
         app,
     );
-    console.log('Running locally (HTTPS)');
 }
-
-// const server = createServer(
-//     {
-//         key: fs.readFileSync(path.join(__dirname, '../cert/cert.key')),
-//         cert: fs.readFileSync(path.join(__dirname, '../cert/cert.crt')),
-//     },
-//     app,
-// );
 
 const io = Server(server, {
     cors: {
