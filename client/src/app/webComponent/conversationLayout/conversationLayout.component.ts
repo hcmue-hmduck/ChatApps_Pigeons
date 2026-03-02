@@ -129,6 +129,7 @@ export class ConversationLayoutComponent implements OnInit {
                                 created_at: data.created_at,
                                 updated_at: data.updated_at,
                                 is_deleted: data.is_deleted,
+                                message_type: data.message_type,
                             },
                         })),
                     ...currentConversations.homeConversationData.joinedConversations.filter(
@@ -201,8 +202,7 @@ export class ConversationLayoutComponent implements OnInit {
             !conv.lastMessage ||
             conv.lastMessage.message_type === 'system' ||
             (conv.participants.length < 3 && conv.lastMessage.sender_id !== this.currentUserId)
-        )
-            return '';
+        ) return '';
         if (conv.lastMessage.sender_id === this.currentUserId) return 'Bạn: ';
         const sender = conv.participants.find((p: any) => p.user_id === conv.lastMessage.sender_id);
         return sender && sender.full_name ? sender.full_name + ': ' : 'Ẩn danh';
