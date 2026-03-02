@@ -315,6 +315,45 @@ export class MessagesLayoutComponent
             }
         });
 
+        this.socketService.on('updateProfile', (data: any) => {
+            console.log('Received updateProfile event in Messages:', data);
+
+            this.getMessagesData.update((old) => {
+                // Nếu chưa có data thì return luôn
+                if (!old.homeMessagesData || !old.homeMessagesData.messages) return old;
+
+                return {
+                    ...old,
+                    homeMessagesData: {
+                        ...old.homeMessagesData,
+                        messages: old.homeMessagesData.messages.map((m: any) => {
+                            if (m.sender_id === data.user_id) {
+                                return {
+                                    ...m,
+                                    sender_name: data.full_name,
+                                    sender_avatar: data.avatar_url
+                                };
+                            }
+                            return m;
+                        }),
+                    },
+                };
+            });
+
+            this.pinnedMessages.update((old) => {
+                return old.map((m: any) => {
+                    if (m.sender_id === data.user_id) {
+                        return {
+                            ...m,
+                            pinned_by_name: data.full_name,
+                            pinned_by_avatar: data.avatar_url
+                        };
+                    }
+                    return m;
+                });
+            });
+        });
+
         // Setup listener cho xóa tin nhắn
         this.socketService.on('deleteMessage', (data: any) => {
             this.lastMessageId = data.id;

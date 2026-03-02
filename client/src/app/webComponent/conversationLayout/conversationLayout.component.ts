@@ -147,6 +147,34 @@ export class ConversationLayoutComponent implements OnInit {
                         joinedConversations: updatedConversations,
                     },
                 });
+
+                // --- BỔ SUNG: Cập nhật biến getMessageInfor ---
+                // Chỉ cập nhật nếu đang chát trong phòng có người vừa đổi profile
+                if (this.selectedConversationId) {
+                    const currentSelectedConv = updatedConversations.find(
+                        (c: any) => c.conversation_id === this.selectedConversationId
+                    );
+
+                    if (currentSelectedConv) {
+                        // Tính toán lại người kia (trường hợp chat 1-1)
+                        const otherParticipant =
+                            currentSelectedConv.type === 'direct'
+                                ? this.getOtherParticipant(currentSelectedConv)
+                                : null;
+
+                        // Tạo Object HOÀN TOÀN MỚI để báo cho Angular Update Giao Diện Header Chat
+                        this.getMessageInfor = {
+                            title: currentSelectedConv.title,
+                            participants: currentSelectedConv.participants, // Participant này đã mang tên mới
+                            user_info: currentConversations.homeConversationData.userInfo,
+                            type: currentSelectedConv.type,
+                            avatar_url: currentSelectedConv.avatar_url,
+                            other_participant: otherParticipant,
+                        };
+
+                        this.cdr.markForCheck(); // Yêu cầu Angular kiểm tra lại ngay
+                    }
+                }
             }
         });
 
