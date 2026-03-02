@@ -25,9 +25,9 @@ const app = express();
 
 let server;
 
-if (!process.env.RENDER) {
+if (process.env.RENDER === 'true') {
     server = http.createServer(app);
-    console.log('Render');
+    console.log('Running on Render (HTTP)');
 } else {
     server = https.createServer(
         {
@@ -36,7 +36,7 @@ if (!process.env.RENDER) {
         },
         app,
     );
-    console.log('Not Render');
+    console.log('Running locally (HTTPS)');
 }
 
 // const server = createServer(
