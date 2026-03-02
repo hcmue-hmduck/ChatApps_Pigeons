@@ -110,7 +110,8 @@ export class MessagesLayoutComponent
 
                 this.socketService.emit('unpinMessage', pm);
 
-                const messageContent = pm.pinned_by_name + " đã bỏ ghim tin nhắn: " + pm.content;
+                const currentUser = this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId) || {};
+                const messageContent = (currentUser.full_name || 'Ai đó') + " đã bỏ ghim tin nhắn: " + pm.content;
                 const message_type = 'system';
                 this.messagesService.postMessage(this.conversationId, this.currentUserId, messageContent, undefined, message_type).subscribe({
                     next: (response) => {
@@ -129,7 +130,7 @@ export class MessagesLayoutComponent
                                     console.error('Error updating conversation:', err);
                                 },
                             });
-                       
+
                         const newMessage = {
                             ...response.metadata.newMessage,
                         };
@@ -149,7 +150,7 @@ export class MessagesLayoutComponent
                             'Updated messages:',
                             this.getMessagesData().homeMessagesData.messages,
                         );
-                        
+
                         this.lastMessageId = newMessage.id;
                         console.log('Last message id updated to:', this.lastMessageId);
                         this.socketService.emit('sendMessage', newMessage);
@@ -784,7 +785,7 @@ export class MessagesLayoutComponent
                                     console.error('Error updating conversation:', err);
                                 },
                             });
-                       
+
                         const newMessage = {
                             ...response.metadata.newMessage,
                         };
@@ -804,7 +805,7 @@ export class MessagesLayoutComponent
                             'Updated messages:',
                             this.getMessagesData().homeMessagesData.messages,
                         );
-                        
+
                         this.lastMessageId = newMessage.id;
                         console.log('Last message id updated to:', this.lastMessageId);
                         this.socketService.emit('sendMessage', newMessage);
