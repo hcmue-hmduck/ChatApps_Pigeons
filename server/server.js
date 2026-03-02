@@ -148,6 +148,12 @@ io.on('connection', (socket) => {
         socket.to(data.conversation_id).emit('pinMessage', data);
     });
 
+    socket.on('unpinMessage', (data) => {
+        console.log('Received unpinMessage event on server:', data);
+        // Broadcast tới tất cả clients trong conversation (trừ người gửi)
+        socket.to(data.conversation_id).emit('unpinMessage', data);
+    });
+
     socket.on('disconnect', async () => {
         console.log('User disconnected:', socket.id);
 

@@ -107,6 +107,8 @@ export class MessagesLayoutComponent
             next: (response) => {
                 console.log('Unpin message successfully:', response);
                 this.pinnedMessages.update(prev => prev.filter(p => p.id !== pm.id));
+
+                this.socketService.emit('unpinMessage', pm);
             },
             error: (error) => {
                 console.error('Error unpinning message:', error);
@@ -224,6 +226,7 @@ export class MessagesLayoutComponent
         this.socketService.off('updateMessage');
         this.socketService.off('deleteMessage');
         this.socketService.off('pinMessage');
+        this.socketService.off('unpinMessage');
 
         this.socketService.emit('joinConversation', conversationId);
 
@@ -312,6 +315,13 @@ export class MessagesLayoutComponent
             console.log('Received pinMessage event on client:', data);
             if (data.conversation_id === conversationId) {
                 this.pinnedMessages.update(prev => [...prev, data]);
+            }
+        });
+
+        this.socketService.on('unpinMessage', (data: any) => {
+            console.log('Received unpinMessage event on client:', data);
+            if (data.conversation_id === conversationId) {
+                this.pinnedMessages.update(prev => prev.filter(p => p.id !== data.id));
             }
         });
 
