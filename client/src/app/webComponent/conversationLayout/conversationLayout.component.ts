@@ -238,12 +238,13 @@ export class ConversationLayoutComponent implements OnInit {
         if (
             !conv ||
             !conv.lastMessage ||
-            conv.lastMessage.message_type === 'system' ||
             (conv.participants.length < 3 && conv.lastMessage.sender_id !== this.currentUserId)
         ) return '';
-        if (conv.lastMessage.sender_id === this.currentUserId) return 'Bạn: ';
+        let twoDots = ':';
+        if (conv.lastMessage.message_type === 'system') twoDots = '';
+        if (conv.lastMessage.sender_id === this.currentUserId) return 'Bạn' + twoDots;
         const sender = conv.participants.find((p: any) => p.user_id === conv.lastMessage.sender_id);
-        return sender && sender.full_name ? sender.full_name + ': ' : 'Ẩn danh';
+        return sender && sender.full_name ? sender.full_name + twoDots : 'Ai đó';
     }
 
     getOtherParticipant(conv: any): any {
