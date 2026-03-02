@@ -3,7 +3,19 @@ const callService = require('../services/callService.js');
 const SuccessResponse = require('../core/successResponse');
 
 class HomeController {
-    // GET /:id - Lấy dữ liệu home cho user
+    async putUserInfor (req, res) {
+        const userID = req.params.userID;
+        const userInfor = req.body;
+        console.log(userID, userInfor);
+        const updatedUserInfor = await homeService.updateUserInfor(userID, userInfor);
+        new SuccessResponse({
+            message: 'Update user infor successfully',
+            metadata: {
+                updatedUserInfor: updatedUserInfor,
+            },
+        }).send(res);
+    }
+    
     async getHomeConversation(req, res) {
         const homeConversationData = await homeService.getAllUserMessagesInJoinedConversations(req.params.userID);
         if (homeConversationData.length === 0) {

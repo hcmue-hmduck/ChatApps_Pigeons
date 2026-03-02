@@ -9,6 +9,7 @@ import { environment } from '../../environments/environment';
 })
 export class User {
   private apiUrl = `${environment.apiUrl}/admin/users`;
+  private apiUrlHome = `${environment.apiUrl}/home/userinfor`;
 
   constructor(private http: HttpClient) { }
 
@@ -29,7 +30,7 @@ export class User {
 
   // Cập nhật user
   updateUser(id: string, userData: any): Observable<any> {
-    return this.http.put(`${this.apiUrl}/${id}`, userData);
+    return this.http.put(`${this.apiUrlHome}/${id}`, userData);
   }
 
   // Xóa user

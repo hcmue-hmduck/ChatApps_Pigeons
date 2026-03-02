@@ -3,6 +3,7 @@ const router = express.Router();
 
 const homeController = require('../controllers/homeController');
 
+router.put('/userinfor/:userID', homeController.putUserInfor);
 
 router.get('/conversation/:userID', homeController.getHomeConversation);
 router.put('/conversation/:convID', homeController.putHomeConversation);

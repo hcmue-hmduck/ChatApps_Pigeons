@@ -519,10 +519,7 @@ export class MessagesLayoutComponent
                         },
                     }));
 
-                    const currentUser =
-                        this.getMessageInfor?.participants.find(
-                            (p: any) => p.user_id === this.currentUserId,
-                        ) || {};
+                    const currentUser = this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId) || {};
                     const newMessage = {
                         ...messageToAdd,
                         sender_name: currentUser.full_name,

@@ -11,6 +11,7 @@ import {
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MessagesLayoutComponent } from '../messagesLayout/messagesLayout.component';
+import { User } from '../../services/user';
 import { Conversation } from '../../services/conversation';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SocketService } from '../../services/socket';
@@ -58,7 +59,9 @@ export class ConversationLayoutComponent implements OnInit {
     user_name = '';
     currentUserId: string = '';
 
-    constructor(private conversationService: Conversation,
+    constructor(
+        private userService: User,
+        private conversationService: Conversation,
         private socketService: SocketService,
         private router: ActivatedRoute,
         private cdr: ChangeDetectorRef) {
@@ -110,6 +113,41 @@ export class ConversationLayoutComponent implements OnInit {
                 currentOnlineUsers.delete(data.userId);
             }
             this.onlineUsers.set(currentOnlineUsers);
+        });
+
+        this.socketService.on('updateProfile', (data: any) => {
+            console.log('Received updateProfile event:', data);
+            const currentConversations = this.conversations();
+            if (currentConversations.homeConversationData?.joinedConversations) {
+                const updatedConversations = currentConversations.homeConversationData.joinedConversations.map(
+                    (conv: any) => {
+                        const updatedParticipants = conv.participants?.map((p: any) =>
+                            p.user_id === data.user_id
+                                ? { ...p, full_name: data.full_name, avatar_url: data.avatar_url }
+                                : p
+                        );
+                        // Nếu là direct conversation và người update là người kia (không phải mình)
+                        // thì update luôn cả title
+                        const isDirectWithUpdatedUser =
+                            conv.type === 'direct' &&
+                            data.user_id !== this.currentUserId &&
+                            conv.participants?.some((p: any) => p.user_id === data.user_id);
+
+                        return {
+                            ...conv,
+                            participants: updatedParticipants,
+                            ...(isDirectWithUpdatedUser && { title: data.full_name }),
+                        };
+                    }
+                );
+                this.conversations.set({
+                    ...currentConversations,
+                    homeConversationData: {
+                        ...currentConversations.homeConversationData,
+                        joinedConversations: updatedConversations,
+                    },
+                });
+            }
         });
 
         this.socketService.on('updateConversation', (data: any) => {
@@ -334,9 +372,26 @@ export class ConversationLayoutComponent implements OnInit {
     }
 
     saveProfile() {
-        // TODO: gọi API cập nhật profile
-        console.log('Saving profile:', this.editForm);
-        this.isEditingProfile.set(false);
+        this.userService.updateUser(this.currentUserId, this.editForm).subscribe({
+            next: (response) => {
+                this.conversations.update((old) => ({
+                    ...old,
+                    homeConversationData: {
+                        ...old.homeConversationData,
+                        userInfo: {
+                            ...old.homeConversationData.userInfo,
+                            ...this.editForm,
+                        },
+                    },
+                }));
+                const { full_name, avatar_url } = this.conversations().homeConversationData.userInfo;
+                this.socketService.emit('updateProfile', { user_id: this.currentUserId, full_name, avatar_url });
+                this.isEditingProfile.set(false);
+            },
+            error: (error) => {
+                console.error('Error updating profile:', error);
+            }
+        });
     }
 
     toggleChangePassword() {

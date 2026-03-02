@@ -154,6 +154,11 @@ io.on('connection', (socket) => {
         socket.to(data.conversation_id).emit('unpinMessage', data);
     });
 
+    socket.on('updateProfile', (data) => {
+        console.log('Received updateProfile event on server:', data);
+        io.emit('updateProfile', data);
+    });
+
     socket.on('disconnect', async () => {
         console.log('User disconnected:', socket.id);
 

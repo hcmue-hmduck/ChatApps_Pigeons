@@ -294,6 +294,12 @@ class HomeService {
         return await pinnedmessagesService.deletePinnedMessage(pinMessageId);
     }
 
+    async updateUserInfor(userID, userInfor) {
+        return await usersService.updateUser(userID, userInfor);
+    }
+
+
+
     async startCall({ conversation_id, caller_id, call_type, media_type }) {
         return await sequelize.transaction(async (t) => {
             const { id } = await callService.startCall(
