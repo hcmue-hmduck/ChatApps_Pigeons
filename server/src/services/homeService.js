@@ -71,20 +71,21 @@ class HomeService {
         const currentUser = usersMap.get(userId);
         const userInfo = currentUser
             ? {
-                  id: currentUser.id,
-                  password_hash: currentUser.password_hash,
-                  bio: currentUser.bio,
-                  phone_number: currentUser.phone_number,
-                  is_phone_verified: currentUser.is_phone_verified,
-                  is_email_verified: currentUser.is_email_verified,
-                  created_at: currentUser.created_at,
-                  updated_at: currentUser.updated_at,
-                  full_name: currentUser.full_name,
-                  avatar_url: currentUser.avatar_url,
-                  email: currentUser.email,
-                  status: currentUser.status,
-                  birthday: currentUser.birthday,
-                  gender: currentUser.gender,
+                id: currentUser.id,
+                password_hash: currentUser.password_hash,
+                bio: currentUser.bio,
+                phone_number: currentUser.phone_number,
+                is_phone_verified: currentUser.is_phone_verified,
+                is_email_verified: currentUser.is_email_verified,
+                created_at: currentUser.created_at,
+                updated_at: currentUser.updated_at,
+                full_name: currentUser.full_name,
+                avatar_url: currentUser.avatar_url,
+                email: currentUser.email,
+                status: currentUser.status,
+                birthday: currentUser.birthday,
+                gender: currentUser.gender,
+                last_online_at: currentUser.last_online_at,
               }
             : null;
 
@@ -282,6 +283,10 @@ class HomeService {
 
     async createPinMessage(pinMessageData) {
         return await pinnedmessagesService.createPinnedMessage(pinMessageData);
+    }
+
+    async updatePinMessage(pinMessageId, pinMessageData) {
+        return await pinnedmessagesService.updatePinnedMessage(pinMessageId, pinMessageData);
     }
 
     async startCall({ conversation_id, caller_id, call_type, media_type }) {

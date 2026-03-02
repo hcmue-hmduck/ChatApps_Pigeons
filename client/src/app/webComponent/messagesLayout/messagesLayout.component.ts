@@ -87,6 +87,32 @@ export class MessagesLayoutComponent
 
     // Pinned messages
     pinnedMessages = signal<any[]>([]);
+    showPinnedDropdown = false;
+    openPinnedMenuId: string | null = null;
+
+    togglePinnedDropdown(event: Event) {
+        event.stopPropagation();
+        this.showPinnedDropdown = !this.showPinnedDropdown;
+    }
+
+    togglePinnedMenu(event: Event, id: string) {
+        event.stopPropagation();
+        this.openPinnedMenuId = this.openPinnedMenuId === id ? null : id;
+    }
+
+    unpinMessage(pm: any) {
+        // TODO: gọi API bỏ ghim
+        console.log('Bỏ ghim tin nhắn:', pm);
+        this.messagesService.unpinMessage(pm.id).subscribe({
+            next: (response) => {
+                console.log('Unpin message successfully:', response);
+                this.pinnedMessages.update(prev => prev.filter(p => p.id !== pm.id));
+            },
+            error: (error) => {
+                console.error('Error unpinning message:', error);
+            }
+        });
+    }
 
     // Helper method to check if should show date separator
     shouldShowDateSeparator(currentMsg: any, prevMsg: any): boolean {
@@ -566,6 +592,16 @@ export class MessagesLayoutComponent
             !target.closest('.emoji-btn')
         ) {
             this.showEmojiPicker = false;
+        }
+
+        // Close pinned dropdown when clicking outside
+        if (this.showPinnedDropdown && !target.closest('.pinned-bar-wrap')) {
+            this.showPinnedDropdown = false;
+        }
+
+        // Close pinned context menu when clicking outside
+        if (this.openPinnedMenuId && !target.closest('.pinned-menu-wrap')) {
+            this.openPinnedMenuId = null;
         }
     }
 

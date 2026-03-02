@@ -167,6 +167,19 @@ class HomeController {
             },
         }).send(res);
     }
+
+    async putHomePinMessage(req, res) {
+        const messageId = req.params.pinMessID;
+        const messageData = req.body;
+        console.log(messageId, messageData);
+        const updatedMessage = await homeService.updatePinMessage(messageId, messageData);
+        new SuccessResponse({
+            message: 'Put home pin message successfully',
+            metadata: {
+                updatedMessage: updatedMessage,
+            },
+        }).send(res);
+    }
 }
 
 module.exports = new HomeController();

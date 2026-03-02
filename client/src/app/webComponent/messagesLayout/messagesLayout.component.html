@@ -88,15 +88,77 @@
         <!-- ============================================================
          PINNED MESSAGE BAR
          ============================================================ -->
-        <div class="pinned-bar" *ngIf="pinnedMessages() && pinnedMessages().length > 0"
-            (click)="scrollToMessage(pinnedMessages()[pinnedMessages().length - 1].message_id)">
-            <div class="pinned-accent"></div>
-            <div class="pinned-content">
-                <div class="pinned-label">Tin nhắn đã ghim · "{{ pinnedMessages()[pinnedMessages().length - 1].note }}"
+        <div class="pinned-bar-wrap" *ngIf="pinnedMessages() && pinnedMessages().length > 0">
+
+            <!-- Bar hiển thị tin nhắn ghim đầu tiên (click để scroll) -->
+            <div class="pinned-bar" *ngIf="!showPinnedDropdown"
+                (click)="scrollToMessage(pinnedMessages()[pinnedMessages().length - 1].message_id)">
+                <div class="pinned-accent"></div>
+                <div class="pinned-content">
+                    <div class="pinned-label"> <i class="fas fa-thumbtack"></i>
+                        {{ pinnedMessages()[pinnedMessages().length - 1].pinned_by_name ||
+                        'Ai đó' }} đã ghim tin nhắn</div>
+                    <div class="pinned-text">
+                        {{ pinnedMessages()[pinnedMessages().length - 1].content }}
+                    </div>
                 </div>
-                <div class="pinned-text">{{ pinnedMessages()[pinnedMessages().length - 1].content }}</div>
+
+                <!-- Nút +X ghim nếu có nhiều hơn 1 -->
+                <button class="pinned-more-btn" *ngIf="pinnedMessages().length > 1"
+                    (click)="togglePinnedDropdown($event)">
+                    +{{ pinnedMessages().length - 1 }} ghim
+                </button>
+                <i class="fas fa-thumbtack pinned-icon" *ngIf="pinnedMessages().length === 1"></i>
+
+                <!-- Three-dots menu cho preview bar -->
+                <div class="pinned-menu-wrap" (click)="$event.stopPropagation()">
+                    <button class="pinned-item-menu"
+                        (click)="togglePinnedMenu($event, pinnedMessages()[pinnedMessages().length - 1].id)">
+                        <i class="fas fa-ellipsis-h"></i>
+                    </button>
+                    <div class="pinned-context-menu"
+                        *ngIf="openPinnedMenuId === pinnedMessages()[pinnedMessages().length - 1].id">
+                        <button class="pinned-ctx-item danger"
+                            (click)="unpinMessage(pinnedMessages()[pinnedMessages().length - 1]); openPinnedMenuId = null">
+                            <i class="fas fa-thumbtack"></i> Bỏ ghim
+                        </button>
+                    </div>
+                </div>
             </div>
-            <i class="bi bi-pin-angle-fill pinned-icon"></i>
+
+            <!-- Dropdown danh sách toàn bộ tin nhắn đã ghim -->
+            <div class="pinned-panel-list" *ngIf="showPinnedDropdown">
+                <div class="pinned-panel-header-sub">
+                    <span>Tất cả tin nhắn đã ghim ({{ pinnedMessages().length }})</span>
+                    <button class="pinned-dropdown-close" (click)="showPinnedDropdown = false">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="pinned-panel-item" *ngFor="let pm of pinnedMessages()"
+                    (click)="scrollToMessage(pm.message_id); showPinnedDropdown = false">
+                    <div class="pinned-item-icon">
+                        <i class="fas fa-comment-alt"></i>
+                    </div>
+                    <div class="pinned-item-body">
+                        <div class="pinned-item-title">Tin nhắn</div>
+                        <div class="pinned-item-preview">
+                            <span class="pinned-item-sender">{{ pm.pinned_by_name || 'Ai đó' }}: </span>
+                            <span class="pinned-item-text">{{ pm.content }}</span>
+                        </div>
+                    </div>
+                    <!-- Three-dots menu từng item -->
+                    <div class="pinned-menu-wrap" (click)="$event.stopPropagation()">
+                        <button class="pinned-item-menu" (click)="togglePinnedMenu($event, pm.id)">
+                            <i class="fas fa-ellipsis-h"></i>
+                        </button>
+                        <div class="pinned-context-menu" *ngIf="openPinnedMenuId === pm.id">
+                            <button class="pinned-ctx-item danger" (click)="unpinMessage(pm); openPinnedMenuId = null">
+                                <i class="fas fa-thumbtack"></i> Bỏ ghim
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- ============================================================
@@ -171,11 +233,13 @@
                                                     </button>
                                                     <!-- Dropdown -->
                                                     <div class="msg-dropdown" *ngIf="showMenuId === msg.id">
-                                                        <button class="dropdown-item" *ngIf="msg.message_type === 'text'"
+                                                        <button class="dropdown-item"
+                                                            *ngIf="msg.message_type === 'text'"
                                                             (click)="openEditModal(msg)">
                                                             <i class="bi bi-pencil me-2"></i>Sửa
                                                         </button>
-                                                        <button class="dropdown-item danger" (click)="deleteMessage(msg)">
+                                                        <button class="dropdown-item danger"
+                                                            (click)="deleteMessage(msg)">
                                                             <i class="bi bi-trash me-2"></i>Gỡ
                                                         </button>
                                                         <button class="dropdown-item" (click)="forwardMessage(msg)">
@@ -215,7 +279,8 @@
                                                     </div>
 
                                                     <!-- Call action button -->
-                                                    <button class="call-action-btn" title="Gọi lại" (click)="handleVoiceCall()">
+                                                    <button class="call-action-btn" title="Gọi lại"
+                                                        (click)="handleVoiceCall()">
                                                         <i class="bi bi-arrow-repeat"></i>
                                                     </button>
                                                 </div>
@@ -362,7 +427,8 @@
                                                     </div>
 
                                                     <!-- Call action button -->
-                                                    <button class="call-action-btn" title="Gọi lại" (click)="handleVoiceCall()">
+                                                    <button class="call-action-btn" title="Gọi lại"
+                                                        (click)="handleVoiceCall()">
                                                         <i class="bi bi-arrow-repeat"></i>
                                                     </button>
                                                 </div>

@@ -240,24 +240,29 @@
 /* ============================================================
    PINNED MESSAGE BAR
    ============================================================ */
+.pinned-bar-wrap {
+    background: linear-gradient(135deg, #f0f4ff 0%, #f5f0ff 100%);
+    border-bottom: 1px solid rgba(99, 102, 241, 0.15);
+    flex-shrink: 0;
+}
+
+/* Preview bar — tin nhắn ghim đầu tiên */
 .pinned-bar {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 8px 20px;
-    background: #fff;
-    border-bottom: 1px solid var(--msg-border);
+    padding: 7px 14px;
     cursor: pointer;
     transition: background 0.15s;
 }
 
 .pinned-bar:hover {
-    background: #f9f8ff;
+    background: rgba(99, 102, 241, 0.06);
 }
 
 .pinned-accent {
     width: 3px;
-    height: 32px;
+    height: 30px;
     border-radius: 2px;
     background: var(--msg-accent);
     flex-shrink: 0;
@@ -269,23 +274,297 @@
 }
 
 .pinned-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
     font-size: 11px;
     font-weight: 600;
     color: var(--msg-accent);
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pinned-label i {
+    font-size: 10px;
+    flex-shrink: 0;
+    transform: rotate(45deg);
 }
 
 .pinned-text {
     font-size: 13px;
-    color: var(--msg-secondary);
+    font-weight: 400;
+    color: #374151;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.pinned-sender {
+    font-weight: 600;
+    color: #374151;
+}
+
+.pinned-sep {
+    margin: 0 3px;
+    color: #d1d5db;
 }
 
 .pinned-icon {
     color: var(--msg-accent);
     font-size: 14px;
     flex-shrink: 0;
+    opacity: 0.6;
+}
+
+/* +X button */
+.pinned-more-btn {
+    flex-shrink: 0;
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--msg-accent);
+    border: none;
+    border-radius: 12px;
+    padding: 3px 9px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+}
+
+.pinned-more-btn:hover {
+    background: rgba(99, 102, 241, 0.22);
+}
+
+/* Sub-header inside dropdown */
+.pinned-panel-header-sub {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--msg-accent);
+    background: rgba(99, 102, 241, 0.05);
+    border-top: 1px solid rgba(99, 102, 241, 0.1);
+    border-bottom: 1px solid rgba(99, 102, 241, 0.1);
+}
+
+.pinned-dropdown-close {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--msg-secondary);
+    font-size: 12px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+}
+
+.pinned-panel-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--msg-accent);
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.pinned-panel-title::before {
+    content: '📌';
+    font-size: 11px;
+}
+
+.pinned-panel-toggle {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--msg-accent);
+    opacity: 0.7;
+    transition: opacity 0.15s;
+}
+
+.pinned-panel-header:hover .pinned-panel-toggle {
+    opacity: 1;
+}
+
+/* List panel */
+.pinned-panel-list {
+    overflow: hidden;
+    animation: slideDown 0.18s ease-out;
+    border-top: 1px solid rgba(99, 102, 241, 0.1);
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Each item row */
+.pinned-panel-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    cursor: pointer;
+    border-top: 1px solid rgba(99, 102, 241, 0.08);
+    transition: background 0.15s;
+}
+
+.pinned-panel-item:first-child {
+    border-top: none;
+}
+
+.pinned-panel-item:hover {
+    background: rgba(99, 102, 241, 0.07);
+}
+
+/* Chat bubble icon */
+.pinned-item-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--msg-accent), #818cf8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 14px;
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
+}
+
+/* Text body */
+.pinned-item-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.pinned-item-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--msg-accent);
+    margin-bottom: 1px;
+}
+
+.pinned-item-preview {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--msg-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pinned-item-sender {
+    flex-shrink: 0;
+    font-weight: 600;
+    color: #374151;
+}
+
+.pinned-item-dot {
+    flex-shrink: 0;
+    color: #d1d5db;
+}
+
+.pinned-item-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--msg-muted);
+}
+
+/* Three-dot menu button */
+.pinned-menu-wrap {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.pinned-item-menu {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--msg-secondary);
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.pinned-item-menu:hover {
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--msg-accent);
+}
+
+/* Context menu popup */
+.pinned-context-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    z-index: 300;
+    min-width: 130px;
+    overflow: hidden;
+    animation: dropIn 0.12s ease-out;
+}
+
+@keyframes dropIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.pinned-ctx-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 9px 14px;
+    border: none;
+    background: transparent;
+    font-size: 13px;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s;
+    color: #374151;
+}
+
+.pinned-ctx-item:hover {
+    background: #f3f4f6;
+}
+
+.pinned-ctx-item.danger {
+    color: #ef4444;
+}
+
+.pinned-ctx-item.danger:hover {
+    background: #fef2f2;
 }
 
 /* ============================================================

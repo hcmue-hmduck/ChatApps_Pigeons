@@ -8,6 +8,8 @@ router.get('/conversation/:userID', homeController.getHomeConversation);
 router.put('/conversation/:convID', homeController.putHomeConversation);
 
 router.post('/messages/pinmessage', homeController.postHomePinMessage);
+router.put('/messages/pinmessage/:pinMessID', homeController.putHomePinMessage);
+
 router.delete('/messages/:messID', homeController.deleteHomeMessages);
 router.put('/messages/:messID', homeController.putHomeMessages);
 router.post('/messages/:convID', homeController.postHomeMessages);

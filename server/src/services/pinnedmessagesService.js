@@ -2,7 +2,6 @@ const pinnedmessagesModel = require('../models/pinnedmessagesModel');
 
 class PinnedMessagesService {
     async createPinnedMessage(data) {
-        console.log("data: ", data);
         return await pinnedmessagesModel.create(data);
     }
 
@@ -23,14 +22,17 @@ class PinnedMessagesService {
             where: {
                 conversation_id: conversationId,
                 is_deleted: false,
-            }
+            },
+            order: [
+                ['pinned_at', 'ASC']
+            ]
         });
     }
 
-    async updatePinnedMessage(data) {
+    async updatePinnedMessage(pinMessageId, data) {
         return await pinnedmessagesModel.update(data, {
             where: {
-                id: data.id
+                id: pinMessageId
             }
         });
     }

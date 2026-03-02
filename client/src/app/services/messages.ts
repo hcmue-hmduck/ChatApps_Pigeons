@@ -39,4 +39,8 @@ export class Messages {
     pinMessage(message_id: string, conversation_id: string, pinned_by: string ,note: string, order_index: number): Observable<any> {
         return this.http.post(`${this.apiUrl}/pinmessage`, { message_id, conversation_id, pinned_by, note, order_index });
     }
+
+    unpinMessage(pinMessageId: string): Observable<any> {
+        return this.http.put(`${this.apiUrl}/pinmessage/${pinMessageId}`, { is_deleted: 'true' });
+    }
 }
