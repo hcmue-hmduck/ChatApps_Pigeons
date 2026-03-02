@@ -12,19 +12,41 @@ const models = require('./src/models/index');  // Khởi tạo tất cả associ
 const fs = require('fs');
 const morgan = require('morgan');
 
+const http = require('http');
+const https = require('https');
+
 dotenv.config();
 
 const routes = require('./src/routes/index');
 const { connectToDB } = require('./src/configs/dbConfig');
 
 const app = express();
-const server = createServer(
-    {
-        key: fs.readFileSync(path.join(__dirname, '../cert/cert.key')),
-        cert: fs.readFileSync(path.join(__dirname, '../cert/cert.crt')),
-    },
-    app,
-);
+
+
+let server;
+
+if (!process.env.RENDER) {
+    server = http.createServer(app);
+    console.log('Render');
+} else {
+    server = https.createServer(
+        {
+            key: fs.readFileSync(path.join(__dirname, '../cert/cert.key')),
+            cert: fs.readFileSync(path.join(__dirname, '../cert/cert.crt')),
+        },
+        app,
+    );
+    console.log('Not Render');
+}
+
+// const server = createServer(
+//     {
+//         key: fs.readFileSync(path.join(__dirname, '../cert/cert.key')),
+//         cert: fs.readFileSync(path.join(__dirname, '../cert/cert.crt')),
+//     },
+//     app,
+// );
+
 const io = Server(server, {
     cors: {
         origin: [
@@ -59,15 +81,6 @@ app.use(morgan('dev'));
 app.use(express.json()); // Parse JSON body
 app.use(express.urlencoded({ extended: true })); // Parse form data
 
-// Cấu hình Handlebars view engine
-app.engine(
-    'handlebars',
-    engine({
-        defaultLayout: false,
-    }),
-);
-app.set('view engine', 'handlebars');
-app.set('views', path.join(__dirname, 'src/views'));
 
 routes(app);
 
