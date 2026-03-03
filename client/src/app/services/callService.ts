@@ -18,7 +18,8 @@ export class CallService {
         call_type: string,
         media_type: 'video' | 'audio',
     ): Observable<any> {
-        if (!this.CALL_TYPE.includes(call_type)) return throwError(() => new Error('Cannot start call'));
+        if (!this.CALL_TYPE.includes(call_type))
+            return throwError(() => new Error('Cannot start call'));
         const caller_id = this.authService.getUserId();
         if (!caller_id) return throwError(() => new Error('Cannot start call'));
         return this.httpClient.post(`${this.apiUrl}/${conversation_id}`, {
@@ -26,5 +27,11 @@ export class CallService {
             call_type,
             media_type,
         });
+    }
+
+    acceptCall(conversation_id: string): Observable<any> {
+        const user_id = this.authService.getUserId();
+        if (!user_id) return throwError(() => new Error('Cannot accept call'));
+        return this.httpClient.post(`${this.apiUrl}/accept/${conversation_id}`, { user_id });
     }
 }

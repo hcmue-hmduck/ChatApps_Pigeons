@@ -1,9 +1,10 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Component, effect, inject, PLATFORM_ID, signal } from '@angular/core';
-import { CallSessionData, DIRECT_CALL } from '../../models/callSessionData.model';
+import { CallSessionData, DIRECT_CALL, GROUP_CALL } from '../../models/callSessionData.model';
 import { AuthService } from '../../services/authService';
-import { WebRtcService } from '../../services/webRTCService';
+import { CallService } from '../../services/callService';
 import { CallStateService } from '../../services/callStateService';
+import { WebRtcService } from '../../services/webRTCService';
 
 @Component({
     selector: 'app-incomming-call-layout',
@@ -13,6 +14,7 @@ import { CallStateService } from '../../services/callStateService';
 })
 export class IncommingCallLayout {
     webRTCService = inject(WebRtcService);
+    callService = inject(CallService);
     callState = inject(CallStateService);
     authService = inject(AuthService);
     callSessionData = signal<CallSessionData | null>(null);
@@ -22,8 +24,9 @@ export class IncommingCallLayout {
     private vibrateIntervalId: number | null = null;
     private platformId = inject(PLATFORM_ID);
 
-    readonly directCallType = DIRECT_CALL
-    readonly avatarUrlDefault = '/assets/AvatarDefault.jpg'
+    readonly directCallType = DIRECT_CALL;
+    readonly groupCallType = GROUP_CALL;
+    readonly avatarUrlDefault = '/assets/AvatarDefault.jpg';
 
     constructor() {
         if (isPlatformBrowser(this.platformId)) {
@@ -80,12 +83,24 @@ export class IncommingCallLayout {
     }
 
     handleAccept() {
-        if (this.callSessionData) {
-            const { initializeVideo } = this.callSessionData()!;
-            this.openCallWindow({ initializeVideo });
-            this.stopRingtone();
-            this.stopVibrating();
-        }
+        if (!this.callSessionData) return;
+        const { conversationType, conversationId } = this.callSessionData()!;
+        if (!conversationType || !conversationId) return;
+
+        this.stopRingtone();
+        this.stopVibrating();
+
+        console.log('handleAccept:::', conversationType);
+
+        if (conversationType === this.groupCallType) {
+            console.log('groupCallType:::', conversationId);
+            this.callService
+                .acceptCall(conversationId) // Tạo message system tham gia cuộc gọi
+                .subscribe({
+                    next: () => this.openCallWindow(),
+                    error: (error) => console.error(error),
+                });
+        } else this.openCallWindow();
     }
 
     handleDecline() {
@@ -102,7 +117,7 @@ export class IncommingCallLayout {
         this.callState.callSessionData.set(null);
     }
 
-    openCallWindow({ initializeVideo }: { initializeVideo: boolean }) {
+    openCallWindow() {
         const listener = (event: MessageEvent) => {
             if (event.origin !== window.location.origin) return;
             if (event.data.type === 'getCallData') {
@@ -112,7 +127,7 @@ export class IncommingCallLayout {
                     conversationId: this.callSessionData()?.conversationId,
                     userId: this.userId,
                     ...(this.callSessionData()?.offer && { offer: this.callSessionData()?.offer }),
-                    initializeVideo,
+                    initializeVideo: this.callSessionData()?.initializeVideo,
                     inviterName: this.callSessionData()?.inviterName,
                     inviterAvatarUrl: this.callSessionData()?.inviterAvatarUrl,
                     inviterId: this.callSessionData()?.inviterId,
@@ -139,6 +154,4 @@ export class IncommingCallLayout {
             features,
         );
     }
-
-
 }

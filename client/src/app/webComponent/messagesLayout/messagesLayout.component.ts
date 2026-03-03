@@ -24,6 +24,7 @@ import { WebRtcService } from '../../services/webRTCService';
 import { PickerModule } from '@ctrl/ngx-emoji-mart';
 import { CallService } from '../../services/callService';
 import { AUDIO_CALL, GROUP_CALL, VIDEO_CALL } from '../../models/callSessionData.model';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
     selector: 'messages-layout',
@@ -972,12 +973,13 @@ export class MessagesLayoutComponent
 
     handleVoiceCall() {
         this.callService.startCall(this.conversationId, this.conversationType, 'audio').subscribe({
-            next: ({ metadata }) => {
+            next: async ({ metadata }) => {
                 const callId = metadata.id;
                 if (!callId) {
                     console.log('Call is not found');
                     return;
                 }
+                await firstValueFrom(this.callService.acceptCall(this.conversationId));
                 this.openCallWindow({ initializeVideo: false, callId });
             },
             error: (error) => console.log(error)
