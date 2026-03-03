@@ -1,30 +1,30 @@
-import {
-    Component,
-    signal,
-    OnInit,
-    Input,
-    ViewContainerRef,
-    OnChanges,
-    SimpleChanges,
-    HostListener,
-    ElementRef,
-    ViewChild,
-    AfterViewInit,
-    AfterViewChecked,
-    OnDestroy,
-    inject,
-} from '@angular/core';
 import { CommonModule } from '@angular/common';
+import {
+    AfterViewChecked,
+    AfterViewInit,
+    Component,
+    ElementRef,
+    HostListener,
+    Input,
+    OnChanges,
+    OnDestroy,
+    OnInit,
+    SimpleChanges,
+    ViewChild,
+    effect,
+    inject,
+    signal
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import { PickerModule } from '@ctrl/ngx-emoji-mart';
+import { GROUP_CALL } from '../../models/callSessionData.model';
+import { AuthService } from '../../services/authService';
+import { CallService } from '../../services/callService';
 import { Conversation } from '../../services/conversation';
 import { Messages } from '../../services/messages';
 import { SocketService } from '../../services/socket';
 import { WebRtcService } from '../../services/webRTCService';
-import { PickerModule } from '@ctrl/ngx-emoji-mart';
-import { CallService } from '../../services/callService';
-import { AUDIO_CALL, GROUP_CALL, VIDEO_CALL } from '../../models/callSessionData.model';
-import { firstValueFrom } from 'rxjs';
 
 @Component({
     selector: 'messages-layout',
@@ -36,7 +36,8 @@ import { firstValueFrom } from 'rxjs';
 export class MessagesLayoutComponent
     implements OnInit, OnChanges, AfterViewInit, AfterViewChecked, OnDestroy {
     protected readonly title = signal('client');
-    callService = inject(CallService)
+    callService = inject(CallService);
+    authService = inject(AuthService);
 
     getMessagesData = signal<any>({});
 
@@ -202,7 +203,16 @@ export class MessagesLayoutComponent
         private conversationService: Conversation,
         private router: ActivatedRoute,
         private socketService: SocketService,
-    ) { }
+    ) { 
+        this.initEffect();
+    }
+
+    initEffect() {
+        effect(() => {
+            const callMessage = this.callService.newCallMessage();
+            if(callMessage) this.updateUIWithNewMessage(callMessage);
+        })
+    }
 
     // TrackBy function để tối ưu rendering
     trackByMessageId(index: number, message: any): any {
@@ -559,15 +569,9 @@ export class MessagesLayoutComponent
                 next: (response) => {
                     this.loading = false;
                     // K được xoá, t fix cái lỗi vô đạo bất lương này 10h liền đấy !!!!!!
+                    // OK bro, lỡ xóa có fix lại thì cũng nhanh thôi à -.-
                     response.metadata.newMessage.created_at = new Date().toISOString();
                     response.metadata.newMessage.updated_at = new Date().toISOString();
-
-                    this.conversationService
-                        .putConversation(this.conversationId, { lastMessage: response.metadata.id })
-                        .subscribe({
-                            next: () => { /* Conversation updated */ },
-                            error: (err) => console.error('Error updating conversation:', err),
-                        });
 
                     // Cho phép caller tuỳ chỉnh message trước khi thêm vào UI
                     const messageToAdd = messageTransform
@@ -582,18 +586,7 @@ export class MessagesLayoutComponent
                         sender_avatar: currentUser.avatar_url,
                     };
 
-                    this.getMessagesData.update((old) => ({
-                        ...old,
-                        homeMessagesData: {
-                            ...old.homeMessagesData,
-                            // Hiển thị 'newMessage' hoàn chỉnh lên màn hình ngay lập tức
-                            messages: [...old.homeMessagesData.messages, newMessage],
-                        },
-                    }));
-
-                    this.lastMessageId = newMessage.id;
-                    this.socketService.emit('sendMessage', newMessage);
-                    this.socketService.emit('updateConversation', newMessage);
+                    this.updateUIWithNewMessage(newMessage);
                 },
                 error: (error) => {
                     this.loading = false;
@@ -601,6 +594,30 @@ export class MessagesLayoutComponent
                     this.error = error.message;
                 },
             });
+    }
+
+    updateUIWithNewMessage(newMessage: any) {
+        // cập nhật lastMessage
+        this.conversationService.putConversation(this.conversationId, {
+            last_message_id: newMessage.id
+        }).subscribe({
+            next: () => { /* Conversation updated */ },
+            error: (err) => console.error('Error updating conversation:', err),
+        });
+
+        // cập nhật UI của mình
+        this.getMessagesData.update((old) => ({
+                ...old,
+                homeMessagesData: {
+                    ...old.homeMessagesData,
+                    messages: [...old.homeMessagesData.messages, newMessage],
+            },
+        }))
+
+        // cập nhật UI của người nhận
+        this.lastMessageId = newMessage.id;
+        this.socketService.emit('sendMessage', newMessage);
+        this.socketService.emit('updateConversation', newMessage);
     }
 
     handleKeyDown(event: KeyboardEvent) {
@@ -1038,29 +1055,46 @@ export class MessagesLayoutComponent
     }
 
     handleVoiceCall() {
-        this.callService.startCall(this.conversationId, this.conversationType, 'audio').subscribe({
-            next: async ({ metadata }) => {
-                const callId = metadata.id;
-                if (!callId) {
-                    console.log('Call is not found');
-                    return;
-                }
-                await firstValueFrom(this.callService.acceptCall(this.conversationId));
-                this.openCallWindow({ initializeVideo: false, callId });
-            },
-            error: (error) => console.log(error)
-        })
+        this.handleCall('audio');
     }
 
     handleVideoCall() {
-        this.callService.startCall(this.conversationId, this.conversationType, 'video').subscribe({
-            next: ({ metadata }) => {
-                const callId = metadata.id;
-                if (!callId) {
+        this.handleCall('video');
+    }
+
+    handleCall(media_type: 'video' | 'audio') {
+        this.callService.startCall(this.conversationId, this.conversationType, media_type).subscribe({
+            next: async (res) => {
+                const {userName, userAvatarUrl} = this.authService.getUserInfor();
+                const callMessage = {
+                    ...res.metadata,
+                    sender_name: userName,
+                    sender_avatar: userAvatarUrl,
+                }
+                this.updateUIWithNewMessage(callMessage)
+                const callId = callMessage.id;
+                if (!callMessage || !callId) {
                     console.log('Call is not found');
                     return;
                 }
-                this.openCallWindow({ initializeVideo: true, callId });
+
+                if(callMessage.call.call_type && callMessage.call.call_type === GROUP_CALL) {
+                    this.callService.joinCall(this.conversationId).subscribe({
+                        next: (res) => {
+                            const systemMessage = {
+                                ...res.metadata,
+                                sender_name: userName,
+                                sender_avatar: userAvatarUrl,
+                            };
+
+                            this.updateUIWithNewMessage(systemMessage)
+                        },
+                        error: (error) => console.error(error)
+                    })
+                }
+
+                const initializeVideo = media_type === 'video' ? true : false;
+                this.openCallWindow({ initializeVideo, callId });
             },
             error: (error) => console.log(error)
         })

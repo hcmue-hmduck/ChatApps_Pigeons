@@ -1,8 +1,9 @@
 import { HttpClient } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { Observable, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { AuthService } from './authService';
+import { sign } from 'crypto';
 
 @Injectable({
     providedIn: 'root',
@@ -12,6 +13,8 @@ export class CallService {
     private httpClient = inject(HttpClient);
     private authService = inject(AuthService);
     private CALL_TYPE = ['group', 'direct'];
+
+    newCallMessage = signal<any>(null);
 
     startCall(
         conversation_id: string,
@@ -29,9 +32,13 @@ export class CallService {
         });
     }
 
-    acceptCall(conversation_id: string): Observable<any> {
+    joinCall(conversation_id: string): Observable<any> {
         const user_id = this.authService.getUserId();
         if (!user_id) return throwError(() => new Error('Cannot accept call'));
         return this.httpClient.post(`${this.apiUrl}/accept/${conversation_id}`, { user_id });
+    }
+
+    announceNewCallMessage(callMessage: any) {
+        this.newCallMessage.set(callMessage);
     }
 }

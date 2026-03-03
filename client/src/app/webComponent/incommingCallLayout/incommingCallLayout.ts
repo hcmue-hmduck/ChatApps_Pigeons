@@ -95,9 +95,19 @@ export class IncommingCallLayout {
         if (conversationType === this.groupCallType) {
             console.log('groupCallType:::', conversationId);
             this.callService
-                .acceptCall(conversationId) // Tạo message system tham gia cuộc gọi
+                .joinCall(conversationId) // Tạo message system tham gia cuộc gọi
                 .subscribe({
-                    next: () => this.openCallWindow(),
+                    next: (res) => {
+                        const {userName, userAvatarUrl} = this.authService.getUserInfor();
+                        const callMessage = {
+                            ...res.metadata,
+                            sender_name: userName,
+                            sender_avatar: userAvatarUrl,
+                        };
+                        // Thông báo cho messageLayout cập nhật UI
+                        this.callService.announceNewCallMessage(callMessage)
+                        this.openCallWindow();
+                    },
                     error: (error) => console.error(error),
                 });
         } else this.openCallWindow();
