@@ -108,8 +108,7 @@ export class MessagesLayoutComponent
 
                 this.socketService.emit('unpinMessage', pm);
 
-                const currentUser = this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId) || {};
-                const messageContent = (currentUser.full_name || 'Ai đó') + " đã bỏ ghim tin nhắn: " + pm.content;
+                const messageContent = "đã bỏ ghim tin nhắn: " + pm.content;
                 this.postAndBroadcastMessage(messageContent, 'system');
             },
             error: (error) => {
@@ -317,6 +316,64 @@ export class MessagesLayoutComponent
             }
         });
 
+        this.socketService.on('updateProfile', (data: any) => {
+            console.log('Received updateProfile event in Messages:', data);
+
+            this.getMessagesData.update((old) => {
+                // Nếu chưa có data thì return luôn
+                if (!old.homeMessagesData || !old.homeMessagesData.messages) return old;
+
+                return {
+                    ...old,
+                    homeMessagesData: {
+                        ...old.homeMessagesData,
+                        messages: old.homeMessagesData.messages.map((m: any) => {
+                            if (m.sender_id === data.user_id) {
+                                return {
+                                    ...m,
+                                    sender_name: data.full_name,
+                                    sender_avatar: data.avatar_url
+                                };
+                            } else if (m.parent_message_info?.parent_message_sender_id === data.user_id) {
+                                return {
+                                    ...m,
+                                    parent_message_info: {
+                                        ...m.parent_message_info,
+                                        parent_message_name: data.full_name,
+                                        parent_message_avatar: data.avatar_url
+                                    }
+                                };
+                            }
+                            return m;
+                        }),
+                    },
+                };
+            });
+
+            this.pinnedMessages.update((old) => {
+                return old.map((m: any) => {
+                    if (m.sender_id === data.user_id) {
+                        return {
+                            ...m,
+                            pinned_by_name: data.full_name,
+                            pinned_by_avatar: data.avatar_url
+                        };
+                    }
+
+                    if (m.parent_message_info?.parent_message_sender_id === data.user_id) {
+                        return {
+                            ...m,
+                            parent_message_info: {
+                                ...m.parent_message_info,
+                                parent_message_name: data.full_name
+                            }
+                        };
+                    }
+                    return m;
+                });
+            });
+        });
+
         // Setup listener cho xóa tin nhắn
         this.socketService.on('deleteMessage', (data: any) => {
             this.lastMessageId = data.id;
@@ -481,6 +538,11 @@ export class MessagesLayoutComponent
         });
     }
 
+    getLastMessageSenderName(sender_id: string, sender_name: string): string {
+        if (sender_id === this.currentUserId) return 'Bạn ';
+        return sender_name ? sender_name : 'Ai đó';
+    }
+
     /**
      * Helper: Post message, update UI, và broadcast qua socket.
      * Dùng chung cho cả tin nhắn thường và system message (pin/unpin).
@@ -512,20 +574,22 @@ export class MessagesLayoutComponent
                         ? messageTransform(response.metadata.newMessage)
                         : { ...response.metadata.newMessage };
 
-                    this.getMessagesData.update((old) => ({
-                        ...old,
-                        homeMessagesData: {
-                            ...old.homeMessagesData,
-                            messages: [...old.homeMessagesData.messages, messageToAdd],
-                        },
-                    }));
-
+                    // Thêm thông tin người gửi vào tin nhắn trước khi hiển thị lên UI
                     const currentUser = this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId) || {};
                     const newMessage = {
                         ...messageToAdd,
                         sender_name: currentUser.full_name,
                         sender_avatar: currentUser.avatar_url,
                     };
+
+                    this.getMessagesData.update((old) => ({
+                        ...old,
+                        homeMessagesData: {
+                            ...old.homeMessagesData,
+                            // Hiển thị 'newMessage' hoàn chỉnh lên màn hình ngay lập tức
+                            messages: [...old.homeMessagesData.messages, newMessage],
+                        },
+                    }));
 
                     this.lastMessageId = newMessage.id;
                     this.socketService.emit('sendMessage', newMessage);
@@ -675,6 +739,7 @@ export class MessagesLayoutComponent
                 this.error = error.message;
             },
         });
+        
         this.closeMenu();
     }
 
@@ -703,8 +768,9 @@ export class MessagesLayoutComponent
                 // Broadcast cho người khác trong conversation
                 this.socketService.emit('pinMessage', newPinMessage);
 
-                const messageContent = newPinMessage.pinned_by_name + " đã ghim tin nhắn: " + newPinMessage.content;
+                const messageContent = "đã ghim tin nhắn: " + newPinMessage.content;
                 const message_type = 'system';
+
                 this.postAndBroadcastMessage(messageContent, message_type);
             },
             error: (error) => {
