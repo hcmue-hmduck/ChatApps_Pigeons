@@ -738,6 +738,7 @@ export class MessagesLayoutComponent
                 this.error = error.message;
             },
         });
+        
         this.closeMenu();
     }
 

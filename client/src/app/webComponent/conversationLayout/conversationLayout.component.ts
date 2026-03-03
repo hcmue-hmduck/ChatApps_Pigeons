@@ -123,7 +123,10 @@ export class ConversationLayoutComponent implements OnInit {
                     (conv: any) => {
                         const updatedParticipants = conv.participants?.map((p: any) =>
                             p.user_id === data.user_id
-                                ? { ...p, full_name: data.full_name, avatar_url: data.avatar_url }
+                                ? { ...p, 
+                                    full_name: data.full_name, 
+                                    avatar_url: data.avatar_url,
+                                    }
                                 : p
                         );
                         // Nếu là direct conversation và người update là người kia (không phải mình)
@@ -263,17 +266,27 @@ export class ConversationLayoutComponent implements OnInit {
 
     // Trả về tên người gửi last message cho 1 conversation
     getLastMessageSenderName(conv: any): string {
-        if (
-            !conv ||
-            !conv.lastMessage ||
-            (conv.participants.length < 3 && conv.lastMessage.sender_id !== this.currentUserId)
-        ) return '';
-        let twoDots = ':';
-        if (conv.lastMessage.message_type === 'system') twoDots = '';
-        if (conv.lastMessage.sender_id === this.currentUserId) return 'Bạn' + twoDots;
-        const sender = conv.participants.find((p: any) => p.user_id === conv.lastMessage.sender_id);
-        return sender && sender.full_name ? sender.full_name + twoDots : 'Ai đó';
+        const { lastMessage, participants } = conv ?? {};
+        if (!lastMessage) return '';
+
+        const isSystem = lastMessage.message_type === 'system';
+        const isCurrentUser = lastMessage.sender_id === this.currentUserId;
+        const isDirectChat = participants.length < 3;
+
+        // Direct chat: only show sender name for system messages from the other party
+        if (isDirectChat && !isCurrentUser) {
+            if (!isSystem) return '';
+            const sender = participants.find((p: any) => p.user_id === lastMessage.sender_id);
+            return sender?.full_name ?? 'Ai đó';
+        }
+
+        if (isCurrentUser) return isSystem ? 'Bạn' : 'Bạn:';
+
+        const sender = participants.find((p: any) => p.user_id === lastMessage.sender_id);
+        const name = sender?.full_name ?? 'Ai đó';
+        return isSystem ? name : `${name}:`;
     }
+
 
     getOtherParticipant(conv: any): any {
         if (conv.participants.length !== 2) return null;
@@ -410,11 +423,12 @@ export class ConversationLayoutComponent implements OnInit {
                         userInfo: {
                             ...old.homeConversationData.userInfo,
                             ...this.editForm,
+                            updated_at: new Date().toISOString(),
                         },
                     },
                 }));
-                const { full_name, avatar_url } = this.conversations().homeConversationData.userInfo;
-                this.socketService.emit('updateProfile', { user_id: this.currentUserId, full_name, avatar_url });
+                const { full_name, avatar_url, updated_at } = this.conversations().homeConversationData.userInfo;
+                this.socketService.emit('updateProfile', { user_id: this.currentUserId, full_name, avatar_url, updated_at });
                 this.isEditingProfile.set(false);
             },
             error: (error) => {
