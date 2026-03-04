@@ -298,11 +298,9 @@ class HomeService {
         return await usersService.updateUser(userID, userInfor);
     }
 
-
-
     async startCall({ conversation_id, caller_id, call_type, media_type }) {
         return await sequelize.transaction(async (t) => {
-            const { id } = await callService.startCall(
+            const call = await callService.startCall(
                 { conversation_id, caller_id, call_type, media_type },
                 { transaction: t },
             );
@@ -311,10 +309,16 @@ class HomeService {
                 conversation_id,
                 sender_id: caller_id,
                 message_type: 'call',
-                call_id: id,
+                call_id: call.id,
+                content: `Cuộc gọi ${media_type}`
             };
 
-            return await messagesService.createMessage(messageData, { transaction: t });
+            let message = await messagesService.createMessage(messageData, { transaction: t });
+
+            return {
+                ...message.get({plain: true}), // Biến instance thành object thường
+                call: call.get({plain: true})
+            };
         });
     }
 

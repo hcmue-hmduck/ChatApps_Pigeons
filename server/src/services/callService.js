@@ -12,6 +12,7 @@ class CallService {
                 caller_id,
                 call_type,
                 media_type,
+                content: `Cuộc gọi ${media_type}`,
             },
             options,
         );

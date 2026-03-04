@@ -14,7 +14,7 @@ export class Messages {
     getMessages(conversationId: string, limit: number = 50, offset: number = 0): Observable<any> {
         return this.http
             .get(`${this.apiUrl}/${conversationId}?limit=${limit}&offset=${offset}`)
-            // .pipe(tap((data) => console.log('getMessages:::',data)));
+            .pipe(tap((data) => console.log('getMessages:::',data)));
     }
 
     postMessage(
