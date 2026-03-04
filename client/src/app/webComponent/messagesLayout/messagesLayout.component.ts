@@ -299,6 +299,14 @@ export class MessagesLayoutComponent
                         }),
                     },
                 }));
+
+                // Update nội dung tin nhắn đã ghim nếu tin nhắn đó đang được ghim
+                this.pinnedMessages.update(prev =>
+                    prev.map(p => p.message_id === data.id
+                        ? { ...p, content: data.content }
+                        : p
+                    )
+                );
             }
         });
 
@@ -738,7 +746,7 @@ export class MessagesLayoutComponent
                 this.error = error.message;
             },
         });
-        
+
         this.closeMenu();
     }
 

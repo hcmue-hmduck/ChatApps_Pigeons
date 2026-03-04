@@ -395,7 +395,7 @@
 
 /* List panel */
 .pinned-panel-list {
-    overflow: hidden;
+    overflow: visible;
     animation: slideDown 0.18s ease-out;
     border-top: 1px solid rgba(99, 102, 241, 0.1);
 }
