@@ -13,6 +13,7 @@ import { FormsModule } from '@angular/forms';
 import { MessagesLayoutComponent } from '../messagesLayout/messagesLayout.component';
 import { User } from '../../services/user';
 import { Conversation } from '../../services/conversation';
+import { Friend } from '../../services/friend';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SocketService } from '../../services/socket';
 import { AuthService } from '../../services/authService';
@@ -62,6 +63,7 @@ export class ConversationLayoutComponent implements OnInit {
     constructor(
         private userService: User,
         private conversationService: Conversation,
+        private friendService: Friend,
         private socketService: SocketService,
         private router: ActivatedRoute,
         private cdr: ChangeDetectorRef) {
@@ -451,4 +453,14 @@ export class ConversationLayoutComponent implements OnInit {
         this.changePassForm = { oldPass: '', newPass: '', confirmPass: '' };
     }
 
+    friendPage() {
+        this.friendService.getFriendByUserId(this.currentUserId).subscribe({
+            next: (response) => {
+                console.log('Friend list:', response.metadata);
+            },
+            error: (error) => {
+                console.error('Error getting friend list:', error);
+            }
+        });
+    }
 }

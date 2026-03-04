@@ -5,6 +5,8 @@ const homeController = require('../controllers/homeController');
 
 router.put('/userinfor/:userID', homeController.putUserInfor);
 
+router.get('/friends/:userId', homeController.getFriendByUserId);
+
 router.get('/conversation/:userID', homeController.getHomeConversation);
 router.put('/conversation/:convID', homeController.putHomeConversation);
 

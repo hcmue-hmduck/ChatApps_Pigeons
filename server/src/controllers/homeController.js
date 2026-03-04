@@ -1,5 +1,4 @@
 const homeService = require('../services/homeService');
-const callService = require('../services/callService.js');
 const SuccessResponse = require('../core/successResponse');
 
 class HomeController {
@@ -202,6 +201,17 @@ class HomeController {
             message: 'Delete home pin message successfully',
             metadata: {
                 deleteResult: deleteResult,
+            },
+        }).send(res);
+    }
+
+    async getFriendByUserId(req, res) {
+        const userId = req.params.userId;
+        const friends = await homeService.getFriendByUserId(userId);
+        new SuccessResponse({
+            message: 'Get friends successfully',
+            metadata: {
+                friends: friends,
             },
         }).send(res);
     }
