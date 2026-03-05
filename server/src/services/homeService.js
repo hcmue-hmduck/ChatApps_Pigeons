@@ -3,6 +3,8 @@ const participantsService = require('./participantsService');
 const messagesService = require('./messagesService');
 const conversationsService = require('./conversationsService');
 const pinnedmessagesService = require('./pinnedmessagesService');
+const friendsService = require('./friendsService');
+
 const { sequelize } = require('../configs/sequelizeConfig.js');
 const callService = require('./callService.js');
 
@@ -350,6 +352,10 @@ class HomeService {
 
     async checkMissedCall(call_id) {
         return await callService.updateStatusCall({ call_id, status: 'missed' });
+    }
+
+    async getFriendByUserId(userId) {
+        return await friendsService.getFriendByUserId(userId);
     }
 }
 
