@@ -5,7 +5,6 @@ export interface CallSessionData {
     inviterName: string;        
     inviterAvatarUrl: string;
     inviterId: string;
-    status: 'comming' | 'missed';
     initializeVideo: boolean;
     offer?: RTCSessionDescriptionInit; // Cho direct call
     groupName?: string; // Cho group call

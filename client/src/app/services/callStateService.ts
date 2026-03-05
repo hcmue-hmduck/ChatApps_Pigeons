@@ -1,5 +1,7 @@
-import { Injectable, signal } from '@angular/core';
-import { CallSessionData, GROUP_CALL } from '../models/callSessionData.model';
+import { inject, Injectable, signal } from '@angular/core';
+import { CallSessionData, DIRECT_CALL } from '../models/callSessionData.model';
+import { SocketService } from './socket';
+import { AuthService } from './authService';
 
 export interface RemoteParticipant {
     participantId: string;
@@ -16,20 +18,23 @@ export interface RemoteParticipant {
 })
 export class CallStateService {
     callSessionData = signal<CallSessionData | null>(null);
-    callEnded = signal<boolean>(false);
-    isDeclined = signal<boolean>(false);
     localStream = signal<MediaStream | null>(null);
     remoteParticipants = signal<RemoteParticipant[]>([]);
     isCameraOn = signal<boolean>(true);
     isMicOn = signal<boolean>(true);
-    isRemoteBusy = signal<boolean>(false);
-    isBusy = signal<boolean>(false);
+    isCaller = signal<boolean>(false);
+    callStatus = signal<
+        'idle' | 'ringing' | 'connected' | 'ended' | 'declined' | 'missed' | 'failed'
+    >('idle');
 
     conversationId = '';
     conversationType = '';
     callId = '';
 
-    cleanUp() {
+    socketService = inject(SocketService);
+    authService = inject(AuthService);
+
+    cleanUp({ resetCallStatus }: { resetCallStatus: boolean }) {
         this.localStream()
             ?.getTracks()
             .forEach((track) => track.stop());
@@ -40,19 +45,18 @@ export class CallStateService {
         });
 
         this.callSessionData.set(null);
-        this.callEnded.set(true);
-        this.isDeclined.set(false);
         this.localStream.set(null);
         this.remoteParticipants.set([]);
         this.isCameraOn.set(true);
         this.isMicOn.set(true);
-        this.isBusy.set(false);
-        this.isRemoteBusy.set(false);
+        this.isCaller.set(false);
         this.conversationId = '';
         this.conversationType = '';
         this.callId = '';
 
-        console.log('clean up call state', this.isRemoteBusy());
+        if (resetCallStatus) this.callStatus.set('idle');
+
+        console.log('CallStateService cleaned up');
     }
 
     addVideoTrackToLocalStream(videoTrack: MediaStreamTrack) {
@@ -84,8 +88,12 @@ export class CallStateService {
         return videoStream;
     }
 
-    getGroupName() {
-        if(this.conversationType !== GROUP_CALL) return ''
-        return ''
-    } 
+    syncCallStateToParent() {
+        this.socketService.emit('call:syncCallState', {
+            conversationId: this.conversationId,
+            userId: this.authService.getUserId(),
+            callStatus: this.callStatus,
+            isCaller: this.isCaller,
+        });
+    }
 }

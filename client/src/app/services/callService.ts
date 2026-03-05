@@ -14,7 +14,7 @@ export class CallService {
     private authService = inject(AuthService);
     private CALL_TYPE = ['group', 'direct'];
 
-    newCallMessage = signal<any>(null);
+    newCallMessage = signal<any>(null); 
 
     startCall(
         conversation_id: string,

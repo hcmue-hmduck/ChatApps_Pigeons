@@ -44,6 +44,14 @@ export class CallLayoutComponent implements OnInit {
         return this.totalCount() > 2;
     });
 
+    isDeclined = computed(() => {
+        return this.callState.callStatus() === 'declined';
+    });
+
+    isCallEnded = computed(() => {
+        return this.callState.callStatus() === 'ended';
+    });
+
     ngOnInit(): void {
         const navigation = performance.getEntriesByType(
             'navigation',
@@ -83,7 +91,7 @@ export class CallLayoutComponent implements OnInit {
                     inviterId,
                     inviterAvatarUrl,
                 );
-            } else this.webRTCService.call(conversationId, conversationType, callId, initializeVideo);
+            } else this.webRTCService.startCall(conversationId, conversationType, callId, initializeVideo);
 
             window.removeEventListener('message', listener);
         };
@@ -94,8 +102,7 @@ export class CallLayoutComponent implements OnInit {
     }
 
     endCall() {
-        // this.webRTCService.end();
-        console.log('RemoteParticipant:::', this.callState.remoteParticipants());
+        this.webRTCService.endCall();
     }
 
     toggleCamera() {
@@ -113,6 +120,6 @@ export class CallLayoutComponent implements OnInit {
 
     @HostListener('window:unload')
     onUnload() {
-        this.webRTCService.end();
+        this.webRTCService.endCall();
     }
 }

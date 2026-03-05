@@ -36,18 +36,19 @@ export class IncommingCallLayout {
 
         effect(() => {
             const callSessionData = this.callState.callSessionData();
+            const callStatus = this.callState.callStatus();
+            const isCaller = this.callState.isCaller();
             this.userId = this.authService.getUserId();
 
-            if (callSessionData && callSessionData.inviterId !== this.userId) {
+            if (callSessionData && callStatus === 'ringing' && !isCaller && callSessionData.inviterId !== this.userId) {
                 this.callSessionData.set(callSessionData);
-                if (callSessionData?.status === 'comming') {
-                    this.playRingTone();
-                    this.startVibrating();
-                } else {
-                    this.stopRingtone();
-                    this.stopVibrating();
-                }
-            } else this.callSessionData.set(null);
+                this.playRingTone();
+                this.startVibrating();
+            } else {
+                this.callSessionData.set(null);
+                this.stopRingtone();
+                this.stopVibrating();
+            }
         });
     }
 

@@ -8,7 +8,7 @@ const cors = require('cors');
 const { engine } = require('express-handlebars');
 const path = require('path');
 const Server = require('socket.io');
-const models = require('./src/models/index');  // Khởi tạo tất cả associations
+const models = require('./src/models/index'); // Khởi tạo tất cả associations
 const fs = require('fs');
 const morgan = require('morgan');
 
@@ -21,7 +21,6 @@ const routes = require('./src/routes/index');
 const { connectToDB } = require('./src/configs/dbConfig');
 
 const app = express();
-
 
 let server;
 
@@ -70,7 +69,6 @@ app.use(morgan('dev'));
 // Middleware parse JSON và URL-encoded data
 app.use(express.json()); // Parse JSON body
 app.use(express.urlencoded({ extended: true })); // Parse form data
-
 
 routes(app);
 
@@ -192,7 +190,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Client 1 gửi offer cho Client 2
+    // Client 1 gửi offer cho Client 2 (mời tham gia cuộc gọi 2 người)
     socket.on('directCall:newOffer', (data) => {
         const { conversationId } = data;
         socket.to(conversationId).emit('directCall:offerAwaiting', data);
@@ -209,37 +207,37 @@ io.on('connection', (socket) => {
     // Client gửi ICE candidate qua đối phương
     socket.on('directCall:newIceCandidate', (data) => {
         const { conversationId, iceCandidate } = data;
-        // console.log('iceCandidate::', iceCandidate);
         socket.to(conversationId).emit('directCall:newIceCandidate', iceCandidate);
     });
 
-    socket.on('directCall:remoteBusy', ({ conversationId, remoteId }) => {
-        socket.to(conversationId).emit('directCall:remoteBusy', remoteId);
-    });
-
+    // chuyển tiếp tín hiệu mời tham gia cuộc gọi nhóm
     socket.on('groupCall:inviteToJoinTheRoom', (data) => {
         socket.to(data.conversationId).emit('groupCall:joinRoom', data);
     });
 
-    socket.on('call:endCall', (conversationId) => {
-        socket.to(conversationId).emit('call:endCall');
+    // chuyển tiếp tín hiệu cleanup call state
+    socket.on('call:cleanUp', ({ conversationId, userId }) => {
+        socket.to(conversationId).emit('call:cleanUp', userId);
     });
 
-    socket.on('call:cancelCall', (conversationId) => {
-        socket.to(conversationId).emit('call:missedCall', conversationId);
+    // chuyển tiếp tín hiệu gác máy
+    socket.on('call:hangUp', (conversationId) => {
+        socket.to(conversationId).emit('call:hangUp');
     });
 
-    socket.on('call:declineCall', (conversationId) => {
-        socket.to(conversationId).emit('call:declineCall');
+    // chuyển tiếp tín hiệu từ chối cuộc gọi
+    socket.on('call:declined', (conversationId) => {
+        socket.to(conversationId).emit('call:declined');
     });
 
-    socket.on('call:busyUpdated', ({ conversationId, ...data }) => {
-        socket.to(conversationId).emit('call:busyUpdated', data);
+    // chuyển tiếp tín hiệu cuộc gọi nhỡ
+    socket.on('call:missed', (conversationId) => {
+        socket.to(conversationId).emit('call:missed');
     });
 
-    socket.on('call:cleanup', ({ conversationId, userId }) => {
-        socket.to(conversationId).emit('call:cleanup', userId);
-        console.log('clean up', conversationId)
+    // đồng bộ call state giữa 2 instance
+    socket.on('call:syncCallState', (data) => {
+        socket.to(data.conversationId).emit('call:syncCallState', data);
     });
 });
 

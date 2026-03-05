@@ -310,7 +310,7 @@ class HomeService {
                 sender_id: caller_id,
                 message_type: 'call',
                 call_id: call.id,
-                content: `Cuộc gọi ${media_type}`
+                content: `Cuộc gọi  ${media_type === 'audio' ? 'thoại' : media_type}`
             };
 
             let message = await messagesService.createMessage(messageData, { transaction: t });

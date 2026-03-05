@@ -26,8 +26,14 @@ export class LivekitCallService {
 
     constructor() {
         this.socketService.on('groupCall:joinRoom', async (data) => {
+            const userId = this.authService.getUserId();
+            // Chỉ callee (người được gọi) mới hiển thị modal incoming call
+            if (userId === data.inviterId) return;
+
             this.callState.conversationId = data.conversationId;
             this.callState.callId = data.callId;
+            this.callState.callStatus.set('ringing');
+            this.callState.isCaller.set(false);
             const res = await lastValueFrom(
                 this.conversationService.getConversationNameById(data.conversationId),
             );
@@ -40,7 +46,6 @@ export class LivekitCallService {
                 inviterName: data.inviterName,
                 inviterAvatarUrl: data.inviterAvatarUrl,
                 inviterId: data.inviterId,
-                status: 'comming',
                 initializeVideo: data.initializeVideo,
                 groupName,
             });
@@ -51,17 +56,22 @@ export class LivekitCallService {
         this.joinRoom({ isInviter: true });
     }
 
+    end() {
+        this.cleanUp();
+        this.callState.callStatus.set('ended');
+        this.callState.syncCallStateToParent();
+        this.callState.cleanUp({ resetCallStatus: false });
+    }
+
+    cleanUp() {
+        this.room?.disconnect();
+        this.room = null;
+        this.localLiveKitStream = null;
+        this.remoteParticipantsMap.clear();
+    }
+
     async joinRoom({ isInviter = false }) {
         const { userId, userName, userAvatarUrl } = this.authService.getUserInfor();
-
-        if (this.room) {
-            // Avoid duplicate Room instances that can cause subscription warnings
-            this.room.disconnect();
-            this.room = null;
-            this.localLiveKitStream = null;
-            this.remoteParticipantsMap.clear();
-            this.callState.cleanUp();
-        }
 
         this.livekitService
             .getAccessToken(this.callState.conversationId, userId, userName, userAvatarUrl)
@@ -83,6 +93,8 @@ export class LivekitCallService {
                     }
 
                     this.updateRemoteParticipants();
+                    this.callState.callStatus.set('connected');
+                    this.callState.syncCallStateToParent();
 
                     if (isInviter)
                         this.socketService.emit('groupCall:inviteToJoinTheRoom', {
@@ -93,9 +105,17 @@ export class LivekitCallService {
                             inviterAvatarUrl: userAvatarUrl,
                             initializeVideo: this.callState.isCameraOn(),
                         });
+
+                    if (isInviter) {
+                        this.callState.callStatus.set('ringing');
+                        this.callState.isCaller.set(true);
+                        this.callState.syncCallStateToParent();
+                    }
                 },
                 error: (error) => {
                     console.log('Error join room live kit server');
+                    this.callState.callStatus.set('failed');
+                    this.callState.syncCallStateToParent();
                     throw error;
                 },
             });
@@ -180,10 +200,6 @@ export class LivekitCallService {
                     this.remoteParticipantsMap.delete(participantId);
                 this.updateRemoteParticipants();
             }
-
-            // kết thúc cuộc gọi nếu phòng chỉ còn 1 người
-            // const totalRemoteParticipants = Number(this.room?.remoteParticipants.size);
-            // if (!totalRemoteParticipants) this.callState.cleanUp();
         });
 
         this.room?.on('participantDisconnected', (participant) => {
@@ -193,7 +209,9 @@ export class LivekitCallService {
         });
 
         this.room?.on('disconnected', () => {
-            this.callState.cleanUp();
+            this.callState.callStatus.set('ended');
+            this.callState.syncCallStateToParent();
+            this.callState.cleanUp({resetCallStatus: false});
         });
 
         this.room?.on('trackSubscriptionFailed', (trackSid, participant, error) =>
@@ -247,10 +265,4 @@ export class LivekitCallService {
         this.callState.isMicOn.set(enable);
     }
 
-    cleanUp() {
-        this.room?.disconnect();
-        this.room = null;
-        this.localLiveKitStream = null;
-        this.remoteParticipantsMap.clear();
-    }
 }

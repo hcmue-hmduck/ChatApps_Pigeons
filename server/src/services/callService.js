@@ -12,7 +12,7 @@ class CallService {
                 caller_id,
                 call_type,
                 media_type,
-                content: `Cuộc gọi ${media_type}`,
+                content: `Cuộc gọi ${media_type === 'audio' ? 'thoại' : media_type}`,
             },
             options,
         );

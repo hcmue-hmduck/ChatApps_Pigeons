@@ -30,16 +30,11 @@ export class P2PCallService {
             if (userId === data.inviterId) return;
 
             console.log('Receive offer...');
-            if (this.callState.isBusy()) {
-                this.socketService.emit('directCall:remoteBusy', {
-                    conversationId: data.conversationId,
-                    remoteId: userId,
-                });
-                return;
-            }
 
             this.callState.conversationId = data.conversationId;
             this.callState.callId = data.callId;
+            this.callState.callStatus.set('ringing');
+            this.callState.isCaller.set(false);
 
             this.callState.callSessionData.set({
                 conversationId: data.conversationId,
@@ -49,7 +44,6 @@ export class P2PCallService {
                 inviterAvatarUrl: data.inviterAvatarUrl,
                 inviterId: data.inviterId,
                 offer: data.offer,
-                status: 'comming',
                 initializeVideo: data.initializeVideo,
             });
         });
@@ -64,13 +58,6 @@ export class P2PCallService {
         this.socketService.on('directCall:newIceCandidate', (iceCandidate) => {
             this.addIceCandidate(iceCandidate);
         });
-
-        this.socketService.on('directCall:remoteBusy', (remoteId) => {
-            if (this.authService.getUserId() !== remoteId) {
-                this.callState.isRemoteBusy.set(true);
-                console.log('set remote busy:::', remoteId);
-            }
-        });
     }
 
     setFriendInfo(id: string, name: string, avatar: string) {
@@ -82,7 +69,6 @@ export class P2PCallService {
     async call() {
         try {
             await this.getUserMedia();
-
             await this.createRTCPeerConnection({ isOfferer: true });
 
             const offer = await this.peerConnection?.createOffer();
@@ -98,10 +84,34 @@ export class P2PCallService {
                 inviterId: userId,
                 initializeVideo: this.callState.isCameraOn(),
             });
+
             console.log('P2P offer sent');
         } catch (error) {
             console.log(error);
+            this.callState.callStatus.set('failed');
+            this.callState.syncCallStateToParent();
         }
+    }
+
+    end() {
+        // yêu cầu người bên kia kết thúc cuộc gọi ngay'
+        if (this.callState.callStatus() !== 'ringing')
+            this.socketService.emit('call:hangUp', this.callState.conversationId);
+
+        this.cleanUp();
+        this.callState.callStatus.set('ended');
+        this.callState.syncCallStateToParent();
+        this.callState.cleanUp({ resetCallStatus: false });
+    }
+
+    cleanUp() {
+        this.peerConnection?.close();
+        this.peerConnection = null;
+        this.remoteIceCandidates = [];
+        this.localIceCandidates = [];
+        this.canSendLocalIceCandidates = false;
+        this.friendName = '';
+        this.friendAvatarUrl = '';
     }
 
     async getUserMedia() {
@@ -165,7 +175,16 @@ export class P2PCallService {
             });
 
             this.peerConnection.addEventListener('connectionstatechange', () => {
-                console.log('Peer connection state:', this.peerConnection?.connectionState);
+                const state = this.peerConnection?.connectionState;
+                console.log('Peer connection state:', state);
+
+                if (state === 'connected') {
+                    this.callState.callStatus.set('connected');
+                    this.callState.syncCallStateToParent();
+                } else if (state === 'failed' || state === 'disconnected') {
+                    this.callState.callStatus.set('ended');
+                    this.callState.syncCallStateToParent();
+                }
             });
 
             this.peerConnection.addEventListener('icecandidateerror', (event) => {
@@ -335,6 +354,7 @@ export class P2PCallService {
             console.log('P2P answer sent');
         } catch (error) {
             console.error(error);
+            this.callState.callStatus.set('failed');
         }
     }
 
@@ -497,16 +517,6 @@ export class P2PCallService {
         this.callState.isMicOn.set(enable);
 
         this.sendMediaState();
-    }
-
-    cleanUp() {
-        this.peerConnection?.close();
-        this.peerConnection = null;
-        this.remoteIceCandidates = [];
-        this.localIceCandidates = [];
-        this.canSendLocalIceCandidates = false;
-        this.friendName = '';
-        this.friendAvatarUrl = '';
     }
 
     setupDataChannel() {

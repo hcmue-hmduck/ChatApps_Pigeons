@@ -1,24 +1,25 @@
-@let call = callSessionData();
+@let callData = callState.callSessionData();
+@let status = callState.callStatus();
 
-@if (call) {
+@if (callData && status !== 'idle') {
     <div class="incoming-overlay">
-        <div class="incoming-card" [class.is-missed]="call.status === 'missed'">
-            @if (call.status !== 'missed') {
+        <div class="incoming-card" [class.is-missed]="status === 'missed'">
+            @if (status !== 'missed') {
                 <button class="incoming-close" type="button" (click)="handleDecline()">×</button>
                 <div class="incoming-badge">Cuộc gọi đến</div>
                 <div class="incoming-avatar-wrap">
                     <img
                         class="incoming-avatar"
-                        [src]="call.inviterAvatarUrl"
-                        (error)="call.inviterAvatarUrl = avatarUrlDefault"
+                        [src]="callData.inviterAvatarUrl"
+                        (error)="callData.inviterAvatarUrl = avatarUrlDefault"
                     />
                 </div>
 
-                @if (call.conversationType === directCallType) {
-                    <div class="incoming-name">{{ call.inviterName }} đang gọi cho bạn</div>
+                @if (callData.conversationType === directCallType) {
+                    <div class="incoming-name">{{ callData.inviterName }} đang gọi cho bạn</div>
                 } @else {
-                    <div class="incoming-name">{{ call.inviterName }} mời bạn vào cuộc gọi nhóm</div>
-                    <div class="incoming-subtitle">{{ call.groupName }}</div>
+                    <div class="incoming-name">{{ callData.inviterName }} mời bạn vào cuộc gọi nhóm</div>
+                    <div class="incoming-subtitle">{{ callData.groupName }}</div>
                 }
 
                 <!-- <div class="incoming-subtitle secure-text">
@@ -40,6 +41,7 @@
                         </button>
                         <span>Chấp nhận</span>
                     </div>
+                    <div>{{callState.callStatus()}}</div>
                 </div>
             } @else {
                 <button class="incoming-close" type="button" (click)="closeOverlay()">×</button>
