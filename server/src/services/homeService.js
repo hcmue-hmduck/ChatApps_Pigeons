@@ -4,6 +4,8 @@ const messagesService = require('./messagesService');
 const conversationsService = require('./conversationsService');
 const pinnedmessagesService = require('./pinnedmessagesService');
 const friendsService = require('./friendsService');
+const friendrequestsService = require('./friendrequestsService');
+const userblockService = require('./userblockServices');
 
 const { sequelize } = require('../configs/sequelizeConfig.js');
 const callService = require('./callService.js');
@@ -370,6 +372,30 @@ class HomeService {
         }));
         
         return listFriendsMap;
+    }
+
+    async getFriendRequests(receiverId) {
+        return await friendrequestsService.getFriendRequests(receiverId);
+    }
+
+    async createFriendRequest(senderId, receiverId, note) {
+        return await friendrequestsService.createFriendRequest(senderId, receiverId, note);
+    }
+
+    async updateFriendRequestStatus(id, status) {
+        return await friendrequestsService.updateFriendRequestStatus(id, status);
+    }
+
+    async getUserBlocks(blockerId) {
+        return await userblockService.getUserBlocks(blockerId);
+    }
+
+    async createUserBlock(blockerId, blockedId, reason) {
+        return await userblockService.createUserBlock(blockerId, blockedId, reason);
+    }
+
+    async deleteUserBlock(id) {
+        return await userblockService.deleteUserBlock(id);
     }
 }
 
