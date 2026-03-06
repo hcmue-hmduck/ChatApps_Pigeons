@@ -354,8 +354,22 @@ class HomeService {
         return await callService.updateStatusCall({ call_id, status: 'missed' });
     }
 
-    async getFriendByUserId(userId) {
-        return await friendsService.getFriendByUserId(userId);
+     async getFriendByUserId(userId) {
+        const listFriends = await friendsService.getFriendByUserId(userId);
+        
+        // Dùng Promise.all để chờ tất cả dữ liệu được lấy về
+        const listFriendsMap = await Promise.all(listFriends.map(async friend => {
+            const friendInfo = await usersService.getUserById(friend.friend_id);
+            console.log(friendInfo);
+            return {
+                ...friend.dataValues,
+                full_name: friendInfo.full_name,
+                avatar_url: friendInfo.avatar_url,
+                status: friendInfo.status
+            };
+        }));
+        
+        return listFriendsMap;
     }
 }
 

@@ -1,7 +1,6 @@
-import { Component, signal, OnInit } from '@angular/core';
+import { Component, signal, OnChanges, SimpleChanges, Input, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { User } from '../../services/user';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Friend } from '../../services/friend';
 
 @Component({
     selector: 'relationship-layout',
@@ -10,30 +9,40 @@ import { ActivatedRoute, Router } from '@angular/router';
     templateUrl: './relationshipLayout.component.html',
     styleUrls: ['./relationshipLayout.component.css']
 })
-
-export class RelationshipLayoutComponent implements OnInit {
+export class RelationshipLayoutComponent implements OnChanges {
     protected readonly title = signal('Relationship');
-    users: any[] = [];
+    @Input() currentUserId: string = '';
+
+    friends: any[] = [];
     loading = false;
     error = '';
 
-    constructor(private userService: User, private router: ActivatedRoute) {}
+    constructor(
+        private friendService: Friend,
+        private cdr: ChangeDetectorRef,
+    ) { }
 
-    ngOnInit() {
-        this.loadUsers();
+    ngOnChanges(changes: SimpleChanges) {
+        if (changes['currentUserId'] && this.currentUserId) {
+            this.loadFriends();
+        }
     }
 
-    loadUsers() {
+    loadFriends() {
+        if (!this.currentUserId) return;
+        console.log(`Friends By ID ${this.currentUserId}`);
         this.loading = true;
-        this.userService.getAllUsers().subscribe({
+        this.friendService.getFriendByUserId(this.currentUserId).subscribe({
             next: (response) => {
-                this.users = response.metadata || [];
+                this.friends = response.metadata.friends || [];
                 this.loading = false;
+                this.cdr.detectChanges();
             },
-            error: (error) => { 
+            error: (error) => {
                 console.error('Error:', error);
                 this.error = error.message;
                 this.loading = false;
+                this.cdr.detectChanges();
             }
         });
     }

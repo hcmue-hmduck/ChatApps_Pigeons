@@ -1,0 +1,96 @@
+<div class="relations-root">
+
+    <!-- ── TRÁI: SIDEBAR MENU ── -->
+    <div class="relations-sidebar">
+        <!-- Search & Add Actions -->
+        <div class="sidebar-top">
+            <div class="search-bar">
+                <i class="bi bi-search"></i>
+                <input type="text" placeholder="Tìm kiếm">
+            </div>
+            <button class="icon-btn" title="Thêm bạn"><i class="bi bi-person-plus"></i></button>
+            <button class="icon-btn" title="Thêm nhóm"><i class="bi bi-people"></i></button>
+        </div>
+
+        <!-- Menu List -->
+        <ul class="sidebar-menu">
+            <li class="menu-item active">
+                <i class="bi bi-person-lines-fill"></i> Danh sách bạn bè
+            </li>
+            <li class="menu-item">
+                <i class="bi bi-people"></i> Danh sách nhóm và cộng đồng
+            </li>
+            <li class="menu-item">
+                <i class="bi bi-person-plus"></i> Lời mời kết bạn
+            </li>
+            <li class="menu-item">
+                <i class="bi bi-envelope-paper"></i> Lời mời vào nhóm và cộng đồng
+            </li>
+        </ul>
+    </div>
+
+    <!-- ── PHẢI: MAIN CONTENT ── -->
+    <div class="relations-main">
+        <!-- Main Header -->
+        <div class="main-header">
+            <i class="bi bi-people-fill"></i>
+            <h2>Danh sách bạn bè</h2>
+        </div>
+
+        <!-- Scrollable Content Area -->
+        <div class="main-content">
+            <h3 class="friends-count">Bạn bè ({{friends.length || 0}})</h3>
+
+            <!-- Filters Bar -->
+            <div class="filters-bar">
+                <div class="search-box">
+                    <i class="bi bi-search"></i>
+                    <input type="text" placeholder="Tìm bạn">
+                </div>
+                <div class="filter-select">
+                    <i class="bi bi-arrow-down-up"></i>
+                    <select>
+                        <option>Tên (A-Z)</option>
+                        <option>Tên (Z-A)</option>
+                    </select>
+                    <i class="bi bi-chevron-down arrow-icon"></i>
+                </div>
+                <div class="filter-select">
+                    <i class="bi bi-funnel"></i>
+                    <select>
+                        <option>Tất cả</option>
+                    </select>
+                    <i class="bi bi-chevron-down arrow-icon"></i>
+                </div>
+            </div>
+
+            <!-- List of Friends -->
+            <div class="friends-list-container" *ngIf="!loading && friends.length > 0">
+                <ng-container *ngFor="let friend of friends; let i = index">
+
+                    <!-- Giả lập tiêu đề theo chữ cái đầu cho giống Zalo (tạm hiển thị "A", "B" ...) -->
+                    <div class="list-group-header" *ngIf="i === 0">A</div>
+                    <div class="list-group-header" *ngIf="i === 3">B</div>
+
+                    <div class="friend-item">
+                        <img [src]="friend.avatar_url || 'https://i.pravatar.cc/150'" alt="Avatar"
+                            class="friend-avatar">
+                        <div class="friend-name">{{ friend.full_name }}</div>
+                        <button class="more-btn" title="Tuỳ chọn"><i class="bi bi-three-dots"></i></button>
+                    </div>
+                </ng-container>
+            </div>
+
+            <!-- Empty State -->
+            <div class="empty-state" *ngIf="!loading && friends.length === 0">
+                <i class="bi bi-people" style="font-size: 48px; color: #4b5563;"></i>
+                <p>Bạn chưa có người bạn nào.</p>
+            </div>
+
+            <!-- Loading State -->
+            <div class="loading-state" *ngIf="loading">
+                <div class="spinner-accent"></div>
+            </div>
+        </div>
+    </div>
+</div>
