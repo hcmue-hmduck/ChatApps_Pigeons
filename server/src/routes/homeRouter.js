@@ -3,6 +3,15 @@ const router = express.Router();
 
 const homeController = require('../controllers/homeController');
 
+router.get('/friendrequests/:receiverId', homeController.getFriendRequests);
+router.post('/friendrequests', homeController.createFriendRequest);
+router.put('/friendrequests/:id', homeController.updateFriendRequestStatus);
+
+router.get('/userblocks/:blockerId', homeController.getUserBlocks);
+router.post('/userblocks', homeController.createUserBlock);
+router.delete('/userblocks/:id', homeController.deleteUserBlock);
+
+
 router.put('/userinfor/:userID', homeController.putUserInfor);
 
 router.get('/friends/:userId', homeController.getFriendByUserId);
@@ -29,5 +38,6 @@ router.patch('/call/completed/:callID', homeController.setCallCompleted);
 router.patch('/call/declined/:callID', homeController.setCallDecliend);
 router.patch('/call/cancelled/:callID', homeController.setCallCancelled);
 router.patch('/call/missed/:callID', homeController.setCallMissed);
+
 
 module.exports = router;

@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { ConversationLayoutComponent } from './webComponent/conversationLayout/conversationLayout.component';
+import { SidebarComponent } from './webComponent/sidebarComponent/sidebarComponent.component';
 import { UserAdminLayoutComponent } from './webComponent/userAdminLayout/userAdminLayout.component';
 import { HomeLayoutComponent } from './webComponent/homeLayout/homeLayout.component';
 import { MessagesLayoutComponent } from './webComponent/messagesLayout/messagesLayout.component';
@@ -12,7 +12,7 @@ export const routes: Routes = [
     },
     {
         path: 'conversations/:id',
-        component: ConversationLayoutComponent
+        component: SidebarComponent
     },
     {
         path: 'admin/users',

@@ -1,0 +1,117 @@
+<div class="relations-root">
+
+    <!-- ── TRÁI: SIDEBAR MENU ── -->
+    <div class="relations-sidebar">
+        <!-- Search & Add Actions -->
+        <div class="sidebar-top">
+            <div class="search-bar">
+                <i class="bi bi-search"></i>
+                <input type="text" placeholder="Tìm kiếm">
+            </div>
+            <button class="icon-btn" title="Thêm bạn"><i class="bi bi-person-plus"></i></button>
+            <button class="icon-btn" title="Thêm nhóm"><i class="bi bi-people"></i></button>
+        </div>
+
+        <!-- Menu List -->
+        <ul class="sidebar-menu">
+            <li class="menu-item" [class.active]="currentTab === 'friends'" (click)="setTab('friends')">
+                <i class="bi bi-person-lines-fill"></i> Danh sách bạn bè
+            </li>
+            <li class="menu-item">
+                <i class="bi bi-people"></i> Danh sách nhóm và cộng đồng
+            </li>
+            <li class="menu-item" [class.active]="currentTab === 'friend_requests'" (click)="setTab('friend_requests')">
+                <i class="bi bi-person-plus"></i> Lời mời kết bạn
+            </li>
+            <li class="menu-item">
+                <i class="bi bi-envelope-paper"></i> Lời mời vào nhóm và cộng đồng
+            </li>
+        </ul>
+    </div>
+
+    <!-- ── PHẢI: MAIN CONTENT ── -->
+    <div class="relations-main">
+        <!-- Main Header -->
+        <div class="main-header">
+            <i class="bi bi-people-fill" *ngIf="currentTab === 'friends'"></i>
+            <i class="bi bi-person-plus-fill" *ngIf="currentTab === 'friend_requests'"></i>
+            <h2>{{ currentTab === 'friends' ? 'Danh sách bạn bè' : 'Lời mời kết bạn' }}</h2>
+        </div>
+
+        <!-- Scrollable Content Area -->
+        <div class="main-content">
+            <h3 class="friends-count" *ngIf="currentTab === 'friends'">Bạn bè ({{friends.length || 0}})</h3>
+            <h3 class="friends-count" *ngIf="currentTab === 'friend_requests'">Lời mời ({{friendRequests.length || 0}})
+            </h3>
+
+            <!-- Filters Bar -->
+            <div class="filters-bar" *ngIf="currentTab === 'friends'">
+                <div class="search-box">
+                    <i class="bi bi-search"></i>
+                    <input type="text" placeholder="Tìm bạn">
+                </div>
+                <div class="filter-select">
+                    <i class="bi bi-arrow-down-up"></i>
+                    <select [(ngModel)]="currentSort" (change)="onSortChange($event)">
+                        <option value="asc">Tên (A-Z)</option>
+                        <option value="desc">Tên (Z-A)</option>
+                    </select>
+                    <i class="bi bi-chevron-down arrow-icon"></i>
+                </div>
+            </div>
+
+            <!-- List of Friends -->
+            <div class="friends-list-container"
+                *ngIf="currentTab === 'friends' && !loading && groupedFriends.length > 0">
+                <ng-container *ngFor="let group of groupedFriends">
+
+                    <!-- Tiêu đề theo chữ cái đầu cho giống Zalo -->
+                    <div class="list-group-header">{{ group.letter }}</div>
+
+                    <div class="friend-item" *ngFor="let friend of group.friends">
+                        <img [src]="friend.avatar_url" alt="Avatar" class="friend-avatar">
+                        <div class="friend-name">{{ friend.full_name }}</div>
+                        <button class="more-btn" title="Tuỳ chọn"><i class="bi bi-three-dots"></i></button>
+                    </div>
+                </ng-container>
+            </div>
+
+            <!-- List of Friend Requests -->
+            <div class="friends-list-container"
+                *ngIf="currentTab === 'friend_requests' && !loading && friendRequests.length > 0">
+                <ng-container *ngFor="let request of friendRequests">
+                    <div class="friend-item request-item">
+                        <img [src]="request.sender_avatar" alt="Avatar" class="friend-avatar request-avatar">
+                        <div class="friend-info request-info">
+                            <div class="friend-name request-name">{{ request.sender_name }}</div>
+                            <div class="request-note" *ngIf="request.note">
+                                "{{ request.note }}"
+                            </div>
+                        </div>
+                        <div class="request-actions">
+                            <button class="btn btn-light btn-sm btn-reject">Từ chối</button>
+                            <button class="btn btn-primary btn-sm btn-accept">Đồng ý</button>
+                        </div>
+                    </div>
+                </ng-container>
+            </div>
+
+            <!-- Empty State -->
+            <div class="empty-state" *ngIf="currentTab === 'friends' && !loading && friends.length === 0">
+                <i class="bi bi-people empty-state-icon"></i>
+                <p>Bạn chưa có người bạn nào.</p>
+            </div>
+
+            <div class="empty-state"
+                *ngIf="currentTab === 'friend_requests' && !loading && friendRequests.length === 0">
+                <i class="bi bi-person-plus empty-state-icon"></i>
+                <p>Bạn chưa có lời mời kết bạn nào.</p>
+            </div>
+
+            <!-- Loading State -->
+            <div class="loading-state" *ngIf="loading">
+                <div class="spinner-accent"></div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -215,6 +215,73 @@ class HomeController {
             },
         }).send(res);
     }
+
+    async getFriendRequests(req, res) {
+        const receiverId = req.params.receiverId;
+        const friendRequests = await homeService.getFriendRequests(receiverId);
+        new SuccessResponse({
+            message: 'Get friend requests successfully',
+            metadata: {
+                friendRequests: friendRequests,
+            },
+        }).send(res);
+    }
+
+    async createFriendRequest(req, res) {
+        const { senderId, receiverId, note } = req.body;
+        const newFriendRequest = await homeService.createFriendRequest(senderId, receiverId, note);
+        new SuccessResponse({
+            message: 'Create friend request successfully',
+            metadata: {
+                newFriendRequest: newFriendRequest,
+            },
+        }).send(res);
+    }
+
+    async updateFriendRequestStatus(req, res) {
+        const id = req.params.id;
+        const { status } = req.body;
+        const updatedFriendRequest = await homeService.updateFriendRequestStatus(id, status);
+        new SuccessResponse({
+            message: 'Update friend request status successfully',
+            metadata: {
+                updatedFriendRequest: updatedFriendRequest,
+            },
+        }).send(res);
+    }
+
+    async getUserBlocks(req, res) {
+        const blockerId = req.params.blockerId;
+        const userBlocks = await homeService.getUserBlocks(blockerId);
+        new SuccessResponse({
+            message: 'Get user blocks successfully',
+            metadata: {
+                userBlocks: userBlocks,
+            },
+        }).send(res);
+    }
+
+    async createUserBlock(req, res) {
+        const { blockerId, blockedId, reason } = req.body;
+        const newUserBlock = await homeService.createUserBlock(blockerId, blockedId, reason);
+        new SuccessResponse({
+            message: 'Create user block successfully',
+            metadata: {
+                newUserBlock: newUserBlock,
+            },
+        }).send(res);
+    }
+
+    async deleteUserBlock(req, res) {
+        const id = req.params.id;
+        const deleteResult = await homeService.deleteUserBlock(id);
+        new SuccessResponse({
+            message: 'Delete user block successfully',
+            metadata: {
+                deleteResult: deleteResult,
+            },
+        }).send(res);
+    }
 }
 
 module.exports = new HomeController();

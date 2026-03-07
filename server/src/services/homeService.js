@@ -4,6 +4,8 @@ const messagesService = require('./messagesService');
 const conversationsService = require('./conversationsService');
 const pinnedmessagesService = require('./pinnedmessagesService');
 const friendsService = require('./friendsService');
+const friendrequestsService = require('./friendrequestsService');
+const userblockService = require('./userblockServices');
 
 const { sequelize } = require('../configs/sequelizeConfig.js');
 const callService = require('./callService.js');
@@ -48,15 +50,15 @@ class HomeService {
 
             const participantInfo = user
                 ? {
-                      user_id: user.id,
-                      full_name: user.full_name,
-                      avatar_url: user.avatar_url,
-                      owner: isOwner,
-                  }
+                    user_id: user.id,
+                    full_name: user.full_name,
+                    avatar_url: user.avatar_url,
+                    owner: isOwner,
+                }
                 : {
-                      user_id: p.user_id,
-                      owner: isOwner,
-                  };
+                    user_id: p.user_id,
+                    owner: isOwner,
+                };
 
             if (!participantsMap.has(p.conversation_id)) {
                 participantsMap.set(p.conversation_id, []);
@@ -72,22 +74,22 @@ class HomeService {
         const currentUser = usersMap.get(userId);
         const userInfo = currentUser
             ? {
-                  id: currentUser.id,
-                  password_hash: currentUser.password_hash,
-                  bio: currentUser.bio,
-                  phone_number: currentUser.phone_number,
-                  is_phone_verified: currentUser.is_phone_verified,
-                  is_email_verified: currentUser.is_email_verified,
-                  created_at: currentUser.created_at,
-                  updated_at: currentUser.updated_at,
-                  full_name: currentUser.full_name,
-                  avatar_url: currentUser.avatar_url,
-                  email: currentUser.email,
-                  status: currentUser.status,
-                  birthday: currentUser.birthday,
-                  gender: currentUser.gender,
-                  last_online_at: currentUser.last_online_at,
-              }
+                id: currentUser.id,
+                password_hash: currentUser.password_hash,
+                bio: currentUser.bio,
+                phone_number: currentUser.phone_number,
+                is_phone_verified: currentUser.is_phone_verified,
+                is_email_verified: currentUser.is_email_verified,
+                created_at: currentUser.created_at,
+                updated_at: currentUser.updated_at,
+                full_name: currentUser.full_name,
+                avatar_url: currentUser.avatar_url,
+                email: currentUser.email,
+                status: currentUser.status,
+                birthday: currentUser.birthday,
+                gender: currentUser.gender,
+                last_online_at: currentUser.last_online_at,
+            }
             : null;
 
         // 5. Tổng hợp sidebar — conversations đã filter theo conversationIds của user nên không cần .some()
@@ -312,7 +314,7 @@ class HomeService {
 
             return {
                 ...message.get({ plain: true }), // Biến instance thành object thường
-                call: call.get({ plain: true }),
+                call: call.get({ plain: true })
             };
         });
     }
@@ -354,7 +356,64 @@ class HomeService {
     }
 
     async getFriendByUserId(userId) {
-        return await friendsService.getFriendByUserId(userId);
+        const listFriends = await friendsService.getFriendByUserId(userId);
+        if (listFriends.length === 0) return [];
+
+        // Tối ưu N+1 query: Lấy toàn bộ user info của bạn bè trong 1 query duy nhất
+        const friendIds = listFriends.map(friend => friend.friend_id);
+        const friendInfos = await usersService.getAllUsers({ id: friendIds });
+
+        // Chuyển thành Map để tra cứu với độ phức tạp O(1)
+        const friendInfoMap = new Map(friendInfos.map(user => [user.id, user]));
+
+        return listFriends.map(friend => {
+            const friendInfo = friendInfoMap.get(friend.friend_id) || {};
+            return {
+                ...friend.dataValues,
+                full_name: friendInfo.full_name,
+                avatar_url: friendInfo.avatar_url,
+                status: friendInfo.status
+            };
+        })
+    }
+
+    async getFriendRequests(receiverId) {
+        const friendRequests = await friendrequestsService.getFriendRequests(receiverId);
+        if (friendRequests.length === 0) return [];
+
+        const senderIds = friendRequests.map(req => req.sender_id);
+        const senderInfos = await usersService.getAllUsers({ id: senderIds });
+
+        const senderInfoMap = new Map(senderInfos.map(user => [user.id, user]));
+
+        return friendRequests.map(req => {
+            const senderInfo = senderInfoMap.get(req.sender_id) || {};
+            return {
+                ...req.dataValues,
+                sender_name: senderInfo.full_name,
+                sender_avatar: senderInfo.avatar_url,
+            };
+        });
+    }
+
+    async createFriendRequest(senderId, receiverId, note) {
+        return await friendrequestsService.createFriendRequest(senderId, receiverId, note);
+    }
+
+    async updateFriendRequestStatus(id, status) {
+        return await friendrequestsService.updateFriendRequestStatus(id, status);
+    }
+
+    async getUserBlocks(blockerId) {
+        return await userblockService.getUserBlocks(blockerId);
+    }
+
+    async createUserBlock(blockerId, blockedId, reason) {
+        return await userblockService.createUserBlock(blockerId, blockedId, reason);
+    }
+
+    async deleteUserBlock(id) {
+        return await userblockService.deleteUserBlock(id);
     }
 }
 

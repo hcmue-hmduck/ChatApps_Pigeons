@@ -1,25 +1,16 @@
 /* ============================================================
-   PIGEONS CHAT - 3-PANEL MODERN LAYOUT
-   Panel 1: Narrow icon sidebar (64px)
-   Panel 2: Conversations list (variable width)
-   Panel 3: Messages area (flex-grow)
+   CONVERSATION LAYOUT - Child Layout (Panel 2 + 3)
    ============================================================ */
 
-/* NOTE: CSS variables are defined globally in styles.css */
-
-
 /* ---- Root container ---- */
-.chat-root {
+.conv-root {
   display: flex;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--conv-bg);
 }
 
-/* ============================================================
-   PANEL 1 — ICON SIDEBAR
-   ============================================================ */
 .icon-sidebar {
   width: var(--icon-sidebar-width);
   min-width: var(--icon-sidebar-width);

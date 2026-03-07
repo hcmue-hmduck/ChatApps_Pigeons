@@ -2,10 +2,9 @@ const dns = require('dns');
 dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 const express = require('express');
-const { createServer } = require('https');
 const dotenv = require('dotenv');
 const cors = require('cors');
-const { engine } = require('express-handlebars');
+const compression = require('compression');
 const path = require('path');
 const Server = require('socket.io');
 const models = require('./src/models/index'); // Khởi tạo tất cả associations
@@ -67,10 +66,11 @@ app.use(
     }),
 );
 
+app.use(compression());
 app.use(morgan('dev'));
-// Middleware parse JSON và URL-encoded data
-app.use(express.json()); // Parse JSON body
-app.use(express.urlencoded({ extended: true })); // Parse form data
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 routes(app);
 
