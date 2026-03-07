@@ -24,6 +24,7 @@ export class Messages {
         replyTo?: string,
         message_type?: string,
     ): Observable<any> {
+        // conversationId += "s";
         const body: any = { senderId, content, message_type };
         if (replyTo) body.parent_message_id = replyTo;
         return this.http.post(`${this.apiUrl}/${conversationId}`, body);

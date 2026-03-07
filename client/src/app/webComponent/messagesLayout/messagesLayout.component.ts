@@ -44,6 +44,7 @@ export class MessagesLayoutComponent
     loading = false;
     error = '';
     newMessage: string = '';
+    messageStatus: string = 'Đã gửi';
 
     @Input() conversationId: string = '';
     @Input() conversationType: string = '';
@@ -203,13 +204,14 @@ export class MessagesLayoutComponent
         private conversationService: Conversation,
         private router: ActivatedRoute,
         private socketService: SocketService,
-    ) { 
+    ) {
         this.initEffect();
     }
 
     initEffect() {
         // Tạo log join group call
         effect(() => {
+<<<<<<< Updated upstream
             if(this.callService.logJoinGroupCall()) {
                 const {content, conversationId} = this.callService.logJoinGroupCall()!;
                 if(content && conversationId) this.updateUIWithNewMessage(content, conversationId);
@@ -218,6 +220,10 @@ export class MessagesLayoutComponent
                     this.callService.logJoinGroupCall.set(null);
                 })
             }
+=======
+            const callMessage = this.callService.newCallMessage();
+            if (callMessage) this.updateUIWithNewMessage(callMessage);
+>>>>>>> Stashed changes
         })
     }
 
@@ -581,6 +587,7 @@ export class MessagesLayoutComponent
         this.messagesService
             .postMessage(this.conversationId, this.currentUserId, content, replyTo, messageType)
             .subscribe({
+                
                 next: (response) => {
                     this.loading = false;
                     // K được xoá, t fix cái lỗi vô đạo bất lương này 10h liền đấy !!!!!!
@@ -601,12 +608,25 @@ export class MessagesLayoutComponent
                         sender_avatar: currentUser.avatar_url,
                     };
 
+                    this.messageStatus = 'Đã gửi';
                     this.updateUIWithNewMessage(newMessage);
                 },
                 error: (error) => {
                     this.loading = false;
                     console.error('Error posting message:', error);
                     this.error = error.message;
+
+                    // Thêm thông tin người gửi vào tin nhắn trước khi hiển thị lên UI
+                    const currentUser = this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId) || {};
+                    const newMessage = {
+                        content: content,
+                        created_at: new Date().toISOString(),
+                        sender_id: this.currentUserId,
+                        sender_name: currentUser.full_name,
+                        sender_avatar: currentUser.avatar_url,
+                    };
+                    this.messageStatus = 'Lỗi';
+                    this.updateUIWithNewMessage(newMessage);
                 },
             });
     }
@@ -621,6 +641,7 @@ export class MessagesLayoutComponent
             error: (err) => console.error('Error updating conversation:', err),
         });
 
+<<<<<<< Updated upstream
         // không cập nhật nội dung trò chuyện nếu đang ở conversation khác
         if(this.conversationId === conversationId) {
             this.getMessagesData.update((old) => ({
@@ -631,6 +652,16 @@ export class MessagesLayoutComponent
                 },
             }))
         }
+=======
+        // cập nhật UI của mình
+        this.getMessagesData.update((old) => ({
+            ...old,
+            homeMessagesData: {
+                ...old.homeMessagesData,
+                messages: [...old.homeMessagesData.messages, newMessage],
+            },
+        }))
+>>>>>>> Stashed changes
 
         // cập nhật UI của người nhận
         this.lastMessageId = newMessage.id;
@@ -656,18 +687,15 @@ export class MessagesLayoutComponent
         this.loading = true;
         this.error = '';
 
-        this.postAndBroadcastMessage(
-            messageContent,
-            'text',
-            replyTo,
+        this.postAndBroadcastMessage(messageContent, 'text', replyTo,
             // Transform: đảm bảo parent_message_info có parent_message_id
             (msg) => ({
                 ...msg,
                 parent_message_info: msg.parent_message_info
                     ? { ...msg.parent_message_info, parent_message_id: msg.parent_message_id }
                     : null,
-            }),
-        );
+            })
+        )
     }
 
     // Menu methods
@@ -1116,6 +1144,55 @@ export class MessagesLayoutComponent
         );
     }
 
+<<<<<<< Updated upstream
+=======
+    handleVoiceCall() {
+        this.handleCall('audio');
+    }
+
+    handleVideoCall() {
+        this.handleCall('video');
+    }
+
+    handleCall(media_type: 'video' | 'audio') {
+        this.callService.startCall(this.conversationId, this.conversationType, media_type).subscribe({
+            next: async (res) => {
+                const { userName, userAvatarUrl } = this.authService.getUserInfor();
+                const callMessage = {
+                    ...res.metadata,
+                    sender_name: userName,
+                    sender_avatar: userAvatarUrl,
+                }
+                this.updateUIWithNewMessage(callMessage)
+                const callId = callMessage.id;
+                if (!callMessage || !callId) {
+                    console.log('Call is not found');
+                    return;
+                }
+
+                if (callMessage.call.call_type && callMessage.call.call_type === GROUP_CALL) {
+                    this.callService.joinCall(this.conversationId).subscribe({
+                        next: (res) => {
+                            const systemMessage = {
+                                ...res.metadata,
+                                sender_name: userName,
+                                sender_avatar: userAvatarUrl,
+                            };
+
+                            this.updateUIWithNewMessage(systemMessage)
+                        },
+                        error: (error) => console.error(error)
+                    })
+                }
+
+                const initializeVideo = media_type === 'video' ? true : false;
+                this.openCallWindow({ initializeVideo, callId });
+            },
+            error: (error) => console.log(error)
+        })
+    }
+
+>>>>>>> Stashed changes
     getCallIcon(callInfo: any): string {
         if (!callInfo) return 'bi bi-telephone-fill call-icon audio';
 

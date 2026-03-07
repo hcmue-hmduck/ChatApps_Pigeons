@@ -1852,3 +1852,35 @@
         font-size: 14px;
     }
 }
+/* .msg-error styling */
+.msg-error {
+    color: #ef4444; /* red-500 */
+    font-weight: 600;
+    margin-left: 2px;
+}
+
+/* .msg-error-bubble styling */
+.msg-error-bubble {
+    background: transparent !important;
+    color: #ef4444 !important; /* red-500 */
+    border: 1px solid #ef4444;
+}
+
+/* .msg-status styling for sent/error indicator */
+.msg-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-left: 6px;
+    font-size: 11px;
+}
+
+.msg-status i {
+    font-size: 12px;
+    line-height: 1;
+}
+
+.msg-error {
+    color: #ef4444; /* red-500 */
+    font-weight: 600;
+}

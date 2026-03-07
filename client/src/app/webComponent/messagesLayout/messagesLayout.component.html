@@ -299,7 +299,17 @@
                               getMessagesData().homeMessagesData.messages[i+1].sender_id !== msg.sender_id ||
                               getMessagesData().homeMessagesData.messages[i+1].message_type === 'system'"
                                             class="msg-timestamp me">
-                                            {{ formatTime(msg.created_at) }}
+                                            <ng-container
+                                                *ngIf="i === getMessagesData().homeMessagesData.messages.length - 1">
+                                                <span class="msg-status"
+                                                    [ngClass]="{'msg-error': this.messageStatus === 'Lỗi'}">
+                                                    <i class="bi bi-check-all" *ngIf="this.messageStatus !== 'Lỗi'"></i>
+                                                    <i class="bi bi-exclamation-circle"
+                                                        *ngIf="this.messageStatus === 'Lỗi'"></i>
+                                                    {{ this.messageStatus }} lúc {{ formatTime(msg.created_at) }}
+                                                </span>
+                                            </ng-container>
+                                           
                                         </div>
                                     </div>
                                 </div>
