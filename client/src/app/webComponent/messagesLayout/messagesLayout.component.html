@@ -181,7 +181,8 @@
 
                     <!-- System message -->
                     <ng-container *ngIf="msg.message_type === 'system'; else userMsg">
-                        <div class="message-system">{{ getLastMessageSenderName(msg.sender_id, msg.sender_name) }} {{ msg.content }}</div>
+                        <div class="message-system">{{ getLastMessageSenderName(msg.sender_id, msg.sender_name) }} {{
+                            msg.content }}</div>
                     </ng-container>
 
                     <ng-template #userMsg>
@@ -260,28 +261,27 @@
                                             </ng-container>
 
                                             <ng-template #callTemplate>
-                                                <div class="call-bubble-content">
-                                                    <!-- Call icon -->
-                                                    <div class="call-icon-wrapper">
-                                                        <i [className]="getCallIcon(msg.call)"></i>
+                                                <div class="call-bubble-modern">
+                                                    <!-- Title (Bạn đã hủy) -->
+                                                    <div class="call-title">
+                                                        {{ getCallMainContent(msg.call) }}
                                                     </div>
 
-                                                    <!-- Main content -->
-                                                    <div class="call-main-content">
-                                                        <div class="call-type-label">
-                                                            {{getCallMainContent(msg.call)}}
-                                                        </div>
-
-                                                        <!-- Call description -->
-                                                        <div class="call-description">
+                                                    <!-- Icon & Description (Cuộc gọi thoại) -->
+                                                    <div class="call-details-row">
+                                                        <i [className]="getCallIcon(msg.call)"
+                                                            class="call-icon-main"></i>
+                                                        <span class="call-desc-text">
                                                             {{ getCallDescription(msg.call) }}
-                                                        </div>
+                                                        </span>
                                                     </div>
 
-                                                    <!-- Call action button -->
-                                                    <button class="call-action-btn" title="Gọi lại"
-                                                        (click)="handleVoiceCall()">
-                                                        <i class="bi bi-arrow-repeat"></i>
+                                                    <!-- Divider -->
+                                                    <div class="call-divider"></div>
+
+                                                    <!-- Action button -->
+                                                    <button class="call-action-btn-modern" (click)="handleVoiceCall()">
+                                                        Gọi lại
                                                     </button>
                                                 </div>
                                             </ng-template>
@@ -406,30 +406,32 @@
                                             </ng-container>
 
                                             <ng-template #callTemplate>
-                                                <div class="call-bubble-content">
-                                                    <!-- Call icon -->
-                                                    <div class="call-icon-wrapper">
-                                                        <i [className]="getCallIcon(msg.call)"></i>
+                                                <div class="call-bubble-modern">
+                                                    <!-- Title (Bạn đã hủy / Bị nhỡ) -->
+                                                    <div class="call-title">
+                                                        {{ getCallMainContent(msg.call) }}
                                                     </div>
 
-                                                    <!-- Main content -->
-                                                    <div class="call-main-content">
-                                                        <div class="call-type-label">
-                                                            {{getCallMainContent(msg.call)}}
-                                                        </div>
-
-                                                        <!-- Call description -->
-                                                        <div class="call-description">
+                                                    <!-- Icon & Description (Cuộc gọi thoại / Video) -->
+                                                    <div class="call-details-row">
+                                                        <i [className]="getCallIcon(msg.call)"
+                                                            class="call-icon-main"></i>
+                                                        <span class="call-desc-text">
                                                             <ng-container *ngIf="!msg.call.duration_seconds">
                                                                 {{ getCallDescription(msg.call) }}
                                                             </ng-container>
-                                                        </div>
+                                                            <ng-container *ngIf="msg.call.duration_seconds">
+                                                                {{ getCallDescription(msg.call) }}
+                                                            </ng-container>
+                                                        </span>
                                                     </div>
 
-                                                    <!-- Call action button -->
-                                                    <button class="call-action-btn" title="Gọi lại"
-                                                        (click)="handleVoiceCall()">
-                                                        <i class="bi bi-arrow-repeat"></i>
+                                                    <!-- Divider -->
+                                                    <div class="call-divider"></div>
+
+                                                    <!-- Action button -->
+                                                    <button class="call-action-btn-modern" (click)="handleVoiceCall()">
+                                                        Gọi lại
                                                     </button>
                                                 </div>
                                             </ng-template>
@@ -496,7 +498,7 @@
                 </div>
 
                 <!-- Text box -->
-                <div class="input-box" style="position:relative;">
+                <div class="input-box">
                     <textarea #messageInput class="msg-textarea" [(ngModel)]="newMessage" placeholder="Nhập tin nhắn..."
                         (keydown)="handleKeyDown($event)" rows="1" autofocus>
           </textarea>
@@ -506,7 +508,7 @@
                     <!-- Emoji picker -->
                     <div *ngIf="showEmojiPicker" class="emoji-picker-wrap">
                         <emoji-mart (emojiSelect)="addEmoji($event)" [set]="'apple'" [perLine]="8" [emojiSize]="32"
-                            [sheetSize]="32" [showPreview]="false" [style]="{ width: '340px', height: '380px' }">
+                            [sheetSize]="32" [showPreview]="false">
                         </emoji-mart>
                     </div>
                 </div>

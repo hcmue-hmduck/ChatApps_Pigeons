@@ -189,6 +189,8 @@
 }
 
 .search-box {
+    flex: 1;
+    /* Cho phép giãn ra đẩy thẻ Filter Select sang bên phải góc tường */
     display: flex;
     align-items: center;
     background: #ffffff;
@@ -196,7 +198,6 @@
     border-radius: 6px;
     padding: 0 12px;
     height: 38px;
-    width: 280px;
     transition: border-color 0.2s, box-shadow 0.2s;
 }
 
@@ -374,4 +375,66 @@
     to {
         transform: rotate(360deg);
     }
+}
+
+/* ── FRIEND REQUESTS ── */
+.request-item {
+    padding: 16px 20px;
+}
+
+.request-avatar {
+    width: 56px;
+    height: 56px;
+    min-width: 56px;
+}
+
+.request-info {
+    flex: 1;
+}
+
+.request-name {
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.request-note {
+    font-size: 13px;
+    color: #64748b;
+    margin-top: 4px;
+}
+
+.request-note-empty {
+    font-size: 13px;
+    color: #94a3b8;
+    margin-top: 4px;
+}
+
+.request-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-reject {
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    background: #f1f5f9;
+    color: #475569;
+    border: none;
+    padding: 6px 16px;
+}
+
+.btn-accept {
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    background: var(--accent, #4f46e5);
+    color: white;
+    border: none;
+    padding: 6px 16px;
+}
+
+.empty-state-icon {
+    font-size: 48px;
+    color: #cbd5e1;
 }

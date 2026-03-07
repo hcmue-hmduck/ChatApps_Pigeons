@@ -920,6 +920,90 @@
     padding-left: 4px;
 }
 
+/* ============================================================
+   CALL BUBBLE - UNIFIED LIGHT THEME
+   ============================================================ */
+.call-bubble-modern {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 14px 16px 12px 16px;
+    display: flex;
+    flex-direction: column;
+    min-width: 180px;
+    color: #111827;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+/* Đảm bảo ghi đè nền gốc nếu bong bóng nằm trong me-row/other-row */
+.me-row .call-bubble-modern,
+.other-row .call-bubble-modern {
+    background: #ffffff !important;
+    color: #111827 !important;
+}
+
+.call-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 8px;
+    line-height: 1.2;
+}
+
+.call-details-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.call-icon-main {
+    font-size: 18px;
+    color: #6b7280;
+    /* Xám nhạt cho icon */
+}
+
+/* Màu nhấn đỏ khi gọi nhỡ/huỷ */
+.call-icon-main.bi-telephone-x,
+.call-icon-main.bi-camera-video-off {
+    color: #ef4444 !important;
+}
+
+.call-desc-text {
+    font-size: 13px;
+    color: #6b7280;
+    /* Xám mờ */
+    font-weight: 500;
+}
+
+.call-divider {
+    height: 1px;
+    background: #f3f4f6;
+    /* Đường mờ xám */
+    margin: 0 -16px 10px -16px;
+    /* Tràn viền ra padding của thẻ cha */
+}
+
+.call-action-btn-modern {
+    background: transparent;
+    border: none;
+    color: var(--msg-accent, #0084ff);
+    /* Màu xanh app */
+    font-size: 14px;
+    font-weight: 600;
+    padding: 6px 0 2px 0;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.2s, opacity 0.2s;
+    width: 100%;
+    border-radius: 6px;
+}
+
+.call-action-btn-modern:hover {
+    background: rgba(0, 132, 255, 0.05);
+}
+
 /* ---- MESSAGE ACTIONS (hover buttons) ---- */
 .message-actions {
     display: flex;
@@ -1265,6 +1349,8 @@
     background: #fff !important;
     display: flex !important;
     flex-direction: column !important;
+    width: 340px !important;
+    height: 380px !important;
 }
 
 /* Ẩn các element thừa */

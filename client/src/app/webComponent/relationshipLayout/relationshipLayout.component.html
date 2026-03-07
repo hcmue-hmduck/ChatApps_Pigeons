@@ -52,32 +52,24 @@
                 </div>
                 <div class="filter-select">
                     <i class="bi bi-arrow-down-up"></i>
-                    <select>
-                        <option>Tên (A-Z)</option>
-                        <option>Tên (Z-A)</option>
-                    </select>
-                    <i class="bi bi-chevron-down arrow-icon"></i>
-                </div>
-                <div class="filter-select">
-                    <i class="bi bi-funnel"></i>
-                    <select>
-                        <option>Tất cả</option>
+                    <select [(ngModel)]="currentSort" (change)="onSortChange($event)">
+                        <option value="asc">Tên (A-Z)</option>
+                        <option value="desc">Tên (Z-A)</option>
                     </select>
                     <i class="bi bi-chevron-down arrow-icon"></i>
                 </div>
             </div>
 
             <!-- List of Friends -->
-            <div class="friends-list-container" *ngIf="currentTab === 'friends' && !loading && friends.length > 0">
-                <ng-container *ngFor="let friend of friends; let i = index">
+            <div class="friends-list-container"
+                *ngIf="currentTab === 'friends' && !loading && groupedFriends.length > 0">
+                <ng-container *ngFor="let group of groupedFriends">
 
-                    <!-- Giả lập tiêu đề theo chữ cái đầu cho giống Zalo (tạm hiển thị "A", "B" ...) -->
-                    <div class="list-group-header" *ngIf="i === 0">A</div>
-                    <div class="list-group-header" *ngIf="i === 3">B</div>
+                    <!-- Tiêu đề theo chữ cái đầu cho giống Zalo -->
+                    <div class="list-group-header">{{ group.letter }}</div>
 
-                    <div class="friend-item">
-                        <img [src]="friend.avatar_url || 'https://i.pravatar.cc/150'" alt="Avatar"
-                            class="friend-avatar">
+                    <div class="friend-item" *ngFor="let friend of group.friends">
+                        <img [src]="friend.avatar_url" alt="Avatar" class="friend-avatar">
                         <div class="friend-name">{{ friend.full_name }}</div>
                         <button class="more-btn" title="Tuỳ chọn"><i class="bi bi-three-dots"></i></button>
                     </div>
@@ -88,26 +80,17 @@
             <div class="friends-list-container"
                 *ngIf="currentTab === 'friend_requests' && !loading && friendRequests.length > 0">
                 <ng-container *ngFor="let request of friendRequests">
-                    <div class="friend-item" style="padding: 16px 20px;">
-                        <img [src]="request.sender_avatar || 'https://i.pravatar.cc/150'" alt="Avatar"
-                            class="friend-avatar" style="width: 56px; height: 56px; min-width: 56px;">
-                        <div class="friend-info" style="flex: 1;">
-                            <div class="friend-name" style="font-size: 15px; font-weight: 700;">{{ request.sender_name
-                                }}</div>
-                            <div style="font-size: 13px; color: #64748b; margin-top: 4px;" *ngIf="request.note">
+                    <div class="friend-item request-item">
+                        <img [src]="request.sender_avatar" alt="Avatar" class="friend-avatar request-avatar">
+                        <div class="friend-info request-info">
+                            <div class="friend-name request-name">{{ request.sender_name }}</div>
+                            <div class="request-note" *ngIf="request.note">
                                 "{{ request.note }}"
                             </div>
-                            <div style="font-size: 13px; color: #94a3b8; margin-top: 4px;" *ngIf="!request.note">
-                                Xin chào, cho mình làm quen nhé!
-                            </div>
                         </div>
-                        <div class="request-actions" style="display: flex; gap: 8px;">
-                            <button class="btn btn-light btn-sm"
-                                style="border-radius: 6px; font-size: 13px; font-weight: 500; background: #f1f5f9; color: #475569; border: none; padding: 6px 16px;">Từ
-                                chối</button>
-                            <button class="btn btn-primary btn-sm"
-                                style="border-radius: 6px; font-size: 13px; font-weight: 500; background: var(--accent, #4f46e5); color: white; border: none; padding: 6px 16px;">Đồng
-                                ý</button>
+                        <div class="request-actions">
+                            <button class="btn btn-light btn-sm btn-reject">Từ chối</button>
+                            <button class="btn btn-primary btn-sm btn-accept">Đồng ý</button>
                         </div>
                     </div>
                 </ng-container>
@@ -115,13 +98,13 @@
 
             <!-- Empty State -->
             <div class="empty-state" *ngIf="currentTab === 'friends' && !loading && friends.length === 0">
-                <i class="bi bi-people" style="font-size: 48px; color: #cbd5e1;"></i>
+                <i class="bi bi-people empty-state-icon"></i>
                 <p>Bạn chưa có người bạn nào.</p>
             </div>
 
             <div class="empty-state"
                 *ngIf="currentTab === 'friend_requests' && !loading && friendRequests.length === 0">
-                <i class="bi bi-person-plus" style="font-size: 48px; color: #cbd5e1;"></i>
+                <i class="bi bi-person-plus empty-state-icon"></i>
                 <p>Bạn chưa có lời mời kết bạn nào.</p>
             </div>
 

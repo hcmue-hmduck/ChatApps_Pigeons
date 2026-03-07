@@ -375,7 +375,7 @@ class HomeService {
                 avatar_url: friendInfo.avatar_url,
                 status: friendInfo.status
             };
-        });
+        })
     }
 
     async getFriendRequests(receiverId) {
