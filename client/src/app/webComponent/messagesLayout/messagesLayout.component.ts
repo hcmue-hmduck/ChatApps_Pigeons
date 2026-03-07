@@ -1098,20 +1098,20 @@ export class MessagesLayoutComponent
         this.callService.startCall(this.conversationId, this.conversationType, media_type).subscribe({
             next: async (res) => {
                 const { userName, userAvatarUrl } = this.authService.getUserInfor();
-                const callMessage = {
+                const message = {
                     ...res.metadata,
                     sender_name: userName,
                     sender_avatar: userAvatarUrl,
                 }
-                this.updateUIWithNewMessage(callMessage)
-                const callId = callMessage.id;
-                if (!callMessage || !callId) {
+                this.updateUIWithNewMessage(message)
+                const callId = message.call.id;
+                if (!message || !callId) {
                     console.log('Call is not found');
                     return;
                 }
 
-                if (callMessage.call.call_type && callMessage.call.call_type === GROUP_CALL) {
-                    this.callService.joinCall(this.conversationId).subscribe({
+                if (message.call.call_type && message.call.call_type === GROUP_CALL) {
+                    this.callService.createLogJoinGroupCall(this.conversationId).subscribe({
                         next: (res) => {
                             const systemMessage = {
                                 ...res.metadata,

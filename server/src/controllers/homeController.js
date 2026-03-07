@@ -120,7 +120,7 @@ class HomeController {
         const conversation_id = req.params.convID;
         const { user_id } = req.body;
         new SuccessResponse({
-            message: 'Accept home call successfully',
+            message: 'Create log join group call successfully',
             metadata: await homeService.createLogJoinGroupCall({ conversation_id, user_id }),
         }).send(res);
     }
@@ -129,7 +129,7 @@ class HomeController {
     async setCallOngoing(req, res) {
         const call_id = req.params.callID;
         new SuccessResponse({
-            message: 'On going home call successfully',
+            message: 'Set call ongoing successfully',
             metadata: await homeService.setCallOngoing(call_id),
         }).send(res);
     }
@@ -138,7 +138,7 @@ class HomeController {
     async setCallCompleted(req, res) {
         const call_id = req.params.callID;
         new SuccessResponse({
-            message: 'Check completed home call successfully',
+            message: 'Set call completed successfully',
             metadata: await homeService.setCallCompleted(call_id),
         }).send(res);
     }
@@ -147,7 +147,7 @@ class HomeController {
     async setCallDecliend(req, res) {
         const call_id = req.params.callID;
         new SuccessResponse({
-            message: 'Declined home call successfully',
+            message: 'Set call declined successfully',
             metadata: await homeService.setCallDecliend(call_id),
         }).send(res);
     }
@@ -156,7 +156,7 @@ class HomeController {
     async setCallCancelled(req, res) {
         const call_id = req.params.callID;
         new SuccessResponse({
-            message: 'Cancel home call successfully',
+            message: 'Set call cancelled successfully',
             metadata: await homeService.setCallCancelled(call_id),
         }).send(res);
     }
@@ -165,7 +165,7 @@ class HomeController {
     async setCallMissed(req, res) {
         const call_id = req.params.callID;
         new SuccessResponse({
-            message: 'Miss home call successfully',
+            message: 'Set call missed successfully',
             metadata: await homeService.setCallMissed(call_id),
         }).send(res);
     }

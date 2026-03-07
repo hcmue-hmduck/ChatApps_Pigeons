@@ -130,8 +130,10 @@ export class WebRtcService {
         if (callStatus === 'ringing') {
             this.socketService.emit('call:missed', this.callState.conversationId);
             // cập nhật status cancelled nếu là cuộc gọi 2 người
-            if (this.callState.conversationType === DIRECT_CALL)
+            if (this.callState.conversationType === DIRECT_CALL) {
+                console.log('endCall:', callId);
                 this.callService.updateStatus(callId, 'cancelled');
+            }
         } else if (callStatus === 'connected') {
             this.callService.updateStatus(callId, 'completed');
         }
