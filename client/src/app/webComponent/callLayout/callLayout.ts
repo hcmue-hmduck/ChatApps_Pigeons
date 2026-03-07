@@ -19,7 +19,6 @@ export class CallLayoutComponent implements OnInit {
     callState = inject(CallStateService);
 
     readonly avatarUrlDefault = '/assets/AvatarDefault.jpg';
-    private hasEndedCallOnExit = false;
 
     userAvatarUrl = computed<string>(() => {
         return this.authService.getUserInfor().userAvatarUrl;
@@ -51,6 +50,10 @@ export class CallLayoutComponent implements OnInit {
 
     isCallEnded = computed(() => {
         return this.callState.callStatus() === 'ended';
+    });
+
+    isNoAnswer = computed(() => {
+        return this.callState.callStatus() === 'missed';
     });
 
     ngOnInit(): void {
@@ -123,8 +126,8 @@ export class CallLayoutComponent implements OnInit {
     // Ngăn người dùng lỡ tay đóng tab/trình duyệt
     @HostListener('window:beforeunload', ['$event'])
     unloadNotification($event: any) {
-        $event.preventDefault();
-        $event.returnValue = true;
+        // $event.preventDefault();
+        // $event.returnValue = true;
     }
 
     @HostListener('window:pagehide', ['$event'])

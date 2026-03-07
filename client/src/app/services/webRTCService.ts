@@ -89,6 +89,8 @@ export class WebRtcService {
             console.log('Error: conversation type invalid');
             return;
         }
+
+        this.callState.startCallTimeout(() => this.handleNoAnswer());
     }
 
     acceptIncomingCall(
@@ -122,21 +124,12 @@ export class WebRtcService {
     }
 
     endCall() {
-        const callId = this.callState.callId;
         const callStatus = this.callState.callStatus();
 
         // với cuộc gọi nhóm, gửi tín hiệu để cập nhật db và đóng modal khi cuộc gọi vừa kết thúc
         // gửi tín hiệu cuộc gọi nhỡ nếu chưa ai bắt máy
-        if (callStatus === 'ringing') {
+        if (callStatus === 'ringing')
             this.socketService.emit('call:missed', this.callState.conversationId);
-            // cập nhật status cancelled nếu là cuộc gọi 2 người
-            if (this.callState.conversationType === DIRECT_CALL) {
-                console.log('endCall:', callId);
-                this.callService.updateStatus(callId, 'cancelled');
-            }
-        } else if (callStatus === 'connected') {
-            this.callService.updateStatus(callId, 'completed');
-        }
 
         // cleanup tab cha
         this.socketService.emit('call:cleanUp', {
@@ -146,6 +139,24 @@ export class WebRtcService {
 
         if (this.callState.conversationType === DIRECT_CALL) this.p2p.end();
         else this.livekit.end();
+    }
+
+    handleNoAnswer() {
+        this.socketService.emit('call:missed', this.callState.conversationId);
+
+        const callId = this.callState.callId;
+        this.callService.updateStatus(callId, 'missed');
+
+        // cleanup tab cha
+        this.socketService.emit('call:cleanUp', {
+            conversationId: this.callState.conversationId,
+            userId: this.authService.getUserId(),
+        });
+
+        this.callState.callStatus.set('missed');
+        this.callState.syncCallStateToParent();
+
+        this.cleanUp({resetCallStatus: false});
     }
 
     toggleCamera() {
@@ -164,9 +175,9 @@ export class WebRtcService {
         }
     }
 
-    cleanUp() {
-        this.callState.cleanUp({ resetCallStatus: true });
+    cleanUp({ resetCallStatus = true } = {}) {
         this.p2p.cleanUp();
         this.livekit.cleanUp();
+        this.callState.cleanUp({ resetCallStatus });
     }
 }

@@ -30,11 +30,15 @@ export class CallStateService {
     conversationId = '';
     conversationType = '';
     callId = '';
+    CALL_TIMEOUT_MS = 30000;
+    callTimeoutId: number | null = null;
 
     socketService = inject(SocketService);
     authService = inject(AuthService);
 
     cleanUp({ resetCallStatus }: { resetCallStatus: boolean }) {
+        this.clearCallTimeout();
+
         this.localStream()
             ?.getTracks()
             .forEach((track) => track.stop());
@@ -96,5 +100,21 @@ export class CallStateService {
             callStatus: this.callStatus,
             isCaller: this.isCaller,
         });
+    }
+
+    clearCallTimeout() {
+        if (this.callTimeoutId) {
+            clearTimeout(this.callTimeoutId);
+            this.callTimeoutId = null;
+        }
+    }
+
+    // callback: (tham số) => kiểu trả về
+    startCallTimeout(onTimeout: () => void) {
+        this.clearCallTimeout();
+        this.callTimeoutId = window.setTimeout(() => {
+            onTimeout();
+            this.callTimeoutId = null;
+        }, this.CALL_TIMEOUT_MS);
     }
 }

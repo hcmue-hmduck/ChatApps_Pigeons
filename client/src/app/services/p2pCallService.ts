@@ -3,6 +3,7 @@ import { DIRECT_CALL } from '../models/callSessionData.model';
 import { AuthService } from './authService';
 import { CallStateService } from './callStateService';
 import { SocketService } from './socket';
+import { CallService } from './callService';
 
 @Injectable({
     providedIn: 'root',
@@ -11,6 +12,7 @@ export class P2PCallService {
     private socketService = inject(SocketService);
     private callState = inject(CallStateService);
     private authService = inject(AuthService);
+    private callService = inject(CallService);
 
     private peerConnection: RTCPeerConnection | null = null;
     private dataChannel: RTCDataChannel | null = null;
@@ -29,7 +31,7 @@ export class P2PCallService {
             if (userId === data.inviterId) return;
 
             console.log('Receive offer...');
-            console.log(`data.callId`,data.callId);
+            console.log(`data.callId`, data.callId);
 
             this.callState.callStatus.set('ringing');
             this.callState.callId = data.callId;
@@ -48,6 +50,7 @@ export class P2PCallService {
 
         // Client 1 nhận answer từ Client 2
         this.socketService.on('directCall:answerResponse', async (data) => {
+            this.callState.clearCallTimeout();
             this.setFriendInfo(data.answererId, data.answererName, data.answererAvatarUrl);
             await this.handleAnswer(data);
         });
@@ -92,15 +95,31 @@ export class P2PCallService {
     }
 
     end() {
-        // yêu cầu người bên kia kết thúc cuộc gọi ngay'
-        if (this.callState.callStatus() !== 'ringing')
+        const callStatus = this.callState.callStatus();
+        const callId = this.callState.callId;
+
+        if (callStatus === 'ringing') this.callService.updateStatus(callId, 'cancelled');
+        else if (callStatus === 'connected') {
+            this.callService.updateStatus(callId, 'completed');
+            // phát tín hiệu gác máy
             this.socketService.emit('call:hangUp', this.callState.conversationId);
+        }
 
         this.cleanUp();
         this.callState.callStatus.set('ended');
         this.callState.syncCallStateToParent();
         this.callState.cleanUp({ resetCallStatus: false });
     }
+
+    // handleNoAnswer() {
+    //     const callId = this.callState.callId;
+    //     this.callService.updateStatus(callId, 'missed')
+
+    //     this.cleanUp();
+    //     this.callState.callStatus.set('missed');
+    //     this.callState.syncCallStateToParent();
+    //     this.callState.cleanUp({ resetCallStatus: false });
+    // }
 
     cleanUp() {
         this.peerConnection?.close();

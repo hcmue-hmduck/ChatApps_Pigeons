@@ -8,6 +8,7 @@ import { SocketService } from './socket';
 import { lastValueFrom } from 'rxjs';
 import { GROUP_CALL } from '../models/callSessionData.model';
 import { Conversation } from './conversation';
+import { CallService } from './callService';
 
 @Injectable({
     providedIn: 'root',
@@ -18,6 +19,7 @@ export class LivekitCallService {
     private callState = inject(CallStateService);
     private authService = inject(AuthService);
     private conversationService = inject(Conversation);
+    private callService = inject(CallService);
 
     private wsUrl = environment.livekit_wsUrl;
     private room: Room | null = null;
@@ -31,7 +33,7 @@ export class LivekitCallService {
             if (userId === data.inviterId) return;
 
             this.callState.callStatus.set('ringing');
-            
+
             const res = await lastValueFrom(
                 this.conversationService.getConversationNameById(data.conversationId),
             );
@@ -55,6 +57,12 @@ export class LivekitCallService {
     }
 
     end() {
+        const countParticipant = this.room?.remoteParticipants.size;
+        if (countParticipant === 0) {
+            const callId = this.callState.callId;
+            this.callService.updateStatus(callId, 'completed');
+        }
+
         this.cleanUp();
         this.callState.callStatus.set('ended');
         this.callState.syncCallStateToParent();
@@ -200,6 +208,10 @@ export class LivekitCallService {
             }
         });
 
+        this.room?.on('participantConnected', () => {
+            this.callState.clearCallTimeout();
+        })
+
         this.room?.on('participantDisconnected', (participant) => {
             const participantId = participant.identity || participant.sid;
             this.remoteParticipantsMap.delete(participantId);
@@ -209,7 +221,7 @@ export class LivekitCallService {
         this.room?.on('disconnected', () => {
             this.callState.callStatus.set('ended');
             this.callState.syncCallStateToParent();
-            this.callState.cleanUp({resetCallStatus: false});
+            this.callState.cleanUp({ resetCallStatus: false });
         });
 
         this.room?.on('trackSubscriptionFailed', (trackSid, participant, error) =>
@@ -262,5 +274,4 @@ export class LivekitCallService {
 
         this.callState.isMicOn.set(enable);
     }
-
 }

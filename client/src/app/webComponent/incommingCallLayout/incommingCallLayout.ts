@@ -40,13 +40,11 @@ export class IncommingCallLayout {
         effect(() => {
             const callSessionData = this.callState.callSessionData();
             const callStatus = this.callState.callStatus();
-            const isCaller = this.callState.isCaller();
             this.userId = this.authService.getUserId();
 
             if (
                 callSessionData &&
                 callStatus === 'ringing' &&
-                !isCaller &&
                 callSessionData.inviterId !== this.userId
             ) {
                 this.callSessionData.set(callSessionData);
