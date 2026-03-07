@@ -115,58 +115,58 @@ class HomeController {
         }).send(res);
     }
 
-    // [POST] /home/call/accept/:convID
-    async acceptHomeCall(req, res) {
+    // [POST] /home/call/logs-group-call/:convID
+    async createLogJoinGroupCall(req, res) {
         const conversation_id = req.params.convID;
         const { user_id } = req.body;
         new SuccessResponse({
             message: 'Accept home call successfully',
-            metadata: await homeService.acceptCall({ conversation_id, user_id }),
+            metadata: await homeService.createLogJoinGroupCall({ conversation_id, user_id }),
         }).send(res);
     }
 
     // [PATCH] /home/call/ongoing/:callID
-    async checkOngoingHomeCall(req, res) {
+    async setCallOngoing(req, res) {
         const call_id = req.params.callID;
         new SuccessResponse({
             message: 'On going home call successfully',
-            metadata: await homeService.checkOngoingCall(call_id),
+            metadata: await homeService.setCallOngoing(call_id),
         }).send(res);
     }
 
     // [PATCH] /home/call/completed/:callID
-    async checkCompletedHomeCall(req, res) {
+    async setCallCompleted(req, res) {
         const call_id = req.params.callID;
         new SuccessResponse({
             message: 'Check completed home call successfully',
-            metadata: await homeService.checkCompletedCall(call_id),
+            metadata: await homeService.setCallCompleted(call_id),
         }).send(res);
     }
 
     // [PATCH] /home/call/decliend/:callID
-    async checkDeclinedHomeCall(req, res) {
+    async setCallDecliend(req, res) {
         const call_id = req.params.callID;
         new SuccessResponse({
             message: 'Declined home call successfully',
-            metadata: await homeService.checkDeclinedCall(call_id),
+            metadata: await homeService.setCallDecliend(call_id),
         }).send(res);
     }
 
     // [PATCH] /home/call/cancelled/:callID
-    async checkCancelledHomeCall(req, res) {
+    async setCallCancelled(req, res) {
         const call_id = req.params.callID;
         new SuccessResponse({
             message: 'Cancel home call successfully',
-            metadata: await homeService.checkCancelledCall(call_id),
+            metadata: await homeService.setCallCancelled(call_id),
         }).send(res);
     }
 
     // [PATCH] /home/call/missed/:callID
-    async checkMissedHomeCall(req, res) {
+    async setCallMissed(req, res) {
         const call_id = req.params.callID;
         new SuccessResponse({
             message: 'Miss home call successfully',
-            metadata: await homeService.checkMissedCall(call_id),
+            metadata: await homeService.setCallMissed(call_id),
         }).send(res);
     }
 

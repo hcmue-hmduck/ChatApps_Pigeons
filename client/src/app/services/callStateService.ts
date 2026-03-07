@@ -17,7 +17,7 @@ export interface RemoteParticipant {
     providedIn: 'root',
 })
 export class CallStateService {
-    callSessionData = signal<CallSessionData | null>(null);
+    callSessionData = signal<CallSessionData | null>(null); // chỉ người nhận mới có
     localStream = signal<MediaStream | null>(null);
     remoteParticipants = signal<RemoteParticipant[]>([]);
     isCameraOn = signal<boolean>(true);
@@ -56,6 +56,7 @@ export class CallStateService {
 
         if (resetCallStatus) this.callStatus.set('idle');
 
+        console.log(`Call ID: `, this.callId);
         console.log('CallStateService cleaned up');
     }
 

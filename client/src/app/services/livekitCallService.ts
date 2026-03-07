@@ -30,10 +30,8 @@ export class LivekitCallService {
             // Chỉ callee (người được gọi) mới hiển thị modal incoming call
             if (userId === data.inviterId) return;
 
-            this.callState.conversationId = data.conversationId;
-            this.callState.callId = data.callId;
             this.callState.callStatus.set('ringing');
-            this.callState.isCaller.set(false);
+            
             const res = await lastValueFrom(
                 this.conversationService.getConversationNameById(data.conversationId),
             );

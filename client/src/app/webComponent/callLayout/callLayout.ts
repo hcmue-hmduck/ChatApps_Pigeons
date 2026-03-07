@@ -19,6 +19,7 @@ export class CallLayoutComponent implements OnInit {
     callState = inject(CallStateService);
 
     readonly avatarUrlDefault = '/assets/AvatarDefault.jpg';
+    private hasEndedCallOnExit = false;
 
     userAvatarUrl = computed<string>(() => {
         return this.authService.getUserInfor().userAvatarUrl;
@@ -73,7 +74,7 @@ export class CallLayoutComponent implements OnInit {
                 inviterName,
                 inviterId,
                 inviterAvatarUrl,
-                callId
+                callId,
             } = event.data;
             await this.authService.setUserInfor(userId);
             this.socketService.emit('joinConversation', conversationId);
@@ -91,7 +92,13 @@ export class CallLayoutComponent implements OnInit {
                     inviterId,
                     inviterAvatarUrl,
                 );
-            } else this.webRTCService.startCall(conversationId, conversationType, callId, initializeVideo);
+            } else
+                this.webRTCService.startCall(
+                    conversationId,
+                    conversationType,
+                    callId,
+                    initializeVideo,
+                );
 
             window.removeEventListener('message', listener);
         };
@@ -113,13 +120,16 @@ export class CallLayoutComponent implements OnInit {
         this.webRTCService.toggleMicrophone();
     }
 
+    // Ngăn người dùng lỡ tay đóng tab/trình duyệt
     @HostListener('window:beforeunload', ['$event'])
-    onBeforeUnload(event: BeforeUnloadEvent) {
-        // event.preventDefault();
+    unloadNotification($event: any) {
+        $event.preventDefault();
+        $event.returnValue = true;
     }
 
-    @HostListener('window:unload')
-    onUnload() {
+    @HostListener('window:pagehide', ['$event'])
+    onPageHide(event: PageTransitionEvent) {
+        // pagehide đáng tin cậy hơn unload và ít bị kích hoạt sai như visibilitychange
         this.webRTCService.endCall();
     }
 }

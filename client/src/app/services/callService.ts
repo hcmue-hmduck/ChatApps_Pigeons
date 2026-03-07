@@ -3,7 +3,11 @@ import { inject, Injectable, signal } from '@angular/core';
 import { Observable, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { AuthService } from './authService';
-import { sign } from 'crypto';
+
+interface LogJoinGroupCall {
+    content: string;
+    conversationId: string;
+}
 
 @Injectable({
     providedIn: 'root',
@@ -14,7 +18,7 @@ export class CallService {
     private authService = inject(AuthService);
     private CALL_TYPE = ['group', 'direct'];
 
-    newCallMessage = signal<any>(null); 
+    logJoinGroupCall = signal<LogJoinGroupCall | null>(null);
 
     startCall(
         conversation_id: string,
@@ -32,13 +36,35 @@ export class CallService {
         });
     }
 
-    joinCall(conversation_id: string): Observable<any> {
+    createLogJoinGroupCall(conversation_id: string): Observable<any> {
         const user_id = this.authService.getUserId();
-        if (!user_id) return throwError(() => new Error('Cannot accept call'));
-        return this.httpClient.post(`${this.apiUrl}/accept/${conversation_id}`, { user_id });
+        if (!user_id) return throwError(() => new Error('Cannot create log'));
+        return this.httpClient.post(`${this.apiUrl}/logs-group-call/${conversation_id}`, {
+            user_id,
+        });
     }
 
-    announceNewCallMessage(callMessage: any) {
-        this.newCallMessage.set(callMessage);
+    announceNewLogJoinGroupCall(newLog: LogJoinGroupCall) {
+        this.logJoinGroupCall.set(newLog);
+    }
+
+    joinCall(call_id: string): Observable<any> {
+        if (!call_id) return throwError(() => new Error('call id is not found'));
+        return this.httpClient.patch(`${this.apiUrl}/ongoing/${call_id}`, {});
+    }
+
+    updateStatus(
+        call_id: string,
+        status: 'cancelled' | 'completed' | 'declined' | 'missed',
+    ): void {
+        if (!call_id) return;
+
+        fetch(`${this.apiUrl}/${status}/${call_id}`, {
+            method: 'PATCH',
+            keepalive: true, // không hủy request nếu trình duyệt bị đóng
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+        });
     }
 }

@@ -5,6 +5,8 @@ import { AuthService } from '../../services/authService';
 import { CallService } from '../../services/callService';
 import { CallStateService } from '../../services/callStateService';
 import { WebRtcService } from '../../services/webRTCService';
+import { lastValueFrom } from 'rxjs';
+import { error } from 'console';
 
 @Component({
     selector: 'app-incomming-call-layout',
@@ -34,13 +36,19 @@ export class IncommingCallLayout {
             this.ringtone.loop = true;
         }
 
+        // hiện cuộc gọi tới
         effect(() => {
             const callSessionData = this.callState.callSessionData();
             const callStatus = this.callState.callStatus();
             const isCaller = this.callState.isCaller();
             this.userId = this.authService.getUserId();
 
-            if (callSessionData && callStatus === 'ringing' && !isCaller && callSessionData.inviterId !== this.userId) {
+            if (
+                callSessionData &&
+                callStatus === 'ringing' &&
+                !isCaller &&
+                callSessionData.inviterId !== this.userId
+            ) {
                 this.callSessionData.set(callSessionData);
                 this.playRingTone();
                 this.startVibrating();
@@ -93,32 +101,44 @@ export class IncommingCallLayout {
 
         console.log('handleAccept:::', conversationType);
 
+        this.callService
+            .joinCall(this.callSessionData()?.callId!)
+            .subscribe({ error: (error) => console.error(error) });
+
         if (conversationType === this.groupCallType) {
-            console.log('groupCallType:::', conversationId);
             this.callService
-                .joinCall(conversationId) // Tạo message system tham gia cuộc gọi
+                .createLogJoinGroupCall(conversationId) // Tạo message system tham gia cuộc gọi
                 .subscribe({
                     next: (res) => {
-                        const {userName, userAvatarUrl} = this.authService.getUserInfor();
+                        const { userName, userAvatarUrl } = this.authService.getUserInfor();
                         const callMessage = {
                             ...res.metadata,
                             sender_name: userName,
                             sender_avatar: userAvatarUrl,
                         };
                         // Thông báo cho messageLayout cập nhật UI
-                        this.callService.announceNewCallMessage(callMessage)
-                        this.openCallWindow();
+                        this.callService.announceNewLogJoinGroupCall({
+                            content: callMessage,
+                            conversationId: callMessage.conversation_id,
+                        });
                     },
                     error: (error) => console.error(error),
                 });
-        } else this.openCallWindow();
+        }
+
+        this.openCallWindow();
     }
 
     handleDecline() {
         if (this.callSessionData) {
-            const { conversationId, conversationType } = this.callSessionData()!;
+            const { conversationId, conversationType, callId } = this.callSessionData()!;
+
+            // set status call = decliend nếu là cuộc gọi 2 người
+            if (conversationType === this.directCallType) {
+                this.callService.updateStatus(callId, 'declined');
+            }
+
             this.webRTCService.declineIncomingCall(conversationId, conversationType);
-            this.callState.callSessionData.set(null);
             this.stopRingtone();
             this.stopVibrating();
         }
@@ -132,16 +152,28 @@ export class IncommingCallLayout {
         const listener = (event: MessageEvent) => {
             if (event.origin !== window.location.origin) return;
             if (event.data.type === 'getCallData') {
+                const {
+                    callId,
+                    conversationId,
+                    conversationType,
+                    offer,
+                    initializeVideo,
+                    inviterName,
+                    inviterAvatarUrl,
+                    inviterId,
+                } = this.callSessionData()!;
+
                 const payload = {
                     type: 'sendCallData',
-                    conversationType: this.callSessionData()?.conversationType,
-                    conversationId: this.callSessionData()?.conversationId,
+                    callId,
+                    conversationType,
+                    conversationId,
                     userId: this.userId,
-                    ...(this.callSessionData()?.offer && { offer: this.callSessionData()?.offer }),
-                    initializeVideo: this.callSessionData()?.initializeVideo,
-                    inviterName: this.callSessionData()?.inviterName,
-                    inviterAvatarUrl: this.callSessionData()?.inviterAvatarUrl,
-                    inviterId: this.callSessionData()?.inviterId,
+                    initializeVideo,
+                    inviterName,
+                    inviterAvatarUrl,
+                    inviterId,
+                    ...(offer && { offer }),
                 };
 
                 (event.source as Window)?.postMessage(payload, window.location.origin);

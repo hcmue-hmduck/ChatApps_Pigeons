@@ -24,17 +24,15 @@ export class P2PCallService {
 
     constructor() {
         // Client 2 nhận offer từ Client 1
-        // instance này ở tab cha
         this.socketService.on('directCall:offerAwaiting', (data) => {
             const userId = this.authService.getUserId();
             if (userId === data.inviterId) return;
 
             console.log('Receive offer...');
+            console.log(`data.callId`,data.callId);
 
-            this.callState.conversationId = data.conversationId;
-            this.callState.callId = data.callId;
             this.callState.callStatus.set('ringing');
-            this.callState.isCaller.set(false);
+            this.callState.callId = data.callId;
 
             this.callState.callSessionData.set({
                 conversationId: data.conversationId,

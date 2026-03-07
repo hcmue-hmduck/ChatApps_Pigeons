@@ -5,6 +5,13 @@ class CallService {
         return await callModel.findByPk(call_id, options);
     }
 
+    async getStatusById(call_id) {
+        const call = await callModel.findByPk(call_id, {
+            attributes: ['status'],
+        });
+        return call ? call.status : null;
+    }
+
     async startCall({ conversation_id, caller_id, call_type, media_type }, options = {}) {
         return await callModel.create(
             {

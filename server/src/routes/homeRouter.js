@@ -23,11 +23,11 @@ router.get('/conversation/name/:convID', homeController.getConversationNameById)
 router.put('/conversation/:convID', homeController.putHomeConversation);
 
 router.post('/call/:convID', homeController.startHomeCall);
-router.post('/call/accept/:convID', homeController.acceptHomeCall);
-router.patch('/call/ongoing/:callID', homeController.checkOngoingHomeCall);
-router.patch('/call/completed/:callID', homeController.checkCompletedHomeCall);
-router.patch('/call/declined/:callID', homeController.checkDeclinedHomeCall);
-router.patch('/call/cancelled/:callID', homeController.checkCancelledHomeCall);
-router.patch('/call/missed/:callID', homeController.checkMissedHomeCall);
+router.post('/call/logs-group-call/:convID', homeController.createLogJoinGroupCall);
+router.patch('/call/ongoing/:callID', homeController.setCallOngoing);
+router.patch('/call/completed/:callID', homeController.setCallCompleted);
+router.patch('/call/declined/:callID', homeController.setCallDecliend);
+router.patch('/call/cancelled/:callID', homeController.setCallCancelled);
+router.patch('/call/missed/:callID', homeController.setCallMissed);
 
 module.exports = router;

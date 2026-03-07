@@ -27,13 +27,15 @@ let server;
 if (process.env.RENDER === 'true') {
     server = http.createServer(app);
 } else {
-    server = https.createServer(
-        {
-            key: fs.readFileSync(path.join(__dirname, '../cert/cert.key')),
-            cert: fs.readFileSync(path.join(__dirname, '../cert/cert.crt')),
-        },
-        app,
-    );
+    server = http.createServer(app);
+    
+    // server = https.createServer(
+    //     {
+    //         key: fs.readFileSync(path.join(__dirname, '../cert/cert.key')),
+    //         cert: fs.readFileSync(path.join(__dirname, '../cert/cert.crt')),
+    //     },
+    //     app
+    // );
 }
 
 const io = Server(server, {

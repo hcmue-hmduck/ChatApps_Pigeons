@@ -73,10 +73,9 @@
           "options": {
             "port": 5200,
             "host": "0.0.0.0",
-            "ssl": true,
+            "ssl": false,
             "sslCert": "../cert/cert.crt",
-            "sslKey": "../cert/cert.key",
-            "allowedHosts": ["do-an-webrtc-cua-tam.loca.lt"]
+            "sslKey": "../cert/cert.key"
           },
           "configurations": {
             "production": {

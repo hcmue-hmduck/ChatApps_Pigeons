@@ -13,7 +13,8 @@ import {
     ViewChild,
     effect,
     inject,
-    signal
+    signal,
+    untracked
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -24,7 +25,6 @@ import { CallService } from '../../services/callService';
 import { Conversation } from '../../services/conversation';
 import { Messages } from '../../services/messages';
 import { SocketService } from '../../services/socket';
-import { WebRtcService } from '../../services/webRTCService';
 
 @Component({
     selector: 'messages-layout',
@@ -208,9 +208,16 @@ export class MessagesLayoutComponent
     }
 
     initEffect() {
+        // Tạo log join group call
         effect(() => {
-            const callMessage = this.callService.newCallMessage();
-            if(callMessage) this.updateUIWithNewMessage(callMessage);
+            if(this.callService.logJoinGroupCall()) {
+                const {content, conversationId} = this.callService.logJoinGroupCall()!;
+                if(content && conversationId) this.updateUIWithNewMessage(content, conversationId);
+
+                untracked(() => {
+                    this.callService.logJoinGroupCall.set(null);
+                })
+            }
         })
     }
 
@@ -604,23 +611,26 @@ export class MessagesLayoutComponent
             });
     }
 
-    updateUIWithNewMessage(newMessage: any) {
+    updateUIWithNewMessage(newMessage: any, conversationId?: string) {
         // cập nhật lastMessage
-        this.conversationService.putConversation(this.conversationId, {
+        if(!conversationId) conversationId = this.conversationId; 
+        this.conversationService.putConversation(conversationId, {
             last_message_id: newMessage.id
         }).subscribe({
             next: () => { /* Conversation updated */ },
             error: (err) => console.error('Error updating conversation:', err),
         });
 
-        // cập nhật UI của mình
-        this.getMessagesData.update((old) => ({
-                ...old,
-                homeMessagesData: {
-                    ...old.homeMessagesData,
-                    messages: [...old.homeMessagesData.messages, newMessage],
-            },
-        }))
+        // không cập nhật nội dung trò chuyện nếu đang ở conversation khác
+        if(this.conversationId === conversationId) {
+            this.getMessagesData.update((old) => ({
+                    ...old,
+                    homeMessagesData: {
+                        ...old.homeMessagesData,
+                        messages: [...old.homeMessagesData.messages, newMessage],
+                },
+            }))
+        }
 
         // cập nhật UI của người nhận
         this.lastMessageId = newMessage.id;
@@ -1025,7 +1035,52 @@ export class MessagesLayoutComponent
         }, 2000);
     }
 
-    webRTCService = inject(WebRtcService);
+    handleVoiceCall() {
+        this.handleCall('audio');
+    }
+
+    handleVideoCall() {
+        this.handleCall('video');
+    }
+
+    handleCall(media_type: 'video' | 'audio') {
+        this.callService.startCall(this.conversationId, this.conversationType, media_type).subscribe({
+            next: async (res) => {
+                const {userName, userAvatarUrl} = this.authService.getUserInfor();
+                const message = {
+                    ...res.metadata,
+                    sender_name: userName,
+                    sender_avatar: userAvatarUrl,
+                }
+                this.updateUIWithNewMessage(message)
+                const callId = message.call.id;
+                if (!message || !callId) {
+                    console.error('Call is not found');
+                    return;
+                }
+
+                if(message.call.call_type && message.call.call_type === GROUP_CALL) {
+                    this.callService.createLogJoinGroupCall(this.conversationId).subscribe({
+                        next: (res) => {
+                            const systemMessage = {
+                                ...res.metadata,
+                                sender_name: userName,
+                                sender_avatar: userAvatarUrl,
+                            };
+
+                            this.updateUIWithNewMessage(systemMessage)
+                        },
+                        error: (error) => console.error(error)
+                    })
+                }
+
+                const initializeVideo = media_type === 'video' ? true : false;
+                this.openCallWindow({ initializeVideo, callId });
+            },
+            error: (error) => console.log(error)
+        })
+    }
+
     async openCallWindow({ initializeVideo, callId }: { initializeVideo: boolean, callId: string }) {
         const listener = (event: MessageEvent) => {
             if (event.origin !== window.location.origin) return;
@@ -1037,7 +1092,6 @@ export class MessagesLayoutComponent
                     conversationId: this.conversationId,
                     userId: this.currentUserId,
                     callId,
-                    // offer: null,
                     initializeVideo,
                 };
 
@@ -1060,52 +1114,6 @@ export class MessagesLayoutComponent
             'CallWindow', // target
             features,
         );
-    }
-
-    handleVoiceCall() {
-        this.handleCall('audio');
-    }
-
-    handleVideoCall() {
-        this.handleCall('video');
-    }
-
-    handleCall(media_type: 'video' | 'audio') {
-        this.callService.startCall(this.conversationId, this.conversationType, media_type).subscribe({
-            next: async (res) => {
-                const {userName, userAvatarUrl} = this.authService.getUserInfor();
-                const callMessage = {
-                    ...res.metadata,
-                    sender_name: userName,
-                    sender_avatar: userAvatarUrl,
-                }
-                this.updateUIWithNewMessage(callMessage)
-                const callId = callMessage.id;
-                if (!callMessage || !callId) {
-                    console.log('Call is not found');
-                    return;
-                }
-
-                if(callMessage.call.call_type && callMessage.call.call_type === GROUP_CALL) {
-                    this.callService.joinCall(this.conversationId).subscribe({
-                        next: (res) => {
-                            const systemMessage = {
-                                ...res.metadata,
-                                sender_name: userName,
-                                sender_avatar: userAvatarUrl,
-                            };
-
-                            this.updateUIWithNewMessage(systemMessage)
-                        },
-                        error: (error) => console.error(error)
-                    })
-                }
-
-                const initializeVideo = media_type === 'video' ? true : false;
-                this.openCallWindow({ initializeVideo, callId });
-            },
-            error: (error) => console.log(error)
-        })
     }
 
     getCallIcon(callInfo: any): string {

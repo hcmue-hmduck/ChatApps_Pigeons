@@ -5,6 +5,7 @@ import { CallStateService } from './callStateService';
 import { LivekitCallService } from './livekitCallService';
 import { P2PCallService } from './p2pCallService';
 import { SocketService } from './socket';
+import { CallService } from './callService';
 
 @Injectable({
     providedIn: 'root',
@@ -15,6 +16,7 @@ export class WebRtcService {
     private livekit = inject(LivekitCallService);
     private socketService = inject(SocketService);
     private authService = inject(AuthService);
+    private callService = inject(CallService);
 
     constructor() {
         // Đồng bộ callStatus và isCaller từ instance con về instance cha
@@ -48,8 +50,10 @@ export class WebRtcService {
 
         // Bị lỡ cuộc gọi đến
         this.socketService.on('call:missed', () => {
-            this.callState.callStatus.set('missed');
-            console.log('nhận call:missed::', this.callState.callStatus());
+            if (this.callState.callSessionData()) {
+                this.callState.callStatus.set('missed');
+                console.log('nhận call:missed::', this.callState.callStatus());
+            }
         });
 
         // đồng bộ call state status giữa tab cha và con
@@ -114,13 +118,22 @@ export class WebRtcService {
         if (conversationType === DIRECT_CALL) {
             this.socketService.emit('call:declined', conversationId);
         }
+        this.cleanUp();
     }
 
     endCall() {
-        // gửi tín hiệu cuộc gọi nhỡ nếu chưa ai bắt máy
+        const callId = this.callState.callId;
+        const callStatus = this.callState.callStatus();
+
         // với cuộc gọi nhóm, gửi tín hiệu để cập nhật db và đóng modal khi cuộc gọi vừa kết thúc
-        if (this.callState.callStatus() === 'ringing') {
+        // gửi tín hiệu cuộc gọi nhỡ nếu chưa ai bắt máy
+        if (callStatus === 'ringing') {
             this.socketService.emit('call:missed', this.callState.conversationId);
+            // cập nhật status cancelled nếu là cuộc gọi 2 người
+            if (this.callState.conversationType === DIRECT_CALL)
+                this.callService.updateStatus(callId, 'cancelled');
+        } else if (callStatus === 'connected') {
+            this.callService.updateStatus(callId, 'completed');
         }
 
         // cleanup tab cha
