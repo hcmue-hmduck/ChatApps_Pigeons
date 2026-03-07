@@ -1,6 +1,6 @@
 export const environment = {
     production: false,
-    apiUrl: 'http://localhost:8080',
+    apiUrl: 'https://localhost:8080',
     // apiUrl: 'https://192.168.1.14:8080', // local ip
     livekit_wsUrl: 'wss://pigeons-wsz2aiur.livekit.cloud',
 };

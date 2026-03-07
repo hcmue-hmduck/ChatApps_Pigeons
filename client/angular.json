@@ -73,7 +73,7 @@
           "options": {
             "port": 5200,
             "host": "0.0.0.0",
-            "ssl": false,
+            "ssl": true,
             "sslCert": "../cert/cert.crt",
             "sslKey": "../cert/cert.key"
           },
