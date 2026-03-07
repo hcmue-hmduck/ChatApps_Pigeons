@@ -211,7 +211,6 @@ export class MessagesLayoutComponent
     initEffect() {
         // Tạo log join group call
         effect(() => {
-<<<<<<< Updated upstream
             if(this.callService.logJoinGroupCall()) {
                 const {content, conversationId} = this.callService.logJoinGroupCall()!;
                 if(content && conversationId) this.updateUIWithNewMessage(content, conversationId);
@@ -220,10 +219,6 @@ export class MessagesLayoutComponent
                     this.callService.logJoinGroupCall.set(null);
                 })
             }
-=======
-            const callMessage = this.callService.newCallMessage();
-            if (callMessage) this.updateUIWithNewMessage(callMessage);
->>>>>>> Stashed changes
         })
     }
 
@@ -641,7 +636,6 @@ export class MessagesLayoutComponent
             error: (err) => console.error('Error updating conversation:', err),
         });
 
-<<<<<<< Updated upstream
         // không cập nhật nội dung trò chuyện nếu đang ở conversation khác
         if(this.conversationId === conversationId) {
             this.getMessagesData.update((old) => ({
@@ -652,16 +646,6 @@ export class MessagesLayoutComponent
                 },
             }))
         }
-=======
-        // cập nhật UI của mình
-        this.getMessagesData.update((old) => ({
-            ...old,
-            homeMessagesData: {
-                ...old.homeMessagesData,
-                messages: [...old.homeMessagesData.messages, newMessage],
-            },
-        }))
->>>>>>> Stashed changes
 
         // cập nhật UI của người nhận
         this.lastMessageId = newMessage.id;
@@ -1063,52 +1047,6 @@ export class MessagesLayoutComponent
         }, 2000);
     }
 
-    handleVoiceCall() {
-        this.handleCall('audio');
-    }
-
-    handleVideoCall() {
-        this.handleCall('video');
-    }
-
-    handleCall(media_type: 'video' | 'audio') {
-        this.callService.startCall(this.conversationId, this.conversationType, media_type).subscribe({
-            next: async (res) => {
-                const {userName, userAvatarUrl} = this.authService.getUserInfor();
-                const message = {
-                    ...res.metadata,
-                    sender_name: userName,
-                    sender_avatar: userAvatarUrl,
-                }
-                this.updateUIWithNewMessage(message)
-                const callId = message.call.id;
-                if (!message || !callId) {
-                    console.error('Call is not found');
-                    return;
-                }
-
-                if(message.call.call_type && message.call.call_type === GROUP_CALL) {
-                    this.callService.createLogJoinGroupCall(this.conversationId).subscribe({
-                        next: (res) => {
-                            const systemMessage = {
-                                ...res.metadata,
-                                sender_name: userName,
-                                sender_avatar: userAvatarUrl,
-                            };
-
-                            this.updateUIWithNewMessage(systemMessage)
-                        },
-                        error: (error) => console.error(error)
-                    })
-                }
-
-                const initializeVideo = media_type === 'video' ? true : false;
-                this.openCallWindow({ initializeVideo, callId });
-            },
-            error: (error) => console.log(error)
-        })
-    }
-
     async openCallWindow({ initializeVideo, callId }: { initializeVideo: boolean, callId: string }) {
         const listener = (event: MessageEvent) => {
             if (event.origin !== window.location.origin) return;
@@ -1144,8 +1082,6 @@ export class MessagesLayoutComponent
         );
     }
 
-<<<<<<< Updated upstream
-=======
     handleVoiceCall() {
         this.handleCall('audio');
     }
@@ -1192,7 +1128,6 @@ export class MessagesLayoutComponent
         })
     }
 
->>>>>>> Stashed changes
     getCallIcon(callInfo: any): string {
         if (!callInfo) return 'bi bi-telephone-fill call-icon audio';
 
