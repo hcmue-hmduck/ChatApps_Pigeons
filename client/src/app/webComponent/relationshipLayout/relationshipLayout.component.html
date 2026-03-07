@@ -14,13 +14,13 @@
 
         <!-- Menu List -->
         <ul class="sidebar-menu">
-            <li class="menu-item active">
+            <li class="menu-item" [class.active]="currentTab === 'friends'" (click)="setTab('friends')">
                 <i class="bi bi-person-lines-fill"></i> Danh sách bạn bè
             </li>
             <li class="menu-item">
                 <i class="bi bi-people"></i> Danh sách nhóm và cộng đồng
             </li>
-            <li class="menu-item">
+            <li class="menu-item" [class.active]="currentTab === 'friend_requests'" (click)="setTab('friend_requests')">
                 <i class="bi bi-person-plus"></i> Lời mời kết bạn
             </li>
             <li class="menu-item">
@@ -33,16 +33,19 @@
     <div class="relations-main">
         <!-- Main Header -->
         <div class="main-header">
-            <i class="bi bi-people-fill"></i>
-            <h2>Danh sách bạn bè</h2>
+            <i class="bi bi-people-fill" *ngIf="currentTab === 'friends'"></i>
+            <i class="bi bi-person-plus-fill" *ngIf="currentTab === 'friend_requests'"></i>
+            <h2>{{ currentTab === 'friends' ? 'Danh sách bạn bè' : 'Lời mời kết bạn' }}</h2>
         </div>
 
         <!-- Scrollable Content Area -->
         <div class="main-content">
-            <h3 class="friends-count">Bạn bè ({{friends.length || 0}})</h3>
+            <h3 class="friends-count" *ngIf="currentTab === 'friends'">Bạn bè ({{friends.length || 0}})</h3>
+            <h3 class="friends-count" *ngIf="currentTab === 'friend_requests'">Lời mời ({{friendRequests.length || 0}})
+            </h3>
 
             <!-- Filters Bar -->
-            <div class="filters-bar">
+            <div class="filters-bar" *ngIf="currentTab === 'friends'">
                 <div class="search-box">
                     <i class="bi bi-search"></i>
                     <input type="text" placeholder="Tìm bạn">
@@ -65,7 +68,7 @@
             </div>
 
             <!-- List of Friends -->
-            <div class="friends-list-container" *ngIf="!loading && friends.length > 0">
+            <div class="friends-list-container" *ngIf="currentTab === 'friends' && !loading && friends.length > 0">
                 <ng-container *ngFor="let friend of friends; let i = index">
 
                     <!-- Giả lập tiêu đề theo chữ cái đầu cho giống Zalo (tạm hiển thị "A", "B" ...) -->
@@ -81,10 +84,45 @@
                 </ng-container>
             </div>
 
+            <!-- List of Friend Requests -->
+            <div class="friends-list-container"
+                *ngIf="currentTab === 'friend_requests' && !loading && friendRequests.length > 0">
+                <ng-container *ngFor="let request of friendRequests">
+                    <div class="friend-item" style="padding: 16px 20px;">
+                        <img [src]="request.sender_avatar || 'https://i.pravatar.cc/150'" alt="Avatar"
+                            class="friend-avatar" style="width: 56px; height: 56px; min-width: 56px;">
+                        <div class="friend-info" style="flex: 1;">
+                            <div class="friend-name" style="font-size: 15px; font-weight: 700;">{{ request.sender_name
+                                }}</div>
+                            <div style="font-size: 13px; color: #64748b; margin-top: 4px;" *ngIf="request.note">
+                                "{{ request.note }}"
+                            </div>
+                            <div style="font-size: 13px; color: #94a3b8; margin-top: 4px;" *ngIf="!request.note">
+                                Xin chào, cho mình làm quen nhé!
+                            </div>
+                        </div>
+                        <div class="request-actions" style="display: flex; gap: 8px;">
+                            <button class="btn btn-light btn-sm"
+                                style="border-radius: 6px; font-size: 13px; font-weight: 500; background: #f1f5f9; color: #475569; border: none; padding: 6px 16px;">Từ
+                                chối</button>
+                            <button class="btn btn-primary btn-sm"
+                                style="border-radius: 6px; font-size: 13px; font-weight: 500; background: var(--accent, #4f46e5); color: white; border: none; padding: 6px 16px;">Đồng
+                                ý</button>
+                        </div>
+                    </div>
+                </ng-container>
+            </div>
+
             <!-- Empty State -->
-            <div class="empty-state" *ngIf="!loading && friends.length === 0">
-                <i class="bi bi-people" style="font-size: 48px; color: #4b5563;"></i>
+            <div class="empty-state" *ngIf="currentTab === 'friends' && !loading && friends.length === 0">
+                <i class="bi bi-people" style="font-size: 48px; color: #cbd5e1;"></i>
                 <p>Bạn chưa có người bạn nào.</p>
+            </div>
+
+            <div class="empty-state"
+                *ngIf="currentTab === 'friend_requests' && !loading && friendRequests.length === 0">
+                <i class="bi bi-person-plus" style="font-size: 48px; color: #cbd5e1;"></i>
+                <p>Bạn chưa có lời mời kết bạn nào.</p>
             </div>
 
             <!-- Loading State -->

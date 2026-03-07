@@ -6,6 +6,8 @@ const Conversation = require('./conversationsModel');
 const Participant = require('./participantsModel');
 const PinnedMessages = require('./pinnedmessagesModel');
 const Friends = require('./friendsModel');
+const FriendRequest = require('./friendrequestsModel');
+const UserBlock = require('./userblockModel');
 
 // Tổng hợp tất cả models
 const models = {
@@ -15,7 +17,9 @@ const models = {
     Conversation,
     Participant,
     PinnedMessages,
-    Friends
+    Friends,
+    FriendRequest,
+    UserBlock
 };
 
 // Khởi tạo tất cả associations

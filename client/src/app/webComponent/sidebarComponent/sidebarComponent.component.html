@@ -18,14 +18,14 @@
                 <i class="bi bi-chat-dots-fill"></i>
                 <span class="nav-tooltip">Tin nhắn</span>
             </button>
-            <!-- <button class="sidebar-nav-btn" title="Gọi">
-                <i class="bi bi-telephone-fill"></i>
-                <span class="nav-tooltip">Gọi</span>
-            </button> -->
             <button class="sidebar-nav-btn" [class.active]="isActive('friends')" title="Liên hệ"
                 (click)="setView('friends')">
                 <i class="bi bi-people-fill"></i>
                 <span class="nav-tooltip">Liên hệ</span>
+            </button>
+            <button class="sidebar-nav-btn" title="Bảng tin">
+                <i class="bi bi-newspaper"></i>
+                <span class="nav-tooltip">Bảng tin</span>
             </button>
         </nav>
         <div class="sidebar-bottom">
@@ -42,12 +42,13 @@
     <div class="content-area" *ngIf="isReady()">
 
         <!-- VIEW: Messages (Panel 2 + Panel 3) -->
-        <conversation-layout [style.display]="navService.activeView() === 'messages' ? 'block' : 'none'" [conversations]="conversations()"
-            [currentUserId]="currentUserId" [onlineUsers]="onlineUsers()">
+        <conversation-layout [style.display]="navService.activeView() === 'messages' ? 'block' : 'none'"
+            [conversations]="conversations()" [currentUserId]="currentUserId" [onlineUsers]="onlineUsers()">
         </conversation-layout>
 
         <!-- VIEW: Friends -->
-        <relationship-layout [style.display]="navService.activeView() === 'friends' ? 'block' : 'none'" [currentUserId]="currentUserId">
+        <relationship-layout [style.display]="navService.activeView() === 'friends' ? 'block' : 'none'"
+            [currentUserId]="currentUserId">
         </relationship-layout>
 
     </div>
@@ -62,7 +63,7 @@
                 <div class="pf-deco pf-deco-2"></div>
                 <div class="pf-deco pf-deco-3"></div>
                 <div class="pf-avatar-ring">
-                    <img [src]="user.avatar_url || 'https://i.pravatar.cc/150'" alt="avatar" class="pf-avatar-img">
+                    <img [src]="user.avatar_url" alt="avatar" class="pf-avatar-img">
                     <button class="pf-cam-btn" title="Đổi ảnh đại diện">
                         <i class="bi bi-camera-fill"></i>
                     </button>
@@ -107,7 +108,13 @@
                             <div class="pf-row-icon"><i class="bi bi-phone-fill"></i></div>
                             <div class="pf-row-body">
                                 <div class="pf-row-label">Số điện thoại</div>
-                                <div class="pf-row-value">{{ user.phone_number || 'Chưa cập nhật' }}</div>
+                                <div class="pf-row-value pf-row-inline">
+                                    <span>{{ user.phone_number || 'Chưa cập nhật' }}</span>
+                                    <span class="pf-badge pf-badge-ok" *ngIf="user.is_phone_verified"><i
+                                            class="bi bi-check-circle-fill"></i> Xác thực</span>
+                                    <span class="pf-badge pf-badge-warn" *ngIf="!user.is_phone_verified"><i
+                                            class="bi bi-exclamation-circle-fill"></i> Chưa xác thực</span>
+                                </div>
                             </div>
                         </div>
                         <div class="pf-row" *ngIf="user.birthday">

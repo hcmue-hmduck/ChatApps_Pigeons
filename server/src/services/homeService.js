@@ -51,15 +51,15 @@ class HomeService {
 
             const participantInfo = user
                 ? {
-                      user_id: user.id,
-                      full_name: user.full_name,
-                      avatar_url: user.avatar_url,
-                      owner: isOwner,
-                  }
+                    user_id: user.id,
+                    full_name: user.full_name,
+                    avatar_url: user.avatar_url,
+                    owner: isOwner,
+                }
                 : {
-                      user_id: p.user_id,
-                      owner: isOwner,
-                  };
+                    user_id: p.user_id,
+                    owner: isOwner,
+                };
 
             if (!participantsMap.has(p.conversation_id)) {
                 participantsMap.set(p.conversation_id, []);
@@ -90,7 +90,7 @@ class HomeService {
                 birthday: currentUser.birthday,
                 gender: currentUser.gender,
                 last_online_at: currentUser.last_online_at,
-              }
+            }
             : null;
 
         // 5. Tổng hợp sidebar — conversations đã filter theo conversationIds của user nên không cần .some()
@@ -320,8 +320,8 @@ class HomeService {
             let message = await messagesService.createMessage(messageData, { transaction: t });
 
             return {
-                ...message.get({plain: true}), // Biến instance thành object thường
-                call: call.get({plain: true})
+                ...message.get({ plain: true }), // Biến instance thành object thường
+                call: call.get({ plain: true })
             };
         });
     }
@@ -356,26 +356,45 @@ class HomeService {
         return await callService.updateStatusCall({ call_id, status: 'missed' });
     }
 
-     async getFriendByUserId(userId) {
+    async getFriendByUserId(userId) {
         const listFriends = await friendsService.getFriendByUserId(userId);
-        
-        // Dùng Promise.all để chờ tất cả dữ liệu được lấy về
-        const listFriendsMap = await Promise.all(listFriends.map(async friend => {
-            const friendInfo = await usersService.getUserById(friend.friend_id);
-            console.log(friendInfo);
+        if (listFriends.length === 0) return [];
+
+        // Tối ưu N+1 query: Lấy toàn bộ user info của bạn bè trong 1 query duy nhất
+        const friendIds = listFriends.map(friend => friend.friend_id);
+        const friendInfos = await usersService.getAllUsers({ id: friendIds });
+
+        // Chuyển thành Map để tra cứu với độ phức tạp O(1)
+        const friendInfoMap = new Map(friendInfos.map(user => [user.id, user]));
+
+        return listFriends.map(friend => {
+            const friendInfo = friendInfoMap.get(friend.friend_id) || {};
             return {
                 ...friend.dataValues,
                 full_name: friendInfo.full_name,
                 avatar_url: friendInfo.avatar_url,
                 status: friendInfo.status
             };
-        }));
-        
-        return listFriendsMap;
+        });
     }
 
     async getFriendRequests(receiverId) {
-        return await friendrequestsService.getFriendRequests(receiverId);
+        const friendRequests = await friendrequestsService.getFriendRequests(receiverId);
+        if (friendRequests.length === 0) return [];
+
+        const senderIds = friendRequests.map(req => req.sender_id);
+        const senderInfos = await usersService.getAllUsers({ id: senderIds });
+
+        const senderInfoMap = new Map(senderInfos.map(user => [user.id, user]));
+
+        return friendRequests.map(req => {
+            const senderInfo = senderInfoMap.get(req.sender_id) || {};
+            return {
+                ...req.dataValues,
+                sender_name: senderInfo.full_name,
+                sender_avatar: senderInfo.avatar_url,
+            };
+        });
     }
 
     async createFriendRequest(senderId, receiverId, note) {
