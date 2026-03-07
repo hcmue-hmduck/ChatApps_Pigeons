@@ -15,6 +15,7 @@ router.delete('/userblocks/:id', homeController.deleteUserBlock);
 router.put('/userinfor/:userID', homeController.putUserInfor);
 
 router.get('/friends/:userId', homeController.getFriendByUserId);
+router.post('/friends/:userId', homeController.createFriendByUserId);
 
 router.get('/conversation/:userID', homeController.getHomeConversation);
 router.put('/conversation/:convID', homeController.putHomeConversation);

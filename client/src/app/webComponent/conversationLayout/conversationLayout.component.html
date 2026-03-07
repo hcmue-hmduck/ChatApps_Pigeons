@@ -94,18 +94,19 @@
                                     <ng-container *ngIf="!conv.lastMessage.is_deleted">{{ conv.lastMessage.content
                                         }}</ng-container>
                                 </ng-container>
-                                <span *ngIf="!conv.lastMessage" style="font-style:italic;color:#9ca3af;">Chưa có tin
-                                    nhắn</span>
+                                <span *ngIf="!conv.lastMessage" class="empty-last-msg">Chưa có tin nhắn</span>
                             </span>
                             <span class="unread-badge" *ngIf="conv.unread_count > 0">{{ conv.unread_count }}</span>
                         </div>
                     </div>
                 </a>
             </ng-container>
-            <div *ngIf="conversations?.homeConversationData?.joinedConversations?.length === 0" class="empty-state">
+
+            <div *ngIf="!conversations?.homeConversationData?.joinedConversations?.length" class="empty-state">
                 <i class="bi bi-chat-left-text"></i>
                 <p>Chưa có cuộc trò chuyện nào</p>
-                <p style="font-size:12px;margin-top:4px;">Nhấn ✏️ để bắt đầu chat mới</p>
+                <p class="empty-subtitle">Nhấn <i class="bi bi-pencil-square empty-icon-small"></i> để bắt đầu chat mới
+                </p>
             </div>
         </div>
     </section>

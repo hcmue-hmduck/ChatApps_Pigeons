@@ -51,11 +51,19 @@ export class ConversationLayoutComponent implements OnChanges {
     constructor(private socketService: SocketService) { }
 
     ngOnChanges(changes: SimpleChanges) {
-        // Khi conversations được load lần đầu, tự chọn conversation đầu tiên
-        if (changes['conversations'] && this.conversations?.homeConversationData?.joinedConversations?.length > 0) {
-            if (!this.isFirstConversationReady()) {
-                this.handleConversationID(this.conversations.homeConversationData.joinedConversations[0]);
+        // Khi conversations được load lần đầu, tự chọn conversation đầu tiên hoặc set ready
+        if (changes['conversations'] && this.conversations?.homeConversationData) {
+            const joined = this.conversations.homeConversationData.joinedConversations || [];
+            if (joined.length > 0) {
+                if (!this.isFirstConversationReady()) {
+                    this.handleConversationID(joined[0]);
+                }
+            } else {
+                if (!this.isFirstConversationReady()) {
+                    this.isFirstConversationReady.set(true);
+                }
             }
+
             if (!this.socketsReady) {
                 this.socketsReady = true;
                 this.setupSocketListeners();

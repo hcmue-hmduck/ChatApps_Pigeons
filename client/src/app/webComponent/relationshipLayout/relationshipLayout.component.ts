@@ -1,4 +1,4 @@
-import { Component, signal, OnChanges, SimpleChanges, Input, ChangeDetectorRef } from '@angular/core';
+import { Component, signal, OnChanges, SimpleChanges, Input, ChangeDetectorRef, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Friend } from '../../services/friend';
@@ -22,6 +22,15 @@ export class RelationshipLayoutComponent implements OnChanges {
     friendRequests: any[] = [];
     loading = false;
     error = '';
+    showMoreMenuId: string | null = null;
+
+    @HostListener('document:click', ['$event'])
+    onDocumentClick(event: MouseEvent) {
+        const target = event.target as HTMLElement;
+        if (!target.closest('.friend-more-btn') && !target.closest('.friend-dropdown')) {
+            this.showMoreMenuId = null;
+        }
+    }
 
     constructor(
         private friendService: Friend,
@@ -37,6 +46,11 @@ export class RelationshipLayoutComponent implements OnChanges {
 
     setTab(tab: 'friends' | 'friend_requests') {
         this.currentTab = tab;
+    }
+
+    toggleMoreMenu(friendId: string, event: Event) {
+        event.stopPropagation();
+        this.showMoreMenuId = this.showMoreMenuId === friendId ? null : friendId;
     }
 
     loadData() {

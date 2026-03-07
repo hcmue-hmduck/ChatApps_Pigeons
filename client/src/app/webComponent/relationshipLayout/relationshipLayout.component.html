@@ -71,7 +71,37 @@
                     <div class="friend-item" *ngFor="let friend of group.friends">
                         <img [src]="friend.avatar_url" alt="Avatar" class="friend-avatar">
                         <div class="friend-name">{{ friend.full_name }}</div>
-                        <button class="more-btn" title="Tuỳ chọn"><i class="bi bi-three-dots"></i></button>
+                        <div class="friend-more-container">
+                            <button class="more-btn friend-more-btn" title="Tuỳ chọn"
+                                (click)="toggleMoreMenu(friend.id, $event)">
+                                <i class="bi bi-three-dots"></i>
+                            </button>
+                            <div class="friend-dropdown" *ngIf="showMoreMenuId === friend.id">
+                                <button class="dropdown-item">
+                                    <i class="bi bi-person-lines-fill dropdown-item-icon"></i>
+                                    <span class="dropdown-item-text">Xem thông tin</span>
+                                </button>
+                                <div class="dropdown-divider"></div>
+                                <button class="dropdown-item">
+                                    <i class="bi bi-chat-dots dropdown-item-icon"></i>
+                                    <span class="dropdown-item-text">Nhắn tin</span>
+                                </button>
+                                <button class="dropdown-item">
+                                    <i class="bi bi-pencil-square dropdown-item-icon"></i>
+                                    <span class="dropdown-item-text">Đặt tên gợi nhớ</span>
+                                </button>
+                                <div class="dropdown-divider"></div>
+                                <button class="dropdown-item">
+                                    <i class="bi bi-shield-slash dropdown-item-icon"></i>
+                                    <span class="dropdown-item-text">Chặn người này</span>
+                                </button>
+                                <div class="dropdown-divider"></div>
+                                <button class="dropdown-item danger">
+                                    <i class="bi bi-person-x dropdown-item-icon"></i>
+                                    <span class="dropdown-item-text">Xóa bạn</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </ng-container>
             </div>

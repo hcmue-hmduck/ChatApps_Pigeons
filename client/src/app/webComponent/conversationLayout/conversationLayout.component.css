@@ -619,6 +619,21 @@
   margin: 0;
 }
 
+.empty-subtitle {
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.empty-icon-small {
+  font-size: 25px !important;
+  color: black !important;
+}
+
+.empty-last-msg {
+  font-style: italic;
+  color: #9ca3af;
+}
+
 /* Spinner */
 .loading-state {
   display: flex;

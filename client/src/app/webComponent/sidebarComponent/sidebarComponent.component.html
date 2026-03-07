@@ -29,7 +29,7 @@
             </button>
         </nav>
         <div class="sidebar-bottom">
-            <img [src]="userInfo()?.avatar_url || 'https://i.pravatar.cc/40'" [alt]="userInfo()?.full_name || 'User'"
+            <img [src]="userInfo()?.avatar_url" [alt]="userInfo()?.full_name || 'User'"
                 class="sidebar-user-avatar" [title]="userInfo()?.full_name || ''" (click)="openProfileModal()">
             <button class="sidebar-logout-btn" title="Đăng xuất">
                 <i class="bi bi-box-arrow-right"></i>

@@ -216,6 +216,18 @@ class HomeController {
         }).send(res);
     }
 
+    async createFriendByUserId(req, res) {
+        const userId = req.params.userId;
+        const { friend_id , friendship_date, is_favorite, notes} = req.body;
+        const newFriend = await homeService.createFriendByUserId(userId, friend_id, friendship_date, is_favorite, notes);
+        new SuccessResponse({
+            message: 'Create friend successfully',
+            metadata: {
+                newFriend: newFriend,
+            },
+        }).send(res);
+    }
+
     async getFriendRequests(req, res) {
         const receiverId = req.params.receiverId;
         const friendRequests = await homeService.getFriendRequests(receiverId);

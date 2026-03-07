@@ -17,7 +17,10 @@ class HomeService {
         // 1. Lấy tất cả participant record của user
         const userParticipants = await participantsService.getAllParticipants({ user_id: userId });
         const conversationIds = userParticipants.map((p) => p.conversation_id);
-        if (conversationIds.length === 0) return { userInfo: null, joinedConversations: [] };
+        if (conversationIds.length === 0) return {
+            userInfo: await usersService.getUserById(userId),
+            joinedConversations: []
+        };
 
         // 2. Batch query song song: conversations + toàn bộ participants trong các conversations đó
         const [conversations, allParticipants] = await Promise.all([
@@ -250,11 +253,11 @@ class HomeService {
 
         const parent_message_info = parentMessage
             ? {
-                  parent_message_content: parentMessage.content,
-                  parent_message_sender_id: parentMessage.sender_id,
-                  parent_message_is_deleted: parentMessage.is_deleted,
-                  parent_message_name: parentSender ? parentSender.full_name : '',
-              }
+                parent_message_content: parentMessage.content,
+                parent_message_sender_id: parentMessage.sender_id,
+                parent_message_is_deleted: parentMessage.is_deleted,
+                parent_message_name: parentSender ? parentSender.full_name : '',
+            }
             : null;
 
         return {
@@ -375,6 +378,10 @@ class HomeService {
                 status: friendInfo.status
             };
         })
+    }
+
+    async createFriendByUserId(userId, friend_id, friendship_date, is_favorite, notes) {
+        return await friendsService.createFriendByUserId(userId, friend_id, friendship_date, is_favorite, notes);
     }
 
     async getFriendRequests(receiverId) {
