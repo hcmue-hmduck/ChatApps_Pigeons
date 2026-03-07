@@ -251,9 +251,9 @@ export class MessagesLayoutComponent
 
         // Setup listener cho tin nhắn mới
         this.socketService.on('newMessage', (data: any) => {
-            this.lastMessageId = data.id;
             if (data.conversation_id === conversationId) {
-
+                this.lastMessageId = data.id;
+                console.log('this.lastMessageId', this.lastMessageId);
                 // Kiểm tra xem tin nhắn đã tồn tại chưa (tránh duplicate)
                 const currentMessages = this.getMessagesData().homeMessagesData?.messages || [];
                 const messageExists = currentMessages.some((msg: any) => msg.id === data.id);
@@ -402,7 +402,6 @@ export class MessagesLayoutComponent
 
         // Setup listener cho xóa tin nhắn
         this.socketService.on('deleteMessage', (data: any) => {
-            this.lastMessageId = data.id;
             if (data.conversation_id === conversationId) {
                 this.getMessagesData.update((old) => ({
                     ...old,
@@ -602,6 +601,10 @@ export class MessagesLayoutComponent
                         sender_name: currentUser.full_name,
                         sender_avatar: currentUser.avatar_url,
                     };
+                    
+                    this.lastMessageId = newMessage.id;
+                    console.log('newMessage', newMessage);
+                    console.log('this.lastMessageId', this.lastMessageId);
 
                     this.messageStatus = 'Đã gửi';
                     this.updateUIWithNewMessage(newMessage);
@@ -774,10 +777,11 @@ export class MessagesLayoutComponent
                     sender_name: currentUser.full_name,
                     sender_avatar: currentUser.avatar_url,
                 };
-
                 this.socketService.emit('deleteMessage', newMessage);
-
-                if (msg.id === this.lastMessageId) {
+                console.log('newMessage: ', newMessage);
+                console.log('this.lastMessageId', this.lastMessageId);
+                if (newMessage.id === this.lastMessageId) {
+                    console.log('Last message deleted');
                     this.socketService.emit('updateConversation', newMessage);
                 }
             },
