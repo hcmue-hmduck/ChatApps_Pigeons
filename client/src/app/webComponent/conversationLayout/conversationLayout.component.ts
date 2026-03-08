@@ -83,16 +83,51 @@ export class ConversationLayoutComponent implements OnChanges {
         // Lắng nghe updateProfile để cập nhật getMessageInfor khi đang chat
         this.socketService.on('updateProfile', (data: any) => {
             if (!this.selectedConversationId) return;
-            const convList = this.conversations?.homeConversationData?.joinedConversations || [];
-            const selectedConv = convList.find((c: any) => c.conversation_id === this.selectedConversationId);
-            if (!selectedConv) return;
-            const otherParticipant = selectedConv.type === 'direct' ? this.getOtherParticipant(selectedConv) : null;
-            this.getMessageInfor = {
-                ...this.getMessageInfor,
-                title: selectedConv.title,
-                participants: selectedConv.participants,
-                other_participant: otherParticipant,
+            console.log('Update Profile: ', data);
+
+            // 1. Lấy dữ liệu danh sách hiện tại
+            const curConversations = this.conversations;
+            const convList = curConversations?.homeConversationData?.joinedConversations;
+            if (!convList?.length) return;
+
+            // 2. clone & immutable update toàn bộ mảng joinedConversations chứa data thay đổi
+            const updatedConvList = convList.map((conv: any) => {
+                // Tạo mảng participants mới nạp giá trị mới nếu tìm thấy ID khớp
+                const updatedParticipants = conv.participants?.map((p: any) =>
+                    p.user_id === data.id ? { ...p, full_name: data.full_name, avatar_url: data.avatar_url } : p
+                );
+
+                // Nếu trong cái chuỗi lặp list conv mà đây trúng phóc cái Group/Direct ID đang mở
+                if (conv.conversation_id === this.selectedConversationId) {
+                    const isDirectOtherUser = conv.type === 'direct' && data.id !== this.currentUserId;
+                    // Dispatch thẳng cho Panel 3 Component con
+                    const updatedTargetParticipant = updatedParticipants.find((p: any) => p.user_id === data.id);
+                    this.getMessageInfor = {
+                        ...this.getMessageInfor,
+                        user_info: data,
+                        title: isDirectOtherUser ? data.full_name : conv.title,
+                        other_participant: isDirectOtherUser ? updatedTargetParticipant : this.getMessageInfor.other_participant,
+                        participants: updatedParticipants
+                    };
+                }
+
+                return {
+                    ...conv,
+                    participants: updatedParticipants
+                }
+            });
+
+            // 3. Emit trigger reference memory CỦA TỔNG Object @Input() conversations cho Angular chạy Render
+            this.conversations = {
+                ...curConversations,
+                homeConversationData: {
+                    ...curConversations.homeConversationData,
+                    joinedConversations: updatedConvList
+                }
             };
+
+            console.log('Send Data: ', this.getMessageInfor);
+            // Kêu Component update HTML List
             this.cdr.markForCheck();
         });
     }

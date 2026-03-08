@@ -20,11 +20,12 @@ import { User } from '../../services/user';
 import { SocketService } from '../../services/socket';
 import { ConversationLayoutComponent } from '../conversationLayout/conversationLayout.component';
 import { RelationshipLayoutComponent } from '../relationshipLayout/relationshipLayout.component';
+import { UserInforModel } from '../userinforModel/userinforModel';
 
 @Component({
     selector: 'sidebar-component',
     standalone: true,
-    imports: [CommonModule, FormsModule, ConversationLayoutComponent, RelationshipLayoutComponent],
+    imports: [CommonModule, FormsModule, ConversationLayoutComponent, RelationshipLayoutComponent, UserInforModel],
     templateUrl: './sidebarComponent.component.html',
     styleUrls: ['./sidebarComponent.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -41,12 +42,6 @@ export class SidebarComponent implements OnInit, OnDestroy {
     onlineUsers = signal<Set<string>>(new Set());
     loading = signal(false);
     isReady = signal(false);
-
-    showProfileModal = signal(false);
-    isEditingProfile = signal(false);
-    showChangePassword = signal(false);
-    editForm: any = {};
-    changePassForm = { oldPass: '', newPass: '', confirmPass: '' };
 
     private interval1s: any;
     private interval60s: any;
@@ -96,17 +91,19 @@ export class SidebarComponent implements OnInit, OnDestroy {
 
         this.socketService.on('updateProfile', (data: any) => {
             const cur = this.conversations();
-            if (!cur.homeConversationData?.joinedConversations) return;
+            if (!cur?.homeConversationData?.joinedConversations) return;
             const updated = cur.homeConversationData.joinedConversations.map((conv: any) => {
                 const updatedParticipants = conv.participants?.map((p: any) =>
-                    p.user_id === data.user_id
+                    p.user_id === data.id
                         ? { ...p, full_name: data.full_name, avatar_url: data.avatar_url }
                         : p
                 );
+
                 const isDirectWithUpdated =
                     conv.type === 'direct' &&
-                    data.user_id !== this.currentUserId &&
-                    conv.participants?.some((p: any) => p.user_id === data.user_id);
+                    data.id !== this.currentUserId &&
+                    conv.participants?.some((p: any) => p.user_id === data.id);
+
                 return {
                     ...conv,
                     participants: updatedParticipants,
@@ -181,45 +178,17 @@ export class SidebarComponent implements OnInit, OnDestroy {
         return this.navService.activeView() === view;
     }
 
-    // ── Profile Modal ─────────────────────────────────────
-    openProfileModal() { this.showProfileModal.set(true); }
-    closeProfileModal() { this.showProfileModal.set(false); this.isEditingProfile.set(false); this.showChangePassword.set(false); }
-    toggleEditProfile() {
-        if (!this.isEditingProfile()) {
-            const user = this.userInfo();
-            this.editForm = {
-                full_name: user?.full_name || '',
-                bio: user?.bio || '',
-                email: user?.email || '',
-                phone_number: user?.phone_number || '',
-                birthday: user?.birthday ? new Date(user.birthday).toISOString().split('T')[0] : '',
-                gender: user?.gender || '',
-            };
-        }
-        this.isEditingProfile.update(v => !v);
-    }
-    toggleChangePassword() { this.showChangePassword.update(v => !v); }
-    saveProfile() {
-        this.userService.updateUser(this.currentUserId, this.editForm).subscribe({
-            next: () => {
-                this.conversations.update(old => ({
-                    ...old,
-                    homeConversationData: {
-                        ...old.homeConversationData,
-                        userInfo: { ...old.homeConversationData.userInfo, ...this.editForm, updated_at: new Date().toISOString() },
-                    },
-                }));
-                this.userInfo.set(this.conversations().homeConversationData?.userInfo);
-                const { full_name, avatar_url, updated_at } = this.userInfo();
-                this.socketService.emit('updateProfile', { user_id: this.currentUserId, full_name, avatar_url, updated_at });
-                this.isEditingProfile.set(false);
+    // ── Profile Modal Callback ────────────────────────────
+    handleProfileUpdate(updatedData: any) {
+        // Sync local userInfo and conversations state from modal response
+        this.userInfo.set(updatedData);
+        this.conversations.update(old => ({
+            ...old,
+            homeConversationData: {
+                ...old.homeConversationData,
+                userInfo: updatedData,
             },
-            error: (err) => console.error('Error updating profile:', err),
-        });
-    }
-    saveChangePassword() {
-        console.log('Changing password:', this.changePassForm);
-        this.showChangePassword.set(false);
-        this.changePassForm = { oldPass: '', newPass: '', confirmPass: '' };
+        }));
+        this.cdr.markForCheck();
     }
 }

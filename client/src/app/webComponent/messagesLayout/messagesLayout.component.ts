@@ -354,13 +354,13 @@ export class MessagesLayoutComponent
                     homeMessagesData: {
                         ...old.homeMessagesData,
                         messages: old.homeMessagesData.messages.map((m: any) => {
-                            if (m.sender_id === data.user_id) {
+                            if (m.sender_id === data.id) {
                                 return {
                                     ...m,
                                     sender_name: data.full_name,
                                     sender_avatar: data.avatar_url
                                 };
-                            } else if (m.parent_message_info?.parent_message_sender_id === data.user_id) {
+                            } else if (m.parent_message_info?.parent_message_sender_id === data.id) {
                                 return {
                                     ...m,
                                     parent_message_info: {
@@ -378,7 +378,7 @@ export class MessagesLayoutComponent
 
             this.pinnedMessages.update((old) => {
                 return old.map((m: any) => {
-                    if (m.sender_id === data.user_id) {
+                    if (m.sender_id === data.id) {
                         return {
                             ...m,
                             pinned_by_name: data.full_name,
@@ -386,7 +386,7 @@ export class MessagesLayoutComponent
                         };
                     }
 
-                    if (m.parent_message_info?.parent_message_sender_id === data.user_id) {
+                    if (m.parent_message_info?.parent_message_sender_id === data.id) {
                         return {
                             ...m,
                             parent_message_info: {
