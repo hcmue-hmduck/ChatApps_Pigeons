@@ -1135,9 +1135,10 @@ export class MessagesLayoutComponent
     }
 
     handleCall(media_type: 'video' | 'audio') {
-        this.callService.startCall(this.conversationId, this.conversationType, media_type, this.currentUserId).subscribe({
+        this.callService.startCall(this.conversationId, this.conversationType, media_type).subscribe({
             next: async (res) => {
                 const { userName, userAvatarUrl } = this.authService.getUserInfor();
+                
                 const message = {
                     ...res.metadata,
                     sender_name: userName,

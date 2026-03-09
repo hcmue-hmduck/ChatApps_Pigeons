@@ -23,13 +23,13 @@ export class AuthService {
     async setUserInfor(userId: string) {
         try {
             const { metadata } = await firstValueFrom(this.userService.getUserById(userId));
-            const { id, full_name, avatar_url } = metadata;
+            const { id, full_name, avatar_url } = metadata.userInfor;
             this.user.set({
                 userId: id,
                 userName: full_name,
                 userAvatarUrl: avatar_url,
             });
-            console.log('Đã setUserInfor...');
+            console.log('Đã setUserInfor: ', { id, full_name, avatar_url });
         } catch (error) {
             console.log('Lỗi setUserInfor:::');
             throw error;

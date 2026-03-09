@@ -57,10 +57,13 @@ export class LivekitCallService {
     }
 
     end() {
+        const callStatus = this.callState.callStatus();
+        const callId = this.callState.callId;
         const countParticipant = this.room?.remoteParticipants.size;
+
         if (countParticipant === 0) {
-            const callId = this.callState.callId;
-            this.callService.updateStatus(callId, 'completed');
+            if (callStatus === 'ringing') this.callService.updateStatus(callId, 'cancelled');
+            else if (callStatus === 'connected') this.callService.updateStatus(callId, 'completed');
         }
 
         this.cleanUp();
@@ -210,6 +213,7 @@ export class LivekitCallService {
 
         this.room?.on('participantConnected', () => {
             this.callState.clearCallTimeout();
+            this.callState.callStatus.set('connected');
         })
 
         this.room?.on('participantDisconnected', (participant) => {
