@@ -17,7 +17,6 @@ import {
     untracked
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
 import { PickerModule } from '@ctrl/ngx-emoji-mart';
 import { GROUP_CALL } from '../../models/callSessionData.model';
 import { AuthService } from '../../services/authService';
@@ -202,7 +201,6 @@ export class MessagesLayoutComponent
     constructor(
         private messagesService: Messages,
         private conversationService: Conversation,
-        private router: ActivatedRoute,
         private socketService: SocketService,
     ) {
         this.initEffect();
@@ -433,6 +431,7 @@ export class MessagesLayoutComponent
     }
 
     ngOnInit() {
+        console.log('Online User', this.onlineUsers);
         if (!this.isLoaded) {
             this.isLoaded = true;
             this.loadMessages(this.conversationId);
@@ -1136,7 +1135,7 @@ export class MessagesLayoutComponent
     }
 
     handleCall(media_type: 'video' | 'audio') {
-        this.callService.startCall(this.conversationId, this.conversationType, media_type).subscribe({
+        this.callService.startCall(this.conversationId, this.conversationType, media_type, this.currentUserId).subscribe({
             next: async (res) => {
                 const { userName, userAvatarUrl } = this.authService.getUserInfor();
                 const message = {

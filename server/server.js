@@ -170,13 +170,13 @@ io.on('connection', (socket) => {
             // Chỉ emit offline nếu không còn connection nào
             if (onlineUsers.get(userId).size === 0) {
                 onlineUsers.delete(userId);
-
+                const lastOnlineAt = new Date();
                 // Cập nhật last_online_at vào database
                 try {
                     await models.User.update(
                         {
                             status: 'offline',
-                            last_online_at: new Date(),
+                            last_online_at: lastOnlineAt,
                         },
                         { where: { id: userId } },
                     );
@@ -185,7 +185,7 @@ io.on('connection', (socket) => {
                     console.error(`Error updating last_online_at for user ${userId}:`, error);
                 }
 
-                io.emit('userStatusChanged', { userId, status: 'offline' });
+                io.emit('userStatusChanged', { userId, status: 'offline', last_online_at: lastOnlineAt });
             }
         }
     });

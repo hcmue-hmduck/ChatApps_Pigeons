@@ -24,11 +24,11 @@ export class CallService {
         conversation_id: string,
         call_type: string,
         media_type: 'video' | 'audio',
+        caller_id: string, // <-- Nhận vào luôn từ component gọi
     ): Observable<any> {
         if (!this.CALL_TYPE.includes(call_type))
             return throwError(() => new Error('Cannot start call'));
-        const caller_id = this.authService.getUserId();
-        if (!caller_id) return throwError(() => new Error('Cannot start call'));
+        if (!caller_id) return throwError(() => new Error('Cannot start call (caller_id empty)'));
         return this.httpClient.post(`${this.apiUrl}/${conversation_id}`, {
             caller_id,
             call_type,

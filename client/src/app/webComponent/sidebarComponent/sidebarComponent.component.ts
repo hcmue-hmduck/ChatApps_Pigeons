@@ -16,7 +16,6 @@ import { ActivatedRoute } from '@angular/router';
 import { NavigationService, AppView } from '../../services/navigation';
 import { AuthService } from '../../services/authService';
 import { Conversation } from '../../services/conversation';
-import { User } from '../../services/user';
 import { SocketService } from '../../services/socket';
 import { ConversationLayoutComponent } from '../conversationLayout/conversationLayout.component';
 import { RelationshipLayoutComponent } from '../relationshipLayout/relationshipLayout.component';
@@ -31,6 +30,7 @@ import { UserInforModel } from '../userinforModel/userinforModel';
     changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SidebarComponent implements OnInit, OnDestroy {
+    
     navService = inject(NavigationService);
     authService = inject(AuthService);
     cdr = inject(ChangeDetectorRef);
@@ -43,14 +43,10 @@ export class SidebarComponent implements OnInit, OnDestroy {
     loading = signal(false);
     isReady = signal(false);
 
-    private interval1s: any;
-    private interval60s: any;
-    private interval3600s: any;
 
     constructor(
         private router: ActivatedRoute,
         private conversationService: Conversation,
-        private userService: User,
         private socketService: SocketService,
     ) { }
 
@@ -60,10 +56,6 @@ export class SidebarComponent implements OnInit, OnDestroy {
         this.setupSocketListeners();
         this.loadConversations();
         this.socketService.emit('userOnline', this.currentUserId);
-
-        this.interval1s = setInterval(() => this.cdr.markForCheck(), 30000);
-        this.interval60s = setInterval(() => this.cdr.markForCheck(), 300000);
-        this.interval3600s = setInterval(() => this.cdr.markForCheck(), 3600000);
     }
 
     ngOnDestroy() {
@@ -72,9 +64,6 @@ export class SidebarComponent implements OnInit, OnDestroy {
         this.socketService.off('userStatusChanged');
         this.socketService.off('onlineUsersList');
         this.socketService.off('updateProfile');
-        clearInterval(this.interval1s);
-        clearInterval(this.interval60s);
-        clearInterval(this.interval3600s);
     }
 
     // ── Socket Listeners ──────────────────────────────────
@@ -83,7 +72,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
             this.onlineUsers.set(new Set(userIds));
         });
 
-        this.socketService.on('userStatusChanged', (data: { userId: string; status: string }) => {
+        this.socketService.on('userStatusChanged', (data: { userId: string; status: string, last_online_at: Date }) => {
             const set = new Set(this.onlineUsers());
             data.status === 'online' ? set.add(data.userId) : set.delete(data.userId);
             this.onlineUsers.set(set);
