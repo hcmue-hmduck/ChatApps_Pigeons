@@ -294,6 +294,10 @@ class HomeService {
         return await pinnedmessagesService.deletePinnedMessage(pinMessageId);
     }
 
+    async getUserInfor(userID) {
+        return await usersService.getUserById(userID);
+    }
+
     async updateUserInfor(userID, userInfor) {
         return await usersService.updateUser(userID, userInfor);
     }

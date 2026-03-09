@@ -20,7 +20,7 @@ export class User {
 
   // Lấy user theo ID
   getUserById(id: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}/${id}`);
+    return this.http.get(`${this.apiUrlHome}/${id}`);
   }
 
   // Tạo user mới

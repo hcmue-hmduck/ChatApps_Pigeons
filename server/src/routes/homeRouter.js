@@ -11,7 +11,7 @@ router.get('/userblocks/:blockerId', homeController.getUserBlocks);
 router.post('/userblocks', homeController.createUserBlock);
 router.delete('/userblocks/:id', homeController.deleteUserBlock);
 
-
+router.get('/userinfor/:userID', homeController.getUserInfor);
 router.put('/userinfor/:userID', homeController.putUserInfor);
 
 router.get('/friends/:userId', homeController.getFriendByUserId);

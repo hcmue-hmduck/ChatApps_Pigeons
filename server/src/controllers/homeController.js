@@ -2,6 +2,17 @@ const homeService = require('../services/homeService');
 const SuccessResponse = require('../core/successResponse');
 
 class HomeController {
+    async getUserInfor (req, res) {
+        const userID = req.params.userID;
+        const userInfor = await homeService.getUserInfor(userID);
+        new SuccessResponse({
+            message: 'Get user infor successfully',
+            metadata: {
+                userInfor: userInfor,
+            },
+        }).send(res);
+    }
+
     async putUserInfor (req, res) {
         const userID = req.params.userID;
         const userInfor = req.body;

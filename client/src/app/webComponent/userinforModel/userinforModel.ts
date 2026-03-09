@@ -30,6 +30,7 @@ export class UserInforModel {
 
     userInfo = signal<any>(null);
     @Input() currentUserId = '';
+    @Input() editPremission = true;
     @Output() profileUpdated = new EventEmitter<any>();
 
     showProfileModal = signal(false);
@@ -40,27 +41,19 @@ export class UserInforModel {
 
     constructor(
         private userService: User,
-        private socketService: SocketService,
+        private socketService: SocketService
     ) { }
 
     ngOnInit() {
         if (this.currentUserId) {
-            this.authService.setUserInfor(this.currentUserId);
-            this.fetchUserInfo();
+            // this.authService.setUserInfor(this.currentUserId);
+            // Hàm this.authService.setUserInfor() có nhiệm vụ: 
+            // Lưu đè lại thông tin người đang đăng nhập hệ thống. 
+            // Nếu bạn đứng ở trang Relationship và bấm xem Profile của người bạn A 
+            // Dòng code này sẽ lấy Avatar và Tên của người bạn A Ghi đè lên tài khoản của bạn 
+            // (Biến bạn thành người đó trên toàn App cho đến khi F5 trang).
             this.setupSocketListeners();
         }
-    }
-
-    private fetchUserInfo() {
-        this.userService.getUserById(this.currentUserId).subscribe({
-            next: (res) => {
-                if (res.metadata && res.metadata.user) {
-                    this.userInfo.set(res.metadata.user);
-                    this.cdr.markForCheck();
-                }
-            },
-            error: (err) => console.error('Error fetching user info in modal:', err)
-        });
     }
 
     // Public method to open the modal from parent

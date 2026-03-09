@@ -211,9 +211,9 @@ export class MessagesLayoutComponent
     initEffect() {
         // Tạo log join group call
         effect(() => {
-            if(this.callService.logJoinGroupCall()) {
-                const {content, conversationId} = this.callService.logJoinGroupCall()!;
-                if(content && conversationId) this.updateUIWithNewMessage(content, conversationId);
+            if (this.callService.logJoinGroupCall()) {
+                const { content, conversationId } = this.callService.logJoinGroupCall()!;
+                if (content && conversationId) this.updateUIWithNewMessage(content, conversationId);
 
                 untracked(() => {
                     this.callService.logJoinGroupCall.set(null);
@@ -381,8 +381,7 @@ export class MessagesLayoutComponent
                     if (m.sender_id === data.id) {
                         return {
                             ...m,
-                            pinned_by_name: data.full_name,
-                            pinned_by_avatar: data.avatar_url
+                            sender_name: data.full_name
                         };
                     }
 
@@ -581,7 +580,7 @@ export class MessagesLayoutComponent
         this.messagesService
             .postMessage(this.conversationId, this.currentUserId, content, replyTo, messageType)
             .subscribe({
-                
+
                 next: (response) => {
                     this.loading = false;
                     // K được xoá, t fix cái lỗi vô đạo bất lương này 10h liền đấy !!!!!!
@@ -601,7 +600,7 @@ export class MessagesLayoutComponent
                         sender_name: currentUser.full_name,
                         sender_avatar: currentUser.avatar_url,
                     };
-                    
+
                     this.lastMessageId = newMessage.id;
                     console.log('newMessage', newMessage);
                     console.log('this.lastMessageId', this.lastMessageId);
@@ -631,7 +630,7 @@ export class MessagesLayoutComponent
 
     updateUIWithNewMessage(newMessage: any, conversationId?: string) {
         // cập nhật lastMessage
-        if(!conversationId) conversationId = this.conversationId; 
+        if (!conversationId) conversationId = this.conversationId;
         this.conversationService.putConversation(conversationId, {
             last_message_id: newMessage.id
         }).subscribe({
@@ -640,12 +639,12 @@ export class MessagesLayoutComponent
         });
 
         // không cập nhật nội dung trò chuyện nếu đang ở conversation khác
-        if(this.conversationId === conversationId) {
+        if (this.conversationId === conversationId) {
             this.getMessagesData.update((old) => ({
-                    ...old,
-                    homeMessagesData: {
-                        ...old.homeMessagesData,
-                        messages: [...old.homeMessagesData.messages, newMessage],
+                ...old,
+                homeMessagesData: {
+                    ...old.homeMessagesData,
+                    messages: [...old.homeMessagesData.messages, newMessage],
                 },
             }))
         }
@@ -685,13 +684,55 @@ export class MessagesLayoutComponent
         )
     }
 
+    dropdownTop = 0;
+    dropdownLeft = 0;
+
     // Menu methods
-    toggleMenu(messageId: string | number) {
-        this.showMenuId = this.showMenuId === messageId ? null : messageId;
+    toggleMenu(messageId: string | number, event: MouseEvent) {
+        if (this.showMenuId === messageId) {
+            this.showMenuId = null;
+        } else {
+            this.showMenuId = messageId;
+
+            // Tính toán vị trí fixed
+            const target = event.currentTarget as HTMLElement;
+            const rect = target.getBoundingClientRect();
+
+            const dropdownHeight = 160;
+            const dropdownWidth = 140;
+
+            // X-Axis Left/Right logic
+            const isMeRow = target.closest('.me-row');
+            let leftPosition = 0;
+            if (isMeRow) {
+                // Nhắn của mình: Menu nằm bên trái nút
+                leftPosition = rect.left - dropdownWidth - 8;
+            } else {
+                // Nhắn của người khác: Menu nằm bên phải nút
+                leftPosition = rect.right + 8;
+            }
+            // Chống tràn ngang 
+            if (leftPosition + dropdownWidth > window.innerWidth) {
+                leftPosition = window.innerWidth - dropdownWidth - 10;
+            }
+            if (leftPosition < 10) leftPosition = 10;
+
+            // Y-Axis Top/Bottom logic
+            let topPosition = rect.top + 4; // Căn hơi thụt xuống chút xíu so với nút
+            // Chống bị lấp bởi khung chat dưới cùng
+            if (topPosition + dropdownHeight > window.innerHeight) {
+                topPosition = window.innerHeight - dropdownHeight - 60; // Thụt lên cao hơn vạch input
+            }
+
+            this.dropdownTop = topPosition;
+            this.dropdownLeft = leftPosition;
+        }
     }
 
     closeMenu() {
-        this.showMenuId = null;
+        setTimeout(() => {
+            this.showMenuId = null;
+        }, 250);
     }
 
     @HostListener('document:click', ['$event'])

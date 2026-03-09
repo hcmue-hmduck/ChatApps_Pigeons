@@ -1,13 +1,15 @@
-import { Component, signal, OnChanges, SimpleChanges, Input, ChangeDetectorRef, HostListener } from '@angular/core';
+import { Component, signal, OnChanges, SimpleChanges, Input, ChangeDetectorRef, HostListener, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Friend } from '../../services/friend';
 import { FriendRequest } from '../../services/friendrequest';
+import { User } from '../../services/user';
+import { UserInforModel } from '../userinforModel/userinforModel';
 
 @Component({
     selector: 'relationship-layout',
     standalone: true,
-    imports: [CommonModule, FormsModule],
+    imports: [CommonModule, FormsModule, UserInforModel],
     templateUrl: './relationshipLayout.component.html',
     styleUrls: ['./relationshipLayout.component.css']
 })
@@ -23,6 +25,7 @@ export class RelationshipLayoutComponent implements OnChanges {
     loading = false;
     error = '';
     showMoreMenuId: string | null = null;
+    currentFriendId: string = '';
 
     @HostListener('document:click', ['$event'])
     onDocumentClick(event: MouseEvent) {
@@ -32,9 +35,12 @@ export class RelationshipLayoutComponent implements OnChanges {
         }
     }
 
+    @ViewChild('userProfileModal') userProfileModal!: UserInforModel;
+
     constructor(
         private friendService: Friend,
         private friendRequestService: FriendRequest,
+        private userService: User,
         private cdr: ChangeDetectorRef,
     ) { }
 
@@ -51,6 +57,12 @@ export class RelationshipLayoutComponent implements OnChanges {
     toggleMoreMenu(friendId: string, event: Event) {
         event.stopPropagation();
         this.showMoreMenuId = this.showMoreMenuId === friendId ? null : friendId;
+    }
+
+    closeMoreMenu() {
+        setTimeout(() => {
+            this.showMoreMenuId = null;
+        }, 150);
     }
 
     loadData() {
@@ -162,5 +174,21 @@ export class RelationshipLayoutComponent implements OnChanges {
                 return nameB.localeCompare(nameA, 'vi-VN');
             });
         });
+    }
+
+    viewProfile(friend_id: string) {
+        console.log('View profile:', friend_id);
+        this.currentFriendId = friend_id;
+        this.userService.getUserById(friend_id).subscribe({
+            next: (response) => {
+                console.log(response);
+                this.userProfileModal.open(response.metadata.userInfor);
+            },
+            error: (error) => {
+                console.error('Error loading user:', error);
+                this.error = error.message;
+            }
+        });
+       
     }
 }

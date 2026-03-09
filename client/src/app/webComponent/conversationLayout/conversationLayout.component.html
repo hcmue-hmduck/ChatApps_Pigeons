@@ -46,7 +46,7 @@
                                     [attr.data-count]="3">
                                     <ng-container *ngFor="let p of (conv.participants || []).slice(0,3); let i=index">
                                         <img class="avatar-stack-item avatar-pos-{{i}}"
-                                            [src]="p.avatar_url || 'https://i.pravatar.cc/40?img=1'"
+                                            [src]="p.avatar_url"
                                             [alt]="p.full_name">
                                     </ng-container>
                                 </div>
@@ -54,7 +54,7 @@
                                     [attr.data-count]="4">
                                     <ng-container *ngFor="let p of (conv.participants || []).slice(0,4); let i=index">
                                         <img class="avatar-stack-item avatar-pos-{{i}}"
-                                            [src]="p.avatar_url || 'https://i.pravatar.cc/40?img=1'"
+                                            [src]="p.avatar_url"
                                             [alt]="p.full_name">
                                     </ng-container>
                                 </div>
@@ -62,7 +62,7 @@
                                     [attr.data-count]="conv.participants?.length || 0">
                                     <ng-container *ngFor="let p of (conv.participants || []).slice(0,2); let i=index">
                                         <img class="avatar-stack-item avatar-pos-{{i}}"
-                                            [src]="p.avatar_url || 'https://i.pravatar.cc/40?img=1'"
+                                            [src]="p.avatar_url"
                                             [alt]="p.full_name">
                                     </ng-container>
                                 </div>
@@ -72,8 +72,7 @@
                         </ng-container>
                         <ng-container *ngIf="conv.type === 'direct' && getOtherParticipant(conv) as other">
                             <div class="avatar-wrapper">
-                                <img [src]="other.avatar_url || 'https://i.pravatar.cc/46?img=1'"
-                                    [alt]="other.full_name" class="avatar-img">
+                                <img [src]="other.avatar_url" [alt]="other.full_name" class="avatar-img">
                                 <span class="status-dot" [class.online]="isUserOnline(other.user_id)"
                                     [class.offline]="!isUserOnline(other.user_id)"></span>
                             </div>

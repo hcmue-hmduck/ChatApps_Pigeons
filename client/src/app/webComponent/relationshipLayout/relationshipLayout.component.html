@@ -71,13 +71,13 @@
                     <div class="friend-item" *ngFor="let friend of group.friends">
                         <img [src]="friend.avatar_url" alt="Avatar" class="friend-avatar">
                         <div class="friend-name">{{ friend.full_name }}</div>
-                        <div class="friend-more-container">
+                        <div class="friend-more-container" (mouseleave)="closeMoreMenu()">
                             <button class="more-btn friend-more-btn" title="Tuỳ chọn"
                                 (click)="toggleMoreMenu(friend.id, $event)">
                                 <i class="bi bi-three-dots"></i>
                             </button>
                             <div class="friend-dropdown" *ngIf="showMoreMenuId === friend.id">
-                                <button class="dropdown-item">
+                                <button class="dropdown-item" (click)="viewProfile(friend.friend_id)">
                                     <i class="bi bi-person-lines-fill dropdown-item-icon"></i>
                                     <span class="dropdown-item-text">Xem thông tin</span>
                                 </button>
@@ -144,4 +144,7 @@
             </div>
         </div>
     </div>
+
+    <!-- Child Profile Modal Component -->
+    <user-infor-modal #userProfileModal [currentUserId]="currentFriendId" [editPremission]="false"></user-infor-modal>
 </div>
