@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Friend } from '../../services/friend';
 import { FriendRequest } from '../../services/friendrequest';
 import { User } from '../../services/user';
-import { UserInforModel } from '../userinforModel/userinforModel';
+import { UserInforModel } from '../userinforModel/userinforModel.component';
 
 @Component({
     selector: 'relationship-layout',
@@ -179,16 +179,6 @@ export class RelationshipLayoutComponent implements OnChanges {
     viewProfile(friend_id: string) {
         console.log('View profile:', friend_id);
         this.currentFriendId = friend_id;
-        this.userService.getUserById(friend_id).subscribe({
-            next: (response) => {
-                console.log(response);
-                this.userProfileModal.open(response.metadata.userInfor);
-            },
-            error: (error) => {
-                console.error('Error loading user:', error);
-                this.error = error.message;
-            }
-        });
-       
+        this.userProfileModal.open(friend_id);
     }
 }

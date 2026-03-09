@@ -56,6 +56,7 @@ class HomeService {
                     user_id: user.id,
                     full_name: user.full_name,
                     avatar_url: user.avatar_url,
+                    last_online_at: user.last_online_at,
                     owner: isOwner,
                 }
                 : {

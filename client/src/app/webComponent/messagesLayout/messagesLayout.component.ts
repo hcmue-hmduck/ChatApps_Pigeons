@@ -25,6 +25,11 @@ import { Conversation } from '../../services/conversation';
 import { Messages } from '../../services/messages';
 import { SocketService } from '../../services/socket';
 
+export interface UserPresence {
+    status: string;
+    last_online_at: string | Date;
+}
+
 @Component({
     selector: 'messages-layout',
     standalone: true,
@@ -50,6 +55,10 @@ export class MessagesLayoutComponent
     @Input() currentUserId: any = {};
     @Input() getMessageInfor: any = {};
     @Input() onlineUsers: Set<string> = new Set();
+    @Input() UserPresence: Map<string, UserPresence> = new Map();
+    @Input() tick1s: number = 0;
+    @Input() tick60s: number = 0;
+    @Input() tick3600s: number = 0;
 
     @ViewChild('messagesContent') messagesContent!: ElementRef<HTMLDivElement>;
     @ViewChild('messageInput', { static: false }) messageInput!: ElementRef<HTMLTextAreaElement>;
@@ -60,8 +69,39 @@ export class MessagesLayoutComponent
 
     // Check if a user is online
     isUserOnline(userId: string): boolean {
-        return this.onlineUsers.has(userId);
+        // return this.onlineUsers.has(userId);
+        return this.UserPresence.get(userId)?.status === 'online';
     }
+
+    getUserLastOnlineAt(participant: any): string | Date {
+        // Lấy dữ liệu realtime từ UserPresence trước
+        const presence = this.UserPresence.get(participant?.user_id);
+        if (presence && presence.last_online_at) {
+            return presence.last_online_at;
+        }
+        // Nếu không có realtime, lấy DB data khởi tạo ban đầu
+        return participant?.last_online_at;
+    }
+
+    relativeTime(dateInput: string | Date, tick1s: number, tick60s: number, tick3600s: number): string {
+        if (!dateInput) return '';
+
+        // Đoạn này lấy timestamp kể cả khi đưa vào là String hay Date object
+        const timeToCompare = typeof dateInput === 'string'
+            ? new Date(dateInput.endsWith('Z') || dateInput.length !== 23 ? dateInput : dateInput.replace(' ', 'T') + 'Z').getTime()
+            : dateInput.getTime();
+
+        const diff = Math.floor((Date.now() - timeToCompare) / 1000);
+        if (diff <= 60) { const _ = tick1s; return 'vài giây'; }
+        if (diff < 3600) { const _ = tick60s; return `${Math.floor(diff / 60)} phút`; }
+        const _ = tick3600s;
+        if (diff < 86400) return `${Math.floor(diff / 3600)} giờ`;
+        if (diff < 604800) return `${Math.floor(diff / 86400)} ngày`;
+        if (diff < 2592000) return `${Math.floor(diff / 604800)} tuần`;
+        if (diff < 31536000) return `${Math.floor(diff / 2592000)} tháng`;
+        return `${Math.floor(diff / 31536000)} năm`;
+    }
+
     isLoaded = false;
     hasNewMessage = false; // Track new messages when scrolled up
 
@@ -1138,7 +1178,7 @@ export class MessagesLayoutComponent
         this.callService.startCall(this.conversationId, this.conversationType, media_type).subscribe({
             next: async (res) => {
                 const { userName, userAvatarUrl } = this.authService.getUserInfor();
-                
+
                 const message = {
                     ...res.metadata,
                     sender_name: userName,

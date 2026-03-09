@@ -65,8 +65,18 @@
                     <p class="chat-header-sub"
                         *ngIf="getMessageInfor?.type === 'direct' && getMessageInfor?.other_participant"
                         [class.online]="isUserOnline(getMessageInfor.other_participant.user_id)">
-                        {{ isUserOnline(getMessageInfor.other_participant.user_id) ? 'Đang hoạt động' : 'Ngoại tuyến'
-                        }}
+                        <ng-container *ngIf="isUserOnline(getMessageInfor.other_participant.user_id)">
+                            Đang hoạt động
+                        </ng-container>
+                        <ng-container *ngIf="!isUserOnline(getMessageInfor.other_participant.user_id)">
+                            <ng-container
+                                *ngIf="getUserLastOnlineAt(getMessageInfor.other_participant) && relativeTime(getUserLastOnlineAt(getMessageInfor.other_participant), tick1s, tick60s, tick3600s) as rTime; else offlineText">
+                                Hoạt động {{ rTime }} trước
+                            </ng-container>
+                            <ng-template #offlineText>
+                                Ngoại tuyến
+                            </ng-template>
+                        </ng-container>
                     </p>
                 </div>
             </div>
@@ -342,10 +352,8 @@
                                     <!-- Avatar -->
                                     <div *ngIf="isLastOfSenderOrDay(i, getMessagesData().homeMessagesData.messages)"
                                         class="msg-avatar-wrap">
-                                        <img class="msg-avatar"
-                                            [src]="msg.sender_avatar || 'https://i.pravatar.cc/40?img=' + msg.sender_id"
-                                            [alt]="msg.sender_name"
-                                            (error)="msg.sender_avatar = 'https://i.pravatar.cc/40?u=' + msg.sender_id">
+                                        <img class="msg-avatar" [src]="msg.sender_avatar" [alt]="msg.sender_name"
+                                            (error)="msg.sender_avatar = 'null' + msg.sender_id">
                                     </div>
                                     <div *ngIf="!isLastOfSenderOrDay(i, getMessagesData().homeMessagesData.messages)"
                                         class="msg-avatar-placeholder">

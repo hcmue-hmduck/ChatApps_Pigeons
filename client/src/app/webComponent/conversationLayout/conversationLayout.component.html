@@ -45,24 +45,21 @@
                                 <div class="avatar-stack" *ngIf="(conv.participants?.length || 0) === 3"
                                     [attr.data-count]="3">
                                     <ng-container *ngFor="let p of (conv.participants || []).slice(0,3); let i=index">
-                                        <img class="avatar-stack-item avatar-pos-{{i}}"
-                                            [src]="p.avatar_url"
+                                        <img class="avatar-stack-item avatar-pos-{{i}}" [src]="p.avatar_url"
                                             [alt]="p.full_name">
                                     </ng-container>
                                 </div>
                                 <div class="avatar-stack" *ngIf="(conv.participants?.length || 0) > 3"
                                     [attr.data-count]="4">
                                     <ng-container *ngFor="let p of (conv.participants || []).slice(0,4); let i=index">
-                                        <img class="avatar-stack-item avatar-pos-{{i}}"
-                                            [src]="p.avatar_url"
+                                        <img class="avatar-stack-item avatar-pos-{{i}}" [src]="p.avatar_url"
                                             [alt]="p.full_name">
                                     </ng-container>
                                 </div>
                                 <div class="avatar-stack" *ngIf="(conv.participants?.length || 0) < 3"
                                     [attr.data-count]="conv.participants?.length || 0">
                                     <ng-container *ngFor="let p of (conv.participants || []).slice(0,2); let i=index">
-                                        <img class="avatar-stack-item avatar-pos-{{i}}"
-                                            [src]="p.avatar_url"
+                                        <img class="avatar-stack-item avatar-pos-{{i}}" [src]="p.avatar_url"
                                             [alt]="p.full_name">
                                     </ng-container>
                                 </div>
@@ -73,8 +70,22 @@
                         <ng-container *ngIf="conv.type === 'direct' && getOtherParticipant(conv) as other">
                             <div class="avatar-wrapper">
                                 <img [src]="other.avatar_url" [alt]="other.full_name" class="avatar-img">
-                                <span class="status-dot" [class.online]="isUserOnline(other.user_id)"
-                                    [class.offline]="!isUserOnline(other.user_id)"></span>
+                                <!-- NẾU ONLINE: Hiện dấu chấm xanh -->
+                                <span *ngIf="isUserOnline(other.user_id)" class="status-dot online"></span>
+                                <!-- NẾU OFFLINE: Hiện thời gian nhỏ ở dưới góc avatar, NẾU KHÔNG CÓ THỜI GIAN -> TRẢ VỀ DẤU CHẤM XÁM -->
+                                <ng-container *ngIf="!isUserOnline(other.user_id)">
+                                    <ng-container
+                                        *ngIf="getUserLastOnlineAt(other) && relativeTime(getUserLastOnlineAt(other), tick1s(), tick60s(), tick3600s()) as rTime; else offlineDot">
+                                        <span class="status-text">
+                                            {{ rTime.replace(' phút', 'p').replace(' giờ', 'g').replace(' ngày',
+                                            'd').replace(' tuần', 'w').replace(' tháng', 'm').replace(' năm',
+                                            'y').replace('vừa xong', '1p') }}
+                                        </span>
+                                    </ng-container>
+                                    <ng-template #offlineDot>
+                                        <span class="status-dot offline"></span>
+                                    </ng-template>
+                                </ng-container>
                             </div>
                         </ng-container>
                     </div>
@@ -114,8 +125,9 @@
     <main class="chat-area" *ngIf="isFirstConversationReady()">
         <messages-layout *ngIf="selectedConversationId && isFirstConversationReady()"
             [conversationId]="selectedConversationId" [currentUserId]="currentUserId"
-            [getMessageInfor]="getMessageInfor" [onlineUsers]="onlineUsers"
-            [conversationType]="selectedConversationType">
+            [getMessageInfor]="getMessageInfor" [onlineUsers]="onlineUsers()"
+            [conversationType]="selectedConversationType" [UserPresence]="UserPresence()" [tick1s]="tick1s()"
+            [tick60s]="tick60s()" [tick3600s]="tick3600s()">
         </messages-layout>
         <div *ngIf="!selectedConversationId" class="welcome-screen">
             <div class="welcome-icon"><i class="bi bi-chat-heart-fill"></i></div>

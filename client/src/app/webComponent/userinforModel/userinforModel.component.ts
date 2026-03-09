@@ -20,8 +20,8 @@ import { SocketService } from '../../services/socket';
     selector: 'user-infor-modal',
     standalone: true,
     imports: [CommonModule, FormsModule],
-    templateUrl: './userinforModel.html',
-    styleUrls: ['./userinforModel.css'],
+    templateUrl: './userinforModel.component.html',
+    styleUrls: ['./userinforModel.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class UserInforModel {
@@ -36,6 +36,7 @@ export class UserInforModel {
     showProfileModal = signal(false);
     isEditingProfile = signal(false);
     showChangePassword = signal(false);
+    loadingUser = signal(false);
     editForm: any = {};
     changePassForm = { oldPass: '', newPass: '', confirmPass: '' };
 
@@ -46,21 +47,30 @@ export class UserInforModel {
 
     ngOnInit() {
         if (this.currentUserId) {
-            // this.authService.setUserInfor(this.currentUserId);
-            // Hàm this.authService.setUserInfor() có nhiệm vụ: 
-            // Lưu đè lại thông tin người đang đăng nhập hệ thống. 
-            // Nếu bạn đứng ở trang Relationship và bấm xem Profile của người bạn A 
-            // Dòng code này sẽ lấy Avatar và Tên của người bạn A Ghi đè lên tài khoản của bạn 
-            // (Biến bạn thành người đó trên toàn App cho đến khi F5 trang).
             this.setupSocketListeners();
         }
     }
 
-    // Public method to open the modal from parent
-    open(user: any) {
-        this.userInfo.set(user);
+    // Public method to open the modal from parent using User ID
+    open(userId: string) {
+        this.currentUserId = userId;
+        this.loadingUser.set(true);
         this.showProfileModal.set(true);
         this.cdr.markForCheck();
+
+        this.userService.getUserById(userId).subscribe({
+            next: (response) => {
+                const user = response.metadata?.userInfor || response.metadata || null;
+                this.userInfo.set(user);
+                this.loadingUser.set(false);
+                this.cdr.markForCheck();
+            },
+            error: (error) => {
+                console.error('Error loading user info:', error);
+                this.loadingUser.set(false);
+                this.cdr.markForCheck();
+            }
+        });
     }
 
     setupSocketListeners() {

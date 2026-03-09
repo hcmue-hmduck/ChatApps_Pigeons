@@ -1,8 +1,8 @@
 import {
     Component,
     Input,
-    OnChanges,
-    SimpleChanges,
+    OnInit,
+    OnDestroy,
     signal,
     inject,
     ChangeDetectionStrategy,
@@ -13,6 +13,12 @@ import { CommonModule } from '@angular/common';
 import { MessagesLayoutComponent } from '../messagesLayout/messagesLayout.component';
 import { NavigationService } from '../../services/navigation';
 import { SocketService } from '../../services/socket';
+import { Conversation } from '../../services/conversation';
+
+export interface UserPresence {
+    status: string;
+    last_online_at: string | Date;
+}
 
 @Component({
     selector: 'conversation-layout',
@@ -23,14 +29,16 @@ import { SocketService } from '../../services/socket';
     encapsulation: ViewEncapsulation.None,
     changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ConversationLayoutComponent implements OnChanges {
-    // Nhận data từ SidebarComponent (shell cha)
-    @Input() conversations: any = {};
+export class ConversationLayoutComponent implements OnInit, OnDestroy {
     @Input() currentUserId: string = '';
-    @Input() onlineUsers: Set<string> = new Set();
+
+    conversations: any = {};
+    onlineUsers = signal<Set<string>>(new Set());
+    UserPresence = signal<Map<string, UserPresence>>(new Map());
 
     navService = inject(NavigationService);
     cdr = inject(ChangeDetectorRef);
+    conversationService = inject(Conversation);
 
     // Conversation selection state (local to this component)
     selectedConversationId: string = '';
@@ -46,65 +54,154 @@ export class ConversationLayoutComponent implements OnChanges {
     private interval1s: any;
     private interval60s: any;
     private interval3600s: any;
-    private socketsReady = false;
 
     constructor(private socketService: SocketService) { }
 
-    ngOnChanges(changes: SimpleChanges) {
-        // Khi conversations được load lần đầu, tự chọn conversation đầu tiên hoặc set ready
-        if (changes['conversations'] && this.conversations?.homeConversationData) {
-            const joined = this.conversations.homeConversationData.joinedConversations || [];
-            if (joined.length > 0) {
-                if (!this.isFirstConversationReady()) {
-                    this.handleConversationID(joined[0]);
-                }
-            } else {
-                if (!this.isFirstConversationReady()) {
-                    this.isFirstConversationReady.set(true);
-                }
-            }
-
-            if (!this.socketsReady) {
-                this.socketsReady = true;
-                this.setupSocketListeners();
-                this.startTimerIntervals();
-            }
+    ngOnInit() {
+        if (this.currentUserId) {
+            this.setupSocketListeners();
+            this.loadConversations();
+            this.startTimerIntervals();
+            this.socketService.emit('userOnline', this.currentUserId);
         }
     }
 
     ngOnDestroy() {
-        this.socketService.off('updateProfile_conv');
+        this.socketService.off('updateProfile');
+        this.socketService.off('updateConversation');
+        this.socketService.off('userStatusChanged');
+        this.socketService.off('onlineUsersList');
         clearInterval(this.interval1s);
         clearInterval(this.interval60s);
         clearInterval(this.interval3600s);
     }
 
+    // ── Load Data ─────────────────────────────────────────
+    loadConversations() {
+        this.conversationService.getConversations(this.currentUserId).subscribe({
+            next: (response) => {
+                this.conversations = response.metadata || {};
+                const joined = this.conversations.homeConversationData?.joinedConversations || [];
+                if (joined.length > 0) {
+                    if (!this.isFirstConversationReady()) {
+                        this.handleConversationID(joined[0]);
+                    }
+                } else {
+                    if (!this.isFirstConversationReady()) {
+                        this.isFirstConversationReady.set(true);
+                    }
+                }
+
+                joined.forEach((conv: any) =>
+                    this.socketService.emit('joinConversation', conv.conversation_id)
+                );
+
+                this.cdr.markForCheck();
+            },
+            error: (error) => {
+                console.error('Error loading conversations:', error);
+                this.isFirstConversationReady.set(true);
+            },
+        });
+    }
+
     private setupSocketListeners() {
-        // Lắng nghe updateProfile để cập nhật getMessageInfor khi đang chat
+        this.socketService.on('onlineUsersList', (userIds: string[]) => {
+            this.onlineUsers.set(new Set(userIds));
+            this.UserPresence.update(currentMap => {
+                const updatedMap = new Map(currentMap);
+                userIds.forEach((userId: string) => {
+                    updatedMap.set(userId, {
+                        status: 'online',
+                        last_online_at: new Date()
+                    });
+                });
+                return updatedMap;
+            });
+        });
+
+        this.socketService.on('userStatusChanged', (data: { userId: string; status: string, last_online_at: Date }) => {
+            const set = new Set(this.onlineUsers());
+            data.status === 'online' ? set.add(data.userId) : set.delete(data.userId);
+            this.onlineUsers.set(set);
+
+            this.UserPresence.update(currentMap => {
+                const updatedMap = new Map(currentMap);
+                updatedMap.set(data.userId, {
+                    status: data.status,
+                    last_online_at: data.last_online_at
+                });
+                return updatedMap;
+            });
+        });
+
+        this.socketService.on('updateConversation', (data: any) => {
+            const cur = this.conversations;
+            if (!cur?.homeConversationData?.joinedConversations) return;
+            const updated = [
+                ...cur.homeConversationData.joinedConversations
+                    .filter((c: any) => c.conversation_id === data.conversation_id)
+                    .map((c: any) => ({
+                        ...c,
+                        lastMessage: {
+                            ...c.lastMessage,
+                            sender_id: data.sender_id,
+                            content: data.content,
+                            created_at: data.created_at,
+                            updated_at: data.updated_at,
+                            is_deleted: data.is_deleted,
+                            message_type: data.message_type,
+                        },
+                    })),
+                ...cur.homeConversationData.joinedConversations.filter(
+                    (c: any) => c.conversation_id !== data.conversation_id,
+                ),
+            ];
+            this.conversations = {
+                ...cur,
+                homeConversationData: { ...cur.homeConversationData, joinedConversations: updated },
+            };
+            this.cdr.markForCheck();
+        });
+
         this.socketService.on('updateProfile', (data: any) => {
-            if (!this.selectedConversationId) return;
-            console.log('Update Profile: ', data);
-
-            // 1. Lấy dữ liệu danh sách hiện tại
             const curConversations = this.conversations;
-            const convList = curConversations?.homeConversationData?.joinedConversations;
-            if (!convList?.length) return;
+            let updatedUserInfo = curConversations?.homeConversationData?.userInfo;
 
-            // 2. clone & immutable update toàn bộ mảng joinedConversations chứa data thay đổi
+            if (data.id === this.currentUserId) {
+                updatedUserInfo = data;
+            }
+
+            const convList = curConversations?.homeConversationData?.joinedConversations;
+            if (!convList?.length) {
+                if (data.id === this.currentUserId && curConversations?.homeConversationData) {
+                    this.conversations = {
+                        ...curConversations,
+                        homeConversationData: {
+                            ...curConversations.homeConversationData,
+                            userInfo: updatedUserInfo
+                        }
+                    };
+                }
+                return;
+            }
+
             const updatedConvList = convList.map((conv: any) => {
-                // Tạo mảng participants mới nạp giá trị mới nếu tìm thấy ID khớp
                 const updatedParticipants = conv.participants?.map((p: any) =>
                     p.user_id === data.id ? { ...p, full_name: data.full_name, avatar_url: data.avatar_url } : p
                 );
 
-                // Nếu trong cái chuỗi lặp list conv mà đây trúng phóc cái Group/Direct ID đang mở
-                if (conv.conversation_id === this.selectedConversationId) {
+                const isDirectWithUpdated =
+                    conv.type === 'direct' &&
+                    data.id !== this.currentUserId &&
+                    conv.participants?.some((p: any) => p.user_id === data.id);
+
+                if (conv.conversation_id === this.selectedConversationId && this.selectedConversationId) {
                     const isDirectOtherUser = conv.type === 'direct' && data.id !== this.currentUserId;
-                    // Dispatch thẳng cho Panel 3 Component con
                     const updatedTargetParticipant = updatedParticipants.find((p: any) => p.user_id === data.id);
                     this.getMessageInfor = {
                         ...this.getMessageInfor,
-                        user_info: data,
+                        user_info: updatedUserInfo,
                         title: isDirectOtherUser ? data.full_name : conv.title,
                         other_participant: isDirectOtherUser ? updatedTargetParticipant : this.getMessageInfor.other_participant,
                         participants: updatedParticipants
@@ -113,21 +210,19 @@ export class ConversationLayoutComponent implements OnChanges {
 
                 return {
                     ...conv,
-                    participants: updatedParticipants
-                }
+                    participants: updatedParticipants,
+                    ...(isDirectWithUpdated && { title: data.full_name }),
+                };
             });
 
-            // 3. Emit trigger reference memory CỦA TỔNG Object @Input() conversations cho Angular chạy Render
             this.conversations = {
                 ...curConversations,
                 homeConversationData: {
                     ...curConversations.homeConversationData,
+                    userInfo: updatedUserInfo,
                     joinedConversations: updatedConvList
                 }
             };
-
-            console.log('Send Data: ', this.getMessageInfor);
-            // Kêu Component update HTML List
             this.cdr.markForCheck();
         });
     }
@@ -170,7 +265,18 @@ export class ConversationLayoutComponent implements OnChanges {
     }
 
     isUserOnline(userId: string): boolean {
-        return this.onlineUsers.has(userId);
+        // return this.onlineUsers().has(userId);
+        return this.UserPresence().get(userId)?.status === 'online';
+    }
+
+    getUserLastOnlineAt(participant: any): string | Date {
+        // Lấy dữ liệu realtime từ UserPresence trước
+        const presence = this.UserPresence().get(participant.user_id);
+        if (presence && presence.last_online_at) {
+            return presence.last_online_at;
+        }
+        // Nếu không có realtime, lấy DB data khởi tạo ban đầu
+        return participant.last_online_at;
     }
 
     hasOnlineUser(conv: any): boolean {
@@ -195,11 +301,15 @@ export class ConversationLayoutComponent implements OnChanges {
         return isSystem ? name : `${name}:`;
     }
 
-    relativeTime(dateStr: string, tick1s: number, tick60s: number, tick3600s: number): string {
-        if (!dateStr) return '';
-        let isoStr = dateStr;
-        if (!isoStr.endsWith('Z') && isoStr.length === 23) isoStr = isoStr.replace(' ', 'T') + 'Z';
-        const diff = Math.floor((Date.now() - new Date(isoStr).getTime()) / 1000);
+    relativeTime(dateInput: string | Date, tick1s: number, tick60s: number, tick3600s: number): string {
+        if (!dateInput) return '';
+
+        // Đoạn này lấy timestamp kể cả khi đưa vào là String hay Date object
+        const timeToCompare = typeof dateInput === 'string'
+            ? new Date(dateInput.endsWith('Z') || dateInput.length !== 23 ? dateInput : dateInput.replace(' ', 'T') + 'Z').getTime()
+            : dateInput.getTime();
+
+        const diff = Math.floor((Date.now() - timeToCompare) / 1000);
         if (diff <= 60) { const _ = tick1s; return 'vừa xong'; }
         if (diff < 3600) { const _ = tick60s; return `${Math.floor(diff / 60)} phút`; }
         const _ = tick3600s;

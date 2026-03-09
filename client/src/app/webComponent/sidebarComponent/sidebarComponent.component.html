@@ -31,7 +31,7 @@
         <!-- User Avatar & Modal Trigger -->
         <div class="sidebar-bottom">
             <img [src]="userInfo()?.avatar_url" alt="avatar" class="sidebar-user-avatar" title="Hồ sơ cá nhân"
-                *ngIf="userInfo()" (click)="userProfileModal.open(userInfo())">
+                *ngIf="userInfo()" (click)="userProfileModal.open(currentUserId)">
             <button class="sidebar-logout-btn" title="Đăng xuất">
                 <i class="bi bi-box-arrow-right"></i>
                 <span class="nav-tooltip">Đăng xuất</span>
@@ -44,7 +44,7 @@
 
         <!-- VIEW: Messages (Panel 2 + Panel 3) -->
         <conversation-layout [style.display]="navService.activeView() === 'messages' ? 'block' : 'none'"
-            [conversations]="conversations()" [currentUserId]="currentUserId" [onlineUsers]="onlineUsers()">
+            [currentUserId]="currentUserId">
         </conversation-layout>
 
         <!-- VIEW: Friends -->

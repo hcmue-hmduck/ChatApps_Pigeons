@@ -75,12 +75,19 @@ routes(app);
 // Map để lưu trạng thái online của users (tối ưu cho multiple devices)
 const onlineUsers = new Map(); // { userId: Set<socketId> }
 const socketToUser = new Map(); // { socketId: userId } - O(1) lookup
+const disconnectTimeouts = new Map(); // { userId: NodeJS.Timeout }
 
 io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
 
     // User login - set online status
     socket.on('userOnline', async (userId) => {
+        // Hủy timeout thiết lập offline nếu user reconnect (reload trang)
+        if (disconnectTimeouts.has(userId)) {
+            clearTimeout(disconnectTimeouts.get(userId));
+            disconnectTimeouts.delete(userId);
+        }
+
         // Thêm socketId vào Set của userId
         if (!onlineUsers.has(userId)) {
             onlineUsers.set(userId, new Set());
@@ -169,23 +176,33 @@ io.on('connection', (socket) => {
 
             // Chỉ emit offline nếu không còn connection nào
             if (onlineUsers.get(userId).size === 0) {
-                onlineUsers.delete(userId);
-                const lastOnlineAt = new Date();
-                // Cập nhật last_online_at vào database
-                try {
-                    await models.User.update(
-                        {
-                            status: 'offline',
-                            last_online_at: lastOnlineAt,
-                        },
-                        { where: { id: userId } },
-                    );
-                    console.log(`Updated last_online_at for user ${userId}`);
-                } catch (error) {
-                    console.error(`Error updating last_online_at for user ${userId}:`, error);
-                }
+                // Sử dụng setTimeout để đợi 3 giây, tránh tình trạng client reload trang bị hiển thị offline
+                const timeoutId = setTimeout(async () => {
+                    // Check lại nếu vẫn thật sự không có connection nào
+                    if (onlineUsers.has(userId) && onlineUsers.get(userId).size === 0) {
+                        onlineUsers.delete(userId);
+                        disconnectTimeouts.delete(userId);
 
-                io.emit('userStatusChanged', { userId, status: 'offline', last_online_at: lastOnlineAt });
+                        const lastOnlineAt = new Date();
+                        // Cập nhật last_online_at vào database
+                        try {
+                            await models.User.update(
+                                {
+                                    status: 'offline',
+                                    last_online_at: lastOnlineAt,
+                                },
+                                { where: { id: userId } },
+                            );
+                            console.log(`Updated last_online_at for user ${userId}`);
+                        } catch (error) {
+                            console.error(`Error updating last_online_at for user ${userId}:`, error);
+                        }
+
+                        io.emit('userStatusChanged', { userId, status: 'offline', last_online_at: lastOnlineAt });
+                    }
+                }, 3000); // Đợi 3 giây (grace period)
+
+                disconnectTimeouts.set(userId, timeoutId);
             }
         }
     });
