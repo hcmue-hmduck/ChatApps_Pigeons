@@ -74,18 +74,18 @@ export class IncommingCallLayout {
     }
 
     startVibrating() {
-        navigator.vibrate([1000, 1000]);
+                navigator.vibrate([1000, 1000]);
         if (navigator.vibrate) {
-            this.vibrateIntervalId = window.setInterval(() => {
-                navigator.vibrate([1000, 2000]);
-            }, 3000);
+                this.vibrateIntervalId = window.setInterval(() => {
+                    navigator.vibrate([1000, 2000]);
+                }, 3000);
+            }
         }
-    }
 
     stopVibrating() {
-        if (this.vibrateIntervalId) {
-            window.clearInterval(Number(this.vibrateIntervalId));
-            this.vibrateIntervalId = null;
+            if (this.vibrateIntervalId) {
+                window.clearInterval(Number(this.vibrateIntervalId));
+                this.vibrateIntervalId = null;
         } else navigator.vibrate(0);
     }
 

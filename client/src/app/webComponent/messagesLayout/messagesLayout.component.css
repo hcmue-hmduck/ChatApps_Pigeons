@@ -912,87 +912,96 @@
 }
 
 /* ============================================================
-   CALL BUBBLE - UNIFIED LIGHT THEME
+   CALL BUBBLE - MODERN THEME (Matches App UI)
    ============================================================ */
 .call-bubble-modern {
     background: #ffffff;
-    border-radius: 12px;
-    padding: 14px 16px 12px 16px;
+    border-radius: 16px;
+    padding: 12px;
     display: flex;
     flex-direction: column;
-    min-width: 180px;
-    color: #111827;
+    min-width: 220px;
+    color: var(--text-primary);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    border: 1px solid rgba(0, 0, 0, 0.04);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    /* Đổ bóng mềm hơn */
+    border: 1px solid var(--border);
 }
 
 /* Đảm bảo ghi đè nền gốc nếu bong bóng nằm trong me-row/other-row */
 .me-row .call-bubble-modern,
 .other-row .call-bubble-modern {
     background: #ffffff !important;
-    color: #111827 !important;
+    color: var(--text-primary) !important;
 }
 
-.call-title {
+.call-top-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding: 4px 4px 0 4px;
+}
+
+.call-icon-circle {
+    width: 40px;
+    height: 40px;
+    background: var(--conv-bg);
+    /* Xám xanh nhạt đồng bộ app */
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.call-icon-circle i {
+    font-size: 18px;
+    color: var(--accent);
+    /* Màu xanh chủ đạo */
+}
+
+/* Biến thể icon gọi nhỡ/huỷ có thể giữ màu đỏ */
+.call-icon-circle i.audio-missed,
+.call-icon-circle i.video-missed {
+    color: #ef4444;
+}
+
+.call-info-cols {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.call-title-text {
     font-size: 15px;
     font-weight: 600;
-    color: #1f2937;
-    margin-bottom: 8px;
+    color: var(--text-primary);
     line-height: 1.2;
 }
 
-.call-details-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 12px;
-}
-
-.call-icon-main {
-    font-size: 18px;
-    color: #6b7280;
-    /* Xám nhạt cho icon */
-}
-
-/* Màu nhấn đỏ khi gọi nhỡ/huỷ */
-.call-icon-main.bi-telephone-x,
-.call-icon-main.bi-camera-video-off {
-    color: #ef4444 !important;
-}
-
-.call-desc-text {
+.call-sub-text {
     font-size: 13px;
-    color: #6b7280;
-    /* Xám mờ */
-    font-weight: 500;
-}
-
-.call-divider {
-    height: 1px;
-    background: #f3f4f6;
-    /* Đường mờ xám */
-    margin: 0 -16px 10px -16px;
-    /* Tràn viền ra padding của thẻ cha */
+    color: var(--text-secondary);
 }
 
 .call-action-btn-modern {
-    background: transparent;
+    background: var(--accent-lighter);
     border: none;
-    color: var(--msg-accent, #0084ff);
-    /* Màu xanh app */
+    color: var(--accent);
     font-size: 14px;
-    font-weight: 600;
-    padding: 6px 0 2px 0;
+    font-weight: 700;
+    padding: 10px;
     cursor: pointer;
     text-align: center;
-    transition: background 0.2s, opacity 0.2s;
+    transition: all 0.2s;
     width: 100%;
-    border-radius: 6px;
+    border-radius: 10px;
 }
 
 .call-action-btn-modern:hover {
-    background: rgba(0, 132, 255, 0.05);
+    background: var(--accent-light);
+    color: var(--accent-hover);
 }
 
 /* ---- MESSAGE ACTIONS (hover buttons) ---- */

@@ -280,24 +280,20 @@
 
                                             <ng-template #callTemplate>
                                                 <div class="call-bubble-modern">
-                                                    <!-- Title (Bạn đã hủy) -->
-                                                    <div class="call-title">
-                                                        {{ getCallMainContent(msg.call) }}
+                                                    <div class="call-top-section">
+                                                        <div class="call-icon-circle">
+                                                            <i [className]="getCallIcon(msg.call)"></i>
+                                                        </div>
+                                                        <div class="call-info-cols">
+                                                            <div class="call-title-text">
+                                                                {{ getCallMainContent(msg.call) }}
+                                                            </div>
+                                                            <div class="call-sub-text">
+                                                                {{ getCallDescription(msg.call) }}
+                                                            </div>
+                                                        </div>
                                                     </div>
 
-                                                    <!-- Icon & Description (Cuộc gọi thoại) -->
-                                                    <div class="call-details-row">
-                                                        <i [className]="getCallIcon(msg.call)"
-                                                            class="call-icon-main"></i>
-                                                        <span class="call-desc-text">
-                                                            {{ getCallDescription(msg.call) }}
-                                                        </span>
-                                                    </div>
-
-                                                    <!-- Divider -->
-                                                    <div class="call-divider"></div>
-
-                                                    <!-- Action button -->
                                                     <button class="call-action-btn-modern" (click)="handleVoiceCall()">
                                                         Gọi lại
                                                     </button>
@@ -434,29 +430,20 @@
 
                                             <ng-template #callTemplate>
                                                 <div class="call-bubble-modern">
-                                                    <!-- Title (Bạn đã hủy / Bị nhỡ) -->
-                                                    <div class="call-title">
-                                                        {{ getCallMainContent(msg.call) }}
+                                                    <div class="call-top-section">
+                                                        <div class="call-icon-circle">
+                                                            <i [className]="getCallIcon(msg.call)"></i>
+                                                        </div>
+                                                        <div class="call-info-cols">
+                                                            <div class="call-title-text">
+                                                                {{ getCallMainContent(msg.call) }}
+                                                            </div>
+                                                            <div class="call-sub-text">
+                                                                {{ getCallDescription(msg.call) }}
+                                                            </div>
+                                                        </div>
                                                     </div>
 
-                                                    <!-- Icon & Description (Cuộc gọi thoại / Video) -->
-                                                    <div class="call-details-row">
-                                                        <i [className]="getCallIcon(msg.call)"
-                                                            class="call-icon-main"></i>
-                                                        <span class="call-desc-text">
-                                                            <ng-container *ngIf="!msg.call.duration_seconds">
-                                                                {{ getCallDescription(msg.call) }}
-                                                            </ng-container>
-                                                            <ng-container *ngIf="msg.call.duration_seconds">
-                                                                {{ getCallDescription(msg.call) }}
-                                                            </ng-container>
-                                                        </span>
-                                                    </div>
-
-                                                    <!-- Divider -->
-                                                    <div class="call-divider"></div>
-
-                                                    <!-- Action button -->
                                                     <button class="call-action-btn-modern" (click)="handleVoiceCall()">
                                                         Gọi lại
                                                     </button>
