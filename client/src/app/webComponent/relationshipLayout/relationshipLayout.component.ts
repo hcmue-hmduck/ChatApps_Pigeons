@@ -6,8 +6,10 @@ import Swal from 'sweetalert2';
 import { Friend } from '../../services/friend';
 import { FriendRequest } from '../../services/friendrequest';
 import { User } from '../../services/user';
+import { UserBlock } from '../../services/userBlock';
 import { SocketService } from '../../services/socket';
 import { UserInforModel } from '../userinforModel/userinforModel.component';
+import { response } from 'express';
 
 @Component({
     selector: 'relationship-layout',
@@ -24,6 +26,7 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
     currentSort = signal<'asc' | 'desc'>('asc');
 
     friends = signal<any[]>([]);
+    blockedUser = signal<any[]>([]);
     friendRequests = signal<any[]>([]);
 
     // Tự động tính toán lại danh sách hiển thị khi friends hoặc currentSort thay đổi
@@ -72,7 +75,7 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
     constructor(
         private friendService: Friend,
         private friendRequestService: FriendRequest,
-        private userService: User,
+        private userBlockService: UserBlock,
         private socketService: SocketService,
         private cdr: ChangeDetectorRef,
     ) { }
@@ -136,45 +139,45 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
         if (!this.currentUserId) return;
         this.loading = true;
 
-        // Fetch data simultaneously
-        let friendsLoaded = false;
-        let requestsLoaded = false;
+        // Sử dụng forkJoin để đợi cả 3 API trả về cùng lúc
+        forkJoin({
+            friends: this.friendService.getFriendByUserId(this.currentUserId),
+            requests: this.friendRequestService.getFriendRequestsByUserId(this.currentUserId),
+            blocks: this.userBlockService.getBlockedUserByUserId(this.currentUserId)
+        }).subscribe({
+            next: (res: any) => {
+                // 1. Lấy dữ liệu thô từ response
+                const allFriends = res.friends.metadata.friends || [];
+                const friendRequests = res.requests.metadata.friendRequests || [];
+                const blockedUserIds = (res.blocks.metadata.userBlocks || []).map((b: any) => b.blocked_id);
 
-        const checkCompletion = () => {
-            if (friendsLoaded && requestsLoaded) {
+                // 2. Lọc ra danh sách bị chặn (để hiển thị trong tab Blocked nếu cần)
+                const blockedList = allFriends.filter((f: any) => blockedUserIds.includes(f.friend_id));
+                this.blockedUser.set(blockedList);
+
+                // 3. Lọc danh sách bạn bè (loại bỏ những người đã bị chặn)
+                const validFriends = allFriends.filter((f: any) => !blockedUserIds.includes(f.friend_id));
+                this.friends.set(validFriends);
+
+                // 4. Cập nhật Friend Requests
+                this.friendRequests.set(friendRequests);
+
+                this.loading = false;
+                this.cdr.detectChanges();
+
+                // Lúc này log chắc chắn sẽ có dữ liệu
+                console.log('Blocked users count:', this.blockedUser().length);
+                console.log('Friends count:', this.friends().length);
+            },
+            error: (error) => {
+                console.error('Error loading data:', error);
+                this.error = error.message;
                 this.loading = false;
                 this.cdr.detectChanges();
             }
-        };
-
-        this.friendService.getFriendByUserId(this.currentUserId).subscribe({
-            next: (response) => {
-                this.friends.set(response.metadata.friends || []);
-                friendsLoaded = true;
-                checkCompletion();
-            },
-            error: (error) => {
-                console.error('Error loading friends:', error);
-                this.error = error.message;
-                friendsLoaded = true;
-                checkCompletion();
-            }
-        });
-
-        this.friendRequestService.getFriendRequestsByUserId(this.currentUserId).subscribe({
-            next: (response) => {
-                this.friendRequests.set(response.metadata.friendRequests || []);
-                requestsLoaded = true;
-                checkCompletion();
-            },
-            error: (error) => {
-                console.error('Error loading friend requests:', error);
-                this.error = error.message;
-                requestsLoaded = true;
-                checkCompletion();
-            }
         });
     }
+
 
     groupFriendsByAlphabet(friends: any[]): { letter: string, friends: any[] }[] {
         if (!friends || friends.length === 0) return [];
@@ -277,7 +280,7 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
                         showConfirmButton: false,
                         position: 'top-end',
                         toast: true
-                    }); 
+                    });
                 },
                 error: (error) => {
                     console.error('Error accepting friend request:', error);
@@ -285,5 +288,49 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
                 }
             });
         }
+    }
+
+    blockUser(friend: any) {
+        console.log(friend);
+        const { friend_id, full_name } = friend;
+        Swal.fire({
+            title: `Chặn "${full_name}"?`,
+            text: 'Bạn có chắc chắn muốn chặn người này không? Họ sẽ không thể gửi tin nhắn cho bạn.',
+            icon: 'warning',
+            input: 'textarea',
+            inputPlaceholder: 'Nhập lý do chặn (không bắt buộc)...',
+            showCancelButton: true,
+            confirmButtonText: 'Chặn',
+            cancelButtonText: 'Hủy',
+            confirmButtonColor: '#ef4444',
+            inputAttributes: {
+                'autocapitalize': 'off',
+                'autocorrect': 'off'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const reason = result.value || '';
+                this.userBlockService.createBlockedUser(this.currentUserId, friend_id, reason).subscribe({
+                    next: () => {
+                        Swal.fire({
+                            title: 'Đã chặn!',
+                            text: 'Người dùng này đã bị chặn.',
+                            icon: 'success',
+                            timer: 1500,
+                            showConfirmButton: false,
+                            toast: true,
+                            position: 'top-end'
+                        });
+                        
+                        this.friends.update((friends: any) => friends.filter((friend: any) => friend.friend_id !== friend_id));
+                        this.blockedUser.update((blockedUsers: any) => [...blockedUsers, friend]);
+                    },
+                    error: (error) => {
+                        console.error('Error blocking user:', error);
+                        Swal.fire('Lỗi', 'Không thể chặn người dùng này. Vui lòng thử lại.', 'error');
+                    }
+                });
+            }
+        });
     }
 }
