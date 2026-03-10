@@ -57,7 +57,7 @@ export class CallService {
 
     updateStatus(
         call_id: string,
-        status: 'cancelled' | 'completed' | 'declined' | 'missed',
+        status: 'cancelled' | 'completed' | 'declined' | 'missed' | 'ended',
     ): void {
         if (!call_id) return;
 

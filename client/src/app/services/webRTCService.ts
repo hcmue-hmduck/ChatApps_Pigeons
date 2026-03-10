@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { DIRECT_CALL, GROUP_CALL } from '../models/callSessionData.model';
+import { DIRECT_CALL, GROUP_CALL } from '../models/callData';
 import { AuthService } from './authService';
 import { CallStateService } from './callStateService';
 import { LivekitCallService } from './livekitCallService';
@@ -17,6 +17,8 @@ export class WebRtcService {
     private socketService = inject(SocketService);
     private authService = inject(AuthService);
     private callService = inject(CallService);
+
+
 
     constructor() {
         // Đồng bộ callStatus và isCaller từ instance con về instance cha
@@ -179,5 +181,12 @@ export class WebRtcService {
         this.p2p.cleanUp();
         this.livekit.cleanUp();
         this.callState.cleanUp({ resetCallStatus });
+    }
+
+    getGroupCallMembersCount() {
+        if(this.callState.conversationType !== GROUP_CALL) return undefined;
+        const remoteParticipantCount = this.livekit.getRemoteParticipantsCount();
+        if(!remoteParticipantCount) return undefined;
+        return remoteParticipantCount + 1;
     }
 }

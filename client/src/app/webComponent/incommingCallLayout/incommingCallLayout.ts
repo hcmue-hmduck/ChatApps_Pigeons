@@ -1,6 +1,6 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Component, effect, inject, PLATFORM_ID, signal } from '@angular/core';
-import { CallSessionData, DIRECT_CALL, GROUP_CALL } from '../../models/callSessionData.model';
+import { CallSessionData, DIRECT_CALL, GROUP_CALL } from '../../models/callData';
 import { AuthService } from '../../services/authService';
 import { CallService } from '../../services/callService';
 import { CallStateService } from '../../services/callStateService';

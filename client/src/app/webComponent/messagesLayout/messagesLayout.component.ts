@@ -18,7 +18,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PickerModule } from '@ctrl/ngx-emoji-mart';
-import { GROUP_CALL } from '../../models/callSessionData.model';
+import { GROUP_CALL } from '../../models/callData';
 import { AuthService } from '../../services/authService';
 import { CallService } from '../../services/callService';
 import { Conversation } from '../../services/conversation';

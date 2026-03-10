@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { DIRECT_CALL } from '../models/callSessionData.model';
+import { DIRECT_CALL } from '../models/callData';
 import { AuthService } from './authService';
 import { CallStateService } from './callStateService';
 import { SocketService } from './socket';

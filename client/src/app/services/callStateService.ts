@@ -1,5 +1,5 @@
 import { inject, Injectable, signal } from '@angular/core';
-import { CallSessionData, DIRECT_CALL } from '../models/callSessionData.model';
+import { CallSessionData, CallStatus, DIRECT_CALL } from '../models/callData';
 import { SocketService } from './socket';
 import { AuthService } from './authService';
 
@@ -23,9 +23,7 @@ export class CallStateService {
     isCameraOn = signal<boolean>(true);
     isMicOn = signal<boolean>(true);
     isCaller = signal<boolean>(false);
-    callStatus = signal<
-        'idle' | 'ringing' | 'connected' | 'ended' | 'declined' | 'missed' | 'failed'
-    >('idle');
+    callStatus = signal<CallStatus>('idle');
 
     conversationId = '';
     conversationType = '';
@@ -60,7 +58,6 @@ export class CallStateService {
 
         if (resetCallStatus) this.callStatus.set('idle');
 
-        console.log(`Call ID: `, this.callId);
         console.log('CallStateService cleaned up');
     }
 

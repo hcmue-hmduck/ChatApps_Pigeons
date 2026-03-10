@@ -6,7 +6,7 @@ import { CallStateService } from './callStateService';
 import { LivekitService } from './livekitService';
 import { SocketService } from './socket';
 import { lastValueFrom } from 'rxjs';
-import { GROUP_CALL } from '../models/callSessionData.model';
+import { GROUP_CALL } from '../models/callData';
 import { Conversation } from './conversation';
 import { CallService } from './callService';
 
@@ -277,5 +277,9 @@ export class LivekitCallService {
         else await this.room?.localParticipant.setMicrophoneEnabled(false);
 
         this.callState.isMicOn.set(enable);
+    }
+
+    getRemoteParticipantsCount() {
+        return this.room?.remoteParticipants.size;
     }
 }

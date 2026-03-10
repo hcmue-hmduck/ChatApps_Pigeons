@@ -4,6 +4,7 @@ import { AuthService } from '../../services/authService';
 import { SocketService } from '../../services/socket';
 import { CallStateService } from '../../services/callStateService';
 import { WebRtcService } from '../../services/webRTCService';
+import { CallBroadcastService } from '../../services/callBroadcastService';
 
 @Component({
     selector: 'app-call-layout',
@@ -17,6 +18,7 @@ export class CallLayoutComponent implements OnInit {
     authService = inject(AuthService);
     activatedRoute = inject(ActivatedRoute);
     callState = inject(CallStateService);
+    callBroadcastService = inject(CallBroadcastService);
 
     readonly avatarUrlDefault = '/assets/AvatarDefault.jpg';
 
@@ -133,6 +135,14 @@ export class CallLayoutComponent implements OnInit {
     @HostListener('window:pagehide', ['$event'])
     onPageHide(event: PageTransitionEvent) {
         // pagehide đáng tin cậy hơn unload và ít bị kích hoạt sai như visibilitychange
+
+        const groupCallMembersCount = this.webRTCService.getGroupCallMembersCount();
+        if (!(groupCallMembersCount && groupCallMembersCount > 1)) {
+            this.callBroadcastService.emitEvent('call_close', {
+                call_id: this.callState.callId,
+            });
+        }
+
         this.webRTCService.endCall();
     }
 }
