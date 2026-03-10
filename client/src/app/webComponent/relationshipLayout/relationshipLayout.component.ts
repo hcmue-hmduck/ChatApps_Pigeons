@@ -22,7 +22,7 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
     protected readonly title = signal('Relationship');
     @Input() currentUserId: string = '';
 
-    currentTab: 'friends' | 'friend_requests' = 'friends';
+    currentTab: 'friends' | 'friend_requests' | 'blocked' = 'friends';
     currentSort = signal<'asc' | 'desc'>('asc');
 
     friends = signal<any[]>([]);
@@ -96,7 +96,7 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
         }
     }
 
-    setTab(tab: 'friends' | 'friend_requests') {
+    setTab(tab: 'friends' | 'friend_requests' | 'blocked') {
         this.currentTab = tab;
     }
 
@@ -146,28 +146,36 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
             blocks: this.userBlockService.getBlockedUserByUserId(this.currentUserId)
         }).subscribe({
             next: (res: any) => {
-                // 1. Lấy dữ liệu thô từ response
                 const allFriends = res.friends.metadata.friends || [];
                 const friendRequests = res.requests.metadata.friendRequests || [];
-                const blockedUserIds = (res.blocks.metadata.userBlocks || []).map((b: any) => b.blocked_id);
+                const userBlocksRaw = res.blocks.metadata.userBlocks || [];
 
-                // 2. Lọc ra danh sách bị chặn (để hiển thị trong tab Blocked nếu cần)
-                const blockedList = allFriends.filter((f: any) => blockedUserIds.includes(f.friend_id));
-                this.blockedUser.set(blockedList);
+                const blockMap = new Map<string, any>(userBlocksRaw.map((b: any) => [b.blocked_id, b]));
 
-                // 3. Lọc danh sách bạn bè (loại bỏ những người đã bị chặn)
-                const validFriends = allFriends.filter((f: any) => !blockedUserIds.includes(f.friend_id));
+                const validFriends: any[] = [];
+                const blockedList: any[] = [];
+
+                console.log(blockMap);
+
+                allFriends.forEach((f: any) => {
+                    const blockData = blockMap.get(f.friend_id);
+                    if (!blockData) {
+                        validFriends.push(f);
+                    } else {
+                        blockedList.push({
+                            ...f,
+                            block_id: blockData.id,
+                            reason: blockData.reason
+                        });
+                    }
+                });
+
                 this.friends.set(validFriends);
-
-                // 4. Cập nhật Friend Requests
+                this.blockedUser.set(blockedList);
                 this.friendRequests.set(friendRequests);
 
                 this.loading = false;
                 this.cdr.detectChanges();
-
-                // Lúc này log chắc chắn sẽ có dữ liệu
-                console.log('Blocked users count:', this.blockedUser().length);
-                console.log('Friends count:', this.friends().length);
             },
             error: (error) => {
                 console.error('Error loading data:', error);
@@ -178,6 +186,44 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
         });
     }
 
+
+    unblockUser(block_id: string, full_name: string) {
+        console.log("block_user", this.blockedUser());
+        Swal.fire({
+            title: `Bỏ chặn "${full_name}"?`,
+            text: 'Bạn có chắc chắn muốn bỏ chặn người này không?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Bỏ chặn',
+            cancelButtonText: 'Hủy',
+            confirmButtonColor: '#3b82f6',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                this.userBlockService.deleteBlockedUser(block_id).subscribe({
+                    next: () => {
+                        Swal.fire({
+                            title: 'Thành công!',
+                            text: 'Đã bỏ chặn người dùng.',
+                            icon: 'success',
+                            timer: 1500,
+                            showConfirmButton: false,
+                            toast: true,
+                            position: 'top-end'
+                        });
+                        const unblockedUser = this.blockedUser().find(u => u.block_id === block_id);
+                        if (unblockedUser) {
+                            this.friends.update(list => [...list, unblockedUser]);
+                            this.blockedUser.update(list => list.filter(u => u.block_id !== block_id));
+                        }
+                    },
+                    error: (error) => {
+                        console.error('Error unblocking user:', error);
+                        Swal.fire('Lỗi', 'Không thể bỏ chặn người dùng này.', 'error');
+                    }
+                });
+            }
+        });
+    }
 
     groupFriendsByAlphabet(friends: any[]): { letter: string, friends: any[] }[] {
         if (!friends || friends.length === 0) return [];
@@ -291,7 +337,6 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
     }
 
     blockUser(friend: any) {
-        console.log(friend);
         const { friend_id, full_name } = friend;
         Swal.fire({
             title: `Chặn "${full_name}"?`,
@@ -311,7 +356,14 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
             if (result.isConfirmed) {
                 const reason = result.value || '';
                 this.userBlockService.createBlockedUser(this.currentUserId, friend_id, reason).subscribe({
-                    next: () => {
+                    next: (res) => {
+                        console.log(res.metadata.newUserBlock);
+                        const blockedUser = {
+                            ...friend,
+                            block_id: res.metadata.newUserBlock.id,
+                            reason: reason
+                        }
+                        console.log(blockedUser);
                         Swal.fire({
                             title: 'Đã chặn!',
                             text: 'Người dùng này đã bị chặn.',
@@ -321,9 +373,9 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
                             toast: true,
                             position: 'top-end'
                         });
-                        
+
                         this.friends.update((friends: any) => friends.filter((friend: any) => friend.friend_id !== friend_id));
-                        this.blockedUser.update((blockedUsers: any) => [...blockedUsers, friend]);
+                        this.blockedUser.update((blockedUsers: any) => [...blockedUsers, blockedUser]);
                     },
                     error: (error) => {
                         console.error('Error blocking user:', error);

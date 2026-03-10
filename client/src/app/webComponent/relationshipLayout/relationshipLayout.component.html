@@ -26,6 +26,9 @@
             <li class="menu-item">
                 <i class="bi bi-envelope-paper"></i> Lời mời vào nhóm và cộng đồng
             </li>
+            <li class="menu-item" [class.active]="currentTab === 'blocked'" (click)="setTab('blocked')">
+                <i class="bi bi-shield-slash"></i> Danh sách chặn
+            </li>
         </ul>
     </div>
 
@@ -33,17 +36,17 @@
     <div class="relations-main">
         <!-- Main Header -->
         <div class="main-header">
-            <i class="bi bi-people-fill" *ngIf="currentTab === 'friends'"></i>
-            <i class="bi bi-person-plus-fill" *ngIf="currentTab === 'friend_requests'"></i>
-            <h2>{{ currentTab === 'friends' ? 'Danh sách bạn bè' : 'Lời mời kết bạn' }}</h2>
+            <i class="bi bi-shield-slash-fill" *ngIf="currentTab === 'blocked'"></i>
+            <h2>{{ currentTab === 'friends' ? 'Danh sách bạn bè' : (currentTab === 'friend_requests' ? 'Lời mời kết bạn'
+                : 'Danh sách chặn') }}</h2>
         </div>
 
         <!-- Scrollable Content Area -->
         <div class="main-content">
             <h3 class="friends-count" *ngIf="currentTab === 'friends'">Bạn bè ({{friends().length || 0}})</h3>
             <h3 class="friends-count" *ngIf="currentTab === 'friend_requests'">Lời mời ({{friendRequests().length ||
-                0}})
-            </h3>
+                0}})</h3>
+            <h3 class="friends-count" *ngIf="currentTab === 'blocked'">Đã chặn ({{blockedUser().length || 0}})</h3>
 
             <!-- Filters Bar -->
             <div class="filters-bar" *ngIf="currentTab === 'friends'">
@@ -131,6 +134,28 @@
                 </ng-container>
             </div>
 
+            <!-- List of Blocked Users -->
+            <div class="friends-list-container"
+                *ngIf="currentTab === 'blocked' && !loading && blockedUser().length > 0">
+                <div class="friend-item blocked-item" *ngFor="let user of blockedUser()">
+                    <img [src]="user.avatar_url || 'https://p7.hiclipart.com/preview/355/848/997/computer-icons-user-profile-google-account-photos-icon-account.jpg'"
+                        alt="Avatar" class="friend-avatar">
+                    <div class="friend-info">
+                        <div class="friend-name">{{ user.full_name }}</div>
+                        <div class="blocked-status-wrapper">
+                            <span class="friend-status text-danger">Đã chặn</span>
+                            <span class="block-reason" *ngIf="user.reason"> • Lý do: {{ user.reason }}</span>
+                        </div>
+                    </div>
+                    <div class="request-actions">
+                        <button class="btn btn-primary btn-sm btn-unblock"
+                            (click)="unblockUser(user.block_id, user.full_name)">
+                            <i class="bi bi-shield-check"></i> Bỏ chặn
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Empty State -->
             <div class="empty-state" *ngIf="currentTab === 'friends' && !loading && friends().length === 0">
                 <i class="bi bi-people empty-state-icon"></i>
@@ -141,6 +166,11 @@
                 *ngIf="currentTab === 'friend_requests' && !loading && friendRequests().length === 0">
                 <i class="bi bi-person-plus empty-state-icon"></i>
                 <p>Bạn chưa có lời mời kết bạn nào.</p>
+            </div>
+
+            <div class="empty-state" *ngIf="currentTab === 'blocked' && !loading && blockedUser().length === 0">
+                <i class="bi bi-shield-slash empty-state-icon"></i>
+                <p>Danh sách chặn trống.</p>
             </div>
 
             <!-- Loading State -->
