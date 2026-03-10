@@ -40,8 +40,9 @@
 
         <!-- Scrollable Content Area -->
         <div class="main-content">
-            <h3 class="friends-count" *ngIf="currentTab === 'friends'">Bạn bè ({{friends.length || 0}})</h3>
-            <h3 class="friends-count" *ngIf="currentTab === 'friend_requests'">Lời mời ({{friendRequests.length || 0}})
+            <h3 class="friends-count" *ngIf="currentTab === 'friends'">Bạn bè ({{friends().length || 0}})</h3>
+            <h3 class="friends-count" *ngIf="currentTab === 'friend_requests'">Lời mời ({{friendRequests().length ||
+                0}})
             </h3>
 
             <!-- Filters Bar -->
@@ -52,7 +53,7 @@
                 </div>
                 <div class="filter-select">
                     <i class="bi bi-arrow-down-up"></i>
-                    <select [(ngModel)]="currentSort" (change)="onSortChange($event)">
+                    <select [ngModel]="currentSort()" (change)="onSortChange($event)">
                         <option value="asc">Tên (A-Z)</option>
                         <option value="desc">Tên (Z-A)</option>
                     </select>
@@ -62,8 +63,8 @@
 
             <!-- List of Friends -->
             <div class="friends-list-container"
-                *ngIf="currentTab === 'friends' && !loading && groupedFriends.length > 0">
-                <ng-container *ngFor="let group of groupedFriends">
+                *ngIf="currentTab === 'friends' && !loading && groupedFriends().length > 0">
+                <ng-container *ngFor="let group of groupedFriends()">
 
                     <!-- Tiêu đề theo chữ cái đầu cho giống Zalo -->
                     <div class="list-group-header">{{ group.letter }}</div>
@@ -108,8 +109,8 @@
 
             <!-- List of Friend Requests -->
             <div class="friends-list-container"
-                *ngIf="currentTab === 'friend_requests' && !loading && friendRequests.length > 0">
-                <ng-container *ngFor="let request of friendRequests">
+                *ngIf="currentTab === 'friend_requests' && !loading && friendRequests().length > 0">
+                <ng-container *ngFor="let request of friendRequests()">
                     <div class="friend-item request-item">
                         <img [src]="request.sender_avatar" alt="Avatar" class="friend-avatar request-avatar">
                         <div class="friend-info request-info">
@@ -119,21 +120,25 @@
                             </div>
                         </div>
                         <div class="request-actions">
-                            <button class="btn btn-light btn-sm btn-reject">Từ chối</button>
-                            <button class="btn btn-primary btn-sm btn-accept">Đồng ý</button>
+                            <button class="btn btn-light btn-sm btn-reject"
+                                (click)="processFriendRequest(request.id, request.sender_id, 'rejected', request.note)">Từ
+                                chối</button>
+                            <button class="btn btn-primary btn-sm btn-accept"
+                                (click)="processFriendRequest(request.id, request.sender_id, 'accepted', request.note)">Đồng
+                                ý</button>
                         </div>
                     </div>
                 </ng-container>
             </div>
 
             <!-- Empty State -->
-            <div class="empty-state" *ngIf="currentTab === 'friends' && !loading && friends.length === 0">
+            <div class="empty-state" *ngIf="currentTab === 'friends' && !loading && friends().length === 0">
                 <i class="bi bi-people empty-state-icon"></i>
                 <p>Bạn chưa có người bạn nào.</p>
             </div>
 
             <div class="empty-state"
-                *ngIf="currentTab === 'friend_requests' && !loading && friendRequests.length === 0">
+                *ngIf="currentTab === 'friend_requests' && !loading && friendRequests().length === 0">
                 <i class="bi bi-person-plus empty-state-icon"></i>
                 <p>Bạn chưa có lời mời kết bạn nào.</p>
             </div>
@@ -146,5 +151,6 @@
     </div>
 
     <!-- Child Profile Modal Component -->
-    <user-infor-modal #userProfileModal [currentUserId]="currentFriendId" [editPremission]="false"></user-infor-modal>
+    <user-infor-modal #userProfileModal [editPremission]="false">
+    </user-infor-modal>
 </div>

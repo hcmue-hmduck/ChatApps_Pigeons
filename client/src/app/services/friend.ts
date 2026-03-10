@@ -8,13 +8,13 @@ import { environment } from '../../environments/environment';
 })
 export class Friend {
     private apiUrl = `${environment.apiUrl}/home/friends`;
-    constructor(private http: HttpClient) {}
+    constructor(private http: HttpClient) { }
 
     getFriendByUserId(userId: string): Observable<any> {
         return this.http.get(`${this.apiUrl}/${userId}`);
     }
 
-    createFriend(friendData: any): Observable<any> {
-        return this.http.post(`${this.apiUrl}`, friendData);
+    createFriend(userId: string, friendId: string, is_favorite: boolean, note: string): Observable<any> {
+        return this.http.post(`${this.apiUrl}/${userId}`, { friend_id: friendId, is_favorite, notes: note });
     }
 }

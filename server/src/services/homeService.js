@@ -385,8 +385,8 @@ class HomeService {
         })
     }
 
-    async createFriendByUserId(userId, friend_id, friendship_date, is_favorite, notes) {
-        return await friendsService.createFriendByUserId(userId, friend_id, friendship_date, is_favorite, notes);
+    async createFriendByUserId(userId, friend_id, is_favorite, notes) {
+        return await friendsService.createFriendByUserId(userId, friend_id, is_favorite, notes);
     }
 
     async getFriendRequests(receiverId) {

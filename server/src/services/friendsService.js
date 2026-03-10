@@ -14,12 +14,11 @@ class FriendsService {
         }
     }
 
-    async createFriendByUserId(userId, friend_id, friendship_date, is_favorite, notes) {
+    async createFriendByUserId(userId, friend_id, is_favorite, notes) {
         try {
             return await friendsModel.create({
                 user_id: userId,
                 friend_id: friend_id,
-                friendship_date: friendship_date,
                 is_favorite: is_favorite,
                 notes: notes
             });

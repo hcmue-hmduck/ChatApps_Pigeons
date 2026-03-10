@@ -14,4 +14,12 @@ export class FriendRequest {
     getFriendRequestsByUserId(receiverId: string): Observable<any> {
         return this.http.get(`${this.apiUrl}/${receiverId}`);
     }
+
+    updateFriendRequest(id: string, status: string, note: string): Observable<any> {
+        return this.http.put(`${this.apiUrl}/${id}`, { status, note });
+    }
+
+    createFriendRequest(senderId: string, receiverId: string, note: string): Observable<any> {
+        return this.http.post(`${this.apiUrl}`, { senderId, receiverId, note });
+    }
 }
