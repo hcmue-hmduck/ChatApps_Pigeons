@@ -1,13 +1,13 @@
 /* ============================================================
-   RELATIONSHIP LAYOUT — App Light Theme
+   RELATIONSHIP LAYOUT — Dark Glass Theme
    ============================================================ */
 .relations-root {
     flex: 1;
     display: flex;
     flex-direction: row;
     height: 100vh;
-    color: #1e293b;
-    background: #f8fafc;
+    color: #d8eeff;
+    background: transparent;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     overflow: hidden;
 }
@@ -16,8 +16,10 @@
 .relations-sidebar {
     width: 320px;
     min-width: 320px;
-    background: #ffffff;
-    border-right: 1px solid #e2e8f0;
+    background: rgba(10, 20, 50, 0.88);
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+    border-right: 1px solid rgba(30, 144, 255, 0.16);
     display: flex;
     flex-direction: column;
 }
@@ -33,21 +35,22 @@
     flex: 1;
     display: flex;
     align-items: center;
-    background: #f1f5f9;
+    background: rgba(20, 40, 90, 0.60);
     border-radius: 6px;
     padding: 0 10px;
     height: 36px;
-    border: 1px solid transparent;
+    border: 1px solid rgba(30, 144, 255, 0.18);
     transition: background 0.2s, border-color 0.2s;
 }
 
 .search-bar:focus-within {
-    background: #ffffff;
-    border-color: var(--accent, #4f46e5);
+    background: rgba(25, 50, 110, 0.75);
+    border-color: rgba(30, 144, 255, 0.50);
+    box-shadow: 0 0 12px rgba(30,144,255,0.15);
 }
 
 .search-bar i {
-    color: #64748b;
+    color: #4da8ff;
     font-size: 14px;
     margin-right: 8px;
 }
@@ -56,20 +59,20 @@
     flex: 1;
     background: transparent;
     border: none;
-    color: #1e293b;
+    color: #d8eeff;
     font-size: 13px;
     outline: none;
     width: 100%;
 }
 
 .search-bar input::placeholder {
-    color: #94a3b8;
+    color: rgba(122, 174, 216, 0.50);
 }
 
 .icon-btn {
-    background: #f1f5f9;
-    border: none;
-    color: #475569;
+    background: rgba(30, 144, 255, 0.10);
+    border: 1px solid rgba(30,144,255,0.18);
+    color: #4da8ff;
     font-size: 18px;
     cursor: pointer;
     display: flex;
@@ -82,8 +85,9 @@
 }
 
 .icon-btn:hover {
-    background: #e2e8f0;
-    color: #1e293b;
+    background: rgba(30, 144, 255, 0.22);
+    color: #7ecfff;
+    box-shadow: 0 0 10px rgba(30,144,255,0.22);
 }
 
 .sidebar-menu {
@@ -102,7 +106,7 @@
     gap: 12px;
     font-size: 14px;
     font-weight: 500;
-    color: #475569;
+    color: #7aaed8;
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s;
@@ -110,21 +114,27 @@
 
 .menu-item i {
     font-size: 18px;
-    color: #64748b;
+    color: #4da8ff;
+    opacity: 0.70;
 }
 
 .menu-item:hover {
-    background: #f8fafc;
-    color: #1e293b;
+    background: rgba(30, 144, 255, 0.10);
+    color: #d8eeff;
+}
+
+.menu-item:hover i {
+    opacity: 1;
 }
 
 .menu-item.active {
-    background: var(--accent-light, #e0e7ff);
-    color: var(--accent, #4f46e5);
+    background: rgba(30, 144, 255, 0.18);
+    color: #e2efff;
 }
 
 .menu-item.active i {
-    color: var(--accent, #4f46e5);
+    color: #4da8ff;
+    opacity: 1;
 }
 
 /* ── MAIN CONTENT (Danh sách bên phải) ── */
@@ -132,7 +142,8 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    background: #f8fafc;
+    background: rgba(8, 16, 40, 0.72);
+    backdrop-filter: blur(16px);
     min-width: 0;
 }
 
@@ -141,19 +152,19 @@
     align-items: center;
     gap: 12px;
     padding: 20px 24px;
-    border-bottom: 1px solid #e2e8f0;
-    background: #ffffff;
+    border-bottom: 1px solid rgba(30, 144, 255, 0.14);
+    background: rgba(8, 16, 42, 0.88);
 }
 
 .main-header i {
     font-size: 22px;
-    color: #1e293b;
+    color: #4da8ff;
 }
 
 .main-header h2 {
     font-size: 18px;
     font-weight: 700;
-    color: #1e293b;
+    color: #e2efff;
     margin: 0;
 }
 
@@ -170,14 +181,14 @@
 }
 
 .main-content::-webkit-scrollbar-thumb {
-    background-color: #cbd5e1;
+    background-color: rgba(30,144,255,0.20);
     border-radius: 4px;
 }
 
 .friends-count {
     font-size: 14px;
     font-weight: 600;
-    color: #334155;
+    color: #7aaed8;
     margin: 0 0 16px 0;
 }
 
@@ -190,11 +201,10 @@
 
 .search-box {
     flex: 1;
-    /* Cho phép giãn ra đẩy thẻ Filter Select sang bên phải góc tường */
     display: flex;
     align-items: center;
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
+    background: rgba(18, 34, 80, 0.75);
+    border: 1px solid rgba(30, 144, 255, 0.18);
     border-radius: 6px;
     padding: 0 12px;
     height: 38px;
@@ -202,12 +212,12 @@
 }
 
 .search-box:focus-within {
-    border-color: var(--accent, #4f46e5);
-    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+    border-color: rgba(30,144,255,0.50);
+    box-shadow: 0 0 12px rgba(30,144,255,0.15);
 }
 
 .search-box i {
-    color: #64748b;
+    color: #4da8ff;
     font-size: 14px;
     margin-right: 8px;
 }
@@ -215,21 +225,21 @@
 .search-box input {
     background: transparent;
     border: none;
-    color: #1e293b;
+    color: #d8eeff;
     font-size: 13px;
     outline: none;
     width: 100%;
 }
 
 .search-box input::placeholder {
-    color: #94a3b8;
+    color: rgba(122, 174, 216, 0.50);
 }
 
 .filter-select {
     display: flex;
     align-items: center;
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
+    background: rgba(18, 34, 80, 0.75);
+    border: 1px solid rgba(30, 144, 255, 0.18);
     border-radius: 6px;
     padding: 0 12px;
     height: 38px;
@@ -240,18 +250,18 @@
 }
 
 .filter-select:hover {
-    border-color: #cbd5e1;
+    border-color: rgba(30,144,255,0.40);
 }
 
 .filter-select i:first-child {
-    color: #64748b;
+    color: #4da8ff;
     font-size: 14px;
 }
 
 .filter-select select {
     background: transparent;
     border: none;
-    color: #334155;
+    color: #d8eeff;
     font-size: 13px;
     font-weight: 500;
     outline: none;
@@ -263,7 +273,7 @@
 
 .arrow-icon {
     font-size: 12px;
-    color: #64748b;
+    color: #4da8ff;
     position: absolute;
     right: 12px;
     pointer-events: none;
@@ -272,19 +282,20 @@
 .friends-list-container {
     display: flex;
     flex-direction: column;
-    background: #ffffff;
+    background: rgba(10, 20, 52, 0.82);
+    backdrop-filter: blur(14px);
     border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.40);
+    border: 1px solid rgba(30,144,255,0.14);
     padding: 8px 0;
 }
 
 .list-group-header {
     font-size: 14px;
     font-weight: 800;
-    color: var(--accent, #4f46e5);
+    color: #4da8ff;
     padding: 12px 20px 4px;
-    border-bottom: 2px solid #f1f5f9;
+    border-bottom: 2px solid rgba(30,144,255,0.12);
     margin-bottom: 4px;
 }
 
@@ -297,11 +308,11 @@
 }
 
 .friend-item:hover {
-    background: #e0e7ff;
+    background: rgba(30, 60, 120, 0.45);
 }
 
 .friend-item:hover .friend-name {
-    color: var(--accent, #4f46e5);
+    color: #7ecfff;
 }
 
 .friend-avatar {
@@ -310,21 +321,27 @@
     border-radius: 50%;
     object-fit: cover;
     margin-right: 16px;
-    border: 1px solid #e2e8f0;
+    border: 2px solid rgba(30,144,255,0.30);
+    box-shadow: 0 0 8px rgba(30,144,255,0.12);
 }
 
 .friend-name {
     flex: 1;
     font-size: 15px;
     font-weight: 600;
-    color: #1e293b;
+    color: #d8eeff;
     transition: color 0.2s;
+}
+
+.friend-more-container {
+    position: relative;
+    flex-shrink: 0;
 }
 
 .more-btn {
     background: transparent;
     border: none;
-    color: #94a3b8;
+    color: rgba(100,160,220,0.50);
     font-size: 20px;
     cursor: pointer;
     opacity: 0;
@@ -341,8 +358,8 @@
 }
 
 .more-btn:hover {
-    color: var(--accent, #4f46e5);
-    background: #c7d2fe;
+    color: #4da8ff;
+    background: rgba(30,144,255,0.14);
 }
 
 /* STATES */
@@ -354,7 +371,7 @@
     justify-content: center;
     height: 100%;
     min-height: 300px;
-    color: #64748b;
+    color: #4a6a9a;
     font-size: 14px;
 }
 
@@ -365,8 +382,8 @@
 .spinner-accent {
     width: 32px;
     height: 32px;
-    border: 3px solid var(--accent-light, #e0e7ff);
-    border-top-color: var(--accent, #4f46e5);
+    border: 3px solid rgba(30,144,255,0.15);
+    border-top-color: #1e90ff;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }
@@ -399,13 +416,13 @@
 
 .request-note {
     font-size: 13px;
-    color: #64748b;
+    color: #7aaed8;
     margin-top: 4px;
 }
 
 .request-note-empty {
     font-size: 13px;
-    color: #94a3b8;
+    color: #4a6a9a;
     margin-top: 4px;
 }
 
@@ -418,42 +435,50 @@
     border-radius: 6px;
     font-size: 13px;
     font-weight: 500;
-    background: #f1f5f9;
-    color: #475569;
-    border: none;
+    background: rgba(30, 50, 90, 0.70);
+    color: #7aaed8;
+    border: 1px solid rgba(30,144,255,0.18);
     padding: 6px 16px;
+    transition: all 0.2s;
+}
+
+.btn-reject:hover {
+    background: rgba(30, 50, 90, 0.90);
+    border-color: rgba(30,144,255,0.35);
 }
 
 .btn-accept {
     border-radius: 6px;
     font-size: 13px;
     font-weight: 500;
-    background: var(--accent, #4f46e5);
+    background: #1e90ff;
     color: white;
     border: none;
     padding: 6px 16px;
+    transition: all 0.2s;
+    box-shadow: 0 0 10px rgba(30,144,255,0.35);
+}
+
+.btn-accept:hover {
+    background: #4dabff;
+    box-shadow: 0 0 16px rgba(30,144,255,0.55);
 }
 
 .empty-state-icon {
     font-size: 48px;
-    color: #cbd5e1;
+    color: rgba(30,144,255,0.25);
 }
 
-/* Friend Dropdown Styling */
-.friend-more-container {
-    position: relative;
-    display: flex;
-    align-items: center;
-}
-
+/* Friend Dropdown Dark Glass */
 .friend-dropdown {
     position: absolute;
-    top: 100%;
-    right: 24px;
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
+    top: calc(100% + 4px);
+    right: 0;
+    background: rgba(10, 20, 52, 0.97);
+    backdrop-filter: blur(18px);
+    border: 1px solid rgba(30, 144, 255, 0.22);
     border-radius: 8px;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.65);
     z-index: 1000;
     min-width: 220px;
     padding: 8px 0;
@@ -471,26 +496,27 @@
     text-align: left;
     font-size: 14px;
     font-weight: 500;
-    color: #334155;
+    color: #a8cfff;
     cursor: pointer;
     transition: all 0.2s ease;
 }
 
 .friend-dropdown .dropdown-item:hover {
-    background: #f1f5f9;
+    background: rgba(30, 144, 255, 0.12);
+    color: #d8eeff;
 }
 
 .friend-dropdown .dropdown-item.danger {
-    color: #ef4444;
+    color: #ff7b7b;
 }
 
 .friend-dropdown .dropdown-item.danger:hover {
-    background: #fee2e2;
+    background: rgba(239, 68, 68, 0.12);
 }
 
 .dropdown-divider {
     height: 1px;
-    background-color: #f1f5f9;
+    background-color: rgba(30,144,255,0.10);
     margin: 4px 16px;
 }
 
@@ -500,7 +526,7 @@
 
 .dropdown-arrow-icon {
     font-size: 14px;
-    color: #94a3b8;
+    color: #4da8ff;
 }
 
 .dropdown-item-icon {
@@ -533,19 +559,19 @@
     flex: none;
 }
 
-/* ── BLOCKED LIST ENHANCEMENTS ── */
+/* ── BLOCKED LIST ── */
 .blocked-item {
-    border-left: 4px solid #ef4444;
+    border-left: 4px solid #ff4444;
     margin-bottom: 8px !important;
-    background: #fffafa;
+    background: rgba(200, 20, 20, 0.08);
     border-radius: 8px !important;
-    border-top: 1px solid #fee2e2;
-    border-right: 1px solid #fee2e2;
-    border-bottom: 1px solid #fee2e2;
+    border-top: 1px solid rgba(239,68,68,0.18);
+    border-right: 1px solid rgba(239,68,68,0.18);
+    border-bottom: 1px solid rgba(239,68,68,0.18);
 }
 
 .blocked-item:hover {
-    background: #fee2e2 !important;
+    background: rgba(200, 20, 20, 0.16) !important;
 }
 
 .blocked-status-wrapper {
@@ -557,7 +583,7 @@
 
 .block-reason {
     font-size: 12px;
-    color: #64748b;
+    color: #7aaed8;
     font-style: italic;
     word-break: break-word;
 }
