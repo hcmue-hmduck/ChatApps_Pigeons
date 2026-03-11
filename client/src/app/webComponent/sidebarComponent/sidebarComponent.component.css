@@ -152,7 +152,7 @@
 .sidebar-nav-btn.active {
     background: var(--sidebar-active-bg);
     color: var(--accent);
-    box-shadow: 0 0 20px var(--accent-light);
+    box-shadow: var(--accent-glow);
     border: 1px solid var(--accent-light);
 }
 

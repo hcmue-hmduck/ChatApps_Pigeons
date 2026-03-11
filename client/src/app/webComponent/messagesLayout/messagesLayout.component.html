@@ -84,13 +84,13 @@
             <!-- Action buttons -->
             <div class="chat-header-actions">
                 <button class="header-action-btn" title="Gọi điện" (click)="handleVoiceCall()">
-                    <i class="bi bi-telephone-fill"></i>
+                    <i class="bi bi-telephone"></i>
                 </button>
                 <button class="header-action-btn" title="Gọi video" (click)="handleVideoCall()">
-                    <i class="bi bi-camera-video-fill"></i>
+                    <i class="bi bi-camera-video"></i>
                 </button>
                 <button class="header-action-btn" title="Thông tin">
-                    <i class="bi bi-info-circle-fill"></i>
+                    <i class="bi bi-info-circle"></i>
                 </button>
             </div>
         </div>
@@ -105,7 +105,7 @@
                 (click)="scrollToMessage(pinnedMessages()[pinnedMessages().length - 1].message_id)">
 
                 <div class="pinned-item-icon">
-                    <i class="fas fa-thumbtack"></i>
+                    <i class="bi bi-pin-angle"></i>
                 </div>
                 <div class="pinned-item-body">
                     <div class="pinned-item-title">Tin nhắn</div>
@@ -122,19 +122,19 @@
                     (click)="togglePinnedDropdown($event)">
                     +{{ pinnedMessages().length - 1 }} ghim
                 </button>
-                <i class="fas fa-thumbtack pinned-icon" *ngIf="pinnedMessages().length === 1"></i>
+                <i class="bi bi-pin-angle pinned-icon" *ngIf="pinnedMessages().length === 1"></i>
 
                 <!-- Three-dots menu cho preview bar -->
                 <div class="pinned-menu-wrap" (click)="$event.stopPropagation()">
                     <button class="pinned-item-menu"
                         (click)="togglePinnedMenu($event, pinnedMessages()[pinnedMessages().length - 1].id)">
-                        <i class="fas fa-ellipsis-h"></i>
+                        <i class="bi bi-three-dots"></i>
                     </button>
                     <div class="pinned-context-menu"
                         *ngIf="openPinnedMenuId === pinnedMessages()[pinnedMessages().length - 1].id">
                         <button class="pinned-ctx-item danger"
                             (click)="unpinMessage(pinnedMessages()[pinnedMessages().length - 1]); openPinnedMenuId = null">
-                            <i class="fas fa-thumbtack"></i> Bỏ ghim
+                            <i class="bi bi-pin-angle"></i> Bỏ ghim
                         </button>
                     </div>
                 </div>
@@ -145,13 +145,13 @@
                 <div class="pinned-panel-header-sub">
                     <span>Tất cả tin nhắn đã ghim ({{ pinnedMessages().length }})</span>
                     <button class="pinned-dropdown-close" (click)="showPinnedDropdown = false">
-                        <i class="fas fa-times"></i>
+                        <i class="bi bi-x-lg"></i>
                     </button>
                 </div>
                 <div class="pinned-panel-item" *ngFor="let pm of pinnedMessages()"
                     (click)="scrollToMessage(pm.message_id); showPinnedDropdown = false">
                     <div class="pinned-item-icon">
-                        <i class="fas fa-thumbtack"></i>
+                        <i class="bi bi-pin-angle"></i>
                     </div>
                     <div class="pinned-item-body">
                         <div class="pinned-item-title">Tin nhắn</div>
@@ -163,11 +163,11 @@
                     <!-- Three-dots menu từng item -->
                     <div class="pinned-menu-wrap" (click)="$event.stopPropagation()">
                         <button class="pinned-item-menu" (click)="togglePinnedMenu($event, pm.id)">
-                            <i class="fas fa-ellipsis-h"></i>
+                            <i class="bi bi-three-dots"></i>
                         </button>
                         <div class="pinned-context-menu" *ngIf="openPinnedMenuId === pm.id">
                             <button class="pinned-ctx-item danger" (click)="unpinMessage(pm); openPinnedMenuId = null">
-                                <i class="fas fa-thumbtack"></i> Bỏ ghim
+                                <i class="bi bi-pin-angle"></i> Bỏ ghim
                             </button>
                         </div>
                     </div>
@@ -214,7 +214,7 @@
                                         <!-- Reply preview -->
                                         <ng-container *ngIf="msg.parent_message_id">
                                             <div class="reply-sender-label me-label">
-                                                <i class="fas fa-reply me-1"></i>
+                                                <i class="bi bi-reply me-1"></i>
                                                 {{ msg.parent_message_info.parent_message_sender_id ===
                                                 currentUserId ?
                                                 'Bạn đã trả lời chính mình' :
@@ -243,11 +243,11 @@
                                                     (mouseleave)="closeMenu()">
                                                     <button class="action-btn" title="Tùy chọn"
                                                         (click)="toggleMenu(msg.id, $event)">
-                                                        <i class="fas fa-ellipsis-v"></i>
+                                                        <i class="bi bi-three-dots-vertical"></i>
                                                     </button>
                                                     <button class="action-btn" title="Trả lời"
                                                         (click)="replyMessage(msg.id)">
-                                                        <i class="fas fa-reply"></i>
+                                                        <i class="bi bi-reply"></i>
                                                     </button>
                                                     <!-- Dropdown -->
                                                     <div class="msg-dropdown" *ngIf="showMenuId === msg.id"
@@ -388,7 +388,7 @@
                                         <!-- Reply preview -->
                                         <ng-container *ngIf="msg.parent_message_id">
                                             <div class="reply-sender-label other-label">
-                                                <i class="fas fa-reply me-1"></i>
+                                                <i class="bi bi-reply me-1"></i>
                                                 <ng-container *ngIf="msg.sender_id === currentUserId">
                                                     Bạn đã trả lời {{ msg.parent_message_info.parent_message_name }}
                                                 </ng-container>
@@ -462,11 +462,11 @@
                                                     <div class="message-actions" (mouseleave)="closeMenu()">
                                                         <button class="action-btn" title="Trả lời"
                                                             (click)="replyMessage(msg.id)">
-                                                            <i class="fas fa-reply"></i>
+                                                            <i class="bi bi-reply"></i>
                                                         </button>
                                                         <button class="action-btn" title="Tùy chọn"
                                                             (click)="toggleMenu(msg.id, $event)">
-                                                            <i class="fas fa-ellipsis-v"></i>
+                                                            <i class="bi bi-three-dots-vertical"></i>
                                                         </button>
                                                         <!-- Dropdown -->
                                                         <div class="msg-dropdown" *ngIf="showMenuId === msg.id"
@@ -529,7 +529,7 @@
         <!-- Scroll to bottom button -->
         <button class="scroll-to-bottom" [class.visible]="showScrollToBottom" (click)="scrollToBottomClicked()"
             title="Cuộn xuống dưới">
-            <i class="fas fa-chevron-down"></i>
+            <i class="bi bi-chevron-down"></i>
             <span class="new-badge" *ngIf="hasNewMessage">Mới</span>
         </button>
 
@@ -582,7 +582,7 @@
                     </button>
                     <input type="file" #fileInput (change)="onFileSelected($event)" multiple style="display: none;">
                     <button class="input-icon-btn" title="Thu âm" (click)="handleVoiceRecording()">
-                        <i class="bi bi-mic-fill"></i>
+                        <i class="bi bi-mic"></i>
                     </button>
                 </div>
 
@@ -592,7 +592,7 @@
                         (keydown)="handleKeyDown($event)" rows="1" autofocus>
           </textarea>
                     <button class="emoji-btn" title="Biểu tượng cảm xúc" (click)="toggleEmojiPicker()">
-                        <i class="bi bi-emoji-smile-fill"></i>
+                        <i class="bi bi-emoji-smile"></i>
                     </button>
                     <!-- Emoji picker -->
                     <div *ngIf="showEmojiPicker" class="emoji-picker-wrap">

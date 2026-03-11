@@ -197,7 +197,7 @@
 .chat-header-title {
     font-size: 16px;
     font-weight: 700;
-    color: #e2efff;
+    color: var(--text-primary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -707,8 +707,9 @@
 .sender-name {
     font-size: 12px;
     font-weight: 600;
-    color: var(--msg-accent);
+    color: var(--text-primary);
     margin: 8px 0 2px 38px;
+    opacity: 0.9;
 }
 
 /* Avatar in messages */
@@ -742,9 +743,10 @@
 
 .msg-image-wrap {
     max-width: 300px;
-    border-radius: 12px;
+    border-radius: 20px;
     overflow: hidden;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .msg-image {
@@ -760,9 +762,11 @@
 
 .msg-video-wrap {
     max-width: 300px;
-    border-radius: 12px;
+    border-radius: 20px;
     overflow: hidden;
     background: #000;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
 }
 
 .msg-video {
@@ -936,21 +940,22 @@
 }
 
 .bubble-me {
-    background: var(--msg-me-bg);
-    color: var(--msg-me-text);
-    border-radius: 18px 18px 4px 18px;
-    box-shadow: 0 4px 15px rgba(0, 140, 255, 0.35);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 80, 200, 0.4);
+    color: var(--text-primary);
+    border-radius: 20px 20px 4px 20px;
+    box-shadow: var(--accent-glow), inset 0 0 5px rgba(0, 242, 255, 0.15);
+    border: 1px solid rgba(0, 242, 255, 0.3);
+    backdrop-filter: blur(10px);
 }
 
 .bubble-other {
-    background: var(--msg-other-bg);
-    color: var(--msg-other-text);
-    border-radius: 18px 18px 18px 4px;
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--msg-border);
-    box-shadow: var(--glass-shadow);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-secondary);
+    border-radius: 20px 20px 20px 4px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
 /* Deleted state */
@@ -1635,13 +1640,13 @@
     cursor: pointer;
     flex-shrink: 0;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    box-shadow: 0 0 15px rgba(0, 242, 255, 0.4);
+    box-shadow: var(--accent-glow);
 }
 
 .send-btn:hover {
     transform: scale(1.1) rotate(-5deg);
-    box-shadow: 0 0 25px rgba(0, 242, 255, 0.6);
-    filter: brightness(1.1);
+    box-shadow: 0 0 30px rgba(0, 242, 255, 0.7);
+    filter: brightness(1.2);
 }
 
 .send-btn:active {

@@ -15,7 +15,7 @@
         <!-- Menu List -->
         <ul class="sidebar-menu">
             <li class="menu-item" [class.active]="currentTab === 'friends'" (click)="setTab('friends')">
-                <i class="bi bi-person-lines-fill"></i> Danh sách bạn bè
+                <i class="bi bi-person-lines"></i> Danh sách bạn bè
             </li>
             <li class="menu-item">
                 <i class="bi bi-people"></i> Danh sách nhóm và cộng đồng
@@ -36,13 +36,13 @@
     <div class="relations-main">
         <!-- Main Header -->
         <div class="main-header">
-            <i class="bi bi-shield-slash-fill" *ngIf="currentTab === 'blocked'"></i>
+            <i class="bi bi-shield-slash" *ngIf="currentTab === 'blocked'"></i>
             <h2>{{ currentTab === 'friends' ? 'Danh sách bạn bè' : (currentTab === 'friend_requests' ? 'Lời mời kết bạn'
                 : 'Danh sách chặn') }}</h2>
         </div>
 
         <!-- Scrollable Content Area -->
-            <div class="main-content">
+        <div class="main-content">
             <h3 class="friends-count" *ngIf="currentTab === 'friends'">Bạn bè ({{friends().length || 0}})</h3>
             <h3 class="friends-count" *ngIf="currentTab === 'friend_requests'">Lời mời ({{friendRequests().length ||
                 0}})</h3>
@@ -82,7 +82,7 @@
                             </button>
                             <div class="friend-dropdown" *ngIf="showMoreMenuId === friend.id">
                                 <button class="dropdown-item" (click)="viewProfile(friend.friend_id)">
-                                    <i class="bi bi-person-lines-fill dropdown-item-icon"></i>
+                                    <i class="bi bi-person-lines dropdown-item-icon"></i>
                                     <span class="dropdown-item-text">Xem thông tin</span>
                                 </button>
                                 <div class="dropdown-divider"></div>

@@ -7,7 +7,7 @@
     <div *ngIf="loading() || !isReady()" class="full-loading">
         <div class="spinner-accent"></div>
         <p>Đang tải...</p>
-    </div> 
+    </div>
 
     <!-- ── NAV SIDEBAR ── -->
     <aside class="icon-sidebar" *ngIf="isReady()">
@@ -15,12 +15,12 @@
         <nav class="nav-icons">
             <button class="sidebar-nav-btn" [class.active]="isActive('messages')" title="Tin nhắn"
                 (click)="setView('messages')">
-                <i class="bi bi-chat-dots-fill"></i>
+                <i class="bi bi-chat-dots"></i>
                 <span class="nav-tooltip">Tin nhắn</span>
             </button>
             <button class="sidebar-nav-btn" [class.active]="isActive('friends')" title="Liên hệ"
                 (click)="setView('friends')">
-                <i class="bi bi-people-fill"></i>
+                <i class="bi bi-people"></i>
                 <span class="nav-tooltip">Liên hệ</span>
             </button>
             <button class="sidebar-nav-btn" title="Bảng tin">
