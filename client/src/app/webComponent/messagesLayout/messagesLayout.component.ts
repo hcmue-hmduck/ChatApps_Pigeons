@@ -834,35 +834,55 @@ export class MessagesLayoutComponent
             // Tính toán vị trí fixed
             const target = event.currentTarget as HTMLElement;
             const rect = target.getBoundingClientRect();
-
-            const dropdownHeight = 160;
-            const dropdownWidth = 140;
-
-            // X-Axis Left/Right logic
             const isMeRow = target.closest('.me-row');
-            let leftPosition = 0;
+
+            // Kích thước ước lượng (tương đương CSS min-width 140px + padding/border)
+            const dropdownWidth = 150;
+            const dropdownHeight = 175;
+            const padding = 12;
+
+            let left = 0;
+            let top = rect.top + 10; // Căn hơi thụt xuống so với nút
+
+            // X-Axis logic: Position dropdown NEXT TO the button, not overlapping it
             if (isMeRow) {
-                // Nhắn của mình: Menu nằm bên trái nút
-                leftPosition = rect.left - dropdownWidth - 8;
+                // Nhắn của mình (bên phải): Menu nằm bên TRÁI của nút
+                left = rect.left - dropdownWidth - 8;
             } else {
-                // Nhắn của người khác: Menu nằm bên phải nút
-                leftPosition = rect.right + 8;
-            }
-            // Chống tràn ngang 
-            if (leftPosition + dropdownWidth > window.innerWidth) {
-                leftPosition = window.innerWidth - dropdownWidth - 10;
-            }
-            if (leftPosition < 10) leftPosition = 10;
-
-            // Y-Axis Top/Bottom logic
-            let topPosition = rect.top + 4; // Căn hơi thụt xuống chút xíu so với nút
-            // Chống bị lấp bởi khung chat dưới cùng
-            if (topPosition + dropdownHeight > window.innerHeight) {
-                topPosition = window.innerHeight - dropdownHeight - 60; // Thụt lên cao hơn vạch input
+                // Nhắn của người khác (bên trái): Menu nằm bên PHẢI của nút
+                left = rect.right + 8;
             }
 
-            this.dropdownTop = topPosition;
-            this.dropdownLeft = leftPosition;
+            // --- FIX POSITIONAL OFFSET DUE TO CONTAINING BLOCK (backdrop-filter) ---
+            // If any parent has backdrop-filter, it creates a new containing block for position:fixed.
+            // We need to subtract the chat-area's own rect to get local coordinates.
+            const container = target.closest('.chat-area');
+            if (container) {
+                const containerRect = container.getBoundingClientRect();
+                left -= containerRect.left;
+                top -= containerRect.top;
+            }
+
+            // Boundary checks - Ngang (X)
+            // Lấy width của container hoặc window
+            const boundaryWidth = container ? container.clientWidth : window.innerWidth;
+            if (left + dropdownWidth > boundaryWidth - padding) {
+                left = boundaryWidth - dropdownWidth - padding;
+            }
+            if (left < padding) {
+                left = padding;
+            }
+
+            // Boundary checks - Dọc (Y)
+            const boundaryHeight = container ? container.clientHeight : window.innerHeight;
+            if (top + dropdownHeight > boundaryHeight - 80) {
+                // Nếu tràn dưới (gần input area), đẩy dropdown lên trên nút
+                top = top - dropdownHeight - (container ? 0 : 4);
+                if (top < padding) top = padding;
+            }
+
+            this.dropdownTop = top;
+            this.dropdownLeft = left;
         }
     }
 

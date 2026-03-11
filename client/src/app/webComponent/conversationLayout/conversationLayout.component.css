@@ -7,162 +7,12 @@
   display: flex;
   width: 100%;
   height: 100%;
+  gap: 12px;
   overflow: hidden;
   background: transparent;
 }
 
-.icon-sidebar {
-  width: var(--icon-sidebar-width);
-  min-width: var(--icon-sidebar-width);
-  max-width: var(--icon-sidebar-width);
-  height: 100vh;
-  background: rgba(8, 16, 40, 0.88);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border-right: 1px solid rgba(30, 144, 255, 0.18);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 12px 0;
-  z-index: 10;
-  flex-shrink: 0;
-}
-
-/* Logo at top */
-.icon-sidebar .sidebar-logo {
-  width: 40px;
-  height: 40px;
-  object-fit: contain;
-  margin-bottom: 24px;
-  filter: brightness(0) invert(1);
-  opacity: 0.9;
-  transition: opacity 0.2s;
-}
-
-.icon-sidebar .sidebar-logo:hover {
-  opacity: 1;
-}
-
-/* Icon buttons */
-.icon-sidebar .nav-icons {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  flex: 1;
-}
-
-.sidebar-nav-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  background: transparent;
-  border: none;
-  color: var(--sidebar-icon-default);
-  font-size: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.18s ease;
-  position: relative;
-}
-
-.sidebar-nav-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--sidebar-icon-active);
-}
-
-.sidebar-nav-btn.active {
-  background: var(--sidebar-active-bg);
-  color: var(--sidebar-icon-active);
-}
-
-.sidebar-nav-btn .nav-tooltip {
-  position: absolute;
-  left: 54px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: rgba(0, 0, 0, 0.75);
-  color: #fff;
-  font-size: 12px;
-  padding: 4px 10px;
-  border-radius: 8px;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.15s;
-  z-index: 100;
-}
-
-.sidebar-nav-btn:hover .nav-tooltip {
-  opacity: 1;
-}
-
-/* User avatar at bottom */
-.icon-sidebar .sidebar-bottom {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-
-.sidebar-user-avatar {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid rgba(0, 132, 255, 0.6);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.sidebar-user-avatar:hover {
-  border-color: var(--accent);
-  transform: scale(1.05);
-}
-
-.sidebar-logout-btn {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
-  background: transparent;
-  border: none;
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.18s;
-  position: relative;
-}
-
-.sidebar-logout-btn:hover {
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
-}
-
-.sidebar-logout-btn .nav-tooltip {
-  position: absolute;
-  left: 48px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: rgba(0, 0, 0, 0.75);
-  color: #fff;
-  font-size: 12px;
-  padding: 4px 10px;
-  border-radius: 8px;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.15s;
-  z-index: 100;
-}
-
-.sidebar-logout-btn:hover .nav-tooltip {
-  opacity: 1;
-}
+/* SIDEBAR STYLES REMOVED - Handled by Shell Component */
 
 /* ============================================================
    PANEL 2 — CONVERSATIONS LIST · Dark Glass
@@ -170,15 +20,17 @@
 .conv-panel {
   width: 320px;
   flex: 0 0 320px;
-  height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  background: rgba(10, 20, 50, 0.88);
-  backdrop-filter: blur(22px);
-  -webkit-backdrop-filter: blur(22px);
-  border-right: 1px solid rgba(30, 144, 255, 0.18);
+  background: rgba(10, 20, 50, 0.65);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(30, 144, 255, 0.22);
+  border-radius: 20px;
   overflow: hidden;
   position: relative;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
 }
 
 /* Header */
@@ -267,7 +119,7 @@
   background: rgba(30, 144, 255, 0.22);
   border-color: rgba(30, 144, 255, 0.55);
   color: #7ecfff;
-  box-shadow: 0 0 10px rgba(30,144,255,0.25);
+  box-shadow: 0 0 10px rgba(30, 144, 255, 0.25);
 }
 
 .conv-actions {
@@ -377,7 +229,7 @@
   width: 3px;
   border-radius: 0 3px 3px 0;
   background: #1e90ff;
-  box-shadow: 0 0 8px rgba(30,144,255,0.70);
+  box-shadow: 0 0 8px rgba(30, 144, 255, 0.70);
 }
 
 /* Avatar column */
@@ -398,7 +250,7 @@
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid rgba(30, 144, 255, 0.35);
-  box-shadow: 0 0 12px rgba(30,144,255,0.18), 0 2px 6px rgba(0,0,0,0.40);
+  box-shadow: 0 0 12px rgba(30, 144, 255, 0.18), 0 2px 6px rgba(0, 0, 0, 0.40);
 }
 
 /* Status dot */
@@ -434,7 +286,7 @@
   font-weight: 600;
   color: #7aaed8;
   white-space: nowrap;
-  box-shadow: 0 1px 6px rgba(0,0,0,0.40);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.40);
   transform: scale(0.9);
 }
 
@@ -456,7 +308,7 @@
   object-fit: cover;
   border: 2px solid rgba(10, 20, 50, 0.80);
   border-radius: 50%;
-  box-shadow: 0 0 8px rgba(30,144,255,0.15);
+  box-shadow: 0 0 8px rgba(30, 144, 255, 0.15);
 }
 
 /* Layouts */
@@ -609,7 +461,7 @@
   padding: 0 5px;
   flex-shrink: 0;
   animation: pulse-badge 2s infinite;
-  box-shadow: 0 0 8px rgba(30,144,255,0.55);
+  box-shadow: 0 0 8px rgba(30, 144, 255, 0.55);
 }
 
 @keyframes pulse-badge {
@@ -685,8 +537,13 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background: rgba(7, 13, 35, 0.80);
-  height: 100vh;
+  background: rgba(7, 13, 35, 0.65);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(30, 144, 255, 0.22);
+  border-radius: 20px;
+  height: 100%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.40);
 }
 
 /* Welcome screen */
@@ -705,7 +562,7 @@
   color: #1e90ff;
   opacity: 0.70;
   animation: float 3s ease-in-out infinite;
-  filter: drop-shadow(0 0 18px rgba(30,144,255,0.60));
+  filter: drop-shadow(0 0 18px rgba(30, 144, 255, 0.60));
 }
 
 @keyframes float {
@@ -744,7 +601,7 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 0 14px rgba(30,144,255,0.40);
+  box-shadow: 0 0 14px rgba(30, 144, 255, 0.40);
 }
 
 .welcome-screen .btn-start:hover {
@@ -767,11 +624,11 @@
 .spinner-accent {
   width: 40px;
   height: 40px;
-  border: 3px solid rgba(30,144,255,0.18);
+  border: 3px solid rgba(30, 144, 255, 0.18);
   border-top-color: #1e90ff;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
-  filter: drop-shadow(0 0 8px rgba(30,144,255,0.50));
+  filter: drop-shadow(0 0 8px rgba(30, 144, 255, 0.50));
 }
 
 @keyframes spin {
@@ -986,7 +843,7 @@
   height: 32px;
   border: none;
   border-radius: 50%;
-  background: rgba(30,144,255,0.12);
+  background: rgba(30, 144, 255, 0.12);
   color: #7aaed8;
   display: flex;
   align-items: center;
@@ -997,7 +854,7 @@
 }
 
 .pf-close-btn:hover {
-  background: rgba(30,144,255,0.24);
+  background: rgba(30, 144, 255, 0.24);
   color: #d8eeff;
 }
 
@@ -1037,14 +894,14 @@
 
 .pf-row:hover {
   background: rgba(30, 50, 100, 0.55);
-  border-color: rgba(30,144,255,0.14);
+  border-color: rgba(30, 144, 255, 0.14);
 }
 
 .pf-row-icon {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: rgba(30,144,255,0.14);
+  background: rgba(30, 144, 255, 0.14);
   color: #4da8ff;
   display: flex;
   align-items: center;
@@ -1097,13 +954,13 @@
 .pf-badge-ok {
   background: rgba(34, 197, 94, 0.15);
   color: #4ade80;
-  border: 1px solid rgba(34,197,94,0.25);
+  border: 1px solid rgba(34, 197, 94, 0.25);
 }
 
 .pf-badge-warn {
   background: rgba(239, 68, 68, 0.15);
   color: #f87171;
-  border: 1px solid rgba(239,68,68,0.25);
+  border: 1px solid rgba(239, 68, 68, 0.25);
 }
 
 /* Stat row */
@@ -1116,7 +973,7 @@
 .pf-stat {
   flex: 1;
   background: rgba(18, 34, 80, 0.70);
-  border: 1px solid rgba(30,144,255,0.14);
+  border: 1px solid rgba(30, 144, 255, 0.14);
   border-radius: 10px;
   padding: 10px 12px;
   display: flex;
@@ -1164,24 +1021,24 @@
 .pf-btn-primary {
   background: linear-gradient(135deg, #1e6aff 0%, #0d4fd0 100%);
   color: #fff;
-  box-shadow: 0 0 14px rgba(30,144,255,0.40);
+  box-shadow: 0 0 14px rgba(30, 144, 255, 0.40);
 }
 
 .pf-btn-primary:hover {
   opacity: .9;
   transform: translateY(-1px);
-  box-shadow: 0 0 20px rgba(30,144,255,0.55);
+  box-shadow: 0 0 20px rgba(30, 144, 255, 0.55);
 }
 
 .pf-btn-outline {
   background: transparent;
   color: #7aaed8;
-  border: 1.5px solid rgba(30,144,255,0.28);
+  border: 1.5px solid rgba(30, 144, 255, 0.28);
 }
 
 .pf-btn-outline:hover {
-  background: rgba(30,144,255,0.10);
-  border-color: rgba(30,144,255,0.50);
+  background: rgba(30, 144, 255, 0.10);
+  border-color: rgba(30, 144, 255, 0.50);
 }
 
 .pf-btn-danger {
@@ -1198,7 +1055,7 @@
 .pf-btn-ghost {
   background: rgba(20, 40, 90, 0.60);
   color: #7aaed8;
-  border: 1px solid rgba(30,144,255,0.14);
+  border: 1px solid rgba(30, 144, 255, 0.14);
 }
 
 .pf-btn-ghost:hover {
@@ -1231,7 +1088,7 @@
 .pf-input {
   font-size: 13px !important;
   border-radius: 9px !important;
-  border: 1.5px solid rgba(30,144,255,0.22) !important;
+  border: 1.5px solid rgba(30, 144, 255, 0.22) !important;
   background-color: rgba(18, 34, 80, 0.70) !important;
   color: #d8eeff !important;
   padding: 8px 12px !important;
@@ -1239,7 +1096,7 @@
 }
 
 .pf-input:focus {
-  border-color: rgba(30,144,255,0.60) !important;
+  border-color: rgba(30, 144, 255, 0.60) !important;
   box-shadow: 0 0 0 3px rgba(30, 144, 255, 0.16) !important;
   background-color: rgba(20, 40, 100, 0.85) !important;
   outline: none !important;
@@ -1270,7 +1127,7 @@
 
 /* Gender icon colors */
 .pf-row-icon-gender {
-  background: rgba(30,144,255,0.14);
+  background: rgba(30, 144, 255, 0.14);
   color: #4da8ff;
 }
 
@@ -1296,17 +1153,17 @@
 .pf-gender-male {
   background: rgba(30, 78, 216, 0.20);
   color: #60a5fa;
-  border: 1px solid rgba(30,78,216,0.25);
+  border: 1px solid rgba(30, 78, 216, 0.25);
 }
 
 .pf-gender-female {
   background: rgba(190, 24, 93, 0.15);
   color: #f472b6;
-  border: 1px solid rgba(190,24,93,0.20);
+  border: 1px solid rgba(190, 24, 93, 0.20);
 }
 
 .pf-gender-other {
   background: rgba(30, 50, 90, 0.60);
   color: #7aaed8;
-  border: 1px solid rgba(30,144,255,0.18);
+  border: 1px solid rgba(30, 144, 255, 0.18);
 }

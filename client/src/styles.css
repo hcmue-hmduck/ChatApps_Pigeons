@@ -6,64 +6,64 @@
    GLOBAL CSS VARIABLES — Pigeons Chat · Dark Glass
    ====================================================== */
 :root {
-	/* ── Core Accent (cyan-blue glow) ── */
-	--accent: #1e90ff;
-	--accent-hover: #4db3ff;
-	--accent-light: rgba(30, 144, 255, 0.22);
-	--accent-lighter: rgba(30, 144, 255, 0.10);
-	--accent-glow: 0 0 20px rgba(30, 144, 255, 0.55);
+	/* ── Core Accent (Neon Cyan glow) ── */
+	--accent: #00f2ff;
+	--accent-hover: #5effff;
+	--accent-light: rgba(0, 242, 255, 0.18);
+	--accent-lighter: rgba(0, 242, 255, 0.10);
+	--accent-glow: 0 0 20px rgba(0, 242, 255, 0.45);
 
-	/* ── App Background — deep dark navy with grid ── */
-	--app-bg: #060e24;
+	/* ── App Background — Deep Midnight Blue ── */
+	--app-bg: #020608;
 
 	/* ── Dark Glass layers ── */
-	--glass-strong:  rgba(12, 22, 52, 0.92);
-	--glass-medium:  rgba(15, 28, 65, 0.82);
-	--glass-light:   rgba(20, 38, 82, 0.60);
-	--glass-ultra:   rgba(10, 18, 42, 0.45);
-	--glass-border:  rgba(30, 144, 255, 0.28);
-	--glass-border-subtle: rgba(255, 255, 255, 0.07);
-	--glass-shadow:  0 8px 32px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255,255,255,0.06);
-	--glass-shadow-deep: 0 20px 56px rgba(0, 0, 0, 0.65);
-	--glass-blur:    blur(20px);
-	--glass-blur-heavy: blur(40px);
+	--glass-strong: rgba(4, 10, 25, 0.90);
+	--glass-medium: rgba(6, 14, 32, 0.78);
+	--glass-light: rgba(8, 18, 40, 0.65);
+	--glass-ultra: rgba(4, 10, 25, 0.40);
+	--glass-border: rgba(0, 242, 255, 0.22);
+	--glass-border-subtle: rgba(255, 255, 254, 0.05);
+	--glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.65), inset 0 1px 1px rgba(255, 255, 255, 0.04);
+	--glass-shadow-deep: 0 24px 64px rgba(0, 0, 0, 0.75);
+	--glass-blur: blur(30px);
+	--glass-blur-heavy: blur(45px);
 
 	/* ── Shimmer overlay ── */
-	--shimmer: linear-gradient(135deg, rgba(30,144,255,0.12) 0%, rgba(255,255,255,0.04) 50%, transparent 100%);
+	--shimmer: linear-gradient(135deg, rgba(0, 242, 255, 0.10) 0%, rgba(255, 255, 255, 0.03) 50%, transparent 100%);
 
 	/* ── Icon Sidebar ── */
-	--sidebar-bg: rgba(8, 16, 40, 0.85);
-	--sidebar-icon-default: rgba(147, 197, 253, 0.55);
+	--sidebar-bg: rgba(4, 10, 25, 0.65);
+	--sidebar-icon-default: rgba(170, 230, 255, 0.45);
 	--sidebar-icon-active: #ffffff;
-	--sidebar-active-bg: rgba(30, 144, 255, 0.22);
+	--sidebar-active-bg: rgba(0, 242, 255, 0.18);
 
 	/* ── Conversation Panel ── */
-	--conv-bg: rgba(10, 20, 50, 0.88);
-	--conv-item-hover: rgba(30, 60, 130, 0.50);
-	--conv-item-active-bg: rgba(30, 144, 255, 0.18);
-	--border: rgba(30, 144, 255, 0.18);
+	--conv-bg: rgba(6, 14, 32, 0.65);
+	--conv-item-hover: rgba(0, 150, 255, 0.12);
+	--conv-item-active-bg: rgba(0, 242, 255, 0.14);
+	--border: rgba(0, 242, 255, 0.16);
 
 	/* ── Text ── */
-	--text-primary: #e2efff;
-	--text-secondary: #7aaed8;
-	--text-muted: #3a5880;
+	--text-primary: #f0f7ff;
+	--text-secondary: #a0c4e0;
+	--text-muted: #5a7d9a;
 
 	/* ── Messages ── */
-	--msg-accent: #1e90ff;
-	--msg-accent-hover: #4db3ff;
-	--msg-bg: rgba(8, 16, 40, 0.90);
-	--msg-me-bg: linear-gradient(135deg, #1e6aff 0%, #0d4fd0 100%);
+	--msg-accent: #00f2ff;
+	--msg-accent-hover: #5effff;
+	--msg-bg: rgba(4, 10, 25, 0.65);
+	--msg-me-bg: linear-gradient(135deg, #008cff 0%, #004ecc 100%);
 	--msg-me-text: #ffffff;
-	--msg-other-bg: rgba(20, 36, 76, 0.82);
-	--msg-other-text: #d8eeff;
-	--msg-border: rgba(30, 144, 255, 0.14);
-	--msg-muted: #3a5880;
-	--msg-secondary: #7aaed8;
-	--msg-header-bg: rgba(8, 16, 42, 0.92);
+	--msg-other-bg: rgba(10, 20, 45, 0.75);
+	--msg-other-text: #e2f5ff;
+	--msg-border: rgba(0, 242, 255, 0.14);
+	--msg-muted: #5a7d9a;
+	--msg-secondary: #90b8d4;
+	--msg-header-bg: rgba(4, 10, 25, 0.90);
 
 	/* ── Sizes ── */
 	--icon-sidebar-width: 68px;
-	--panel-radius: 16px;
+	--panel-radius: 20px;
 }
 
 /* Global reset */
@@ -86,10 +86,10 @@ body {
 	background-color: var(--app-bg);
 	/* Layered grid mesh + radial glows — matches image */
 	background-image:
-		linear-gradient(rgba(30,144,255,0.045) 1px, transparent 1px),
-		linear-gradient(90deg, rgba(30,144,255,0.045) 1px, transparent 1px),
-		radial-gradient(ellipse at 25% 45%, rgba(0,80,200,0.38) 0%, transparent 52%),
-		radial-gradient(ellipse at 72% 65%, rgba(0,30,120,0.28) 0%, transparent 48%);
+		linear-gradient(rgba(0, 242, 255, 0.035) 1px, transparent 1px),
+		linear-gradient(90deg, rgba(0, 242, 255, 0.035) 1px, transparent 1px),
+		radial-gradient(ellipse at 25% 45%, rgba(0, 180, 255, 0.28) 0%, transparent 52%),
+		radial-gradient(ellipse at 72% 65%, rgba(0, 80, 255, 0.15) 0%, transparent 48%);
 	background-size: 48px 48px, 48px 48px, 100% 100%, 100% 100%;
 	background-attachment: fixed;
 }

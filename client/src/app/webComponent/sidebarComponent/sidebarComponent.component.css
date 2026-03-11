@@ -4,6 +4,9 @@
 .app-shell {
     display: flex;
     height: 100vh;
+    padding: 12px;
+    gap: 12px;
+    box-sizing: border-box;
     overflow: hidden;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background: transparent;
@@ -31,9 +34,9 @@
     inset: 0;
     background-color: #060e24;
     background-image:
-        linear-gradient(rgba(30,144,255,0.05) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(30,144,255,0.05) 1px, transparent 1px),
-        radial-gradient(ellipse at 25% 45%, rgba(0,80,200,0.38) 0%, transparent 52%);
+        linear-gradient(rgba(30, 144, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(30, 144, 255, 0.05) 1px, transparent 1px),
+        radial-gradient(ellipse at 25% 45%, rgba(0, 80, 200, 0.38) 0%, transparent 52%);
     background-size: 48px 48px, 48px 48px, 100% 100%;
     background-attachment: fixed;
     z-index: 999;
@@ -54,26 +57,29 @@
 .spinner-accent {
     width: 44px;
     height: 44px;
-    border: 3px solid rgba(30,144,255,0.20);
+    border: 3px solid rgba(30, 144, 255, 0.20);
     border-top-color: #1e90ff;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
-    filter: drop-shadow(0 0 10px rgba(30,144,255,0.60));
+    filter: drop-shadow(0 0 10px rgba(30, 144, 255, 0.60));
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* ── ICON SIDEBAR — dark glass strip ── */
 .icon-sidebar {
     width: var(--icon-sidebar-width, 68px);
     min-width: var(--icon-sidebar-width, 68px);
-    height: 100vh;
-    background: rgba(8, 16, 40, 0.88);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border-right: 1px solid rgba(30, 144, 255, 0.18);
+    height: 100%;
+    background: rgba(8, 16, 40, 0.65);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    border: 1px solid rgba(30, 144, 255, 0.22);
+    border-radius: 20px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -81,6 +87,8 @@
     z-index: 10;
     flex-shrink: 0;
     position: relative;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45),
+        inset 0 1px 1px rgba(255, 255, 255, 0.05);
 }
 
 /* Blue shimmer line on top edge */
@@ -88,7 +96,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, rgba(30,144,255,0.10) 0%, transparent 60%);
+    background: linear-gradient(135deg, rgba(30, 144, 255, 0.10) 0%, transparent 60%);
     pointer-events: none;
 }
 
@@ -138,15 +146,15 @@
 .sidebar-nav-btn:hover {
     background: rgba(30, 144, 255, 0.14);
     color: #7ecfff;
-    box-shadow: 0 2px 12px rgba(30,144,255,0.25);
+    box-shadow: 0 2px 12px rgba(30, 144, 255, 0.25);
     transform: translateY(-1px);
 }
 
 .sidebar-nav-btn.active {
     background: rgba(30, 144, 255, 0.22);
     color: #ffffff;
-    box-shadow: 0 0 14px rgba(30,144,255,0.40),
-                inset 0 1px 0 rgba(255,255,255,0.12);
+    box-shadow: 0 0 14px rgba(30, 144, 255, 0.40),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
     border: 1px solid rgba(30, 144, 255, 0.40);
 }
 
@@ -168,7 +176,7 @@
     z-index: 100;
     border: 1px solid rgba(30, 144, 255, 0.30);
     backdrop-filter: blur(8px);
-    box-shadow: 0 4px 14px rgba(0,0,0,0.55);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.55);
 }
 
 .sidebar-nav-btn:hover .nav-tooltip {
@@ -193,13 +201,13 @@
     border: 2px solid rgba(30, 144, 255, 0.50);
     cursor: pointer;
     transition: all 0.22s;
-    box-shadow: 0 0 10px rgba(30,144,255,0.25), 0 2px 8px rgba(0,0,0,0.4);
+    box-shadow: 0 0 10px rgba(30, 144, 255, 0.25), 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .sidebar-user-avatar:hover {
     border-color: #1e90ff;
     transform: scale(1.08);
-    box-shadow: 0 0 0 3px rgba(30,144,255,0.22), 0 0 18px rgba(30,144,255,0.45);
+    box-shadow: 0 0 0 3px rgba(30, 144, 255, 0.22), 0 0 18px rgba(30, 144, 255, 0.45);
 }
 
 .sidebar-logout-btn {
@@ -221,7 +229,7 @@
 .sidebar-logout-btn:hover {
     background: rgba(239, 68, 68, 0.16);
     color: #ff8a8a;
-    box-shadow: 0 0 12px rgba(239,68,68,0.20);
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.20);
 }
 
 .sidebar-logout-btn .nav-tooltip {
@@ -242,7 +250,7 @@
     z-index: 100;
     border: 1px solid rgba(30, 144, 255, 0.30);
     backdrop-filter: blur(8px);
-    box-shadow: 0 4px 14px rgba(0,0,0,0.55);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.55);
 }
 
 .sidebar-logout-btn:hover .nav-tooltip {
