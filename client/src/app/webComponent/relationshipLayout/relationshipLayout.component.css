@@ -16,7 +16,7 @@
 .relations-sidebar {
     width: 320px;
     min-width: 320px;
-    background: var(--conv-bg);
+    background: var(--glass-strong);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
     border-right: 1px solid var(--glass-border-subtle);

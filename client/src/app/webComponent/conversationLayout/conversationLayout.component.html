@@ -12,16 +12,7 @@
                 <input type="text" class="conv-search-input" placeholder="Tìm kiếm...">
             </div>
         </div>
-        <div class="conv-filter-row">
-            <button class="filter-chip active">Tất cả</button>
-            <button class="filter-chip">Chưa đọc</button>
-            <button class="filter-chip">Nhóm</button>
-            <div class="conv-actions">
-                <button class="conv-action-btn" title="Tạo chat mới" (click)="createConversation()">
-                    <i class="bi bi-pencil-square"></i>
-                </button>
-            </div>
-        </div>
+
         <div class="conv-section-label">
             Gần đây
             <span class="conv-count-badge">{{ conversations?.homeConversationData?.joinedConversations?.length || 0
