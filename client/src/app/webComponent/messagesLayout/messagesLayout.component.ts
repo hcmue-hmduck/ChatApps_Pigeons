@@ -1302,7 +1302,7 @@ export class MessagesLayoutComponent
                     sender_name: userName,
                     sender_avatar: userAvatarUrl,
                 }
-                this.updateUIWithNewMessage(message)
+
                 const callId = message.call.id;
                 if (!message || !callId) {
                     console.log('Call is not found');
@@ -1318,6 +1318,7 @@ export class MessagesLayoutComponent
                                 sender_avatar: userAvatarUrl,
                             };
 
+                            this.updateUIWithNewMessage(message)
                             this.updateUIWithNewMessage(systemMessage)
                         },
                         error: (error) => console.error(error)
@@ -1334,27 +1335,27 @@ export class MessagesLayoutComponent
     getCallIcon(callInfo: any): string {
         if (!callInfo) return 'bi bi-telephone-fill call-icon audio';
 
-        const { media_type, status, call_type } = callInfo;
+        const { media_type, status } = callInfo;
+
+        // Icon cuộc gọi không ai bắt máy
+        if (status === 'missed' || status === 'cancelled' || status === 'declined') {
+            return media_type === 'video'
+                ? 'bi bi-camera-video-off-fill call-icon video-missed'
+                : 'bi bi-telephone-x-fill call-icon audio-missed';
+        }
 
         // Icon cho cuộc gọi video
-        if (media_type === 'video') {
-            if (status === 'missed' || status === 'declined') {
-                return 'bi bi-camera-video-fill call-icon video-missed';
-            }
+        if (media_type === 'video') 
             return 'bi bi-camera-video-fill call-icon video';
-        }
-
+        
         // Icon cho cuộc gọi audio
-        if (status === 'missed' || status === 'declined') {
-            return 'bi bi-telephone-fill call-icon audio-missed';
-        }
         return 'bi bi-telephone-fill call-icon audio';
     }
 
     getCallMainContent(callInfo: any): string {
         if (!callInfo) return 'Cuộc gọi';
 
-        const { call_type, media_type, status } = callInfo;
+        const { call_type, media_type, status, caller_id } = callInfo;
         let callMainContent = '';
 
         if (call_type === 'group') {
@@ -1363,17 +1364,17 @@ export class MessagesLayoutComponent
                 ? 'Cuộc gọi thoại nhóm'
                 : 'Cuộc gọi video nhóm';
         } else {
-            // Cuộc gọi trực tiếp
+            // Cuộc gọi 2 người
             if (status === 'completed') {
                 callMainContent = media_type === 'audio'
                     ? 'Cuộc gọi thoại'
                     : 'Cuộc gọi video';
-            } else if (status === 'missed') {
+            } else if (status === 'missed' || status === 'cancelled') {
                 callMainContent = 'Cuộc gọi nhỡ';
             } else if (status === 'declined') {
-                callMainContent = 'Đã từ chối';
-            } else if (status === 'cancelled') {
-                callMainContent = 'Đã hủy';
+                callMainContent = caller_id === this.authService.getUserId() 
+                    ? 'Đã bị từ chối'
+                    : 'Đã từ chối';
             } else {
                 callMainContent = media_type === 'audio'
                     ? 'Cuộc gọi thoại'

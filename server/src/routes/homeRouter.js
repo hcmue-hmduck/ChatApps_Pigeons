@@ -39,6 +39,8 @@ router.patch('/call/completed/:callID', homeController.setCallCompleted);
 router.patch('/call/declined/:callID', homeController.setCallDecliend);
 router.patch('/call/cancelled/:callID', homeController.setCallCancelled);
 router.patch('/call/missed/:callID', homeController.setCallMissed);
+router.patch('/call/ended/:callID', homeController.setCallEnded);
+
 
 
 module.exports = router;

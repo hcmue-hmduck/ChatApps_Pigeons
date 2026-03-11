@@ -373,6 +373,21 @@ class HomeService {
         return await callService.updateStatusCall({ call_id, status: 'missed' });
     }
 
+     async endCall(call_id) {
+        const status = await callService.getStatusById(call_id);
+        let newStatus = '';
+        if (status === 'pending') newStatus = 'cancelled';
+        else if (status === 'ongoing') newStatus = 'completed';
+
+        if (!newStatus)
+            return {
+                completed: false,
+                message: 'status invalid',
+            };
+
+        return await callService.updateStatusCall({ call_id, status: newStatus });
+    }
+
     async getFriendByUserId(userId) {
         const listFriends = await friendsService.getFriendByUserId(userId);
         if (listFriends.length === 0) return [];

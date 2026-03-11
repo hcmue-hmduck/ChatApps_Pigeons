@@ -36,6 +36,10 @@ class CallService {
 
         const foundCall = await this.getCallById(call_id);
         if (!foundCall) throw new Error('call not found');
+        if(foundCall.status === status) return {
+            success: false,
+            message: 'status already assigned'
+        }
 
         if (status === 'ongoing') updateData.started_at = new Date();
         else if (status === 'completed' && foundCall.started_at) {
@@ -47,7 +51,6 @@ class CallService {
             const duration_ms = endLog - startLog;
             const duration_seconds = Math.floor(duration_ms / 1000);
 
-            // Nếu kết quả ra âm hoặc quá lớn (do lệch múi giờ), ta sẽ thấy ngay ở bước này
             updateData.duration_seconds = duration_seconds;
         }
 
@@ -59,6 +62,8 @@ class CallService {
             ...options,
         });
     }
+
+   
 }
 
 module.exports = new CallService();
