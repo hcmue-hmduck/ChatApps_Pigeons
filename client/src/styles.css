@@ -17,14 +17,14 @@
 	--app-bg: #020608;
 
 	/* ── Dark Glass layers ── */
-	--glass-strong: rgba(4, 10, 25, 0.90);
-	--glass-medium: rgba(6, 14, 32, 0.78);
-	--glass-light: rgba(8, 18, 40, 0.65);
-	--glass-ultra: rgba(4, 10, 25, 0.40);
-	--glass-border: rgba(0, 242, 255, 0.22);
+	--glass-strong: rgba(255, 255, 255, 0.08);
+	--glass-medium: rgba(255, 255, 255, 0.06);
+	--glass-light: rgba(255, 255, 255, 0.05);
+	--glass-ultra: rgba(255, 255, 255, 0.03);
+	--glass-border: rgba(255, 255, 255, 0.12);
 	--glass-border-subtle: rgba(255, 255, 254, 0.05);
-	--glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.65), inset 0 1px 1px rgba(255, 255, 255, 0.04);
-	--glass-shadow-deep: 0 24px 64px rgba(0, 0, 0, 0.75);
+	--glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+	--glass-shadow-deep: 0 24px 64px rgba(0, 0, 0, 0.65);
 	--glass-blur: blur(30px);
 	--glass-blur-heavy: blur(45px);
 
@@ -32,16 +32,16 @@
 	--shimmer: linear-gradient(135deg, rgba(0, 242, 255, 0.10) 0%, rgba(255, 255, 255, 0.03) 50%, transparent 100%);
 
 	/* ── Icon Sidebar ── */
-	--sidebar-bg: rgba(4, 10, 25, 0.65);
+	--sidebar-bg: rgba(255, 255, 255, 0.07);
 	--sidebar-icon-default: rgba(170, 230, 255, 0.45);
 	--sidebar-icon-active: #ffffff;
 	--sidebar-active-bg: rgba(0, 242, 255, 0.18);
 
 	/* ── Conversation Panel ── */
-	--conv-bg: rgba(6, 14, 32, 0.65);
-	--conv-item-hover: rgba(0, 150, 255, 0.12);
-	--conv-item-active-bg: rgba(0, 242, 255, 0.14);
-	--border: rgba(0, 242, 255, 0.16);
+	--conv-bg: rgba(255, 255, 255, 0.06);
+	--conv-item-hover: rgba(0, 242, 255, 0.08);
+	--conv-item-active-bg: rgba(0, 242, 255, 0.12);
+	--border: rgba(255, 255, 255, 0.1);
 
 	/* ── Text ── */
 	--text-primary: #f0f7ff;
@@ -51,15 +51,15 @@
 	/* ── Messages ── */
 	--msg-accent: #00f2ff;
 	--msg-accent-hover: #5effff;
-	--msg-bg: rgba(4, 10, 25, 0.65);
-	--msg-me-bg: linear-gradient(135deg, #008cff 0%, #004ecc 100%);
+	--msg-bg: rgba(255, 255, 255, 0.05);
+	--msg-me-bg: linear-gradient(135deg, rgba(0, 140, 255, 0.9) 0%, rgba(0, 78, 204, 0.9) 100%);
 	--msg-me-text: #ffffff;
-	--msg-other-bg: rgba(10, 20, 45, 0.75);
+	--msg-other-bg: rgba(255, 255, 255, 0.07);
 	--msg-other-text: #e2f5ff;
-	--msg-border: rgba(0, 242, 255, 0.14);
+	--msg-border: rgba(255, 255, 255, 0.08);
 	--msg-muted: #5a7d9a;
 	--msg-secondary: #90b8d4;
-	--msg-header-bg: rgba(4, 10, 25, 0.90);
+	--msg-header-bg: rgba(2, 6, 8, 0.65);
 
 	/* ── Sizes ── */
 	--icon-sidebar-width: 68px;

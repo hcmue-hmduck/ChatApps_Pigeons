@@ -70,15 +70,15 @@
     }
 }
 
-/* ── ICON SIDEBAR — dark glass strip ── */
+/* ── ICON SIDEBAR — Liquid Glass ── */
 .icon-sidebar {
     width: var(--icon-sidebar-width, 68px);
     min-width: var(--icon-sidebar-width, 68px);
     height: 100%;
-    background: rgba(8, 16, 40, 0.65);
-    backdrop-filter: blur(30px);
-    -webkit-backdrop-filter: blur(30px);
-    border: 1px solid rgba(30, 144, 255, 0.22);
+    background: var(--sidebar-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
     border-radius: 20px;
     display: flex;
     flex-direction: column;
@@ -87,8 +87,7 @@
     z-index: 10;
     flex-shrink: 0;
     position: relative;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45),
-        inset 0 1px 1px rgba(255, 255, 255, 0.05);
+    box-shadow: var(--glass-shadow-deep);
 }
 
 /* Blue shimmer line on top edge */
@@ -144,18 +143,17 @@
 }
 
 .sidebar-nav-btn:hover {
-    background: rgba(30, 144, 255, 0.14);
-    color: #7ecfff;
-    box-shadow: 0 2px 12px rgba(30, 144, 255, 0.25);
+    background: var(--accent-light);
+    color: var(--accent);
+    box-shadow: 0 0 15px var(--accent-light);
     transform: translateY(-1px);
 }
 
 .sidebar-nav-btn.active {
-    background: rgba(30, 144, 255, 0.22);
-    color: #ffffff;
-    box-shadow: 0 0 14px rgba(30, 144, 255, 0.40),
-        inset 0 1px 0 rgba(255, 255, 255, 0.12);
-    border: 1px solid rgba(30, 144, 255, 0.40);
+    background: var(--sidebar-active-bg);
+    color: var(--accent);
+    box-shadow: 0 0 20px var(--accent-light);
+    border: 1px solid var(--accent-light);
 }
 
 .sidebar-nav-btn .nav-tooltip {
