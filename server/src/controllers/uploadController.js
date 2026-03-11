@@ -6,20 +6,23 @@ class CloudinaryController {
     async uploadFile(req, res) {
         try {
             const convID = req.params.convID;
-            const files = req.files;
-            
+            const uploadedFields = req.files || {};
+            const files = [
+                ...(uploadedFields.files || [])
+            ];
+
             if (!files || files.length === 0) {
-                return res.status(400).json({ 
+                return res.status(400).json({
                     message: 'No files uploaded',
-                    hint: 'Send files with field name "files" in multipart/form-data'
+                    hint: 'Send files with field name "files" in multipart/form-data',
                 });
             }
 
             // Upload tất cả files song song
-            const uploadPromises = files.map(file => 
+            const uploadPromises = files.map(file =>
                 uploadService.uploadToCloudinary(file.path, { convID: convID })
             );
-            
+
             const uploadResults = await Promise.all(uploadPromises);
 
             new SuccessResponse({
@@ -27,9 +30,15 @@ class CloudinaryController {
                 metadata: {
                     files: uploadResults.map(result => ({
                         url: result.secure_url,
+                        file_size: result.bytes,
+                        file_name: result.original_filename + '.' + result.format,
+                        thumbnail_url: result.resource_type === 'image'
+                            ? result.secure_url.replace('/upload/', '/upload/w_200,c_scale/')
+                            : result.secure_url.replace('.' + result.format, '.jpg'),
                         public_id: result.public_id,
                         resource_type: result.resource_type,
-                        format: result.format
+                        format: result.format,
+                        duration: result.duration || 0
                     }))
                 }
             }).send(res);

@@ -2,7 +2,7 @@ const homeService = require('../services/homeService');
 const SuccessResponse = require('../core/successResponse');
 
 class HomeController {
-    async getUserInfor (req, res) {
+    async getUserInfor(req, res) {
         const userID = req.params.userID;
         const userInfor = await homeService.getUserInfor(userID);
         new SuccessResponse({
@@ -13,7 +13,7 @@ class HomeController {
         }).send(res);
     }
 
-    async putUserInfor (req, res) {
+    async putUserInfor(req, res) {
         const userID = req.params.userID;
         const userInfor = req.body;
         console.log(userID, userInfor);
@@ -25,7 +25,7 @@ class HomeController {
             },
         }).send(res);
     }
-    
+
     async getHomeConversation(req, res) {
         const homeConversationData = await homeService.getAllUserMessagesInJoinedConversations(req.params.userID);
         if (homeConversationData.length === 0) {
@@ -65,14 +65,19 @@ class HomeController {
 
     async postHomeMessages(req, res) {
         const conversationId = req.params.convID;
-        const { senderId, content, parent_message_id, message_type } = req.body;
-        
+        const { senderId, content, parent_message_id, message_type, file_url, file_name, file_size, thumbnail_url, duration } = req.body;
+
         const newMessage = await homeService.postMessageToConversation(
             conversationId,
             senderId,
             content,
             parent_message_id,
-            message_type
+            message_type,
+            file_url,
+            file_name,
+            file_size,
+            thumbnail_url,
+            duration
         );
         new SuccessResponse({
             message: 'Post home message successfully',
@@ -229,7 +234,7 @@ class HomeController {
 
     async createFriendByUserId(req, res) {
         const userId = req.params.userId;
-        const { friend_id, is_favorite, notes} = req.body;
+        const { friend_id, is_favorite, notes } = req.body;
         const newFriend = await homeService.createFriendByUserId(userId, friend_id, is_favorite, notes);
         new SuccessResponse({
             message: 'Create friend successfully',

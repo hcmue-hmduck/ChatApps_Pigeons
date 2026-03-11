@@ -271,10 +271,38 @@
                                                 </div>
 
                                                 <!-- Bubble -->
-                                                <div class="bubble-me" [class.bubble-deleted]="msg.is_deleted">
+                                                <div class="bubble-me" [class.bubble-deleted]="msg.is_deleted"
+                                                    [class.bubble-image]="msg.message_type === 'image'">
                                                     <span *ngIf="msg.is_deleted">Tin nhắn đã được gỡ</span>
-                                                    <div *ngIf="!msg.is_deleted"
-                                                        [innerHTML]="(msg.content || '').replace(/\n/g, '<br>')"></div>
+
+                                                    <ng-container *ngIf="!msg.is_deleted">
+                                                        <!-- Text -->
+                                                        <div *ngIf="msg.message_type === 'text'"
+                                                            [innerHTML]="(msg.content || '').replace(/\n/g, '<br>')">
+                                                        </div>
+
+                                                        <!-- Image -->
+                                                        <div *ngIf="msg.message_type === 'image'"
+                                                            class="msg-image-wrap">
+                                                            <img [src]="msg.content" class="msg-image" alt="Hình ảnh">
+                                                        </div>
+
+                                                        <!-- Video -->
+                                                        <div *ngIf="msg.message_type === 'video'"
+                                                            class="msg-video-wrap">
+                                                            <video [src]="msg.content" controls
+                                                                class="msg-video"></video>
+                                                        </div>
+
+                                                        <!-- File -->
+                                                        <div *ngIf="msg.message_type === 'file'" class="msg-file-wrap">
+                                                            <a [href]="msg.content" target="_blank"
+                                                                class="msg-file-link">
+                                                                <i class="bi bi-file-earmark-arrow-down"></i>
+                                                                <span>{{ msg.file_name || 'Tệp đính kèm' }}</span>
+                                                            </a>
+                                                        </div>
+                                                    </ng-container>
                                                 </div>
                                             </ng-container>
 
@@ -401,7 +429,33 @@
                                                 </ng-container>
                                                 <ng-container *ngIf="!msg.is_deleted">
                                                     <div class="bubble-other"
-                                                        [innerHTML]="(msg.content || '').replace(/\n/g, '<br>')">
+                                                        [class.bubble-image]="msg.message_type === 'image'">
+                                                        <!-- Text -->
+                                                        <div *ngIf="msg.message_type === 'text'"
+                                                            [innerHTML]="(msg.content || '').replace(/\n/g, '<br>')">
+                                                        </div>
+
+                                                        <!-- Image -->
+                                                        <div *ngIf="msg.message_type === 'image'"
+                                                            class="msg-image-wrap">
+                                                            <img [src]="msg.content" class="msg-image" alt="Hình ảnh">
+                                                        </div>
+
+                                                        <!-- Video -->
+                                                        <div *ngIf="msg.message_type === 'video'"
+                                                            class="msg-video-wrap">
+                                                            <video [src]="msg.content" controls
+                                                                class="msg-video"></video>
+                                                        </div>
+
+                                                        <!-- File -->
+                                                        <div *ngIf="msg.message_type === 'file'" class="msg-file-wrap">
+                                                            <a [href]="msg.content" target="_blank"
+                                                                class="msg-file-link">
+                                                                <i class="bi bi-file-earmark-arrow-down"></i>
+                                                                <span>{{ msg.file_name || 'Tệp đính kèm' }}</span>
+                                                            </a>
+                                                        </div>
                                                     </div>
 
                                                     <!-- Actions (right of bubble for other) -->
@@ -499,6 +553,26 @@
                 </button>
             </div>
 
+            <!-- Upload Preview Container -->
+            <div class="upload-preview-wrap" *ngIf="preUploadFiles().length > 0">
+                <div class="upload-preview-container">
+                    <div class="preview-item" *ngFor="let file of preUploadFiles(); let i = index">
+                        <div class="preview-thumb-wrap">
+                            <img *ngIf="file.isImage" [src]="file.previewUrl" class="preview-img">
+                            <div *ngIf="!file.isImage" class="preview-file-icon">
+                                <i class="bi bi-file-earmark-text"></i>
+                            </div>
+                            <button class="remove-preview-btn" (click)="removePreUploadFile(i)">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </div>
+                        <div class="preview-file-info" *ngIf="!file.isImage">
+                            <span class="preview-file-name">{{ file.name }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Input row -->
             <div class="input-row">
                 <!-- Left icons -->
@@ -506,6 +580,7 @@
                     <button class="input-icon-btn" title="Đính kèm tệp" (click)="handleFileAttachment()">
                         <i class="bi bi-paperclip"></i>
                     </button>
+                    <input type="file" #fileInput (change)="onFileSelected($event)" multiple style="display: none;">
                     <button class="input-icon-btn" title="Thu âm" (click)="handleVoiceRecording()">
                         <i class="bi bi-mic-fill"></i>
                     </button>

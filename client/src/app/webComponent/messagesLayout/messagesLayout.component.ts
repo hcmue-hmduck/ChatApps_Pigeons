@@ -24,10 +24,19 @@ import { CallService } from '../../services/callService';
 import { Conversation } from '../../services/conversation';
 import { Messages } from '../../services/messages';
 import { SocketService } from '../../services/socket';
+import { UploadService } from '../../services/uploadService';
 
 export interface UserPresence {
     status: string;
     last_online_at: string | Date;
+}
+
+export interface StagedFile {
+    file: File;
+    previewUrl: string;
+    isImage: boolean;
+    name: string;
+    size: number;
 }
 
 @Component({
@@ -62,6 +71,7 @@ export class MessagesLayoutComponent
 
     @ViewChild('messagesContent') messagesContent!: ElementRef<HTMLDivElement>;
     @ViewChild('messageInput', { static: false }) messageInput!: ElementRef<HTMLTextAreaElement>;
+    @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
 
     autoScroll = true;
     isNearBottom = true;
@@ -129,6 +139,7 @@ export class MessagesLayoutComponent
 
     // Pinned messages
     pinnedMessages = signal<any[]>([]);
+    preUploadFiles = signal<StagedFile[]>([]);
     showPinnedDropdown = false;
     openPinnedMenuId: string | null = null;
 
@@ -241,6 +252,7 @@ export class MessagesLayoutComponent
     constructor(
         private messagesService: Messages,
         private conversationService: Conversation,
+        private uploadService: UploadService,
         private socketService: SocketService,
     ) {
         this.initEffect();
@@ -267,9 +279,45 @@ export class MessagesLayoutComponent
 
     // Handle file attachment
     handleFileAttachment() {
-        // TODO: Implement file picker
-        console.log('File attachment clicked');
+        this.fileInput.nativeElement.click();
     }
+
+    onFileSelected(event: Event) {
+        const input = event.target as HTMLInputElement;
+        if (!input.files || input.files.length === 0) return;
+
+        const files = Array.from(input.files);
+        const newStagedFiles: StagedFile[] = files.map(file => ({
+            file,
+            previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : '',
+            isImage: file.type.startsWith('image/'),
+            name: file.name,
+            size: file.size
+        }));
+
+        this.preUploadFiles.update(prev => [...prev, ...newStagedFiles]);
+
+        // Reset input value to allow selecting same file again
+        input.value = '';
+    }
+
+    removePreUploadFile(index: number) {
+        this.preUploadFiles.update(files => {
+            const fileToRemove = files[index];
+            if (fileToRemove.previewUrl) {
+                URL.revokeObjectURL(fileToRemove.previewUrl);
+            }
+            return files.filter((_, i) => i !== index);
+        });
+    }
+
+    clearPreUploadFiles() {
+        this.preUploadFiles().forEach(f => {
+            if (f.previewUrl) URL.revokeObjectURL(f.previewUrl);
+        });
+        this.preUploadFiles.set([]);
+    }
+
 
     // Handle voice recording
     handleVoiceRecording() {
@@ -615,9 +663,10 @@ export class MessagesLayoutComponent
         messageType: string,
         replyTo?: string,
         messageTransform?: (msg: any) => any,
+        file_metadata?: any
     ) {
         this.messagesService
-            .postMessage(this.conversationId, this.currentUserId, content, replyTo, messageType)
+            .postMessage(this.conversationId, this.currentUserId, content, replyTo, messageType, file_metadata)
             .subscribe({
 
                 next: (response) => {
@@ -704,23 +753,72 @@ export class MessagesLayoutComponent
     }
 
     handleSendBtn() {
-        if (!this.newMessage.trim()) return;
+        if (!this.newMessage.trim() && this.preUploadFiles().length === 0) return;
+
         const messageContent = this.newMessage;
         const replyTo = this.replyToMessage ? this.replyToMessage.id : undefined;
+        const stagedFiles = this.preUploadFiles().map(f => f.file);
+
         this.newMessage = '';
         this.replyToMessage = null;
         this.loading = true;
         this.error = '';
 
-        this.postAndBroadcastMessage(messageContent, 'text', replyTo,
-            // Transform: đảm bảo parent_message_info có parent_message_id
-            (msg) => ({
-                ...msg,
-                parent_message_info: msg.parent_message_info
-                    ? { ...msg.parent_message_info, parent_message_id: msg.parent_message_id }
-                    : null,
-            })
-        )
+        // 1. Nếu có text, gửi text trước
+        if (messageContent.trim()) {
+            this.postAndBroadcastMessage(messageContent, 'text', replyTo,
+                (msg) => ({
+                    ...msg,
+                    parent_message_info: msg.parent_message_info
+                        ? { ...msg.parent_message_info, parent_message_id: msg.parent_message_id }
+                        : null,
+                })
+            )
+        }
+
+        // 2. Nếu có files, upload files
+        if (stagedFiles.length > 0) {
+            this.uploadFileAttachment(stagedFiles);
+            this.clearPreUploadFiles();
+        } else {
+            this.loading = false;
+        }
+    }
+
+    uploadFileAttachment(files: File[]) {
+        const formData = new FormData();
+        files.forEach(file => {
+            formData.append('files', file);
+        });
+
+        this.uploadService.uploadFile(this.conversationId, formData).subscribe({
+            next: (response) => {
+                console.log('Files uploaded successfully:', response);
+                const uploadedFiles = response.metadata.files;
+
+                // Gửi từng file như một tin nhắn riêng biệt
+                uploadedFiles.forEach((file: any) => {
+                    // Xác định messageType dựa trên resource_type từ server
+                    let messageType = 'file';
+                    if (file.resource_type === 'image') messageType = 'image';
+                    else if (file.resource_type === 'video') messageType = 'video';
+
+                    // Gửi tin nhắn chứa URL file kèm metadata
+                    const fileMetadata = {
+                        file_url: file.url,
+                        file_name: file.file_name,
+                        file_size: file.file_size,
+                        thumbnail_url: file.thumbnail_url,
+                        duration: file.duration
+                    };
+                    this.postAndBroadcastMessage(file.url, messageType, undefined, undefined, fileMetadata);
+                });
+            },
+            error: (error) => {
+                console.error('Error uploading files:', error);
+                this.error = 'Không thể tải lên tệp tin. Vui lòng thử lại.';
+            }
+        });
     }
 
     dropdownTop = 0;

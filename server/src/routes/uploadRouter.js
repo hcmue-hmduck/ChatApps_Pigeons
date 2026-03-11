@@ -4,7 +4,13 @@ const upload = require('../configs/multerConfig');
 const uploadController = require('../controllers/uploadController');
 
 
-router.post('/:convID', upload.any(), uploadController.uploadFile);
+router.post(
+	'/:convID',
+	upload.fields([
+		{ name: 'files', maxCount: 10 }
+	]),
+	uploadController.uploadFile,
+);
 
 
 

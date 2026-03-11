@@ -230,6 +230,11 @@ class HomeService {
         content,
         parent_message_id = null,
         message_type = 'text',
+        file_url = null,
+        file_name = null,
+        file_size = null,
+        thumbnail_url = null,
+        duration = null
     ) {
         // 1. Tạo message mới + lấy parent message (song song)
         const [newMessage, parentMessage] = await Promise.all([
@@ -239,6 +244,11 @@ class HomeService {
                 content,
                 parent_message_id,
                 message_type,
+                file_url,
+                file_name,
+                file_size,
+                thumbnail_url,
+                duration,
                 time_sent: new Date(),
             }),
             parent_message_id ? messagesService.getMessageById(parent_message_id) : Promise.resolve(null),

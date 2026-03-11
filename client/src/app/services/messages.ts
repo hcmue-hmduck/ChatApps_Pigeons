@@ -8,13 +8,13 @@ import { environment } from '../../environments/environment';
 })
 export class Messages {
     private apiUrl = `${environment.apiUrl}/home/messages`;
-    constructor(private http: HttpClient) {}
+    constructor(private http: HttpClient) { }
 
     // Lấy tất cả messages của users này
     getMessages(conversationId: string, limit: number = 50, offset: number = 0): Observable<any> {
         return this.http
             .get(`${this.apiUrl}/${conversationId}?limit=${limit}&offset=${offset}`)
-            .pipe(tap((data) => console.log('getMessages:::',data)));
+            .pipe(tap((data) => console.log('getMessages:::', data)));
     }
 
     postMessage(
@@ -23,9 +23,16 @@ export class Messages {
         content: string,
         replyTo?: string,
         message_type?: string,
+        file_metadata?: {
+            file_url?: string;
+            file_name?: string;
+            file_size?: number;
+            thumbnail_url?: string;
+            duration?: number;
+        }
     ): Observable<any> {
         // conversationId += "s";
-        const body: any = { senderId, content, message_type };
+        const body: any = { senderId, content, message_type, ...file_metadata };
         if (replyTo) body.parent_message_id = replyTo;
         return this.http.post(`${this.apiUrl}/${conversationId}`, body);
     }
@@ -38,7 +45,7 @@ export class Messages {
         return this.http.delete(`${this.apiUrl}/${messageId}`);
     }
 
-    pinMessage(message_id: string, conversation_id: string, pinned_by: string ,note: string, order_index: number): Observable<any> {
+    pinMessage(message_id: string, conversation_id: string, pinned_by: string, note: string, order_index: number): Observable<any> {
         return this.http.post(`${this.apiUrl}/pinmessage`, { message_id, conversation_id, pinned_by, note, order_index });
     }
 
