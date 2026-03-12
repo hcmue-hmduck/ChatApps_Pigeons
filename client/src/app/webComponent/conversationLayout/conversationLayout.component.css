@@ -193,8 +193,8 @@
   height: 46px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid rgba(30, 144, 255, 0.35);
-  box-shadow: 0 0 12px rgba(30, 144, 255, 0.18), 0 2px 6px rgba(0, 0, 0, 0.40);
+  border: 2px solid var(--accent-light);
+  box-shadow: 0 0 12px rgba(0, 242, 255, 0.18), 0 2px 6px rgba(0, 0, 0, 0.40);
 }
 
 /* Status dot */
@@ -252,7 +252,7 @@
   object-fit: cover;
   border: 2px solid rgba(10, 20, 50, 0.80);
   border-radius: 50%;
-  box-shadow: 0 0 8px rgba(30, 144, 255, 0.15);
+  box-shadow: 0 0 8px rgba(0, 242, 255, 0.15);
 }
 
 /* Layouts */
@@ -392,8 +392,8 @@
 }
 
 .unread-badge {
-  background: linear-gradient(135deg, #1e90ff, #0d5fd6);
-  color: #fff;
+  background: linear-gradient(135deg, var(--accent), #0d5fd6);
+  color: #0f172a;
   font-size: 11px;
   font-weight: 700;
   min-width: 20px;
@@ -405,7 +405,7 @@
   padding: 0 5px;
   flex-shrink: 0;
   animation: pulse-badge 2s infinite;
-  box-shadow: 0 0 8px rgba(30, 144, 255, 0.55);
+  box-shadow: 0 0 12px rgba(0, 242, 255, 0.55);
 }
 
 @keyframes pulse-badge {
@@ -503,10 +503,10 @@
 
 .welcome-icon {
   font-size: 56px;
-  color: #1e90ff;
+  color: var(--accent);
   opacity: 0.70;
   animation: float 3s ease-in-out infinite;
-  filter: drop-shadow(0 0 18px rgba(30, 144, 255, 0.60));
+  filter: drop-shadow(0 0 18px rgba(0, 242, 255, 0.60));
 }
 
 @keyframes float {
@@ -538,19 +538,19 @@
   margin-top: 8px;
   padding: 10px 28px;
   border-radius: 24px;
-  background: linear-gradient(135deg, #1e6aff, #0d4fd0);
-  color: #fff;
+  background: linear-gradient(135deg, var(--accent), #0d4fd0);
+  color: #0f172a;
   border: none;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 0 14px rgba(30, 144, 255, 0.40);
+  box-shadow: 0 0 14px rgba(0, 242, 255, 0.40);
 }
 
 .welcome-screen .btn-start:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(30, 144, 255, 0.50);
+  box-shadow: 0 6px 20px rgba(0, 242, 255, 0.50);
 }
 
 /* Full-page loading */
@@ -568,11 +568,11 @@
 .spinner-accent {
   width: 40px;
   height: 40px;
-  border: 3px solid rgba(30, 144, 255, 0.18);
-  border-top-color: #1e90ff;
+  border: 3px solid rgba(0, 242, 255, 0.18);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
-  filter: drop-shadow(0 0 8px rgba(30, 144, 255, 0.50));
+  filter: drop-shadow(0 0 8px rgba(0, 242, 255, 0.50));
 }
 
 @keyframes spin {
@@ -792,8 +792,8 @@
   height: 32px;
   border: none;
   border-radius: 50%;
-  background: rgba(30, 144, 255, 0.12);
-  color: #7aaed8;
+  background: rgba(0, 242, 255, 0.12);
+  color: var(--accent);
   display: flex;
   align-items: center;
   justify-content: center;

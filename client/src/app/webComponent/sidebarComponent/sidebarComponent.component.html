@@ -3,14 +3,8 @@
      ==================================================== -->
 <div class="app-shell">
 
-    <!-- ── FULL-PAGE LOADING ── -->
-    <div *ngIf="loading() || !isReady()" class="full-loading">
-        <div class="spinner-accent"></div>
-        <p>Đang tải...</p>
-    </div>
-
-    <!-- ── NAV SIDEBAR ── -->
-    <aside class="icon-sidebar" *ngIf="isReady()">
+    <!-- ── NAV SIDEBAR (Always show) ── -->
+    <aside class="icon-sidebar">
         <img src="assets/PigeonLogo.png" alt="Pigeons" class="sidebar-logo">
         <nav class="nav-icons">
             <button class="sidebar-nav-btn" [class.active]="isActive('messages')" title="Tin nhắn"
@@ -30,8 +24,14 @@
         </nav>
         <!-- User Avatar & Modal Trigger -->
         <div class="sidebar-bottom">
+            <!-- User Avatar if ready -->
             <img [src]="userInfo()?.avatar_url" alt="avatar" class="sidebar-user-avatar" title="Hồ sơ cá nhân"
                 *ngIf="userInfo()" (click)="userProfileModal.open(currentUserId)">
+
+            <!-- Placeholder if loading -->
+            <div class="sidebar-user-avatar-placeholder" *ngIf="!userInfo()">
+                <i class="bi bi-person"></i>
+            </div>
             <button class="sidebar-logout-btn" title="Đăng xuất">
                 <i class="bi bi-box-arrow-right"></i>
                 <span class="nav-tooltip">Đăng xuất</span>
@@ -40,7 +40,13 @@
     </aside>
 
     <!-- ── CONTENT AREA ── -->
-    <div class="content-area" *ngIf="isReady()">
+    <div class="content-area">
+
+        <!-- ── BLURRED LOADING OVERLAY ── -->
+        <div class="content-loading-overlay" [class.visible]="loading() || !isReady()">
+            <div class="spinner-accent"></div>
+            <p class="loading-text">Loading...</p>
+        </div>
 
         <!-- VIEW: Messages (Panel 2 + Panel 3) -->
         <conversation-layout [style.display]="navService.activeView() === 'messages' ? 'block' : 'none'"

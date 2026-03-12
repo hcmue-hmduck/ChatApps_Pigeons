@@ -16,6 +16,10 @@
 
 	/* ── App Background — Ebony Black ── */
 	--app-bg: #05070a;
+	--cyber-bg:
+		radial-gradient(circle at 50% -20%, rgba(0, 242, 255, 0.08), transparent 40%),
+		linear-gradient(rgba(0, 242, 255, 0.02) 1px, transparent 1px),
+		linear-gradient(90deg, rgba(0, 242, 255, 0.02) 1px, transparent 1px);
 
 	/* ── Dark Glass layers ── */
 	--glass-strong: rgba(15, 23, 42, 0.40);
@@ -88,13 +92,10 @@ body {
 	overflow-x: hidden;
 	/* Deep dark base */
 	background-color: var(--app-bg);
-	/* Layered grid mesh + radial glows — optimized from NeonChat */
-	background-image:
-		linear-gradient(rgba(0, 242, 255, 0.03) 1px, transparent 1px),
-		linear-gradient(90deg, rgba(0, 242, 255, 0.03) 1px, transparent 1px),
-		radial-gradient(ellipse at 25% 45%, rgba(0, 180, 255, 0.15) 0%, transparent 55%),
-		radial-gradient(ellipse at 72% 65%, rgba(0, 80, 255, 0.10) 0%, transparent 50%);
-	background-size: 40px 40px, 40px 40px, 100% 100%, 100% 100%;
+	/* Layered grid mesh + radial glows — matched with homeLayout */
+	background-image: var(--cyber-bg);
+	background-size: 100% 100%, 48px 48px, 48px 48px;
+	background-size: 100% 100%, 48px 48px, 48px 48px;
 	background-attachment: fixed;
 }
 
