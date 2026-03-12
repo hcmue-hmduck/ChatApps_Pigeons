@@ -186,6 +186,15 @@ class HomeController {
         }).send(res);
     }
 
+    // [PATCH] /home/call/ended/:callID
+    async setCallEnded(req, res) {
+        const call_id = req.params.callID;
+        new SuccessResponse({
+            message: 'Set call ended successfully',
+            metadata: await homeService.endCall(call_id),
+        }).send(res);
+    }
+
     async postHomePinMessage(req, res) {
         const pinMessageData = req.body;
         const newPinMessage = await homeService.createPinMessage(pinMessageData);
