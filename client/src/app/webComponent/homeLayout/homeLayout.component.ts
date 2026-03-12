@@ -2,7 +2,7 @@ import { Component, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Home } from '../../services/home';
 
-    
+
 @Component({
     selector: 'home-layout',
     standalone: true,
@@ -13,8 +13,9 @@ import { Home } from '../../services/home';
 
 export class HomeLayoutComponent implements OnInit {
     protected readonly title = signal('Home');
+    protected isLogin = signal(true);
     ngOnInit() {
-        
+
     }
 
 }
