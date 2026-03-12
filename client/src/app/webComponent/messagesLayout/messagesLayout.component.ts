@@ -35,6 +35,7 @@ export interface StagedFile {
     file: File;
     previewUrl: string;
     isImage: boolean;
+    isVideo: boolean;
     name: string;
     size: number;
 }
@@ -57,7 +58,7 @@ export class MessagesLayoutComponent
     loading = false;
     error = '';
     newMessage: string = '';
-    messageStatus: string = 'Đã gửi';
+    messageStatus = signal('Đã gửi');
 
     @Input() conversationId: string = '';
     @Input() conversationType: string = '';
@@ -274,7 +275,8 @@ export class MessagesLayoutComponent
 
     // TrackBy function để tối ưu rendering
     trackByMessageId(index: number, message: any): any {
-        return message.id;
+        // _trackId ổn định qua temp→real transition, Angular sẽ reuse DOM element thay vì destroy/recreate
+        return message._trackId ?? message.id;
     }
 
     // Handle file attachment
@@ -289,8 +291,11 @@ export class MessagesLayoutComponent
         const files = Array.from(input.files);
         const newStagedFiles: StagedFile[] = files.map(file => ({
             file,
-            previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : '',
+            previewUrl: (file.type.startsWith('image/') || file.type.startsWith('video/'))
+                ? URL.createObjectURL(file)
+                : '',
             isImage: file.type.startsWith('image/'),
+            isVideo: file.type.startsWith('video/'),
             name: file.name,
             size: file.size
         }));
@@ -337,9 +342,10 @@ export class MessagesLayoutComponent
 
         // Setup listener cho tin nhắn mới
         this.socketService.on('newMessage', (data: any) => {
-            if (data.conversation_id === conversationId) {
+            if (data.conversation_id === conversationId && data.sender_id !== this.currentUserId) {
                 this.lastMessageId = data.id;
                 console.log('this.lastMessageId', this.lastMessageId);
+                console.log('data', data.sender_id, this.currentUserId);
                 // Kiểm tra xem tin nhắn đã tồn tại chưa (tránh duplicate)
                 const currentMessages = this.getMessagesData().homeMessagesData?.messages || [];
                 const messageExists = currentMessages.some((msg: any) => msg.id === data.id);
@@ -663,55 +669,104 @@ export class MessagesLayoutComponent
         messageType: string,
         replyTo?: string,
         messageTransform?: (msg: any) => any,
-        file_metadata?: any
+        file_metadata?: any,
+        replyToMessageObj?: any,
+        existingTempId?: string  // Nếu đã có temp message trong UI (ví dụ file upload), bỏ qua bước add UI
     ) {
+        const tempId = 'temp-' + Date.now();
+        const messageData = {
+            id: tempId,
+            _trackId: tempId, // key ổn định cho trackBy — preserve qua cả real message
+            sender_id: this.currentUserId,
+            call_id: null,
+            content: content,
+            conversation_id: this.conversationId,
+            created_at: new Date().toISOString(),
+            deleted_for_all: false,
+            duration: file_metadata?.duration ? Math.round(file_metadata?.duration) : null,
+            file_name: file_metadata?.file_name ?? null,
+            file_size: file_metadata?.file_size ?? null,
+            file_url: file_metadata?.file_url ?? null,
+            message_type: messageType,
+            parent_message_id: replyToMessageObj?.id || null,
+            parent_message_info: replyToMessageObj ? {
+                parent_message_id: replyToMessageObj.id || null,
+                parent_message_content: replyToMessageObj.content || null,
+                parent_message_name: replyToMessageObj.sender_name || null,
+                parent_message_is_deleted: replyToMessageObj.is_deleted || null,
+                parent_message_sender_id: replyToMessageObj.sender_id || null,
+            } : null,
+            thumbnail_url: file_metadata?.thumbnail_url ?? null,
+            updated_at: new Date().toISOString()
+        };
+
+        const messageToAdd = messageTransform
+            ? messageTransform(messageData)
+            : { ...messageData };
+
+        // Thêm thông tin người gửi vào tin nhắn trước khi hiển thị lên UI
+        const currentUser = this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId) || {};
+        const newMessage = {
+            ...messageToAdd,
+            sender_name: currentUser.full_name,
+            sender_avatar: currentUser.avatar_url,
+        };
+
+        console.log('NewMessage', newMessage);
+
+        this.messageStatus.set('Đang gửi');
+
+        // Chỉ thêm vào UI nếu chưa có từ trước (file upload đã thêm rồi)
+        const effectiveTempId = existingTempId ?? tempId;
+        if (!existingTempId) {
+            this.updateUIWithNewMessage(newMessage, this.conversationId);
+        }
+
         this.messagesService
             .postMessage(this.conversationId, this.currentUserId, content, replyTo, messageType, file_metadata)
             .subscribe({
-
                 next: (response) => {
                     this.loading = false;
-                    // K được xoá, t fix cái lỗi vô đạo bất lương này 10h liền đấy !!!!!!
-                    // OK bro, lỡ xóa có fix lại thì cũng nhanh thôi à -.-
-                    response.metadata.newMessage.created_at = new Date().toISOString();
-                    response.metadata.newMessage.updated_at = new Date().toISOString();
+                    const savedMessage = response.metadata?.newMessage;
+                    const realId = savedMessage?.id;
 
-                    // Cho phép caller tuỳ chỉnh message trước khi thêm vào UI
-                    const messageToAdd = messageTransform
-                        ? messageTransform(response.metadata.newMessage)
-                        : { ...response.metadata.newMessage };
+                    this.lastMessageId = realId;
+                    this.messageStatus.set('Đã gửi');
 
-                    // Thêm thông tin người gửi vào tin nhắn trước khi hiển thị lên UI
-                    const currentUser = this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId) || {};
-                    const newMessage = {
-                        ...messageToAdd,
+                    // Cập nhật conversation với real ID
+                    this.conversationService.putConversation(this.conversationId, {
+                        last_message_id: realId
+                    }).subscribe({
+                        next: () => { },
+                        error: (err) => console.error('Error updating conversation:', err),
+                    });
+
+                    // Replace temp message bằng real message
+                    this.getMessagesData.update((old) => ({
+                        ...old,
+                        homeMessagesData: {
+                            ...old.homeMessagesData,
+                            messages: old.homeMessagesData.messages.map((m: any) =>
+                                m.id === effectiveTempId
+                                    ? { ...newMessage, id: realId, _trackId: effectiveTempId, _uploading: false, ...savedMessage }
+                                    : m
+                            ),
+                        },
+                    }));
+
+                    const realMessage = {
+                        ...savedMessage,
                         sender_name: currentUser.full_name,
                         sender_avatar: currentUser.avatar_url,
                     };
-
-                    this.lastMessageId = newMessage.id;
-                    console.log('newMessage', newMessage);
-                    console.log('this.lastMessageId', this.lastMessageId);
-
-                    this.messageStatus = 'Đã gửi';
-                    this.updateUIWithNewMessage(newMessage);
+                    this.socketService.emit('sendMessage', realMessage);
+                    this.socketService.emit('updateConversation', realMessage);
                 },
                 error: (error) => {
                     this.loading = false;
                     console.error('Error posting message:', error);
                     this.error = error.message;
-
-                    // Thêm thông tin người gửi vào tin nhắn trước khi hiển thị lên UI
-                    const currentUser = this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId) || {};
-                    const newMessage = {
-                        content: content,
-                        created_at: new Date().toISOString(),
-                        sender_id: this.currentUserId,
-                        sender_name: currentUser.full_name,
-                        sender_avatar: currentUser.avatar_url,
-                    };
-                    this.messageStatus = 'Lỗi';
-                    this.updateUIWithNewMessage(newMessage);
+                    this.messageStatus.set('Lỗi');
                 },
             });
     }
@@ -719,12 +774,7 @@ export class MessagesLayoutComponent
     updateUIWithNewMessage(newMessage: any, conversationId?: string) {
         // cập nhật lastMessage
         if (!conversationId) conversationId = this.conversationId;
-        this.conversationService.putConversation(conversationId, {
-            last_message_id: newMessage.id
-        }).subscribe({
-            next: () => { /* Conversation updated */ },
-            error: (err) => console.error('Error updating conversation:', err),
-        });
+
 
         // không cập nhật nội dung trò chuyện nếu đang ở conversation khác
         if (this.conversationId === conversationId) {
@@ -736,11 +786,6 @@ export class MessagesLayoutComponent
                 },
             }))
         }
-
-        // cập nhật UI của người nhận
-        this.lastMessageId = newMessage.id;
-        this.socketService.emit('sendMessage', newMessage);
-        this.socketService.emit('updateConversation', newMessage);
     }
 
     handleKeyDown(event: KeyboardEvent) {
@@ -757,6 +802,7 @@ export class MessagesLayoutComponent
 
         const messageContent = this.newMessage;
         const replyTo = this.replyToMessage ? this.replyToMessage.id : undefined;
+        const replyToMessageObj = this.replyToMessage; // Capture trước khi clear
         const stagedFiles = this.preUploadFiles().map(f => f.file);
 
         this.newMessage = '';
@@ -772,7 +818,9 @@ export class MessagesLayoutComponent
                     parent_message_info: msg.parent_message_info
                         ? { ...msg.parent_message_info, parent_message_id: msg.parent_message_id }
                         : null,
-                })
+                }),
+                undefined,
+                replyToMessageObj
             )
         }
 
@@ -787,36 +835,103 @@ export class MessagesLayoutComponent
 
     uploadFileAttachment(files: File[]) {
         const formData = new FormData();
+        const currentUser = this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId) || {};
+
+        // Bước 1: Tạo temp message ngay lập tức cho mỗi file
+        const tempEntries: { tempId: string; file: File }[] = [];
         files.forEach(file => {
-            formData.append('files', file);
+            const encodedName = encodeURIComponent(file.name.normalize('NFC'));
+            const blob = new Blob([file], { type: file.type });
+            formData.append('files', blob, encodedName);
+
+            const tempId = 'temp-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+            let messageType = 'file';
+            if (file.type.startsWith('image/')) messageType = 'image';
+            else if (file.type.startsWith('video/')) messageType = 'video';
+            else if (file.type.startsWith('audio/')) messageType = 'audio';
+
+            const tempMsg = {
+                id: tempId,
+                _trackId: tempId,
+                _uploading: true,  // hiện progress bar
+                sender_id: this.currentUserId,
+                sender_name: currentUser.full_name,
+                sender_avatar: currentUser.avatar_url,
+                content: file.name,
+                conversation_id: this.conversationId,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                message_type: messageType,
+                file_name: file.name,
+                file_size: file.size,
+                file_url: URL.createObjectURL(file), // preview cục bộ
+                thumbnail_url: null,
+                duration: null,
+                deleted_for_all: false,
+                is_deleted: false,
+                is_edited: false,
+                parent_message_id: null,
+                parent_message_info: null,
+            };
+
+            tempEntries.push({ tempId, file });
+            this.messageStatus.set('');
+            this.updateUIWithNewMessage(tempMsg, this.conversationId);
         });
 
+        // Bước 2: Upload lên Cloudinary
         this.uploadService.uploadFile(this.conversationId, formData).subscribe({
             next: (response) => {
-                console.log('Files uploaded successfully:', response);
                 const uploadedFiles = response.metadata.files;
 
-                // Gửi từng file như một tin nhắn riêng biệt
-                uploadedFiles.forEach((file: any) => {
-                    // Xác định messageType dựa trên resource_type từ server
-                    let messageType = 'file';
-                    if (file.resource_type === 'image') messageType = 'image';
-                    else if (file.resource_type === 'video') messageType = 'video';
+                uploadedFiles.forEach((file: any, index: number) => {
+                    const { tempId } = tempEntries[index] || {};
 
-                    // Gửi tin nhắn chứa URL file kèm metadata
+                    let messageType = 'file';
+                    let content = 'tệp đính kèm';
+                    if (file.resource_type === 'image') {
+                        messageType = 'image';
+                        content = 'ảnh'
+                    }
+                    else if (file.resource_type === 'video') {
+                        messageType = 'video';
+                        content = 'video'
+                    }
+                    else if (file.resource_type === 'audio') {
+                        messageType = 'audio';
+                        content = 'tin nhắn thoại'
+                    }
+
                     const fileMetadata = {
                         file_url: file.url,
                         file_name: file.file_name,
                         file_size: file.file_size,
                         thumbnail_url: file.thumbnail_url,
-                        duration: file.duration
+                        duration: Math.round(file.duration || 0)
                     };
-                    this.postAndBroadcastMessage(file.url, messageType, undefined, undefined, fileMetadata);
+
+                    // Bước 3: Gửi HTTP POST để lưu DB, replace temp message bằng real
+                    this.postAndBroadcastMessage(
+                        content, messageType,
+                        undefined, undefined,
+                        fileMetadata, undefined,
+                        tempId  // existingTempId: bỏ qua add UI, chỉ replace
+                    );
                 });
             },
             error: (error) => {
                 console.error('Error uploading files:', error);
                 this.error = 'Không thể tải lên tệp tin. Vui lòng thử lại.';
+                // Xóa các temp message bị lỗi
+                tempEntries.forEach(({ tempId }) => {
+                    this.getMessagesData.update((old) => ({
+                        ...old,
+                        homeMessagesData: {
+                            ...old.homeMessagesData,
+                            messages: old.homeMessagesData.messages.filter((m: any) => m.id !== tempId),
+                        },
+                    }));
+                });
             }
         });
     }

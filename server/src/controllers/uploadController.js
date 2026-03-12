@@ -28,18 +28,21 @@ class CloudinaryController {
             new SuccessResponse({
                 message: `${uploadResults.length} file(s) uploaded successfully`,
                 metadata: {
-                    files: uploadResults.map(result => ({
-                        url: result.secure_url,
-                        file_size: result.bytes,
-                        file_name: result.original_filename + '.' + result.format,
-                        thumbnail_url: result.resource_type === 'image'
-                            ? result.secure_url.replace('/upload/', '/upload/w_200,c_scale/')
-                            : result.secure_url.replace('.' + result.format, '.jpg'),
-                        public_id: result.public_id,
-                        resource_type: result.resource_type,
-                        format: result.format,
-                        duration: result.duration || 0
-                    }))
+                    files: uploadResults.map((result, i) => {
+                        const ext = result.format || files[i].originalname.split('.').pop() || 'bin';
+                        return {
+                            url: result.secure_url,
+                            file_size: result.bytes,
+                            file_name: files[i].originalname,
+                            thumbnail_url: result.resource_type === 'image'
+                                ? result.secure_url.replace('/upload/', '/upload/w_200,c_scale/')
+                                : result.secure_url.replace('.' + result.format, '.jpg'),
+                            public_id: result.public_id,
+                            resource_type: result.resource_type,
+                            format: ext,
+                            duration: result.duration || 0
+                        };
+                    })
                 }
             }).send(res);
         } catch (error) {

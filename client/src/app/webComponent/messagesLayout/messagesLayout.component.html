@@ -276,32 +276,39 @@
                                                     <span *ngIf="msg.is_deleted">Tin nhắn đã được gỡ</span>
 
                                                     <ng-container *ngIf="!msg.is_deleted">
-                                                        <!-- Text -->
-                                                        <div *ngIf="msg.message_type === 'text'"
-                                                            [innerHTML]="(msg.content || '').replace(/\n/g, '<br>')">
-                                                        </div>
-
                                                         <!-- Image -->
                                                         <div *ngIf="msg.message_type === 'image'"
                                                             class="msg-image-wrap">
-                                                            <img [src]="msg.content" class="msg-image" alt="Hình ảnh">
+                                                            <img [src]="msg.file_url" class="msg-image" alt="Hình ảnh">
                                                         </div>
 
                                                         <!-- Video -->
                                                         <div *ngIf="msg.message_type === 'video'"
                                                             class="msg-video-wrap">
-                                                            <video [src]="msg.content" controls
+                                                            <video [src]="msg.file_url" controls
                                                                 class="msg-video"></video>
                                                         </div>
 
                                                         <!-- File -->
                                                         <div *ngIf="msg.message_type === 'file'" class="msg-file-wrap">
-                                                            <a [href]="msg.content" target="_blank"
+                                                            <a [href]="msg.file_url" target="_blank"
                                                                 class="msg-file-link">
                                                                 <i class="bi bi-file-earmark-arrow-down"></i>
                                                                 <span>{{ msg.file_name || 'Tệp đính kèm' }}</span>
                                                             </a>
                                                         </div>
+
+                                                        <!-- Text -->
+                                                        <div *ngIf="msg.message_type === 'text'"
+                                                            [innerHTML]="(msg.content || '').replace(/\n/g, '<br>')">
+                                                        </div>
+
+                                                        <!-- Upload progress bar -->
+                                                        <div *ngIf="msg._uploading" class="upload-progress">
+                                                            <div class="upload-progress-bar"></div>
+                                                            <span class="upload-progress-text">Đang tải lên...</span>
+                                                        </div>
+
                                                     </ng-container>
                                                 </div>
                                             </ng-container>
@@ -342,13 +349,13 @@
                               getMessagesData().homeMessagesData.messages[i+1].message_type === 'system'"
                                             class="msg-timestamp me">
                                             <ng-container
-                                                *ngIf="i === getMessagesData().homeMessagesData.messages.length - 1">
+                                                *ngIf="i === getMessagesData().homeMessagesData.messages.length - 1 && messageStatus() !== ''">
                                                 <span class="msg-status"
-                                                    [ngClass]="{'msg-error': this.messageStatus === 'Lỗi'}">
-                                                    <i class="bi bi-check-all" *ngIf="this.messageStatus !== 'Lỗi'"></i>
+                                                    [ngClass]="{'msg-error': messageStatus() === 'Lỗi'}">
+                                                    <i class="bi bi-check-all" *ngIf="messageStatus() !== 'Lỗi'"></i>
                                                     <i class="bi bi-exclamation-circle"
-                                                        *ngIf="this.messageStatus === 'Lỗi'"></i>
-                                                    {{ this.messageStatus }} lúc {{ formatTime(msg.created_at) }}
+                                                        *ngIf="messageStatus() === 'Lỗi'"></i>
+                                                    {{ messageStatus() }} lúc {{ formatTime(msg.created_at) }}
                                                 </span>
                                             </ng-container>
 
@@ -430,31 +437,31 @@
                                                 <ng-container *ngIf="!msg.is_deleted">
                                                     <div class="bubble-other"
                                                         [class.bubble-image]="msg.message_type === 'image'">
-                                                        <!-- Text -->
-                                                        <div *ngIf="msg.message_type === 'text'"
-                                                            [innerHTML]="(msg.content || '').replace(/\n/g, '<br>')">
-                                                        </div>
-
                                                         <!-- Image -->
                                                         <div *ngIf="msg.message_type === 'image'"
                                                             class="msg-image-wrap">
-                                                            <img [src]="msg.content" class="msg-image" alt="Hình ảnh">
+                                                            <img [src]="msg.file_url" class="msg-image" alt="Hình ảnh">
                                                         </div>
 
                                                         <!-- Video -->
                                                         <div *ngIf="msg.message_type === 'video'"
                                                             class="msg-video-wrap">
-                                                            <video [src]="msg.content" controls
+                                                            <video [src]="msg.file_url" controls
                                                                 class="msg-video"></video>
                                                         </div>
 
                                                         <!-- File -->
                                                         <div *ngIf="msg.message_type === 'file'" class="msg-file-wrap">
-                                                            <a [href]="msg.content" target="_blank"
+                                                            <a [href]="msg.file_url" target="_blank"
                                                                 class="msg-file-link">
                                                                 <i class="bi bi-file-earmark-arrow-down"></i>
                                                                 <span>{{ msg.file_name || 'Tệp đính kèm' }}</span>
                                                             </a>
+                                                        </div>
+
+                                                        <!-- Text -->
+                                                        <div *ngIf="msg.message_type === 'text'"
+                                                            [innerHTML]="(msg.content || '').replace(/\n/g, '<br>')">
                                                         </div>
                                                     </div>
 
@@ -558,15 +565,24 @@
                 <div class="upload-preview-container">
                     <div class="preview-item" *ngFor="let file of preUploadFiles(); let i = index">
                         <div class="preview-thumb-wrap">
+                            <!-- Image preview -->
                             <img *ngIf="file.isImage" [src]="file.previewUrl" class="preview-img">
-                            <div *ngIf="!file.isImage" class="preview-file-icon">
+                            <!-- Video preview -->
+                            <div *ngIf="file.isVideo" class="preview-video-wrap">
+                                <video [src]="file.previewUrl" class="preview-video" muted preload="metadata"></video>
+                                <div class="preview-video-play-icon">
+                                    <i class="bi bi-play-fill"></i>
+                                </div>
+                            </div>
+                            <!-- Other file icon -->
+                            <div *ngIf="!file.isImage && !file.isVideo" class="preview-file-icon">
                                 <i class="bi bi-file-earmark-text"></i>
                             </div>
                             <button class="remove-preview-btn" (click)="removePreUploadFile(i)">
                                 <i class="bi bi-x"></i>
                             </button>
                         </div>
-                        <div class="preview-file-info" *ngIf="!file.isImage">
+                        <div class="preview-file-info" *ngIf="!file.isImage && !file.isVideo">
                             <span class="preview-file-name">{{ file.name }}</span>
                         </div>
                     </div>

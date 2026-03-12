@@ -11,33 +11,26 @@ class UploadService {
 
     static getResourceType(filename) {
         const extension = filename.split('.').pop().toLowerCase();
-        
+
         if (this.FILE_TYPES.IMAGES.includes(extension)) return 'image';
         if (this.FILE_TYPES.VIDEOS.includes(extension)) return 'video';
         if (this.FILE_TYPES.AUDIOS.includes(extension)) return 'video'; // Cloudinary xử lý audio như video
         if (this.FILE_TYPES.DOCUMENTS.includes(extension)) return 'raw';
         if (this.FILE_TYPES.ARCHIVES.includes(extension)) return 'raw';
-        
+
         return 'auto'; // Cloudinary tự động phát hiện
     }
-    
-    async uploadToCloudinary(filePath, options = {}) {
-        let folderPath = `chatPigeons/${options.convID || ''}`;
 
+    async uploadToCloudinary(filePath, options = {}) {
+        const folderPath = `chatPigeons/${options.convID || ''}`;
         const resourceType = options.resource_type || this.constructor.getResourceType(filePath);
 
-        
-        const uploadOptions = {
-            folder: folderPath,
-            resource_type: resourceType, // Thiết lập resource_type cho Cloudinary
-            ...options
-        };
-
         return new Promise((resolve, reject) => {
-            cloudinary.uploader.upload(filePath, uploadOptions, (error, result) => {
-                if (error) {
-                    return reject(error);
-                }
+            cloudinary.uploader.upload(filePath, {
+                folder: folderPath,
+                resource_type: resourceType
+            }, (error, result) => {
+                if (error) return reject(error);
                 resolve(result);
             });
         });

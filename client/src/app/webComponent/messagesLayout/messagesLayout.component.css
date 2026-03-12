@@ -789,27 +789,88 @@
 }
 
 .msg-file-wrap {
-    padding: 10px 16px;
-    background: rgba(255, 255, 255, 0.1);
+    padding: 10px 14px;
+    background: rgba(0, 242, 255, 0.05);
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(0, 242, 255, 0.15);
+    max-width: 260px;
+}
+
+/* Upload progress bar */
+.upload-progress {
+    margin-top: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.upload-progress-bar {
+    height: 3px;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.15);
+    overflow: hidden;
+    position: relative;
+}
+
+.upload-progress-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -50%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 242, 255, 0.9), transparent);
+    animation: upload-shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes upload-shimmer {
+    0% {
+        left: -50%;
+    }
+
+    100% {
+        left: 150%;
+    }
+}
+
+.upload-progress-text {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.45);
+    font-family: 'Inter', sans-serif;
 }
 
 .msg-file-link {
     display: flex;
     align-items: center;
     gap: 10px;
-    color: #4da8ff;
+    color: #e2efff;
     text-decoration: none;
     font-weight: 500;
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    min-width: 0;
+}
+
+.msg-file-link span {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .msg-file-link i {
     font-size: 20px;
+    flex-shrink: 0;
+    color: var(--accent);
 }
 
 .msg-file-link:hover {
-    color: #80c1ff;
+    color: #fff;
+}
+
+.msg-file-link:hover i {
+    filter: drop-shadow(0 0 5px rgba(0, 242, 255, 0.6));
 }
 
 .msg-avatar-placeholder {
@@ -2100,6 +2161,41 @@
     object-fit: cover;
     border-radius: 11px;
     display: block;
+}
+
+/* Video preview thumbnail */
+.preview-video-wrap {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 11px;
+    overflow: hidden;
+    background: #000;
+}
+
+.preview-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border-radius: 11px;
+}
+
+.preview-video-play-icon {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 11px;
+    pointer-events: none;
+}
+
+.preview-video-play-icon i {
+    font-size: 26px;
+    color: #fff;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5));
 }
 
 /* Non-image file icon */

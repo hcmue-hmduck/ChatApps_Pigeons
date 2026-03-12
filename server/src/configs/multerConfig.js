@@ -10,9 +10,18 @@ const storage = multer.diskStorage({
     }
 });
 
-const upload = multer({ 
+const upload = multer({
     storage: storage,
-    limits: { fileSize: 50 * 1024 * 1024 } // Giới hạn 50MB mỗi file
+    limits: { fileSize: 50 * 1024 * 1024 }, // Giới hạn 50MB mỗi file
+    fileFilter: (req, file, cb) => {
+        // Client URI-encodes filename → server decodes safely (no latin1/utf8 ambiguity)
+        try {
+            file.originalname = decodeURIComponent(file.originalname);
+        } catch {
+            // Nếu không phải URI-encoded thì giữ nguyên
+        }
+        cb(null, true);
+    }
 });
 
 module.exports = upload;
