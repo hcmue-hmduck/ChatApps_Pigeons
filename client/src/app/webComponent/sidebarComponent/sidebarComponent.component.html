@@ -17,7 +17,8 @@
                 <i class="bi bi-people"></i>
                 <span class="nav-tooltip">Liên hệ</span>
             </button>
-            <button class="sidebar-nav-btn" title="Bảng tin">
+            <button class="sidebar-nav-btn" [class.active]="isActive('newFeeds')" title="Bảng tin"
+                (click)="setView('newFeeds')">
                 <i class="bi bi-newspaper"></i>
                 <span class="nav-tooltip">Bảng tin</span>
             </button>
@@ -49,14 +50,17 @@
         </div>
 
         <!-- VIEW: Messages (Panel 2 + Panel 3) -->
-        <conversation-layout [style.display]="navService.activeView() === 'messages' ? 'block' : 'none'"
+        <conversation-layout [style.display]="navService.activeView() === 'messages' ? 'flex' : 'none'"
             [currentUserId]="currentUserId">
         </conversation-layout>
 
         <!-- VIEW: Friends -->
-        <relationship-layout [style.display]="navService.activeView() === 'friends' ? 'block' : 'none'"
+        <relationship-layout [style.display]="navService.activeView() === 'friends' ? 'flex' : 'none'"
             [currentUserId]="currentUserId">
         </relationship-layout>
+
+        <new-feeds-layout [style.display]="navService.activeView() === 'newFeeds' ? 'flex' : 'none'">
+        </new-feeds-layout>
 
     </div>
 

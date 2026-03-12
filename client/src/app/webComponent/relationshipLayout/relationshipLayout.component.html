@@ -1,7 +1,7 @@
 <div class="relations-root">
 
     <!-- ── TRÁI: SIDEBAR MENU ── -->
-    <div class="relations-sidebar">
+    <aside class="relations-sidebar">
         <!-- Search & Add Actions -->
         <div class="sidebar-top">
             <div class="search-bar">
@@ -15,7 +15,7 @@
         <!-- Menu List -->
         <ul class="sidebar-menu">
             <li class="menu-item" [class.active]="currentTab === 'friends'" (click)="setTab('friends')">
-                <i class="bi bi-person-lines"></i> Danh sách bạn bè
+                <i class="bi bi-person-lines-fill"></i> Danh sách bạn bè
             </li>
             <li class="menu-item">
                 <i class="bi bi-people"></i> Danh sách nhóm và cộng đồng
@@ -30,10 +30,10 @@
                 <i class="bi bi-shield-slash"></i> Danh sách chặn
             </li>
         </ul>
-    </div>
+    </aside>
 
     <!-- ── PHẢI: MAIN CONTENT ── -->
-    <div class="relations-main">
+    <main class="relations-main">
         <!-- Main Header -->
         <div class="main-header">
             <i class="bi bi-shield-slash" *ngIf="currentTab === 'blocked'"></i>
@@ -82,7 +82,7 @@
                             </button>
                             <div class="friend-dropdown" *ngIf="showMoreMenuId === friend.id">
                                 <button class="dropdown-item" (click)="viewProfile(friend.friend_id)">
-                                    <i class="bi bi-person-lines dropdown-item-icon"></i>
+                                    <i class="bi bi-person-lines-fill dropdown-item-icon"></i>
                                     <span class="dropdown-item-text">Xem thông tin</span>
                                 </button>
                                 <div class="dropdown-divider"></div>
@@ -178,7 +178,7 @@
                 <div class="spinner-accent"></div>
             </div>
         </div>
-    </div>
+    </main>
 
     <!-- Child Profile Modal Component -->
     <user-infor-modal #userProfileModal [editPremission]="false">

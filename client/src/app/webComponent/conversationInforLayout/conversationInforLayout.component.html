@@ -1,0 +1,209 @@
+<aside class="sidebar-container">
+    <!-- Header: Aligned with Chat Header -->
+    <div class="sidebar-header">
+        <button class="back-btn" (click)="closePanel.emit()" title="Quay lại">
+            <i class="bi bi-arrow-left"></i>
+        </button>
+        <h5 class="header-title">Thông tin</h5>
+    </div>
+
+    <div class="sidebar-content-scroll">
+        <!-- Profile Section -->
+        <div class="profile-section">
+            <div class="avatar-container">
+                <div class="avatar-ring">
+                    <img src="https://picsum.photos/seed/alex/200/200" alt="Alex Rivers" class="avatar-img">
+                </div>
+            </div>
+            <h1 class="profile-name">Alex Rivers</h1>
+            <p class="profile-status">Active Now • San Francisco, CA</p>
+
+            <div class="action-buttons">
+                <div class="action-item group">
+                    <div class="icon-circle">
+                        <i class="bi bi-bell-fill"></i>
+                    </div>
+                    <span class="action-label">Mute</span>
+                </div>
+                <div class="action-item group">
+                    <div class="icon-circle">
+                        <i class="bi bi-search"></i>
+                    </div>
+                    <span class="action-label">Search</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Accordion Sections -->
+        <div class="accordion-list">
+            <!-- Chat Info -->
+            <div class="accordion-item">
+                <button class="accordion-header" (click)="toggleSection('chatInfo')">
+                    <span>Chat Info</span>
+                    <i class="bi" [class.bi-chevron-up]="sections().chatInfo"
+                        [class.bi-chevron-down]="!sections().chatInfo"></i>
+                </button>
+                <div class="accordion-content" [class.open]="sections().chatInfo">
+                    <div class="content-padding">
+                        <div class="info-group">
+                            <p class="info-label">Bio</p>
+                            <p class="info-value">Lead Product Designer shaping the future of decentralized interfaces.
+                                Cyber-enthusiast & Night owl.</p>
+                        </div>
+                        <div class="info-group">
+                            <p class="info-label">Username</p>
+                            <p class="info-value accent-text">@arivers_neon</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customization -->
+            <div class="accordion-item">
+                <button class="accordion-header" (click)="toggleSection('customization')">
+                    <span>Customization</span>
+                    <i class="bi" [class.bi-chevron-up]="sections().customization"
+                        [class.bi-chevron-down]="!sections().customization"></i>
+                </button>
+                <div class="accordion-content" [class.open]="sections().customization">
+                    <div class="content-padding">
+                        <div class="list-item">
+                            <span>Change Theme</span>
+                            <div class="theme-dot"></div>
+                        </div>
+                        <div class="list-item">
+                            <span>Edit Emoji</span>
+                            <span class="emoji">⚡</span>
+                        </div>
+                        <div class="list-item">
+                            <span>Edit Nickname</span>
+                            <span class="muted-text">Alex</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Members -->
+            <div class="accordion-item">
+                <button class="accordion-header" (click)="toggleSection('members')">
+                    <span>Members</span>
+                    <i class="bi" [class.bi-chevron-up]="sections().members"
+                        [class.bi-chevron-down]="!sections().members"></i>
+                </button>
+                <div class="accordion-content" [class.open]="sections().members">
+                    <div class="content-padding">
+                        <div class="member-item">
+                            <img src="https://picsum.photos/seed/alex/50/50" alt="Alex" class="member-avatar">
+                            <div class="member-info">
+                                <p class="member-name">Alex Rivers</p>
+                                <p class="member-role accent-text">Admin</p>
+                            </div>
+                        </div>
+                        <button class="add-people-btn">
+                            <i class="bi bi-person-plus"></i>
+                            Add People
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Media, Files & Links -->
+            <div class="accordion-item">
+                <button class="accordion-header" (click)="toggleSection('media')">
+                    <span>Media, Files & Links</span>
+                    <i class="bi" [class.bi-chevron-up]="sections().media"
+                        [class.bi-chevron-down]="!sections().media"></i>
+                </button>
+                <div class="accordion-content" [class.open]="sections().media">
+                    <div class="content-padding">
+                        <div class="media-section">
+                            <div class="section-title">
+                                <h4>Recent Media</h4>
+                                <button class="see-all">See all</button>
+                            </div>
+                            <div class="media-grid">
+                                <div class="media-item" *ngFor="let item of recentMedia">
+                                    <img [src]="item.url" alt="media">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="files-list">
+                            <div class="file-item group" *ngFor="let file of recentFiles">
+                                <div class="file-icon" [class.pdf]="file.type==='pdf'"
+                                    [class.docx]="file.type==='docx'">
+                                    <i class="bi bi-file-earmark-text"></i>
+                                </div>
+                                <div class="file-info">
+                                    <p class="file-name">{{ file.name }}</p>
+                                    <p class="file-meta">{{ file.size }} • {{ file.date }}</p>
+                                </div>
+                                <i class="bi bi-download download-icon"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Privacy & Support -->
+            <div class="accordion-item">
+                <button class="accordion-header" (click)="toggleSection('privacy')">
+                    <span>Privacy & Support</span>
+                    <i class="bi" [class.bi-chevron-up]="sections().privacy"
+                        [class.bi-chevron-down]="!sections().privacy"></i>
+                </button>
+                <div class="accordion-content" [class.open]="sections().privacy">
+                    <div class="content-padding">
+                        <button class="action-row group">
+                            <i class="bi bi-slash-circle"></i>
+                            <div class="action-body">
+                                <p class="action-title">Mute notifications</p>
+                                <p class="action-status">Off</p>
+                            </div>
+                        </button>
+                        <button class="action-row group">
+                            <i class="bi bi-eye"></i>
+                            <div class="action-body">
+                                <p class="action-title">Read receipts</p>
+                                <p class="action-status">On</p>
+                            </div>
+                        </button>
+                        <button class="action-row group">
+                            <i class="bi bi-clock-history"></i>
+                            <div class="action-body">
+                                <p class="action-title">Disappearing messages</p>
+                                <p class="action-status">24 hours</p>
+                            </div>
+                        </button>
+
+                        <div class="separator"></div>
+
+                        <button class="action-row danger group">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <div class="action-body">
+                                <p class="action-title">Report</p>
+                                <p class="action-status">Provide feedback and report</p>
+                            </div>
+                        </button>
+                        <button class="action-row danger group">
+                            <i class="bi bi-shield-slash"></i>
+                            <span>Block Contact</span>
+                        </button>
+                        <button class="action-row danger group">
+                            <i class="bi bi-box-arrow-right"></i>
+                            <span>Leave Chat</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Action -->
+        <div class="bottom-action">
+            <button class="more-actions-btn">
+                <i class="bi bi-three-dots"></i>
+                More Actions
+            </button>
+        </div>
+    </div>
+</aside>

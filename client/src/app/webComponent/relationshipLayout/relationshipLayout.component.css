@@ -2,26 +2,31 @@
    RELATIONSHIP LAYOUT — Dark Glass Theme
    ============================================================ */
 .relations-root {
-    flex: 1;
     display: flex;
-    flex-direction: row;
-    height: 100vh;
-    color: #d8eeff;
-    background: transparent;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    width: 100%;
+    height: 100%;
+    gap: 12px;
     overflow: hidden;
+    background: transparent;
+    color: #d8eeff;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 /* ── SECONDARY SIDEBAR (Menu trái) ── */
 .relations-sidebar {
     width: 320px;
-    min-width: 320px;
+    flex: 0 0 320px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
     background: var(--glass-strong);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
-    border-right: 1px solid var(--glass-border-subtle);
-    display: flex;
-    flex-direction: column;
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: var(--glass-shadow-deep);
 }
 
 .sidebar-top {
@@ -142,12 +147,18 @@
 /* ── MAIN CONTENT (Danh sách bên phải) ── */
 .relations-main {
     flex: 1;
+    min-width: 0;
+    height: 100%;
     display: flex;
     flex-direction: column;
-    background: var(--glass-light);
+    background: var(--glass-strong);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
-    min-width: 0;
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: var(--glass-shadow-deep);
 }
 
 .main-header {

@@ -23,7 +23,8 @@
 
 /* Ensure child layouts expand to fill the content area */
 .content-area>conversation-layout,
-.content-area>relationship-layout {
+.content-area>relationship-layout,
+.content-area>new-feeds-layout {
     display: flex;
     flex: 1;
     min-width: 0;

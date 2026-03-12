@@ -9,10 +9,12 @@
     display: flex;
     flex-direction: column;
     flex: 1;
-    min-width: 0;
+    /* Declare minimum usable width — parent container query will hide .chat-area below this */
+    min-width: 437px;
     overflow: hidden;
-    /* Ensures the host fills .chat-area completely */
     height: 100%;
+    container-type: inline-size;
+    container-name: msg-layout;
 }
 
 /* NOTE: CSS variables are defined globally in styles.css */
@@ -249,14 +251,26 @@
    PINNED MESSAGE BAR · Dark Glass
    ============================================================ */
 .pinned-bar-wrap {
-    background: var(--glass-medium);
-    border-bottom: 1px solid var(--glass-border-subtle);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    flex-shrink: 0;
-    position: relative;
+    position: absolute;
+    top: 92px;
+    left: 16px;
+    right: 16px;
     z-index: 100;
-    /* Increased to be above message rows */
+    pointer-events: none;
+    /* Let clicks pass through to empty space if any */
+}
+
+.pinned-bar,
+.pinned-panel-list {
+    pointer-events: auto;
+    /* Enable clicks on the actual content */
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    /* Removed overflow: hidden to allow context menus to overflow the card */
 }
 
 /* Preview bar */
@@ -270,7 +284,7 @@
 }
 
 .pinned-bar:hover {
-    background: rgba(0, 242, 255, 0.05);
+    background: rgba(0, 242, 255, 0.08);
 }
 
 .pinned-sender {
@@ -365,13 +379,10 @@
 
 /* List panel */
 .pinned-panel-list {
-    background: var(--glass-strong);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    box-shadow: var(--glass-shadow-deep);
-    border-bottom: 1px solid var(--glass-border-subtle);
-    overflow: hidden;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.7);
     animation: slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    border-top: 1px solid var(--glass-border);
+    /* Separator if multiple are stacked */
 }
 
 @keyframes slideDown {
@@ -539,11 +550,19 @@
 }
 
 .pinned-ctx-item.danger {
-    color: #ff6b6b;
+    color: #ff8a8a;
+    font-weight: 500;
 }
 
 .pinned-ctx-item.danger:hover {
-    background: rgba(239, 68, 68, 0.12);
+    background: rgba(239, 68, 68, 0.18);
+    color: #ff5f5f;
+    box-shadow: inset 0 0 10px rgba(239, 68, 68, 0.1);
+}
+
+.pinned-ctx-item.danger i {
+    color: inherit;
+    filter: drop-shadow(0 0 4px rgba(255, 107, 107, 0.4));
 }
 
 /* ============================================================
@@ -2010,6 +2029,57 @@
 /* Hover effect for icon wrapper */
 .call-bubble-content:hover .call-icon-wrapper {
     background: rgba(255, 255, 255, 0.25);
+}
+
+/* ============================================================
+   CONTAINER QUERIES — responsive input area
+   ============================================================ */
+
+/* Narrow (≤ 520px): thu nhỏ padding, giảm icon btn */
+@container msg-layout (max-width: 520px) {
+    .input-area {
+        padding: 8px 10px;
+    }
+
+    .input-icon-btn {
+        width: 30px;
+        height: 30px;
+        font-size: 17px;
+    }
+
+    .input-side-btns {
+        gap: 2px;
+    }
+
+    .send-btn {
+        width: 38px;
+        height: 38px;
+        font-size: 16px;
+    }
+}
+
+/* Very narrow (≤ 380px): ẩn input-side-btns hoàn toàn */
+@container msg-layout (max-width: 380px) {
+    .input-side-btns {
+        display: none;
+    }
+
+    .input-area {
+        padding: 8px;
+    }
+
+    .input-box {
+        padding: 5px 6px;
+    }
+
+    .msg-textarea {
+        font-size: 14px;
+    }
+
+    .send-btn {
+        width: 36px;
+        height: 36px;
+    }
 }
 
 /* Responsive adjustments for mobile */

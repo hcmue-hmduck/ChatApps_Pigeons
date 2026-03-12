@@ -14,7 +14,10 @@ import {
     effect,
     inject,
     signal,
-    untracked
+    untracked,
+    ChangeDetectorRef,
+    Output,
+    EventEmitter
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PickerModule } from '@ctrl/ngx-emoji-mart';
@@ -52,6 +55,7 @@ export class MessagesLayoutComponent
     protected readonly title = signal('client');
     callService = inject(CallService);
     authService = inject(AuthService);
+    private cdr = inject(ChangeDetectorRef);
 
     getMessagesData = signal<any>({});
 
@@ -69,6 +73,7 @@ export class MessagesLayoutComponent
     @Input() tick1s: number = 0;
     @Input() tick60s: number = 0;
     @Input() tick3600s: number = 0;
+    @Output() toggleDetails = new EventEmitter<void>();
 
     @ViewChild('messagesContent') messagesContent!: ElementRef<HTMLDivElement>;
     @ViewChild('messageInput', { static: false }) messageInput!: ElementRef<HTMLTextAreaElement>;
@@ -143,6 +148,21 @@ export class MessagesLayoutComponent
     preUploadFiles = signal<StagedFile[]>([]);
     showPinnedDropdown = false;
     openPinnedMenuId: string | null = null;
+    private pinnedMenuTimeout: any;
+
+    onPinnedMenuMouseLeave() {
+        this.pinnedMenuTimeout = setTimeout(() => {
+            this.openPinnedMenuId = null;
+            this.cdr.detectChanges(); // Use manual detection to ensure UI updates after timeout
+        }, 100); // reduced delay for better feel
+    }
+
+    onPinnedMenuMouseEnter() {
+        if (this.pinnedMenuTimeout) {
+            clearTimeout(this.pinnedMenuTimeout);
+            this.pinnedMenuTimeout = null;
+        }
+    }
 
     togglePinnedDropdown(event: Event) {
         event.stopPropagation();
@@ -1399,6 +1419,10 @@ export class MessagesLayoutComponent
         );
     }
 
+    handleInfo() {
+        this.toggleDetails.emit();
+    }
+
     handleVoiceCall() {
         this.handleCall('audio');
     }
@@ -1460,9 +1484,9 @@ export class MessagesLayoutComponent
         }
 
         // Icon cho cuộc gọi video
-        if (media_type === 'video') 
+        if (media_type === 'video')
             return 'bi bi-camera-video-fill call-icon video';
-        
+
         // Icon cho cuộc gọi audio
         return 'bi bi-telephone-fill call-icon audio';
     }
@@ -1487,7 +1511,7 @@ export class MessagesLayoutComponent
             } else if (status === 'missed' || status === 'cancelled') {
                 callMainContent = 'Cuộc gọi nhỡ';
             } else if (status === 'declined') {
-                callMainContent = caller_id === this.authService.getUserId() 
+                callMainContent = caller_id === this.authService.getUserId()
                     ? 'Đã bị từ chối'
                     : 'Đã từ chối';
             } else {

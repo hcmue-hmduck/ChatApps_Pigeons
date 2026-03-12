@@ -20,11 +20,12 @@ import { SocketService } from '../../services/socket';
 import { ConversationLayoutComponent } from '../conversationLayout/conversationLayout.component';
 import { RelationshipLayoutComponent } from '../relationshipLayout/relationshipLayout.component';
 import { UserInforModel } from '../userinforModel/userinforModel.component';
+import { NewFeedsLayoutComponent } from '../newFeedsLayout/newFeedsLayout.component';
 
 @Component({
     selector: 'sidebar-component',
     standalone: true,
-    imports: [CommonModule, FormsModule, ConversationLayoutComponent, RelationshipLayoutComponent, UserInforModel],
+    imports: [CommonModule, FormsModule, ConversationLayoutComponent, RelationshipLayoutComponent, UserInforModel, NewFeedsLayoutComponent],
     templateUrl: './sidebarComponent.component.html',
     styleUrls: ['./sidebarComponent.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush,

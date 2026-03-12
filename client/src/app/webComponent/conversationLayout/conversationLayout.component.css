@@ -10,6 +10,8 @@
   gap: 12px;
   overflow: hidden;
   background: transparent;
+  container-type: inline-size;
+  container-name: conv-root;
 }
 
 /* SIDEBAR STYLES REMOVED - Handled by Shell Component */
@@ -488,6 +490,31 @@
   border-radius: 20px;
   height: 100%;
   box-shadow: var(--glass-shadow-deep);
+  transition: flex 0.3s ease;
+}
+
+/* ============================================================
+   PANEL 4 — CONVERSATION INFO SIDEBAR
+   ============================================================ */
+app-conversation-infor-layout {
+  flex: 0 0 360px;
+  width: 360px;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  animation: slideInRight 0.25s ease;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 /* Welcome screen */
@@ -591,6 +618,32 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ============================================================
+   CHAT AREA — hide when too narrow to show messagesLayout (< 437px)
+   No sidebar:   320 (panel) + 12 (gap) + 437 (chat) = 769px
+   With sidebar: 320 (panel) + 12 (gap) + 437 (chat) + 12 (gap) + 360 (info) = 1141px
+   ============================================================ */
+
+/* No sidebar: hide chat-area when it would be < 437px */
+@container conv-root (max-width: 769px) {
+  .chat-area:not(.with-sidebar) {
+    display: none;
+  }
+}
+
+/* With sidebar: hide chat-area when it would be < 437px */
+@container conv-root (max-width: 1141px) {
+  .chat-area.with-sidebar {
+    display: none;
+  }
+
+  app-conversation-infor-layout {
+    flex: 1;
+  }
+}
+
+/* Show back button inside the info panel on narrow layout */
 
 /* Responsive */
 @media (max-width: 768px) {

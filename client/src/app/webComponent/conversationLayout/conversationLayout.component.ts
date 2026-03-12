@@ -20,10 +20,12 @@ export interface UserPresence {
     last_online_at: string | Date;
 }
 
+import { ConversationInforLayoutComponent } from '../conversationInforLayout/conversationInforLayout.component';
+
 @Component({
     selector: 'conversation-layout',
     standalone: true,
-    imports: [CommonModule, MessagesLayoutComponent],
+    imports: [CommonModule, MessagesLayoutComponent, ConversationInforLayoutComponent],
     templateUrl: './conversationLayout.component.html',
     styleUrls: ['./conversationLayout.component.css'],
     encapsulation: ViewEncapsulation.None,
@@ -39,6 +41,13 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     navService = inject(NavigationService);
     cdr = inject(ChangeDetectorRef);
     conversationService = inject(Conversation);
+
+    // Sidebar toggle state
+    showConversationInfor = signal(false);
+
+    toggleConversationInfor() {
+        this.showConversationInfor.update(v => !v);
+    }
 
     // Conversation selection state (local to this component)
     selectedConversationId: string = '';

@@ -1,0 +1,172 @@
+<div class="feed-root selection:bg-primary/30 selection:text-primary">
+    <div class="feed-wrapper">
+        <div class="feed-grid">
+
+            <!-- Main Feed Column -->
+            <div class="feed-main">
+
+                <!-- Post Creator -->
+                <div class="glass-card post-creator-card animate-slide-up">
+                    <div class="creator-top">
+                        <img [src]="currentUser.avatar" alt="User avatar" class="avatar-l" referrerPolicy="no-referrer">
+                        <div class="input-container">
+                            <textarea placeholder="Transmit a new frequency..." class="creator-textarea"></textarea>
+                        </div>
+                    </div>
+                    <div class="creator-bottom">
+                        <div class="action-icons">
+                            <button class="icon-btn-ghost" title="Add Image">
+                                <i class="bi bi-image"></i>
+                            </button>
+                            <button class="icon-btn-ghost" title="Attach File">
+                                <i class="bi bi-paperclip"></i>
+                            </button>
+                            <button class="icon-btn-ghost" title="Voice Note">
+                                <i class="bi bi-mic"></i>
+                            </button>
+                        </div>
+                        <button class="btn-primary">
+                            Transmit
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Feed Posts -->
+                <div class="posts-list">
+                    @for (post of posts(); track post.id) {
+                    <div class="glass-card post-card animate-fade-in">
+                        <div class="post-header">
+                            <div class="post-author-info">
+                                <img [src]="post.author.avatar" [alt]="post.author.name" class="avatar-l"
+                                    referrerPolicy="no-referrer">
+                                <div class="author-meta">
+                                    <span class="author-name">{{post.author.name}}</span>
+                                    <span class="post-meta-text">{{post.timestamp}} • via {{post.source}}</span>
+                                </div>
+                            </div>
+                            <button class="icon-btn-ghost">
+                                <i class="bi bi-three-dots"></i>
+                            </button>
+                        </div>
+
+                        <div class="post-content">
+                            <p class="post-text">
+                                @for (word of parseContent(post.content); track $index) {
+                                @if (word.startsWith('#')) {
+                                <span class="text-primary">{{word}} </span>
+                                } @else {
+                                {{word}}
+                                }
+                                }
+                            </p>
+
+                            @if (post.image) {
+                            <div class="post-image-container">
+                                <img [src]="post.image" alt="Post content" class="post-image"
+                                    referrerPolicy="no-referrer">
+                            </div>
+                            }
+                        </div>
+
+                        <div class="post-actions">
+                            <button class="action-btn active">
+                                <i class="bi bi-heart-fill"></i>
+                                <span class="action-count neon-text-glow">{{post.likes}}</span>
+                            </button>
+                            <button class="action-btn">
+                                <i class="bi bi-chat-dots"></i>
+                                <span class="action-count">{{post.comments}}</span>
+                            </button>
+                            <button class="action-btn">
+                                <i class="bi bi-share"></i>
+                                <span class="action-count">{{post.shares}}</span>
+                            </button>
+                        </div>
+
+                        <!-- Example Comment -->
+                        <div class="comments-section">
+                            <div class="comment-item">
+                                <img [src]="onlineNodes[0].avatar" alt="Commenter" class="avatar-s"
+                                    referrerPolicy="no-referrer">
+                                <div class="comment-bubble">
+                                    <div class="comment-header">
+                                        <span class="comment-author">{{onlineNodes[0].name}}</span>
+                                        <span class="comment-time">1ms ago</span>
+                                    </div>
+                                    <p class="comment-text">The protocol looks solid. Have you tried stress-testing the
+                                        nodes in the lower sectors yet?</p>
+                                </div>
+                            </div>
+
+                            <!-- Comment Input -->
+                            <div class="comment-input-wrap">
+                                <img [src]="currentUser.avatar" alt="My avatar" class="avatar-s"
+                                    referrerPolicy="no-referrer">
+                                <div class="input-pill">
+                                    <input type="text" placeholder="Add a comment..." class="comment-input">
+                                    <button class="send-btn">
+                                        <i class="bi bi-send"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    }
+                </div>
+
+                <!-- Sync Indicator -->
+                <div class="sync-indicator">
+                    <div class="sync-dot"></div>
+                    <p class="sync-text">Syncing with Mainframe...</p>
+                </div>
+            </div>
+
+            <!-- Sidebar Column -->
+            <div class="feed-sidebar">
+
+                <!-- Trending Protocols -->
+                <div class="glass-card trending-card animate-slide-in-right">
+                    <h3 class="sidebar-title neon-text-glow">Trending Protocols</h3>
+                    <div class="trending-list">
+                        @for (item of trending; track item.tag) {
+                        <div class="trending-item">
+                            <div class="trending-meta">{{item.cat}} • Trending</div>
+                            <div class="trending-tag">{{item.tag}}</div>
+                            <div class="trending-count">{{item.count}}</div>
+                        </div>
+                        }
+                    </div>
+                    <button class="view-more-btn">View Registry</button>
+                </div>
+
+                <!-- Online Nodes -->
+                <div class="glass-card nodes-card animate-slide-in-right-delayed">
+                    <h3 class="sidebar-title neon-text-glow">Online Nodes</h3>
+                    <div class="nodes-list">
+                        @for (node of onlineNodes; track node.name) {
+                        <div class="node-item">
+                            <div class="node-info">
+                                <div class="avatar-container">
+                                    <img [src]="node.avatar" [alt]="node.name" class="avatar-m"
+                                        referrerPolicy="no-referrer">
+                                    <div class="status-dot" [class.active]="node.status === 'active'"
+                                        [class.away]="node.status === 'away'"></div>
+                                </div>
+                                <div class="node-meta">
+                                    <span class="node-name">{{node.name}}</span>
+                                    <span class="node-status">{{node.status}}</span>
+                                </div>
+                            </div>
+                            <button class="icon-btn-ghost">
+                                <i class="bi bi-chat-dots"></i>
+                            </button>
+                        </div>
+                        }
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+</div>

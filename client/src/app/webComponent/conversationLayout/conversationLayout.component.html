@@ -113,12 +113,12 @@
     </section>
 
     <!-- ===================== PANEL 3: CHAT AREA ===================== -->
-    <main class="chat-area" *ngIf="isFirstConversationReady()">
+    <main class="chat-area" *ngIf="isFirstConversationReady()" [class.with-sidebar]="showConversationInfor()">
         <messages-layout *ngIf="selectedConversationId && isFirstConversationReady()"
             [conversationId]="selectedConversationId" [currentUserId]="currentUserId"
             [getMessageInfor]="getMessageInfor" [onlineUsers]="onlineUsers()"
             [conversationType]="selectedConversationType" [UserPresence]="UserPresence()" [tick1s]="tick1s()"
-            [tick60s]="tick60s()" [tick3600s]="tick3600s()">
+            [tick60s]="tick60s()" [tick3600s]="tick3600s()" (toggleDetails)="toggleConversationInfor()">
         </messages-layout>
         <div *ngIf="!selectedConversationId" class="welcome-screen">
             <div class="welcome-icon"><i class="bi bi-chat-heart"></i></div>
@@ -130,4 +130,7 @@
         </div>
     </main>
 
+    <!-- ===================== PANEL 4: INFO SIDEBAR ===================== -->
+    <app-conversation-infor-layout *ngIf="showConversationInfor()" (closePanel)="toggleConversationInfor()">
+    </app-conversation-infor-layout>
 </div>
