@@ -24,36 +24,12 @@
                     class="conv-item" [class.active]="selectedConversationId === conv.conversation_id"
                     (click)="handleConversationID(conv)">
                     <div class="conv-avatar-col">
-                        <ng-container *ngIf="conv.type === 'group' && conv.avatar_url && conv.avatar_url.trim()">
+                        <ng-container *ngIf="conv.type === 'group'">
                             <div class="avatar-wrapper">
-                                <img [src]="conv.avatar_url" [alt]="conv.title" class="avatar-img">
-                                <span class="status-dot" [class.online]="hasOnlineUser(conv)"
-                                    [class.offline]="!hasOnlineUser(conv)"></span>
-                            </div>
-                        </ng-container>
-                        <ng-container *ngIf="conv.type === 'group' && (!conv.avatar_url || !conv.avatar_url.trim())">
-                            <div class="avatar-group-modern">
-                                <div class="avatar-stack" *ngIf="(conv.participants?.length || 0) === 3"
-                                    [attr.data-count]="3">
-                                    <ng-container *ngFor="let p of (conv.participants || []).slice(0,3); let i=index">
-                                        <img class="avatar-stack-item avatar-pos-{{i}}" [src]="p.avatar_url"
-                                            [alt]="p.full_name">
-                                    </ng-container>
-                                </div>
-                                <div class="avatar-stack" *ngIf="(conv.participants?.length || 0) > 3"
-                                    [attr.data-count]="4">
-                                    <ng-container *ngFor="let p of (conv.participants || []).slice(0,4); let i=index">
-                                        <img class="avatar-stack-item avatar-pos-{{i}}" [src]="p.avatar_url"
-                                            [alt]="p.full_name">
-                                    </ng-container>
-                                </div>
-                                <div class="avatar-stack" *ngIf="(conv.participants?.length || 0) < 3"
-                                    [attr.data-count]="conv.participants?.length || 0">
-                                    <ng-container *ngFor="let p of (conv.participants || []).slice(0,2); let i=index">
-                                        <img class="avatar-stack-item avatar-pos-{{i}}" [src]="p.avatar_url"
-                                            [alt]="p.full_name">
-                                    </ng-container>
-                                </div>
+                                <app-group-avatar-layout [members]="conv.participants || []" [isGroup]="true"
+                                    [avatarUrl]="conv.avatar_url && conv.avatar_url.trim() ? conv.avatar_url : null"
+                                    [alt]="conv.title" [size]="46">
+                                </app-group-avatar-layout>
                                 <span class="status-dot" [class.online]="hasOnlineUser(conv)"
                                     [class.offline]="!hasOnlineUser(conv)"></span>
                             </div>
@@ -131,6 +107,14 @@
     </main>
 
     <!-- ===================== PANEL 4: INFO SIDEBAR ===================== -->
-    <app-conversation-infor-layout *ngIf="showConversationInfor()" (closePanel)="toggleConversationInfor()">
+    <app-conversation-infor-layout *ngIf="showConversationInfor()" (closePanel)="toggleConversationInfor()"
+        [userInfor] = "conversations.homeConversationData?.userInfo"
+        [currentUserId]="currentUserId"
+        [userPresence]="UserPresence()"
+        [conversationAvatar]="getMessageInfor?.avatar_url"
+        [tick1s]="tick1s()"
+        [tick60s]="tick60s()"
+        [tick3600s]="tick3600s()"
+        [conversationInfor]="conversations.homeConversationData?.joinedConversations?.find(conv => conv.conversation_id === selectedConversationId)">
     </app-conversation-infor-layout>
 </div>

@@ -6,6 +6,7 @@ const pinnedmessagesService = require('./pinnedmessagesService');
 const friendsService = require('./friendsService');
 const friendrequestsService = require('./friendrequestsService');
 const userblockService = require('./userblockServices');
+const postsService = require('./postsService');
 
 const { sequelize } = require('../configs/sequelizeConfig.js');
 const callService = require('./callService.js');
@@ -451,6 +452,10 @@ class HomeService {
 
     async deleteUserBlock(id) {
         return await userblockService.deleteUserBlock(id);
+    }
+
+    async getHomePosts(userId, limit = 20, offset = 0) {
+        return await postsService.getHomePosts(userId, limit, offset);
     }
 }
 

@@ -14,6 +14,7 @@ import { MessagesLayoutComponent } from '../messagesLayout/messagesLayout.compon
 import { NavigationService } from '../../services/navigation';
 import { SocketService } from '../../services/socket';
 import { Conversation } from '../../services/conversation';
+import { GroupAvatarLayoutComponent } from '../groupAvatarLayout/groupAvatarLayout.component';
 
 export interface UserPresence {
     status: string;
@@ -25,7 +26,7 @@ import { ConversationInforLayoutComponent } from '../conversationInforLayout/con
 @Component({
     selector: 'conversation-layout',
     standalone: true,
-    imports: [CommonModule, MessagesLayoutComponent, ConversationInforLayoutComponent],
+    imports: [CommonModule, MessagesLayoutComponent, ConversationInforLayoutComponent, GroupAvatarLayoutComponent],
     templateUrl: './conversationLayout.component.html',
     styleUrls: ['./conversationLayout.component.css'],
     encapsulation: ViewEncapsulation.None,

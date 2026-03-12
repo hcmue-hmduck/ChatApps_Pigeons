@@ -28,6 +28,7 @@ import { Conversation } from '../../services/conversation';
 import { Messages } from '../../services/messages';
 import { SocketService } from '../../services/socket';
 import { UploadService } from '../../services/uploadService';
+import { GroupAvatarLayoutComponent } from '../groupAvatarLayout/groupAvatarLayout.component';
 
 export interface UserPresence {
     status: string;
@@ -46,7 +47,7 @@ export interface StagedFile {
 @Component({
     selector: 'messages-layout',
     standalone: true,
-    imports: [CommonModule, FormsModule, PickerModule],
+    imports: [CommonModule, FormsModule, PickerModule, GroupAvatarLayoutComponent],
     templateUrl: './messagesLayout.component.html',
     styleUrls: ['./messagesLayout.component.css'],
 })

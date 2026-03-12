@@ -33,15 +33,32 @@
 
                 <!-- Feed Posts -->
                 <div class="posts-list">
+                    @if (loading()) {
+                    <div class="glass-card post-card animate-fade-in">
+                        <div class="post-content">
+                            <p class="post-text">Đang tải bài viết...</p>
+                        </div>
+                    </div>
+                    }
+
+                    @if (error()) {
+                    <div class="glass-card post-card animate-fade-in">
+                        <div class="post-content">
+                            <p class="post-text">{{ error() }}</p>
+                        </div>
+                    </div>
+                    }
+
                     @for (post of posts(); track post.id) {
                     <div class="glass-card post-card animate-fade-in">
                         <div class="post-header">
                             <div class="post-author-info">
-                                <img [src]="post.author.avatar" [alt]="post.author.name" class="avatar-l"
+                                <img [src]="getPostAuthorAvatar(post)" [alt]="getPostAuthorName(post)" class="avatar-l"
                                     referrerPolicy="no-referrer">
                                 <div class="author-meta">
-                                    <span class="author-name">{{post.author.name}}</span>
-                                    <span class="post-meta-text">{{post.timestamp}} • via {{post.source}}</span>
+                                    <span class="author-name">{{ getPostAuthorName(post) }}</span>
+                                    <span class="post-meta-text">{{ formatPostTime(post.created_at) }} • {{
+                                        formatPrivacy(post.privacy) }} • {{ formatPostType(post.post_type) }}</span>
                                 </div>
                             </div>
                             <button class="icon-btn-ghost">
@@ -60,9 +77,23 @@
                                 }
                             </p>
 
-                            @if (post.image) {
+                            @if (post.feeling || post.location) {
+                            <p class="post-meta-text">
+                                @if (post.feeling) {
+                                <span>{{ post.feeling }}</span>
+                                }
+                                @if (post.feeling && post.location) {
+                                <span> • </span>
+                                }
+                                @if (post.location) {
+                                <span>{{ post.location }}</span>
+                                }
+                            </p>
+                            }
+
+                            @if (getPostImage(post); as postImage) {
                             <div class="post-image-container">
-                                <img [src]="post.image" alt="Post content" class="post-image"
+                                <img [src]="postImage" alt="Post content" class="post-image"
                                     referrerPolicy="no-referrer">
                             </div>
                             }
@@ -71,44 +102,59 @@
                         <div class="post-actions">
                             <button class="action-btn active">
                                 <i class="bi bi-heart-fill"></i>
-                                <span class="action-count neon-text-glow">{{post.likes}}</span>
+                                <span class="action-count neon-text-glow">{{ post.likes_count || 0 }}</span>
                             </button>
                             <button class="action-btn">
                                 <i class="bi bi-chat-dots"></i>
-                                <span class="action-count">{{post.comments}}</span>
+                                <span class="action-count">{{ post.comments_count || 0 }}</span>
                             </button>
                             <button class="action-btn">
                                 <i class="bi bi-share"></i>
-                                <span class="action-count">{{post.shares}}</span>
+                                <span class="action-count">{{ post.shares_count || 0 }}</span>
                             </button>
                         </div>
 
-                        <!-- Example Comment -->
                         <div class="comments-section">
                             <div class="comment-item">
-                                <img [src]="onlineNodes[0].avatar" alt="Commenter" class="avatar-s"
+                                <img [src]="getPostAuthorAvatar(post)" [alt]="getPostAuthorName(post)" class="avatar-s"
                                     referrerPolicy="no-referrer">
                                 <div class="comment-bubble">
                                     <div class="comment-header">
-                                        <span class="comment-author">{{onlineNodes[0].name}}</span>
-                                        <span class="comment-time">1ms ago</span>
+                                        <span class="comment-author">Thông tin bài viết</span>
+                                        <span class="comment-time">{{ post.id.slice(0, 8) }}</span>
                                     </div>
-                                    <p class="comment-text">The protocol looks solid. Have you tried stress-testing the
-                                        nodes in the lower sectors yet?</p>
+                                    <p class="comment-text">
+                                        ID người đăng: {{ post.user_id }}
+                                        @if (post.shared_post_id) {
+                                        <br>
+                                        Bài viết chia sẻ từ: {{ post.shared_post_id }}
+                                        }
+                                        @if (post.is_pinned) {
+                                        <br>
+                                        Đã ghim bài viết
+                                        }
+                                    </p>
                                 </div>
                             </div>
 
-                            <!-- Comment Input -->
                             <div class="comment-input-wrap">
                                 <img [src]="currentUser.avatar" alt="My avatar" class="avatar-s"
                                     referrerPolicy="no-referrer">
                                 <div class="input-pill">
-                                    <input type="text" placeholder="Add a comment..." class="comment-input">
+                                    <input type="text" placeholder="Viết bình luận..." class="comment-input">
                                     <button class="send-btn">
                                         <i class="bi bi-send"></i>
                                     </button>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                    }
+
+                    @if (!loading() && !error() && posts().length === 0) {
+                    <div class="glass-card post-card animate-fade-in">
+                        <div class="post-content">
+                            <p class="post-text">Chưa có bài viết nào để hiển thị.</p>
                         </div>
                     </div>
                     }

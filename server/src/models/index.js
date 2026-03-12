@@ -8,6 +8,14 @@ const PinnedMessages = require('./pinnedmessagesModel');
 const Friends = require('./friendsModel');
 const FriendRequest = require('./friendrequestsModel');
 const UserBlock = require('./userblockModel');
+const Post = require('./postsModel');
+const PostMedia = require('./postmediaModel');
+const PostReaction = require('./postreactionsModel');
+const Comment = require('./commentsModel');
+const CommentReaction = require('./commentreactionsModel');
+const Share = require('./sharesModel');
+const PostTag = require('./posttagsModel');
+const SavedPost = require('./savedpostsModel');
 
 // Tổng hợp tất cả models
 const models = {
@@ -19,7 +27,15 @@ const models = {
     PinnedMessages,
     Friends,
     FriendRequest,
-    UserBlock
+    UserBlock,
+    Post,
+    PostMedia,
+    PostReaction,
+    Comment,
+    CommentReaction,
+    Share,
+    PostTag,
+    SavedPost
 };
 
 // Khởi tạo tất cả associations

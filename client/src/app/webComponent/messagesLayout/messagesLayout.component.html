@@ -16,36 +16,15 @@
 
                 <!-- Avatar section -->
                 <div class="header-avatar-wrap" *ngIf="getMessageInfor?.participants">
-
-                    <!-- Custom group avatar -->
-                    <ng-container *ngIf="getMessageInfor.avatar_url && getMessageInfor.avatar_url.trim()">
-                        <img [src]="getMessageInfor.avatar_url" [alt]="getMessageInfor.title" class="header-avatar">
+                    <ng-container *ngIf="getMessageInfor?.type === 'group'; else directHeaderAvatar">
+                        <app-group-avatar-layout [members]="getMessageInfor.participants || []" [isGroup]="true"
+                            [avatarUrl]="getMessageInfor.avatar_url && getMessageInfor.avatar_url.trim() ? getMessageInfor.avatar_url : null"
+                            [alt]="getMessageInfor.title" [size]="42">
+                        </app-group-avatar-layout>
                     </ng-container>
 
-                    <!-- No custom avatar -->
-                    <ng-container *ngIf="!getMessageInfor.avatar_url || !getMessageInfor.avatar_url.trim()">
-
-                        <!-- Group (3+): stacked avatars -->
-                        <div class="header-avatar-group" *ngIf="(getMessageInfor.participants?.length || 0) >= 3">
-                            <div class="avatar-stack" *ngIf="(getMessageInfor.participants?.length || 0) === 3"
-                                [attr.data-count]="3">
-                                <ng-container *ngFor="let p of getMessageInfor.participants.slice(0,3); let i=index">
-                                    <img class="avatar-stack-item avatar-pos-{{i}}" [src]="p.avatar_url"
-                                        [alt]="p.full_name">
-                                </ng-container>
-                            </div>
-                            <div class="avatar-stack" *ngIf="(getMessageInfor.participants?.length || 0) > 3"
-                                [attr.data-count]="4">
-                                <ng-container *ngFor="let p of getMessageInfor.participants.slice(0,4); let i=index">
-                                    <img class="avatar-stack-item avatar-pos-{{i}}" [src]="p.avatar_url"
-                                        [alt]="p.full_name">
-                                </ng-container>
-                            </div>
-                        </div>
-
-                        <!-- Direct: other participant's avatar -->
-                        <div
-                            *ngIf="(getMessageInfor.participants?.length || 0) < 3 && getMessageInfor?.other_participant">
+                    <ng-template #directHeaderAvatar>
+                        <div *ngIf="getMessageInfor?.other_participant">
                             <img [src]="getMessageInfor.other_participant.avatar_url"
                                 [alt]="getMessageInfor.other_participant.full_name" class="header-avatar">
                             <span class="header-status-dot"
@@ -53,7 +32,7 @@
                                 [class.offline]="!isUserOnline(getMessageInfor.other_participant.user_id)">
                             </span>
                         </div>
-                    </ng-container>
+                    </ng-template>
                 </div>
 
                 <!-- Title & sub -->

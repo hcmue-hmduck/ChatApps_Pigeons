@@ -15,10 +15,12 @@
                 <div class="pf-deco pf-deco-1"></div>
                 <div class="pf-deco pf-deco-2"></div>
                 <div class="pf-deco pf-deco-3"></div>
+                <input #fileInput type="file" accept="image/*" style="display:none"
+                    (change)="onAvatarFileSelected($event)">
                 <div class="pf-avatar-ring">
                     <img [src]="user.avatar_url" alt="avatar" class="pf-avatar-img">
-                    <button class="pf-cam-btn" title="Đổi ảnh đại diện">
-                        <i class="bi bi-camera-fill"></i>
+                    <button class="pf-cam-btn" title="Đổi ảnh đại diện" (click)="changeAvatar()" [disabled]="uploadingAvatar()">
+                        <i class="bi" [class.bi-camera-fill]="!uploadingAvatar()" [class.bi-arrow-repeat]="uploadingAvatar()"></i>
                     </button>
                 </div>
                 <h4 class="pf-name">{{ user.full_name || 'Người dùng' }}</h4>

@@ -7,6 +7,8 @@ import {
     OnDestroy,
     inject,
     signal,
+    ElementRef,
+    ViewChild,
     ChangeDetectionStrategy,
     ChangeDetectorRef,
 } from '@angular/core';
@@ -15,6 +17,7 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/authService';
 import { User } from '../../services/user';
 import { SocketService } from '../../services/socket';
+import { UploadService } from '../../services/uploadService';
 
 @Component({
     selector: 'user-infor-modal',
@@ -33,15 +36,19 @@ export class UserInforModel {
     @Input() editPremission = true;
     @Output() profileUpdated = new EventEmitter<any>();
 
+    @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
+
     showProfileModal = signal(false);
     isEditingProfile = signal(false);
     showChangePassword = signal(false);
     loadingUser = signal(false);
+    uploadingAvatar = signal(false);
     editForm: any = {};
     changePassForm = { oldPass: '', newPass: '', confirmPass: '' };
 
     constructor(
         private userService: User,
+        private uploadService: UploadService,
         private socketService: SocketService
     ) { }
 
@@ -140,5 +147,46 @@ export class UserInforModel {
         console.log('Changing password:', this.changePassForm);
         this.showChangePassword.set(false);
         this.changePassForm = { oldPass: '', newPass: '', confirmPass: '' };
+    }
+
+    changeAvatar() {
+        this.fileInput.nativeElement.click();
+    }
+
+    onAvatarFileSelected(event: Event) {
+        const file = (event.target as HTMLInputElement).files?.[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('files', file);
+
+        this.uploadingAvatar.set(true);
+        this.cdr.markForCheck();
+
+        this.uploadService.uploadFile('avatars', formData).subscribe({
+            next: (res: any) => {
+                const avatarUrl = res?.metadata?.files?.[0]?.url;
+                if (avatarUrl) {
+                    this.userService.updateUser(this.currentUserId, { avatar_url: avatarUrl }).subscribe({
+                        next: () => {
+                            const updated = { ...this.userInfo(), avatar_url: avatarUrl };
+                            this.userInfo.set(updated);
+                            this.profileUpdated.emit(updated);
+                            this.socketService.emit('updateProfile', updated);
+                        },
+                        error: (err: any) => console.error('Error saving avatar:', err),
+                    });
+                }
+                this.uploadingAvatar.set(false);
+                this.cdr.markForCheck();
+                this.fileInput.nativeElement.value = '';
+            },
+            error: (err: any) => {
+                console.error('Error uploading avatar:', err);
+                this.uploadingAvatar.set(false);
+                this.cdr.markForCheck();
+                this.fileInput.nativeElement.value = '';
+            },
+        });
     }
 }

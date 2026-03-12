@@ -11,12 +11,13 @@
         <!-- Profile Section -->
         <div class="profile-section">
             <div class="avatar-container">
-                <div class="avatar-ring">
-                    <img src="https://picsum.photos/seed/alex/200/200" alt="Alex Rivers" class="avatar-img">
-                </div>
+                <app-group-avatar-layout [members]="participants" [isGroup]="isGroupConversation"
+                    [avatarUrl]="isGroupConversation ? (conversationAvatar || conversationInfor?.avatar_url || null) : profileAvatar"
+                    [alt]="profileName" [size]="112">
+                </app-group-avatar-layout>
             </div>
-            <h1 class="profile-name">Alex Rivers</h1>
-            <p class="profile-status">Active Now • San Francisco, CA</p>
+            <h1 class="profile-name">{{ profileName }}</h1>
+            <p class="profile-status">{{ profileStatus }}</p>
 
             <div class="action-buttons">
                 <div class="action-item group">
@@ -47,12 +48,11 @@
                     <div class="content-padding">
                         <div class="info-group">
                             <p class="info-label">Bio</p>
-                            <p class="info-value">Lead Product Designer shaping the future of decentralized interfaces.
-                                Cyber-enthusiast & Night owl.</p>
+                            <p class="info-value">{{ chatBio }}</p>
                         </div>
                         <div class="info-group">
                             <p class="info-label">Username</p>
-                            <p class="info-value accent-text">@arivers_neon</p>
+                            <p class="info-value accent-text">{{ chatUsername }}</p>
                         </div>
                     </div>
                 </div>
@@ -92,14 +92,14 @@
                 </button>
                 <div class="accordion-content" [class.open]="sections().members">
                     <div class="content-padding">
-                        <div class="member-item">
-                            <img src="https://picsum.photos/seed/alex/50/50" alt="Alex" class="member-avatar">
+                        <div class="member-item" *ngFor="let member of participants">
+                            <img [src]="member.avatar_url" [alt]="member.full_name" class="member-avatar">
                             <div class="member-info">
-                                <p class="member-name">Alex Rivers</p>
-                                <p class="member-role accent-text">Admin</p>
+                                <p class="member-name">{{ member.full_name }}</p>
+                                <p class="member-role accent-text">{{ member.role || 'Member' }}</p>
                             </div>
                         </div>
-                        <button class="add-people-btn">
+                        <button class="add-people-btn" *ngIf="isGroupConversation">
                             <i class="bi bi-person-plus"></i>
                             Add People
                         </button>
@@ -126,6 +126,7 @@
                                     <img [src]="item.url" alt="media">
                                 </div>
                             </div>
+                            <p class="muted-text" *ngIf="!recentMedia.length">Chua co media gan day</p>
                         </div>
 
                         <div class="files-list">
@@ -140,6 +141,7 @@
                                 </div>
                                 <i class="bi bi-download download-icon"></i>
                             </div>
+                            <p class="muted-text" *ngIf="!recentFiles.length">Chua co file gan day</p>
                         </div>
                     </div>
                 </div>

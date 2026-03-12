@@ -319,6 +319,20 @@ class HomeController {
             },
         }).send(res);
     }
+
+    async getHomePosts(req, res) {
+        const userId = req.params.userId;
+        const limit = parseInt(req.query.limit) || 20;
+        const offset = parseInt(req.query.offset) || 0;
+        const homePosts = await homeService.getHomePosts(userId, limit, offset);
+        new SuccessResponse({
+            message: 'Get home posts successfully',
+            metadata: {
+                homePosts: homePosts,
+            },
+        }).send(res);
+    }
+
 }
 
 module.exports = new HomeController();
