@@ -59,7 +59,8 @@
             [currentUserId]="currentUserId">
         </relationship-layout>
 
-        <new-feeds-layout [style.display]="navService.activeView() === 'newFeeds' ? 'flex' : 'none'">
+        <new-feeds-layout [style.display]="navService.activeView() === 'newFeeds' ? 'flex' : 'none'"
+            [userInfor]="userInfo()">
         </new-feeds-layout>
 
     </div>

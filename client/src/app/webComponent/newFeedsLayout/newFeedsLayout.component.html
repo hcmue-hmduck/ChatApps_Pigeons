@@ -1,218 +1,329 @@
-<div class="feed-root selection:bg-primary/30 selection:text-primary">
-    <div class="feed-wrapper">
-        <div class="feed-grid">
-
-            <!-- Main Feed Column -->
-            <div class="feed-main">
-
-                <!-- Post Creator -->
-                <div class="glass-card post-creator-card animate-slide-up">
-                    <div class="creator-top">
-                        <img [src]="currentUser.avatar" alt="User avatar" class="avatar-l" referrerPolicy="no-referrer">
-                        <div class="input-container">
-                            <textarea placeholder="Transmit a new frequency..." class="creator-textarea"></textarea>
-                        </div>
-                    </div>
-                    <div class="creator-bottom">
-                        <div class="action-icons">
-                            <button class="icon-btn-ghost" title="Add Image">
-                                <i class="bi bi-image"></i>
-                            </button>
-                            <button class="icon-btn-ghost" title="Attach File">
-                                <i class="bi bi-paperclip"></i>
-                            </button>
-                            <button class="icon-btn-ghost" title="Voice Note">
-                                <i class="bi bi-mic"></i>
-                            </button>
-                        </div>
-                        <button class="btn-primary">
-                            Transmit
-                        </button>
-                    </div>
+<div class="feed-root">
+    <div class="feed-shell">
+        <header class="feed-header">
+            <div class="brand-wrap">
+                <div class="brand-icon">
+                    <i class="bi bi-lightning-charge-fill"></i>
                 </div>
+                <h1 class="brand-title">CyberChat</h1>
+            </div>
 
-                <!-- Feed Posts -->
+            <div class="search-wrap">
+                <i class="bi bi-search search-icon"></i>
+                <input class="search-input" placeholder="Search for nodes or tags..." type="text">
+            </div>
+
+            <div class="header-actions">
+                <button class="icon-btn" type="button" aria-label="Notifications">
+                    <i class="bi bi-bell"></i>
+                    <span class="notif-dot"></span>
+                </button>
+                <div class="avatar-shell">
+                    <img [src]="currentUser.avatar" alt="User avatar" class="avatar-m" referrerPolicy="no-referrer">
+                </div>
+            </div>
+        </header>
+
+        <div class="feed-grid">
+            <main class="feed-main custom-scrollbar">
+                <section class="cyber-glass create-post">
+                    <div class="create-grid">
+                        <img [src]="currentUser.avatar" alt="Avatar" class="avatar-m" referrerPolicy="no-referrer">
+
+                        <div class="create-body">
+                            <textarea class="creator-textarea" placeholder="What's happening in the mesh?"></textarea>
+
+                            <div class="create-footer">
+                                <div class="create-actions">
+                                    <button class="icon-btn subtle" type="button" title="Add image">
+                                        <i class="bi bi-image"></i>
+                                    </button>
+                                    <button class="icon-btn subtle" type="button" title="Attach file">
+                                        <i class="bi bi-paperclip"></i>
+                                    </button>
+                                    <button class="icon-btn subtle" type="button" title="Add location">
+                                        <i class="bi bi-geo-alt"></i>
+                                    </button>
+                                </div>
+
+                                <button class="btn-primary" type="button">Post</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 <div class="posts-list">
                     @if (loading()) {
-                    <div class="glass-card post-card animate-fade-in">
-                        <div class="post-content">
-                            <p class="post-text">Đang tải bài viết...</p>
-                        </div>
-                    </div>
+                    <article class="cyber-glass post-card">
+                        <p class="post-text">Đang tải bài viết...</p>
+                    </article>
                     }
 
                     @if (error()) {
-                    <div class="glass-card post-card animate-fade-in">
-                        <div class="post-content">
-                            <p class="post-text">{{ error() }}</p>
-                        </div>
-                    </div>
+                    <article class="cyber-glass post-card">
+                        <p class="post-text">{{ error() }}</p>
+                    </article>
                     }
 
                     @for (post of posts(); track post.id) {
-                    <div class="glass-card post-card animate-fade-in">
-                        <div class="post-header">
-                            <div class="post-author-info">
-                                <img [src]="getPostAuthorAvatar(post)" [alt]="getPostAuthorName(post)" class="avatar-l"
-                                    referrerPolicy="no-referrer">
-                                <div class="author-meta">
-                                    <span class="author-name">{{ getPostAuthorName(post) }}</span>
-                                    <span class="post-meta-text">{{ formatPostTime(post.created_at) }} • {{
-                                        formatPrivacy(post.privacy) }} • {{ formatPostType(post.post_type) }}</span>
+                    <article class="cyber-glass post-card">
+                        <div class="post-head">
+                            <div class="author-row">
+                                <div class="author-avatar-wrap">
+                                    <img [src]="getPostAuthorAvatar(post)" [alt]="getPostAuthorName(post)" class="avatar-m"
+                                        referrerPolicy="no-referrer">
+                                    <span class="status-dot" [class.online]="post?.user_infor?.status === 'online'"></span>
                                 </div>
-                            </div>
-                            <button class="icon-btn-ghost">
-                                <i class="bi bi-three-dots"></i>
-                            </button>
-                        </div>
 
-                        <div class="post-content">
-                            <p class="post-text">
-                                @for (word of parseContent(post.content); track $index) {
-                                @if (word.startsWith('#')) {
-                                <span class="text-primary">{{word}} </span>
-                                } @else {
-                                {{word}}
-                                }
-                                }
-                            </p>
-
-                            @if (post.feeling || post.location) {
-                            <p class="post-meta-text">
-                                @if (post.feeling) {
-                                <span>{{ post.feeling }}</span>
-                                }
-                                @if (post.feeling && post.location) {
-                                <span> • </span>
-                                }
-                                @if (post.location) {
-                                <span>{{ post.location }}</span>
-                                }
-                            </p>
-                            }
-
-                            @if (getPostImage(post); as postImage) {
-                            <div class="post-image-container">
-                                <img [src]="postImage" alt="Post content" class="post-image"
-                                    referrerPolicy="no-referrer">
-                            </div>
-                            }
-                        </div>
-
-                        <div class="post-actions">
-                            <button class="action-btn active">
-                                <i class="bi bi-heart-fill"></i>
-                                <span class="action-count neon-text-glow">{{ post.likes_count || 0 }}</span>
-                            </button>
-                            <button class="action-btn">
-                                <i class="bi bi-chat-dots"></i>
-                                <span class="action-count">{{ post.comments_count || 0 }}</span>
-                            </button>
-                            <button class="action-btn">
-                                <i class="bi bi-share"></i>
-                                <span class="action-count">{{ post.shares_count || 0 }}</span>
-                            </button>
-                        </div>
-
-                        <div class="comments-section">
-                            <div class="comment-item">
-                                <img [src]="getPostAuthorAvatar(post)" [alt]="getPostAuthorName(post)" class="avatar-s"
-                                    referrerPolicy="no-referrer">
-                                <div class="comment-bubble">
-                                    <div class="comment-header">
-                                        <span class="comment-author">Thông tin bài viết</span>
-                                        <span class="comment-time">{{ post.id.slice(0, 8) }}</span>
-                                    </div>
-                                    <p class="comment-text">
-                                        ID người đăng: {{ post.user_id }}
-                                        @if (post.shared_post_id) {
-                                        <br>
-                                        Bài viết chia sẻ từ: {{ post.shared_post_id }}
-                                        }
-                                        @if (post.is_pinned) {
-                                        <br>
-                                        Đã ghim bài viết
-                                        }
+                                <div class="author-meta">
+                                    <h3 class="author-name">{{ getPostAuthorName(post) }}</h3>
+                                    <p class="author-subtitle">{{ formatPostTime(post.created_at) }}</p>
+                                    <p class="post-meta-text">
+                                        {{ formatPrivacy(post.privacy) }} • {{ formatPostType(post.post_type) }}
                                     </p>
                                 </div>
                             </div>
 
-                            <div class="comment-input-wrap">
-                                <img [src]="currentUser.avatar" alt="My avatar" class="avatar-s"
+                            <button class="icon-btn subtle" type="button" aria-label="More options">
+                                <i class="bi bi-three-dots"></i>
+                            </button>
+                        </div>
+
+                        <p class="post-text">
+                            @for (word of parseContent(post.content); track $index) {
+                            @if (word.startsWith('#')) {
+                            <span class="text-primary">{{ word }} </span>
+                            } @else {
+                            {{ word }}
+                            }
+                            }
+                        </p>
+
+                        @if (post.feeling || post.location) {
+                        <p class="post-extra-meta">
+                            @if (post.feeling) {
+                            <span>{{ post.feeling }}</span>
+                            }
+                            @if (post.feeling && post.location) {
+                            <span> • </span>
+                            }
+                            @if (post.location) {
+                            <span>{{ post.location }}</span>
+                            }
+                        </p>
+                        }
+
+                        @if (post.post_media && post.post_media.length > 0) {
+                        <div class="media-grid" [ngClass]="getMediaLayoutClass(post)">
+                            @for (media of post.post_media.slice(0, 4); track media.id) {
+                            <div class="media-item" (click)="openLightbox(post, $index)">
+                                @if (media.media_type === 'image') {
+                                <img [src]="media.media_url" alt="Post media" class="media-content"
                                     referrerPolicy="no-referrer">
+                                } @else if (media.media_type === 'video') {
+                                <video [src]="media.media_url" class="media-content" controls></video>
+                                }
+
+                                @if (post.post_media.length > 4 && $index === 3) {
+                                <div class="overlay-count">
+                                    <span>+{{ post.post_media.length - 3 }}</span>
+                                </div>
+                                }
+                            </div>
+                            }
+                        </div>
+                        }
+
+                        @if (post.attachment_name || post.attachment?.name) {
+                        <div class="attachment-card">
+                            <div class="attachment-left">
+                                <div class="attachment-icon">
+                                    <i class="bi bi-folder2-open"></i>
+                                </div>
+                                <div>
+                                    <div class="attachment-title">{{ post.attachment?.name || post.attachment_name }}</div>
+                                    <div class="attachment-meta">
+                                        {{ post.attachment?.size || post.attachment_size || 'Unknown size' }} • {{
+                                        post.attachment?.type || post.attachment_type || 'ARCHIVED' }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button class="download-btn" type="button" aria-label="Download attachment">
+                                <i class="bi bi-download"></i>
+                            </button>
+                        </div>
+                        }
+
+                        <div class="post-actions">
+                            <button class="action-btn" type="button">
+                                <i class="bi bi-heart"></i>
+                                <span>{{ post.likes_count || 0 }}</span>
+                            </button>
+                            <button class="action-btn" type="button" (click)="toggleComments(post.id)"
+                                [class.active]="isCommentsExpanded(post.id)">
+                                <i class="bi bi-chat-square"></i>
+                                <span>{{ post.comments_count || 0 }}</span>
+                            </button>
+                            <button class="action-btn" type="button">
+                                <i class="bi bi-share"></i>
+                                <span>{{ post.shares_count || 0 }}</span>
+                            </button>
+                        </div>
+
+                        @if (isCommentsExpanded(post.id)) {
+                        <div class="comments-section">
+                            <div class="comments-list">
+                                @for (comment of getRootComments(post); track comment.id) {
+                                <div class="comment-group" [class.has-replies]="getReplies(post, comment.id).length > 0">
+                                    <div class="comment-item">
+                                        <div class="comment-avatar-wrap">
+                                            <img [src]="getCommentAuthorAvatar(comment)" [alt]="getCommentAuthorName(comment)"
+                                                class="avatar-s" referrerPolicy="no-referrer">
+                                        </div>
+
+                                        <div class="comment-content-wrap">
+                                            <div class="comment-bubble">
+                                                <span class="comment-author">{{ getCommentAuthorName(comment) }}</span>
+                                                <p class="comment-text">{{ comment.content }}</p>
+                                            </div>
+
+                                            <div class="comment-footer">
+                                                <button class="comment-action-btn" type="button">Like</button>
+                                                <button class="comment-action-btn" type="button">Reply</button>
+                                                <span class="comment-time">{{ formatPostTime(comment.created_at) }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    @let replies = getReplies(post, comment.id);
+                                    @if (replies.length > 0) {
+                                    <div class="replies-list">
+                                        @for (reply of replies; track reply.id) {
+                                        <div class="comment-item reply-item">
+                                            <div class="comment-avatar-wrap">
+                                                <img [src]="getCommentAuthorAvatar(reply)" [alt]="getCommentAuthorName(reply)"
+                                                    class="avatar-xs" referrerPolicy="no-referrer">
+                                            </div>
+
+                                            <div class="comment-content-wrap">
+                                                <div class="comment-bubble">
+                                                    <span class="comment-author">{{ getCommentAuthorName(reply) }}</span>
+                                                    <p class="comment-text">{{ reply.content }}</p>
+                                                </div>
+
+                                                <div class="comment-footer">
+                                                    <button class="comment-action-btn" type="button">Like</button>
+                                                    <button class="comment-action-btn" type="button">Reply</button>
+                                                    <span class="comment-time">{{ formatPostTime(reply.created_at) }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        }
+                                    </div>
+                                    }
+                                </div>
+                                }
+                            </div>
+
+                            <div class="comment-input-wrap">
+                                <img [src]="currentUser.avatar" alt="My avatar" class="avatar-s" referrerPolicy="no-referrer">
                                 <div class="input-pill">
-                                    <input type="text" placeholder="Viết bình luận..." class="comment-input">
-                                    <button class="send-btn">
+                                    <input type="text" placeholder="Transmit a thought..." class="comment-input">
+                                    <button class="send-btn" type="button">
                                         <i class="bi bi-send"></i>
                                     </button>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                        }
+                    </article>
                     }
 
                     @if (!loading() && !error() && posts().length === 0) {
-                    <div class="glass-card post-card animate-fade-in">
-                        <div class="post-content">
-                            <p class="post-text">Chưa có bài viết nào để hiển thị.</p>
-                        </div>
-                    </div>
+                    <article class="cyber-glass post-card">
+                        <p class="post-text">Chưa có bài viết nào để hiển thị.</p>
+                    </article>
                     }
                 </div>
+            </main>
 
-                <!-- Sync Indicator -->
-                <div class="sync-indicator">
-                    <div class="sync-dot"></div>
-                    <p class="sync-text">Syncing with Mainframe...</p>
-                </div>
-            </div>
+            <aside class="feed-sidebar">
+                <section class="cyber-glass sidebar-card">
+                    <div class="sidebar-head">
+                        <h2>Trending</h2>
+                        <i class="bi bi-graph-up-arrow"></i>
+                    </div>
 
-            <!-- Sidebar Column -->
-            <div class="feed-sidebar">
-
-                <!-- Trending Protocols -->
-                <div class="glass-card trending-card animate-slide-in-right">
-                    <h3 class="sidebar-title neon-text-glow">Trending Protocols</h3>
                     <div class="trending-list">
                         @for (item of trending; track item.tag) {
                         <div class="trending-item">
-                            <div class="trending-meta">{{item.cat}} • Trending</div>
-                            <div class="trending-tag">{{item.tag}}</div>
-                            <div class="trending-count">{{item.count}}</div>
+                            <p class="trending-tag">{{ item.tag }}</p>
+                            <p class="trending-meta">{{ item.count }}</p>
                         </div>
                         }
                     </div>
-                    <button class="view-more-btn">View Registry</button>
-                </div>
 
-                <!-- Online Nodes -->
-                <div class="glass-card nodes-card animate-slide-in-right-delayed">
-                    <h3 class="sidebar-title neon-text-glow">Online Nodes</h3>
-                    <div class="nodes-list">
+                    <button class="show-more" type="button">Show more</button>
+                </section>
+
+                <section class="cyber-glass sidebar-card sidebar-friends">
+                    <div class="sidebar-head">
+                        <h2>Online Friends</h2>
+                        <span class="friend-count">{{ onlineNodes.length }}</span>
+                    </div>
+
+                    <div class="friends-list custom-scrollbar">
                         @for (node of onlineNodes; track node.name) {
-                        <div class="node-item">
-                            <div class="node-info">
-                                <div class="avatar-container">
-                                    <img [src]="node.avatar" [alt]="node.name" class="avatar-m"
-                                        referrerPolicy="no-referrer">
-                                    <div class="status-dot" [class.active]="node.status === 'active'"
-                                        [class.away]="node.status === 'away'"></div>
+                        <div class="friend-item" [class.offline]="node.status !== 'online' && node.status !== 'active'">
+                            <div class="friend-left">
+                                <div class="friend-avatar-wrap">
+                                    <img [src]="node.avatar" [alt]="node.name" class="avatar-s" referrerPolicy="no-referrer">
+                                    <span class="status-dot"
+                                        [class.online]="node.status === 'online' || node.status === 'active'"></span>
                                 </div>
-                                <div class="node-meta">
-                                    <span class="node-name">{{node.name}}</span>
-                                    <span class="node-status">{{node.status}}</span>
-                                </div>
+
+                                <span class="friend-name">{{ node.name }}</span>
                             </div>
-                            <button class="icon-btn-ghost">
+
+                            <button class="icon-btn subtle chat-btn" type="button" aria-label="Chat">
                                 <i class="bi bi-chat-dots"></i>
                             </button>
                         </div>
                         }
                     </div>
-                </div>
-
-            </div>
-
+                </section>
+            </aside>
         </div>
     </div>
 </div>
+
+@if (isLightboxOpen && selectedMediaPost) {
+<div class="lightbox-overlay" (click)="closeLightbox()">
+    <button class="lightbox-close" (click)="closeLightbox()" type="button">
+        <i class="bi bi-x-lg"></i>
+    </button>
+
+    @if (selectedMediaPost.post_media.length > 1) {
+    <button class="lightbox-prev" (click)="prevMedia($event)" type="button">
+        <i class="bi bi-chevron-left"></i>
+    </button>
+    <button class="lightbox-next" (click)="nextMedia($event)" type="button">
+        <i class="bi bi-chevron-right"></i>
+    </button>
+    }
+
+    <div class="lightbox-content" (click)="$event.stopPropagation()">
+        @let currentMedia = selectedMediaPost.post_media[currentMediaIndex];
+        @if (currentMedia.media_type === 'image') {
+        <img [src]="currentMedia.media_url" class="lightbox-media" referrerPolicy="no-referrer">
+        } @else if (currentMedia.media_type === 'video') {
+        <video [src]="currentMedia.media_url" class="lightbox-media" controls autoplay></video>
+        }
+
+        <div class="lightbox-info">
+            <span>{{ currentMediaIndex + 1 }} / {{ selectedMediaPost.post_media.length }}</span>
+        </div>
+    </div>
+</div>
+}

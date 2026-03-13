@@ -321,10 +321,9 @@ class HomeController {
     }
 
     async getHomePosts(req, res) {
-        const userId = req.params.userId;
-        const limit = parseInt(req.query.limit) || 20;
+        const limit = parseInt(req.query.limit) || 30;
         const offset = parseInt(req.query.offset) || 0;
-        const homePosts = await homeService.getHomePosts(userId, limit, offset);
+        const homePosts = await homeService.getHomePosts(limit, offset);
         new SuccessResponse({
             message: 'Get home posts successfully',
             metadata: {

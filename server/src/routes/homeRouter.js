@@ -3,7 +3,7 @@ const router = express.Router();
 
 const homeController = require('../controllers/homeController');
 
-router.get('/feeds/:userId', homeController.getHomePosts);
+router.get('/feeds', homeController.getHomePosts);
 
 router.get('/friendrequests/:receiverId', homeController.getFriendRequests);
 router.post('/friendrequests', homeController.createFriendRequest);

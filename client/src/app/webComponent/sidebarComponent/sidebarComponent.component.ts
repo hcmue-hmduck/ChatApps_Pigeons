@@ -77,6 +77,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
                 this.userInfo.set(response.metadata?.userInfor || null);
                 this.isReady.set(true);
                 this.loading.set(false);
+                this.cdr.markForCheck(); // Cần thiết để báo cho OnPush biết dữ liệu đã về
             },
             error: (error) => {
                 console.error('Error loading user info:', error);

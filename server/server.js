@@ -70,6 +70,11 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Browsers often auto-request favicon; return no-content instead of triggering 404 logs.
+app.get('/favicon.ico', (req, res) => {
+    res.status(204).end();
+});
+
 routes(app);
 
 // Map để lưu trạng thái online của users (tối ưu cho multiple devices)
@@ -266,7 +271,7 @@ app.use((req, res, next) => {
 
 app.use((error, req, res, next) => {
     console.error(error.stack);
-    res.status(req.status_code || 500).json({
+    res.status(error.status_code || error.status || 500).json({
         status: 'error',
         message: error.message || 'Internal Server Error',
     });

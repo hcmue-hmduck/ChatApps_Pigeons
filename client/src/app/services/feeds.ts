@@ -13,7 +13,7 @@ export class Feeds {
   constructor(private http: HttpClient) { }
 
   // Lấy user theo ID
-  getFeeds(userId: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}/${userId}`);
+  getFeeds(): Observable<any> {
+    return this.http.get(this.apiUrl);
   }
 }

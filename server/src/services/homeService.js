@@ -7,6 +7,8 @@ const friendsService = require('./friendsService');
 const friendrequestsService = require('./friendrequestsService');
 const userblockService = require('./userblockServices');
 const postsService = require('./postsService');
+const commentsService = require('./commentsService');
+const postmediaService = require('./postmediaService');
 
 const { sequelize } = require('../configs/sequelizeConfig.js');
 const callService = require('./callService.js');
@@ -454,8 +456,59 @@ class HomeService {
         return await userblockService.deleteUserBlock(id);
     }
 
-    async getHomePosts(userId, limit = 20, offset = 0) {
-        return await postsService.getHomePosts(userId, limit, offset);
+    async getHomePosts(limit = 30, offset = 0) {
+        const posts = await postsService.getHomePosts(limit, offset);
+        if (posts.length === 0) return [];
+
+        const postIds = posts.map(post => post.id);
+        
+        // 1. Fetch comments first to collect all necessary user IDs
+        const allComments = await commentsService.getCommentsByPostIds(postIds);
+        const allPostMedias = await postmediaService.getPostMediaByPostId(postIds);
+
+        // 2. Collect ALL unique user IDs (Post authors + Comment authors)
+        const allUserIds = new Set([
+            ...posts.map(p => p.user_id),
+            ...allComments.map(c => c.user_id)
+        ]);
+
+        // 3. Batch fetch all unique users in ONE query
+        const users = await usersService.getAllUsers({ id: [...allUserIds] });
+        const userMap = new Map(users.map(u => [u.id, u]));
+
+        // 4. Group comments by post_id and attach user info to each comment
+        const commentsMap = new Map();
+        allComments.forEach(comment => {
+            if (!commentsMap.has(comment.post_id)) {
+                commentsMap.set(comment.post_id, []);
+            }
+            
+            // Đính kèm user_infor vào comment (thay vì chỉ để user_id)
+            const commentWithUser = {
+                ...comment.dataValues || comment,
+                user_infor: userMap.get(comment.user_id) || null
+            };
+            
+            commentsMap.get(comment.post_id).push(commentWithUser);
+        });
+
+        // 5. Group post media by post_id
+        const mediaMap = new Map();
+        allPostMedias.forEach(media => {
+            if (!mediaMap.has(media.post_id)) {
+                mediaMap.set(media.post_id, []);
+            }
+            mediaMap.get(media.post_id).push(media.dataValues || media);
+        });
+
+        // 6. Map data into final results
+        return posts.map(post => ({
+            ...post.dataValues || post,
+            post_media: mediaMap.get(post.id) || [],
+            comments_count: commentsMap.get(post.id)?.length || 0,
+            user_infor: userMap.get(post.user_id) || null,
+            comments: commentsMap.get(post.id) || []
+        }));
     }
 }
 
