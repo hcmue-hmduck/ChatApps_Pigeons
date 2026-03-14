@@ -21,6 +21,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PickerModule } from '@ctrl/ngx-emoji-mart';
+import { forkJoin } from 'rxjs';
 import { GROUP_CALL } from '../../models/callData';
 import { AuthService } from '../../services/authService';
 import { CallService } from '../../services/callService';
@@ -69,6 +70,7 @@ export class MessagesLayoutComponent
     @Input() conversationType: string = '';
     @Input() currentUserId: any = {};
     @Input() getMessageInfor: any = {};
+    @Input() joinedConversations: any[] = [];
     @Input() onlineUsers: Set<string> = new Set();
     @Input() UserPresence: Map<string, UserPresence> = new Map();
     @Input() tick1s: number = 0;
@@ -143,6 +145,15 @@ export class MessagesLayoutComponent
     // Highlight state for reply navigation
     highlightedMessageId: string | null = null;
     private highlightTimeout: any;
+
+    // Forward modal state
+    showForwardModal = false;
+    forwardingMessage: any = null;
+    forwardConversations: any[] = [];
+    selectedForwardConversationIds = new Set<string>();
+    forwardLoading = false;
+    forwardError = '';
+    forwardSearch = '';
 
     // Pinned messages
     pinnedMessages = signal<any[]>([]);
@@ -298,6 +309,10 @@ export class MessagesLayoutComponent
     trackByMessageId(index: number, message: any): any {
         // _trackId ổn định qua temp→real transition, Angular sẽ reuse DOM element thay vì destroy/recreate
         return message._trackId ?? message.id;
+    }
+
+    trackByConversationId(index: number, conv: any): any {
+        return conv?.conversation_id ?? index;
     }
 
     // Handle file attachment
@@ -1129,8 +1144,180 @@ export class MessagesLayoutComponent
     }
 
     forwardMessage(msg: any) {
-        console.log('Chuyển tiếp tin nhắn:', msg);
+        console.log('Forwarding message:', this.joinedConversations);
+        this.forwardingMessage = msg;
+        this.showForwardModal = true;
+        this.forwardLoading = false;
+        this.forwardError = '';
+        this.forwardSearch = '';
+        this.selectedForwardConversationIds.clear();
+
+        const joined = this.joinedConversations || [];
+        this.forwardConversations = joined.filter(
+            (conv: any) => conv.conversation_id !== this.conversationId,
+        );
+
+        if (this.forwardConversations.length === 0) {
+            this.forwardError = 'Không có cuộc hội thoại nào để chuyển tiếp.';
+        }
+
         this.closeMenu();
+    }
+
+    closeForwardModal() {
+        this.showForwardModal = false;
+        this.forwardingMessage = null;
+        this.forwardSearch = '';
+        this.forwardError = '';
+        this.forwardLoading = false;
+        this.selectedForwardConversationIds.clear();
+    }
+
+    toggleForwardConversation(conversationId: string, checked: boolean) {
+        if (checked) {
+            this.selectedForwardConversationIds.add(conversationId);
+        } else {
+            this.selectedForwardConversationIds.delete(conversationId);
+        }
+    }
+
+    isForwardConversationSelected(conversationId: string): boolean {
+        return this.selectedForwardConversationIds.has(conversationId);
+    }
+
+    getForwardConversationsFiltered(): any[] {
+        const keyword = (this.forwardSearch || '').trim().toLowerCase();
+        if (!keyword) return this.forwardConversations;
+
+        return this.forwardConversations.filter((conv: any) => {
+            const title = this.getForwardConversationTitle(conv).toLowerCase();
+            return title.includes(keyword);
+        });
+    }
+
+    getForwardConversationTitle(conv: any): string {
+        if (!conv) return 'Conversation';
+        if (conv.title && String(conv.title).trim()) return conv.title;
+        if (conv.other_participant?.full_name) return conv.other_participant.full_name;
+        return conv.type === 'group' ? 'Nhóm chat' : 'Cuộc hội thoại';
+    }
+
+    getForwardConversationSubtitle(conv: any): string {
+        if (!conv) return '';
+        if (conv.type === 'group') {
+            const count = conv.participants_count || conv.participants?.length || 0;
+            return `${count} thành viên`;
+        }
+        return 'Trò chuyện trực tiếp';
+    }
+
+    isForwardConversationDirect(conv: any): boolean {
+        return conv?.type === 'direct';
+    }
+
+    hasForwardGroupAvatar(conv: any): boolean {
+        return !!(conv?.avatar_url && String(conv.avatar_url).trim());
+    }
+
+    getForwardDirectAvatar(conv: any): string {
+        if (conv?.other_participant?.avatar_url) {
+            return conv.other_participant.avatar_url;
+        }
+
+        const participants = conv?.participants || [];
+        const receiver = participants.find(
+            (p: any) => String(p?.user_id) !== String(this.currentUserId),
+        );
+
+        return (
+            receiver?.avatar_url
+        );
+    }
+
+    getForwardConversationAvatar(conv: any): string {
+        return (
+            conv?.avatar_url ||
+            conv?.other_participant?.avatar_url ||
+            'https://ui-avatars.com/api/?name=Chat&background=06131f&color=00f2ff'
+        );
+    }
+
+    private resolveForwardPayload(msg: any): {
+        content: string;
+        messageType: string;
+        fileMetadata?: any;
+    } {
+        const messageType = msg?.message_type || 'text';
+        const content = msg?.content || '';
+
+        if (['image', 'video', 'audio', 'file'].includes(messageType)) {
+            return {
+                content,
+                messageType,
+                fileMetadata: {
+                    file_url: msg?.file_url || null,
+                    file_name: msg?.file_name || null,
+                    file_size: msg?.file_size || null,
+                    thumbnail_url: msg?.thumbnail_url || null,
+                    duration: msg?.duration || null,
+                },
+            };
+        }
+
+        return { content, messageType: 'text' };
+    }
+
+    sendForwardMessages() {
+        if (!this.forwardingMessage) return;
+
+        const targetConversationIds = Array.from(this.selectedForwardConversationIds);
+        if (targetConversationIds.length === 0) {
+            this.forwardError = 'Vui lòng chọn ít nhất 1 cuộc hội thoại.';
+            return;
+        }
+
+        const { content, messageType, fileMetadata } = this.resolveForwardPayload(this.forwardingMessage);
+        const parentUserInfo = this.getMessageInfor?.user_info || {};
+
+        this.forwardLoading = true;
+        this.forwardError = '';
+
+        const requests = targetConversationIds.map((targetConversationId) =>
+            this.messagesService.postMessage(
+                targetConversationId,
+                this.currentUserId,
+                content,
+                undefined,
+                messageType,
+                fileMetadata,
+            ),
+        );
+
+        forkJoin(requests).subscribe({
+            next: (responses) => {
+                responses.forEach((res: any) => {
+                    const savedMessage = res?.metadata?.newMessage;
+                    if (savedMessage) {
+                        const messageWithSender = {
+                            ...savedMessage,
+                            sender_name: savedMessage.sender_name || parentUserInfo.full_name || 'Bạn',
+                            sender_avatar: savedMessage.sender_avatar || parentUserInfo.avatar_url || null,
+                        };
+
+                        this.socketService.emit('sendMessage', messageWithSender);
+                        this.socketService.emit('updateConversation', messageWithSender);
+                    }
+                });
+
+                this.forwardLoading = false;
+                this.closeForwardModal();
+            },
+            error: (error) => {
+                console.error('Error forwarding message:', error);
+                this.forwardError = 'Chuyển tiếp thất bại. Vui lòng thử lại.';
+                this.forwardLoading = false;
+            },
+        });
     }
 
     pinMessage(msg: any) {

@@ -629,6 +629,113 @@
 </div>
 
 <!-- ============================================================
+     FORWARD MESSAGE MODAL
+     ============================================================ -->
+<div class="modal-overlay" *ngIf="showForwardModal" (click)="closeForwardModal()">
+    <div class="modal-card forward-modal" (click)="$event.stopPropagation()">
+        <div class="modal-card-header">
+            <h5>Chuyển tiếp tin nhắn</h5>
+            <button class="modal-close-btn" (click)="closeForwardModal()">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <div class="modal-card-body forward-modal-body">
+            <div class="forward-preview" *ngIf="forwardingMessage">
+                <div class="forward-preview-label">Nội dung chuyển tiếp</div>
+                <div class="forward-preview-text">
+                    <ng-container *ngIf="forwardingMessage.message_type === 'text'">
+                        {{ forwardingMessage.content }}
+                    </ng-container>
+                    <ng-container *ngIf="forwardingMessage.message_type !== 'text'">
+                        {{ forwardingMessage.content || ('[' + forwardingMessage.message_type + ']') }}
+                    </ng-container>
+                </div>
+            </div>
+
+            <input
+                class="forward-search-input"
+                type="text"
+                [(ngModel)]="forwardSearch"
+                placeholder="Tìm cuộc hội thoại..."
+            >
+
+            <div class="forward-loading" *ngIf="forwardLoading">
+                Đang tải danh sách cuộc hội thoại...
+            </div>
+
+            <div class="forward-error" *ngIf="forwardError && !forwardLoading">
+                {{ forwardError }}
+            </div>
+
+            <div class="forward-list" *ngIf="!forwardLoading">
+                <label class="forward-item" *ngFor="let conv of getForwardConversationsFiltered(); trackBy: trackByConversationId">
+                    <input
+                        type="checkbox"
+                        class="forward-radio"
+                        [checked]="isForwardConversationSelected(conv.conversation_id)"
+                        (change)="toggleForwardConversation(conv.conversation_id, $any($event.target).checked)"
+                    >
+
+                    <ng-container *ngIf="isForwardConversationDirect(conv); else groupForwardAvatar">
+                        <img
+                            class="forward-avatar"
+                            [src]="getForwardDirectAvatar(conv)"
+                            [alt]="getForwardConversationTitle(conv)"
+                            referrerPolicy="no-referrer"
+                        >
+                    </ng-container>
+
+                    <ng-template #groupForwardAvatar>
+                        <ng-container *ngIf="hasForwardGroupAvatar(conv); else generatedForwardGroupAvatar">
+                            <img
+                                class="forward-avatar"
+                                [src]="conv.avatar_url"
+                                [alt]="getForwardConversationTitle(conv)"
+                                referrerPolicy="no-referrer"
+                            >
+                        </ng-container>
+
+                        <ng-template #generatedForwardGroupAvatar>
+                            <div class="forward-avatar-group">
+                                <app-group-avatar-layout
+                                    [members]="conv.participants || []"
+                                    [isGroup]="true"
+                                    [avatarUrl]="null"
+                                    [alt]="getForwardConversationTitle(conv)"
+                                    [size]="36"
+                                >
+                                </app-group-avatar-layout>
+                            </div>
+                        </ng-template>
+                    </ng-template>
+
+                    <div class="forward-meta">
+                        <div class="forward-title">{{ getForwardConversationTitle(conv) }}</div>
+                        <div class="forward-sub">{{ getForwardConversationSubtitle(conv) }}</div>
+                    </div>
+                </label>
+
+                <div class="forward-empty" *ngIf="getForwardConversationsFiltered().length === 0 && !forwardError">
+                    Không tìm thấy cuộc hội thoại phù hợp.
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-card-footer forward-modal-footer">
+            <button class="modal-close-secondary" (click)="closeForwardModal()">Hủy</button>
+            <button
+                class="modal-save-btn"
+                [disabled]="forwardLoading || selectedForwardConversationIds.size === 0"
+                (click)="sendForwardMessages()"
+            >
+                Gửi ({{ selectedForwardConversationIds.size }})
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
      EDIT MESSAGE MODAL
      ============================================================ -->
 <div class="modal-overlay" *ngIf="editingMessage" (click)="closeEditModal()">
