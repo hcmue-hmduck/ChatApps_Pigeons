@@ -15,6 +15,117 @@ const callService = require('./callService.js');
 const { CALL_STATUS } = require('../constants/call.constants.js');
 
 class HomeService {
+    extractFirstUrlFromText(content) {
+        if (!content || typeof content !== 'string') return null;
+        const match = content.match(/((?:https?:\/\/|www\.)[^\s<]+)/i);
+        if (!match) return null;
+        const rawUrl = match[1].replace(/[.,!?;:]+$/, '');
+        if (!rawUrl) return null;
+        return /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
+    }
+
+    normalizePreviewUrl(rawUrl) {
+        if (!rawUrl || typeof rawUrl !== 'string') return null;
+        const trimmed = rawUrl.trim();
+        const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+
+        try {
+            const parsed = new URL(withProtocol);
+            if (!['http:', 'https:'].includes(parsed.protocol)) return null;
+            return parsed;
+        } catch {
+            return null;
+        }
+    }
+
+    extractMetaTag(html, attr, value) {
+        if (!html) return null;
+        const escapedValue = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const pattern = new RegExp(
+            `<meta[^>]*${attr}=[\"']${escapedValue}[\"'][^>]*content=[\"']([^\"']+)[\"'][^>]*>|` +
+            `<meta[^>]*content=[\"']([^\"']+)[\"'][^>]*${attr}=[\"']${escapedValue}[\"'][^>]*>`,
+            'i'
+        );
+        const match = html.match(pattern);
+        return match?.[1] || match?.[2] || null;
+    }
+
+    extractTitleTag(html) {
+        if (!html) return null;
+        const match = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+        return match?.[1]?.trim() || null;
+    }
+
+    async getLinkPreview(rawUrl) {
+        const parsedUrl = this.normalizePreviewUrl(rawUrl);
+        if (!parsedUrl) return null;
+
+        const fallback = {
+            url: parsedUrl.toString(),
+            title: parsedUrl.hostname,
+            description: '',
+            image: null,
+            siteName: parsedUrl.hostname,
+            hostname: parsedUrl.hostname,
+        };
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+
+        try {
+            const response = await fetch(parsedUrl.toString(), {
+                method: 'GET',
+                redirect: 'follow',
+                signal: controller.signal,
+                headers: {
+                    'User-Agent':
+                        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                    Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                },
+            });
+
+            if (!response.ok) {
+                return fallback;
+            }
+
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('text/html')) {
+                return fallback;
+            }
+
+            const html = await response.text();
+
+            const ogTitle = this.extractMetaTag(html, 'property', 'og:title');
+            const ogDescription = this.extractMetaTag(html, 'property', 'og:description');
+            const ogImage = this.extractMetaTag(html, 'property', 'og:image');
+            const ogSiteName = this.extractMetaTag(html, 'property', 'og:site_name');
+            const metaDescription = this.extractMetaTag(html, 'name', 'description');
+            const titleTag = this.extractTitleTag(html);
+
+            let imageUrl = ogImage || null;
+            if (imageUrl) {
+                try {
+                    imageUrl = new URL(imageUrl, parsedUrl).toString();
+                } catch {
+                    imageUrl = null;
+                }
+            }
+
+            return {
+                url: parsedUrl.toString(),
+                title: (ogTitle || titleTag || parsedUrl.hostname || '').trim(),
+                description: (ogDescription || metaDescription || '').trim(),
+                image: imageUrl,
+                siteName: (ogSiteName || parsedUrl.hostname || '').trim(),
+                hostname: parsedUrl.hostname,
+            };
+        } catch {
+            return fallback;
+        } finally {
+            clearTimeout(timeout);
+        }
+    }
+
     // Lấy danh sách conversations của user để hiển thị sidebar
     async getAllUserMessagesInJoinedConversations(userId) {
         // 1. Lấy tất cả participant record của user
@@ -212,6 +323,8 @@ class HomeService {
                         parent_message_sender_id: parentMsg.sender_id,
                         parent_message_is_deleted: parentMsg.is_deleted,
                         parent_message_name: parentSender ? parentSender.full_name : 'Unknown',
+                        parent_message_thumbnail_url: parentMsg.thumbnail_url,
+                        parent_message_type: parentMsg.message_type,
                     };
                 }
             }
@@ -239,6 +352,30 @@ class HomeService {
         thumbnail_url = null,
         duration = null
     ) {
+        let resolvedFileUrl = file_url;
+        let resolvedFileName = file_name;
+        let resolvedFileSize = file_size;
+        let resolvedThumbnailUrl = thumbnail_url;
+        let resolvedDuration = duration;
+
+        // Tận dụng các cột media hiện có để lưu link preview cho message text
+        if (message_type === 'text' && content) {
+            const detectedUrl = this.extractFirstUrlFromText(content);
+            if (detectedUrl) {
+                resolvedFileUrl = resolvedFileUrl || detectedUrl;
+
+                const needFetchPreview = !resolvedFileName || !resolvedThumbnailUrl;
+                if (needFetchPreview) {
+                    const preview = await this.getLinkPreview(detectedUrl);
+                    if (preview) {
+                        resolvedFileUrl = resolvedFileUrl || preview.url || detectedUrl;
+                        resolvedFileName = resolvedFileName || preview.title || preview.siteName || null;
+                        resolvedThumbnailUrl = resolvedThumbnailUrl || preview.image || null;
+                    }
+                }
+            }
+        }
+
         // 1. Tạo message mới + lấy parent message (song song)
         const [newMessage, parentMessage] = await Promise.all([
             messagesService.createMessage({
@@ -247,11 +384,11 @@ class HomeService {
                 content,
                 parent_message_id,
                 message_type,
-                file_url,
-                file_name,
-                file_size,
-                thumbnail_url,
-                duration,
+                file_url: resolvedFileUrl,
+                file_name: resolvedFileName,
+                file_size: resolvedFileSize,
+                thumbnail_url: resolvedThumbnailUrl,
+                duration: resolvedDuration,
                 time_sent: new Date(),
             }),
             parent_message_id ? messagesService.getMessageById(parent_message_id) : Promise.resolve(null),
@@ -267,10 +404,13 @@ class HomeService {
 
         const parent_message_info = parentMessage
             ? {
+                parent_message_id: parentMessage.id,
                 parent_message_content: parentMessage.content,
                 parent_message_sender_id: parentMessage.sender_id,
                 parent_message_is_deleted: parentMessage.is_deleted,
                 parent_message_name: parentSender ? parentSender.full_name : '',
+                parent_message_type: parentMessage.message_type,
+                parent_message_thumbnail_url: parentMessage.thumbnail_url,
             }
             : null;
 

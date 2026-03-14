@@ -22,6 +22,8 @@ router.post('/friends/:userId', homeController.createFriendByUserId);
 router.get('/conversation/:userID', homeController.getHomeConversation);
 router.put('/conversation/:convID', homeController.putHomeConversation);
 
+router.get('/link-preview', homeController.getLinkPreview);
+
 router.post('/messages/pinmessage', homeController.postHomePinMessage);
 router.put('/messages/pinmessage/:pinMessID', homeController.putHomePinMessage);
 router.delete('/messages/pinmessage/:pinMessID', homeController.deleteHomePinMessage);

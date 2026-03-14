@@ -154,7 +154,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                     .map((c: any) => ({
                         ...c,
                         lastMessage: {
-                            ...c.lastMessage,
+                            ...(c.lastMessage || {}),
                             sender_id: data.sender_id,
                             content: data.content,
                             created_at: data.created_at,

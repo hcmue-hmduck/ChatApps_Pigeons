@@ -121,6 +121,114 @@ export class MessagesLayoutComponent
         return `${Math.floor(diff / 31536000)} năm`;
     }
 
+    private escapeHtml(input: string): string {
+        return input
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    private normalizeUrl(rawUrl: string): string {
+        const trimmed = rawUrl.trim();
+        if (/^https?:\/\//i.test(trimmed)) {
+            return trimmed;
+        }
+        return `https://${trimmed}`;
+    }
+
+    formatMessageText(content: string | null | undefined): string {
+        if (!content) return '';
+
+        const escaped = this.escapeHtml(content);
+        const urlPattern = /((?:https?:\/\/|www\.)[^\s<]+)/gi;
+
+        const linked = escaped.replace(urlPattern, (match: string) => {
+            const trailingPunctuationMatch = match.match(/[.,!?;:]+$/);
+            const trailingPunctuation = trailingPunctuationMatch ? trailingPunctuationMatch[0] : '';
+            const cleanUrl = trailingPunctuation
+                ? match.slice(0, match.length - trailingPunctuation.length)
+                : match;
+
+            const href = this.escapeHtml(this.normalizeUrl(cleanUrl));
+            return `<a href="${href}" target="_blank" rel="noopener noreferrer">${cleanUrl}</a>${trailingPunctuation}`;
+        });
+
+        return linked.replace(/\n/g, '<br>');
+    }
+
+    private extractFirstUrl(content: string | null | undefined): string | null {
+        if (!content) return null;
+
+        const urlPattern = /((?:https?:\/\/|www\.)[^\s<]+)/i;
+        const match = content.match(urlPattern);
+        if (!match) return null;
+
+        const rawUrl = match[1].replace(/[.,!?;:]+$/, '');
+        if (!rawUrl) return null;
+
+        return /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
+    }
+
+    private buildStoredLinkPreview(message: any): any | null {
+        if (!message || message.message_type !== 'text') return null;
+        if (!message.file_url) return null;
+
+        const hasPreviewData = !!(message.thumbnail_url || message.file_name);
+        if (!hasPreviewData) return null;
+
+        let hostname = '';
+        try {
+            hostname = new URL(message.file_url).hostname;
+        } catch {
+            hostname = '';
+        }
+
+        return {
+            url: message.file_url,
+            title: message.file_name || message.file_url,
+            description: '',
+            image: message.thumbnail_url || null,
+            siteName: hostname,
+            hostname,
+        };
+    }
+
+    getLinkPreviewForMessage(message: any): any | null {
+        const storedPreview = this.buildStoredLinkPreview(message);
+        if (storedPreview) return storedPreview;
+
+        const url = this.extractFirstUrl(message?.content);
+        if (!url) return null;
+
+        if (this.linkPreviewCache.has(url)) {
+            return this.linkPreviewCache.get(url) || null;
+        }
+
+        this.fetchLinkPreview(url);
+        return null;
+    }
+
+    private fetchLinkPreview(url: string) {
+        if (this.linkPreviewLoading.has(url)) return;
+        this.linkPreviewLoading.add(url);
+
+        this.messagesService.getLinkPreview(url).subscribe({
+            next: (response) => {
+                this.linkPreviewCache.set(url, response?.metadata?.linkPreview || null);
+                this.cdr.markForCheck();
+            },
+            error: () => {
+                this.linkPreviewCache.set(url, null);
+                this.cdr.markForCheck();
+            },
+            complete: () => {
+                this.linkPreviewLoading.delete(url);
+            },
+        });
+    }
+
     isLoaded = false;
     hasNewMessage = false; // Track new messages when scrolled up
 
@@ -138,6 +246,8 @@ export class MessagesLayoutComponent
     // Cache để tránh tính toán lặp lại
     private dateCache = new Map<string, string>();
     private timeCache = new Map<string, string>();
+    private linkPreviewCache = new Map<string, any | null>();
+    private linkPreviewLoading = new Set<string>();
 
     // Menu state
     showMenuId: string | number | null = null;
@@ -146,6 +256,21 @@ export class MessagesLayoutComponent
     highlightedMessageId: string | null = null;
     private highlightTimeout: any;
 
+    // Image viewer modal state
+    isImageViewerOpen = false;
+    viewerImageUrl = '';
+    viewerZoom = 1;
+    readonly viewerZoomMin = 0.5;
+    readonly viewerZoomMax = 3;
+    readonly viewerZoomStep = 0.2;
+    viewerPanX = 0;
+    viewerPanY = 0;
+    isViewerDragging = false;
+    private viewerDragStartX = 0;
+    private viewerDragStartY = 0;
+    private viewerPanStartX = 0;
+    private viewerPanStartY = 0;
+    
     // Forward modal state
     showForwardModal = false;
     forwardingMessage: any = null;
@@ -210,6 +335,84 @@ export class MessagesLayoutComponent
         return currentDate !== prevDate;
     }
 
+    openImageViewer(url: string) {
+        if (!url) return;
+        this.viewerImageUrl = url;
+        this.viewerZoom = 1;
+        this.viewerPanX = 0;
+        this.viewerPanY = 0;
+        this.isViewerDragging = false;
+        this.isImageViewerOpen = true;
+    }
+
+    closeImageViewer() {
+        this.isImageViewerOpen = false;
+        this.viewerImageUrl = '';
+        this.viewerZoom = 1;
+        this.viewerPanX = 0;
+        this.viewerPanY = 0;
+        this.isViewerDragging = false;
+    }
+
+    zoomInViewer(event?: Event) {
+        event?.stopPropagation();
+        this.viewerZoom = Math.min(
+            this.viewerZoomMax,
+            Number((this.viewerZoom + this.viewerZoomStep).toFixed(2)),
+        );
+    }
+
+    zoomOutViewer(event?: Event) {
+        event?.stopPropagation();
+        this.viewerZoom = Math.max(
+            this.viewerZoomMin,
+            Number((this.viewerZoom - this.viewerZoomStep).toFixed(2)),
+        );
+
+        if (this.viewerZoom <= 1) {
+            this.viewerPanX = 0;
+            this.viewerPanY = 0;
+            this.isViewerDragging = false;
+        }
+    }
+
+    resetViewerZoom(event?: Event) {
+        event?.stopPropagation();
+        this.viewerZoom = 1;
+        this.viewerPanX = 0;
+        this.viewerPanY = 0;
+        this.isViewerDragging = false;
+    }
+
+    onViewerPointerDown(event: PointerEvent) {
+        if (this.viewerZoom <= 1) return;
+
+        event.stopPropagation();
+        event.preventDefault();
+        this.isViewerDragging = true;
+        this.viewerDragStartX = event.clientX;
+        this.viewerDragStartY = event.clientY;
+        this.viewerPanStartX = this.viewerPanX;
+        this.viewerPanStartY = this.viewerPanY;
+    }
+
+    onViewerPointerMove(event: PointerEvent) {
+        if (!this.isViewerDragging || this.viewerZoom <= 1) return;
+
+        event.stopPropagation();
+        event.preventDefault();
+        const deltaX = event.clientX - this.viewerDragStartX;
+        const deltaY = event.clientY - this.viewerDragStartY;
+        this.viewerPanX = this.viewerPanStartX + deltaX;
+        this.viewerPanY = this.viewerPanStartY + deltaY;
+    }
+
+    onViewerPointerUp(event?: PointerEvent) {
+        event?.stopPropagation();
+        this.isViewerDragging = false;
+    }
+
+    // --- Media rendering helpers ---
     // Get date string from message timestamp
     getMessageDate(dateStr: string): string {
         if (!dateStr) return '';
@@ -731,9 +934,10 @@ export class MessagesLayoutComponent
                 parent_message_name: replyToMessageObj.sender_name || null,
                 parent_message_is_deleted: replyToMessageObj.is_deleted || null,
                 parent_message_sender_id: replyToMessageObj.sender_id || null,
+                parent_message_type: replyToMessageObj.message_type || null,
+                parent_message_thumbnail_url: replyToMessageObj.thumbnail_url || null,
             } : null,
-            thumbnail_url: file_metadata?.thumbnail_url ?? null,
-            updated_at: new Date().toISOString()
+            // updated_at: new Date().toISOString()
         };
 
         const messageToAdd = messageTransform
@@ -749,6 +953,7 @@ export class MessagesLayoutComponent
         };
 
         console.log('NewMessage', newMessage);
+
 
         this.messageStatus.set('Đang gửi');
 
@@ -769,6 +974,14 @@ export class MessagesLayoutComponent
                     this.lastMessageId = realId;
                     this.messageStatus.set('Đã gửi');
 
+                    const realMessage = {
+                        ...savedMessage,
+                        sender_name: currentUser.full_name,
+                        sender_avatar: currentUser.avatar_url,
+                    };
+
+                    console.log('realMessage', realMessage);
+
                     // Cập nhật conversation với real ID
                     this.conversationService.putConversation(this.conversationId, {
                         last_message_id: realId
@@ -776,6 +989,9 @@ export class MessagesLayoutComponent
                         next: () => { },
                         error: (err) => console.error('Error updating conversation:', err),
                     });
+
+                    this.socketService.emit('sendMessage', realMessage);
+                    this.socketService.emit('updateConversation', realMessage);
 
                     // Replace temp message bằng real message
                     this.getMessagesData.update((old) => ({
@@ -789,14 +1005,6 @@ export class MessagesLayoutComponent
                             ),
                         },
                     }));
-
-                    const realMessage = {
-                        ...savedMessage,
-                        sender_name: currentUser.full_name,
-                        sender_avatar: currentUser.avatar_url,
-                    };
-                    this.socketService.emit('sendMessage', realMessage);
-                    this.socketService.emit('updateConversation', realMessage);
                 },
                 error: (error) => {
                     this.loading = false;
@@ -841,6 +1049,8 @@ export class MessagesLayoutComponent
         const replyToMessageObj = this.replyToMessage; // Capture trước khi clear
         const stagedFiles = this.preUploadFiles().map(f => f.file);
 
+        console.log('Reply:', replyToMessageObj);
+
         this.newMessage = '';
         this.replyToMessage = null;
         this.loading = true;
@@ -848,16 +1058,14 @@ export class MessagesLayoutComponent
 
         // 1. Nếu có text, gửi text trước
         if (messageContent.trim()) {
-            this.postAndBroadcastMessage(messageContent, 'text', replyTo,
-                (msg) => ({
-                    ...msg,
-                    parent_message_info: msg.parent_message_info
-                        ? { ...msg.parent_message_info, parent_message_id: msg.parent_message_id }
-                        : null,
-                }),
+            this.postAndBroadcastMessage(
+                messageContent,
+                'text',
+                replyTo,
                 undefined,
-                replyToMessageObj
-            )
+                undefined,
+                replyToMessageObj,
+            );
         }
 
         // 2. Nếu có files, upload files
@@ -924,18 +1132,18 @@ export class MessagesLayoutComponent
                     const { tempId } = tempEntries[index] || {};
 
                     let messageType = 'file';
-                    let content = 'tệp đính kèm';
+                    let content = '<i class="bi bi-file-earmark-arrow-down"></i> Tệp đính kèm';
                     if (file.resource_type === 'image') {
                         messageType = 'image';
-                        content = 'ảnh'
+                        content = '<i class="bi bi-image"></i> Hình ảnh'
                     }
                     else if (file.resource_type === 'video') {
                         messageType = 'video';
-                        content = 'video'
+                        content = '<i class="bi bi-camera-video"></i> Video'
                     }
                     else if (file.resource_type === 'audio') {
                         messageType = 'audio';
-                        content = 'tin nhắn thoại'
+                        content = '<i class="bi bi-mic"></i> Tin nhắn thoại'
                     }
 
                     const fileMetadata = {
@@ -945,6 +1153,16 @@ export class MessagesLayoutComponent
                         thumbnail_url: file.thumbnail_url,
                         duration: Math.round(file.duration || 0)
                     };
+
+                    this.getMessagesData.update((old: any) => ({
+                        ...old,
+                        homeMessagesData: {
+                            ...old.homeMessagesData,
+                            messages: old.homeMessagesData.messages.map((m: any) =>
+                                m.id === tempId ? { ...m, _uploading: false } : m
+                            ),
+                        },
+                    }));
 
                     // Bước 3: Gửi HTTP POST để lưu DB, replace temp message bằng real
                     this.postAndBroadcastMessage(
@@ -1237,8 +1455,7 @@ export class MessagesLayoutComponent
     getForwardConversationAvatar(conv: any): string {
         return (
             conv?.avatar_url ||
-            conv?.other_participant?.avatar_url ||
-            'https://ui-avatars.com/api/?name=Chat&background=06131f&color=00f2ff'
+            conv?.other_participant?.avatar_url
         );
     }
 
@@ -1279,7 +1496,7 @@ export class MessagesLayoutComponent
         const { content, messageType, fileMetadata } = this.resolveForwardPayload(this.forwardingMessage);
         const parentUserInfo = this.getMessageInfor?.user_info || {};
 
-        this.forwardLoading = true;
+        this.forwardLoading = false;
         this.forwardError = '';
 
         const requests = targetConversationIds.map((targetConversationId) =>
@@ -1295,6 +1512,8 @@ export class MessagesLayoutComponent
 
         forkJoin(requests).subscribe({
             next: (responses) => {
+                // this.forwardLoading = false;
+                this.closeForwardModal();
                 responses.forEach((res: any) => {
                     const savedMessage = res?.metadata?.newMessage;
                     if (savedMessage) {
@@ -1308,9 +1527,6 @@ export class MessagesLayoutComponent
                         this.socketService.emit('updateConversation', messageWithSender);
                     }
                 });
-
-                this.forwardLoading = false;
-                this.closeForwardModal();
             },
             error: (error) => {
                 console.error('Error forwarding message:', error);
@@ -1534,6 +1750,7 @@ export class MessagesLayoutComponent
         this.messageInput?.nativeElement?.focus();
         const messages = this.getMessagesData().homeMessagesData?.messages || [];
         this.replyToMessage = messages.find((m: any) => m.id === msgId);
+        console.log('Parent Mess:', this.replyToMessage);
     }
 
     // Đóng khung reply

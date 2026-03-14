@@ -332,6 +332,16 @@ class HomeController {
         }).send(res);
     }
 
+    async getLinkPreview(req, res) {
+        const linkPreview = await homeService.getLinkPreview(req.query.url);
+        new SuccessResponse({
+            message: 'Get link preview successfully',
+            metadata: {
+                linkPreview,
+            },
+        }).send(res);
+    }
+
 }
 
 module.exports = new HomeController();

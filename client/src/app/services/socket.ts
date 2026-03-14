@@ -23,14 +23,14 @@ export class SocketService {
         });
     }
 
-    emit (event: string, data: any) {
+    emit(event: string, data: any) {
         this.socket?.emit(event, data);
     }
 
     on(event: string, callback: (data: any) => void) {
         this.socket?.on(event, callback);
     }
-    
+
     off(event: string, callback?: (data: any) => void) {
         if (callback) {
             this.socket?.off(event, callback);

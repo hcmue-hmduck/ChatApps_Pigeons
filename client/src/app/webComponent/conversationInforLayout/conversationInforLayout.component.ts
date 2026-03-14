@@ -66,23 +66,23 @@ export class ConversationInforLayoutComponent {
                 if (!p?.user_id || p.user_id === this.currentUserId) return false;
                 return this.userPresence.get(p.user_id)?.status === 'online';
             }).length;
-            return `${this.participants.length} thanh vien${onlineCount > 0 ? ` • ${onlineCount} dang online` : ''}`;
+            return `${this.participants.length} thành viên ${onlineCount > 0 ? ` • ${onlineCount} đang online` : ''}`;
         }
 
         const targetUserId = this.otherParticipant?.user_id;
-        if (!targetUserId) return 'Khong co trang thai';
+        if (!targetUserId) return 'Không có trạng thái';
 
         const presence = this.userPresence.get(targetUserId);
-        if (presence?.status === 'online') return 'Dang hoat dong';
+        if (presence?.status === 'online') return 'Đang hoạt động';
 
         const lastOnline = this.getUserLastOnlineAt(this.otherParticipant);
         if (!lastOnline) return 'Offline';
 
-        return `Hoat dong ${this.relativeTimeFromNow(lastOnline)} truoc`;
+        return `Hoạt động ${this.relativeTimeFromNow(lastOnline)} trước`;
     }
 
     get chatBio(): string {
-        return this.otherParticipant?.bio || this.userInfor?.bio || 'Chua cap nhat mo ta';
+        return this.otherParticipant?.bio || this.userInfor?.bio || 'Chưa cập nhật mô tả';
     }
 
     get chatUsername(): string {
@@ -111,23 +111,23 @@ export class ConversationInforLayoutComponent {
         const timeToCompare = typeof dateInput === 'string'
             ? new Date(dateInput.endsWith('Z') || dateInput.length !== 23 ? dateInput : dateInput.replace(' ', 'T') + 'Z').getTime()
             : dateInput.getTime();
-        if (Number.isNaN(timeToCompare)) return 'gan day';
+        if (Number.isNaN(timeToCompare)) return 'gần đây';
 
         const diff = Math.max(0, Math.floor((Date.now() - timeToCompare) / 1000));
         if (diff <= 60) {
             const _ = this.tick1s;
-            return 'vua xong';
+            return 'vừa xong';
         }
         if (diff < 3600) {
             const _ = this.tick60s;
-            return `${Math.floor(diff / 60)} phut`;
+            return `${Math.floor(diff / 60)} phút`;
         }
         const _ = this.tick3600s;
-        if (diff < 86400) return `${Math.floor(diff / 3600)} gio`;
-        if (diff < 604800) return `${Math.floor(diff / 86400)} ngay`;
-        if (diff < 2592000) return `${Math.floor(diff / 604800)} tuan`;
-        if (diff < 31536000) return `${Math.floor(diff / 2592000)} thang`;
-        return `${Math.floor(diff / 31536000)} nam`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)} giờ`;
+        if (diff < 604800) return `${Math.floor(diff / 86400)} ngày`;
+        if (diff < 2592000) return `${Math.floor(diff / 604800)} tuần`;
+        if (diff < 31536000) return `${Math.floor(diff / 2592000)} tháng`;
+        return `${Math.floor(diff / 31536000)} năm`;
     }
 
     // Accordion States

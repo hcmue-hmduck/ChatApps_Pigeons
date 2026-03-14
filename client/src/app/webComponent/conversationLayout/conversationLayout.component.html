@@ -68,8 +68,9 @@
                                     <span *ngIf="getLastMessageSenderName(conv)">{{ getLastMessageSenderName(conv)
                                         }}&nbsp;</span>
                                     <ng-container *ngIf="conv.lastMessage.is_deleted">Tin nhắn đã được gỡ</ng-container>
-                                    <ng-container *ngIf="!conv.lastMessage.is_deleted">{{ conv.lastMessage.content
-                                        }}</ng-container>
+                                    <ng-container *ngIf="!conv.lastMessage.is_deleted">
+                                        <span [innerHTML]="conv.lastMessage.content"></span>
+                                    </ng-container>
                                 </ng-container>
                                 <span *ngIf="!conv.lastMessage" class="empty-last-msg">Chưa có tin nhắn</span>
                             </span>

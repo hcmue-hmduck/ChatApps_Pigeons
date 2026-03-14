@@ -1,12 +1,14 @@
 <div class="messages-wrapper">
 
     <!-- No conversation loaded -->
-    <div *ngIf="!isLoaded" class="chat-empty">
-        <i class="bi bi-chat-text"></i>
-        <p>Không có tin nhắn nào.</p>
-    </div>
+    @if (!isLoaded) {
+        <div class="chat-empty">
+            <i class="bi bi-chat-text"></i>
+            <p>Không có tin nhắn nào.</p>
+        </div>
+    }
 
-    <ng-container *ngIf="getMessagesData().homeMessagesData?.messages?.length">
+    @if (getMessagesData().homeMessagesData?.messages?.length) {
 
         <!-- ============================================================
          HEADER
@@ -15,73 +17,74 @@
             <div class="chat-header-left">
 
                 <!-- Avatar section -->
-                <div class="header-avatar-wrap" *ngIf="getMessageInfor?.participants">
-                    <ng-container *ngIf="getMessageInfor?.type === 'group'; else directHeaderAvatar">
+                @if (getMessageInfor?.participants) {
+                <div class="header-avatar-wrap">
+                    @if (getMessageInfor?.type === 'group') {
                         <app-group-avatar-layout [members]="getMessageInfor.participants || []" [isGroup]="true"
                             [avatarUrl]="getMessageInfor.avatar_url && getMessageInfor.avatar_url.trim() ? getMessageInfor.avatar_url : null"
                             [alt]="getMessageInfor.title" [size]="42">
                         </app-group-avatar-layout>
-                    </ng-container>
-
-                    <ng-template #directHeaderAvatar>
-                        <div *ngIf="getMessageInfor?.other_participant">
-                            <img [src]="getMessageInfor.other_participant.avatar_url"
-                                [alt]="getMessageInfor.other_participant.full_name" class="header-avatar">
-                            <span class="header-status-dot"
-                                [class.online]="isUserOnline(getMessageInfor.other_participant.user_id)"
-                                [class.offline]="!isUserOnline(getMessageInfor.other_participant.user_id)">
-                            </span>
-                        </div>
-                    </ng-template>
+                    } @else {
+                        @if (getMessageInfor?.other_participant) {
+                            <div>
+                                <img [src]="getMessageInfor.other_participant.avatar_url"
+                                    [alt]="getMessageInfor.other_participant.full_name" class="header-avatar">
+                                <span class="header-status-dot"
+                                    [class.online]="isUserOnline(getMessageInfor.other_participant.user_id)"
+                                    [class.offline]="!isUserOnline(getMessageInfor.other_participant.user_id)">
+                                </span>
+                            </div>
+                        }
+                    }
                 </div>
+                }
 
                 <!-- Title & sub -->
                 <div class="chat-header-info">
                     <p class="chat-header-title">{{ getMessageInfor.title || 'Conversation' }}</p>
-                    <p class="chat-header-sub" *ngIf="getMessageInfor?.type === 'group'">
-                        {{ getMessageInfor.participants?.length || 0 }} thành viên
-                    </p>
-                    <p class="chat-header-sub"
-                        *ngIf="getMessageInfor?.type === 'direct' && getMessageInfor?.other_participant"
-                        [class.online]="isUserOnline(getMessageInfor.other_participant.user_id)">
-                        <ng-container *ngIf="isUserOnline(getMessageInfor.other_participant.user_id)">
-                            Đang hoạt động
-                        </ng-container>
-                        <ng-container *ngIf="!isUserOnline(getMessageInfor.other_participant.user_id)">
-                            <ng-container
-                                *ngIf="getUserLastOnlineAt(getMessageInfor.other_participant) && relativeTime(getUserLastOnlineAt(getMessageInfor.other_participant), tick1s, tick60s, tick3600s) as rTime; else offlineText">
-                                Hoạt động {{ rTime }} trước
-                            </ng-container>
-                            <ng-template #offlineText>
+                    @if (getMessageInfor?.type === 'group') {
+                        <p class="chat-header-sub">
+                            {{ getMessageInfor.participants?.length || 0 }} thành viên
+                        </p>
+                    }
+                    @if (getMessageInfor?.type === 'direct' && getMessageInfor?.other_participant) {
+                        <p class="chat-header-sub"
+                            [class.online]="isUserOnline(getMessageInfor.other_participant.user_id)">
+                            @if (isUserOnline(getMessageInfor.other_participant.user_id)) {
+                                Đang hoạt động
+                            } @else {
+                            @if (getUserLastOnlineAt(getMessageInfor.other_participant)) {
+                                Hoạt động {{ relativeTime(getUserLastOnlineAt(getMessageInfor.other_participant), tick1s, tick60s, tick3600s) }} trước
+                            } @else {
                                 Ngoại tuyến
-                            </ng-template>
-                        </ng-container>
-                    </p>
+                            }
+                            }
+                        </p>
+                    }
                 </div>
             </div>
 
             <!-- Action buttons -->
             <div class="chat-header-actions">
                 <button class="header-action-btn" title="Gọi điện" (click)="handleVoiceCall()">
-                        <i class="bi bi-telephone"></i>
-                    </button>
+                    <i class="bi bi-telephone"></i>
+                </button>
                 <button class="header-action-btn" title="Gọi video" (click)="handleVideoCall()">
                     <i class="bi bi-camera-video"></i>
                 </button>
                 <button class="header-action-btn" title="Thông tin" (click)="handleInfo()">
                     <i class="bi bi-info-circle"></i>
                 </button>
-                </div>
             </div>
+        </div>
 
-            <!-- ============================================================
+        <!-- ============================================================
          PINNED MESSAGE BAR
          ============================================================ -->
-            <div class="pinned-bar-wrap" *ngIf="pinnedMessages() && pinnedMessages().length > 0">
-
-                <!-- Bar hiển thị tin nhắn ghim đầu tiên (click để scroll) -->
-                <div class="pinned-bar" *ngIf="!showPinnedDropdown"
-                    (click)="scrollToMessage(pinnedMessages()[pinnedMessages().length - 1].message_id)">
+        @if (pinnedMessages() && pinnedMessages().length > 0) {
+            <!-- Bar hiển thị tin nhắn ghim đầu tiên (click để scroll) -->
+            @if (!showPinnedDropdown) {
+                <div class="pinned-bar" (click)="scrollToMessage(pinnedMessages()[pinnedMessages().length - 1].message_id)">
 
                     <div class="pinned-item-icon">
                         <i class="bi bi-pin-angle"></i>
@@ -89,141 +92,154 @@
                     <div class="pinned-item-body">
                         <div class="pinned-item-title">Tin nhắn</div>
                         <div class="pinned-item-preview">
-                            <span class="pinned-item-sender">{{ pinnedMessages()[pinnedMessages().length -
-                                1].sender_name ||
-                                'Ai đó' }}: </span>
-                            <span class="pinned-item-text">{{ pinnedMessages()[pinnedMessages().length - 1].content
-                                }}</span>
+                            <span class="pinned-item-sender">{{ pinnedMessages()[pinnedMessages().length - 1].sender_name || 'Ai đó' }}: </span>
+                            <span class="pinned-item-text">{{ pinnedMessages()[pinnedMessages().length - 1].content }}</span>
                         </div>
                     </div>
 
                     <!-- Nút +X ghim nếu có nhiều hơn 1 -->
-                    <button class="pinned-more-btn" *ngIf="pinnedMessages().length > 1"
-                        (click)="togglePinnedDropdown($event)">
-                        +{{ pinnedMessages().length - 1 }} ghim
-                    </button>
-                    <i class="bi bi-pin-angle pinned-icon" *ngIf="pinnedMessages().length === 1"></i>
+                    @if (pinnedMessages().length > 1) {
+                        <button class="pinned-more-btn" (click)="togglePinnedDropdown($event)">
+                            +{{ pinnedMessages().length - 1 }} ghim
+                        </button>
+                    } @else {
+                        <i class="bi bi-pin-angle pinned-icon"></i>
+                    }
 
                     <!-- Three-dots menu cho preview bar -->
-                    <div class="pinned-menu-wrap" (click)="$event.stopPropagation()"
-                        (mouseenter)="onPinnedMenuMouseEnter()" (mouseleave)="onPinnedMenuMouseLeave()">
+                    <div class="pinned-menu-wrap" (click)="$event.stopPropagation()" (mouseenter)="onPinnedMenuMouseEnter()"
+                        (mouseleave)="onPinnedMenuMouseLeave()">
                         <button class="pinned-item-menu"
                             (click)="togglePinnedMenu($event, pinnedMessages()[pinnedMessages().length - 1].id)">
                             <i class="bi bi-three-dots"></i>
                         </button>
-                        <div class="pinned-context-menu"
-                            *ngIf="openPinnedMenuId === pinnedMessages()[pinnedMessages().length - 1].id">
-                            <button class="pinned-ctx-item danger"
-                                (click)="unpinMessage(pinnedMessages()[pinnedMessages().length - 1]); openPinnedMenuId = null">
-                                <i class="bi bi-pin-angle"></i> Bỏ ghim
-                            </button>
-                        </div>
+                        @if (openPinnedMenuId === pinnedMessages()[pinnedMessages().length - 1].id) {
+                            <div class="pinned-context-menu">
+                                <button class="pinned-ctx-item danger"
+                                    (click)="unpinMessage(pinnedMessages()[pinnedMessages().length - 1]); openPinnedMenuId = null">
+                                    <i class="bi bi-pin-angle"></i> Bỏ ghim
+                                </button>
+                            </div>
+                        }
                     </div>
                 </div>
+            }
 
-                <!-- Dropdown danh sách toàn bộ tin nhắn đã ghim -->
-                <div class="pinned-panel-list" *ngIf="showPinnedDropdown">
+            <!-- Dropdown danh sách toàn bộ tin nhắn đã ghim -->
+            @if (showPinnedDropdown) {
+                <div class="pinned-panel-list">
                     <div class="pinned-panel-header-sub">
                         <span>Tất cả tin nhắn đã ghim ({{ pinnedMessages().length }})</span>
                         <button class="pinned-dropdown-close" (click)="showPinnedDropdown = false">
                             <i class="bi bi-x-lg"></i>
                         </button>
                     </div>
-                    <div class="pinned-panel-item" *ngFor="let pm of pinnedMessages()"
-                        (click)="scrollToMessage(pm.message_id); showPinnedDropdown = false">
-                        <div class="pinned-item-icon">
-                            <i class="bi bi-pin-angle"></i>
-                        </div>
-                        <div class="pinned-item-body">
-                            <div class="pinned-item-title">Tin nhắn</div>
-                            <div class="pinned-item-preview">
-                                <span class="pinned-item-sender">{{ pm.sender_name || 'Ai đó' }}: </span>
-                                <span class="pinned-item-text">{{ pm.content }}</span>
+                    @for (pm of pinnedMessages(); track pm.id) {
+                        <div class="pinned-panel-item" (click)="scrollToMessage(pm.message_id); showPinnedDropdown = false">
+                            <div class="pinned-item-icon">
+                                <i class="bi bi-pin-angle"></i>
                             </div>
-                        </div>
-                        <!-- Three-dots menu từng item -->
-                        <div class="pinned-menu-wrap" (click)="$event.stopPropagation()"
-                            (mouseenter)="onPinnedMenuMouseEnter()" (mouseleave)="onPinnedMenuMouseLeave()">
-                            <button class="pinned-item-menu" (click)="togglePinnedMenu($event, pm.id)">
-                                <i class="bi bi-three-dots"></i>
-                            </button>
-                            <div class="pinned-context-menu" *ngIf="openPinnedMenuId === pm.id">
-                                <button class="pinned-ctx-item danger"
-                                    (click)="unpinMessage(pm); openPinnedMenuId = null">
-                                    <i class="bi bi-pin-angle"></i> Bỏ ghim
+                            <div class="pinned-item-body">
+                                <div class="pinned-item-title">Tin nhắn</div>
+                                <div class="pinned-item-preview">
+                                    <span class="pinned-item-sender">{{ pm.sender_name || 'Ai đó' }}: </span>
+                                    <span class="pinned-item-text">{{ pm.content }}</span>
+                                </div>
+                            </div>
+                            <!-- Three-dots menu từng item -->
+                            <div class="pinned-menu-wrap" (click)="$event.stopPropagation()"
+                                (mouseenter)="onPinnedMenuMouseEnter()" (mouseleave)="onPinnedMenuMouseLeave()">
+                                <button class="pinned-item-menu" (click)="togglePinnedMenu($event, pm.id)">
+                                    <i class="bi bi-three-dots"></i>
                                 </button>
+                                @if (openPinnedMenuId === pm.id) {
+                                    <div class="pinned-context-menu">
+                                        <button class="pinned-ctx-item danger" (click)="unpinMessage(pm); openPinnedMenuId = null">
+                                            <i class="bi bi-pin-angle"></i> Bỏ ghim
+                                        </button>
+                                    </div>
+                                }
                             </div>
                         </div>
-                    </div>
+                    }
                 </div>
-            </div>
+            }
+        }
 
-            <!-- ============================================================
+        <!-- ============================================================
          MESSAGES SCROLL AREA
          ============================================================ -->
-            <div class="messages-scroll" #messagesContent (scroll)="onMessagesScroll()">
-                <div class="messages-inner">
+        <div class="messages-scroll" #messagesContent (scroll)="onMessagesScroll()">
+            <div class="messages-inner">
 
-                    <!-- Loading more -->
-                    <div *ngIf="isLoadingMore" class="loading-more">Đang tải thêm tin nhắn...</div>
+                <!-- Loading more -->
+                @if (isLoadingMore) {
+                    <div class="loading-more">Đang tải thêm tin nhắn...</div>
+                }
 
-                    <ng-container
-                        *ngFor="let msg of getMessagesData().homeMessagesData.messages; let i=index; trackBy: trackByMessageId">
-
-                        <!-- Date separator -->
-                        <div *ngIf="shouldShowDateSeparator(msg, getMessagesData().homeMessagesData.messages[i-1])"
-                            class="date-separator">
+                @for (msg of getMessagesData().homeMessagesData.messages; track trackByMessageId($index, msg); let i = $index) {
+                    <!-- Date separator -->
+                    @if (shouldShowDateSeparator(msg, getMessagesData().homeMessagesData.messages[i-1])) {
+                        <div class="date-separator">
                             <span>{{ formatDateLabel(msg.created_at) }}</span>
                         </div>
+                    }
 
-                        <!-- System message -->
-                        <ng-container *ngIf="msg.message_type === 'system'; else userMsg">
-                            <div class="message-system">
-                                <span class="system-text">{{ getLastMessageSenderName(msg.sender_id, msg.sender_name) }}
-                                    {{
-                                    msg.content }}</span>
-                            </div>
-                        </ng-container>
+                    <!-- System message -->
+                    @if (msg.message_type === 'system') {
+                        <div class="message-system">
+                            <span class="system-text">{{ getLastMessageSenderName(msg.sender_id, msg.sender_name) }} {{ msg.content }}</span>
+                        </div>
+                    } @else {
+                        <!-- ===== MY MESSAGES ===== -->
+                        @if (currentUserId === msg.sender_id) {
+                            <div class="message-row me-row" id="message-{{msg.id}}"
+                                [class.highlighted]="highlightedMessageId === msg.id">
+                                <div class="me-row-content">
 
-                        <ng-template #userMsg>
+                                    <div class="msg-content-col-me">
 
-                            <!-- ===== MY MESSAGES ===== -->
-                            <ng-container *ngIf="currentUserId === msg.sender_id; else otherMsg">
-                                <div class="message-row me-row" id="message-{{msg.id}}"
-                                    [class.highlighted]="highlightedMessageId === msg.id">
-                                    <div class="me-row-content">
-
-                                        <div class="msg-content-col-me">
-
-                                            <!-- Reply preview -->
-                                            <ng-container *ngIf="msg.parent_message_id">
-                                                <div class="reply-sender-label me-label">
-                                                    <i class="bi bi-reply me-1"></i>
-                                                    {{ msg.parent_message_info.parent_message_sender_id ===
-                                                    currentUserId ?
-                                                    'Bạn đã trả lời chính mình' :
-                                                    'Bạn đã trả lời ' + msg.parent_message_info.parent_message_name }}
-                                                </div>
-                                                <div class="reply-info-me"
-                                                    (click)="scrollToMessage(msg.parent_message_info.parent_message_id)">
-                                                    <div class="reply-content-preview">
-                                                        <ng-container
-                                                            *ngIf="!msg.parent_message_info.parent_message_is_deleted">
+                                        <!-- Reply preview -->
+                                        @if (msg.parent_message_id) {
+                                            <div class="reply-sender-label me-label">
+                                                <i class="bi bi-reply me-1"></i>
+                                                @if (msg.parent_message_info.parent_message_sender_id === currentUserId) {
+                                                    Bạn đã trả lời chính mình
+                                                } @else {
+                                                    Bạn đã trả lời {{ msg.parent_message_info.parent_message_name }}
+                                                }
+                                            </div>
+                                            <div class="reply-info-me"
+                                                (click)="scrollToMessage(msg.parent_message_info.parent_message_id)">
+                                                <div class="reply-content-preview">
+                                                    @if (!msg.parent_message_info.parent_message_is_deleted) {
+                                                        @if (msg.parent_message_info.parent_message_type === 'text') {
                                                             {{ msg.parent_message_info.parent_message_content }}
-                                                        </ng-container>
-                                                        <ng-container
-                                                            *ngIf="msg.parent_message_info.parent_message_is_deleted">
-                                                            <em>Tin nhắn đã bị gỡ</em>
-                                                        </ng-container>
-                                                    </div>
+                                                        } @else {
+                                                            @if (msg.parent_message_info.parent_message_type === 'image' || msg.parent_message_info.parent_message_type === 'video') {
+                                                                <img [src]="msg.parent_message_info.parent_message_thumbnail_url" class="reply-preview-img-bubble">
+                                                            } @else if (msg.parent_message_info.parent_message_type === 'file') {
+                                                                <div class="reply-preview-icon-bubble">
+                                                                    <i class="bi bi-file-earmark-arrow-down"></i>
+                                                                </div>
+                                                            }
+                                                            @else {
+                                                                Chi tiết tin nhắn
+                                                            }
+                                                        }
+                                                    } @else {
+                                                        <em>Tin nhắn đã bị gỡ</em>
+                                                    }
                                                 </div>
-                                            </ng-container>
+                                            </div>
+                                        }
 
-                                            <!-- Bubble + actions -->
-                                            <div class="bubble-row">
+                                        <!-- Bubble + actions -->
+                                        <div class="bubble-row">
+                                            @if (msg.message_type !== 'call') {
                                                 <!-- Actions (left of bubble for me) -->
-                                                <ng-container *ngIf="msg.message_type !== 'call'; else callTemplate">
-                                                    <div *ngIf="!msg.is_deleted" class="message-actions"
+                                                @if (!msg.is_deleted) {
+                                                    <div class="message-actions"
                                                         (mouseleave)="closeMenu()">
                                                         <button class="action-btn" title="Tùy chọn"
                                                             (click)="toggleMenu(msg.id, $event)">
@@ -234,524 +250,600 @@
                                                             <i class="bi bi-reply"></i>
                                                         </button>
                                                         <!-- Dropdown -->
-                                                        <div class="msg-dropdown" *ngIf="showMenuId === msg.id"
-                                                            [ngStyle]="{'position': 'fixed', 'top.px': dropdownTop, 'left.px': dropdownLeft}">
-                                                            <button class="dropdown-item"
-                                                                *ngIf="msg.message_type === 'text'"
-                                                                (click)="openEditModal(msg)">
-                                                                <i class="bi bi-pencil me-2"></i>Sửa
-                                                            </button>
-                                                            <button class="dropdown-item" (click)="forwardMessage(msg)">
-                                                                <i class="bi bi-forward me-2"></i>Chuyển tiếp
-                                                            </button>
-                                                            <button class="dropdown-item" (click)="pinMessage(msg)">
-                                                                <i class="bi bi-pin-angle me-2"></i>Ghim
-                                                            </button>
-                                                            <button class="dropdown-item danger"
-                                                                (click)="deleteMessage(msg)">
-                                                                <i class="bi bi-trash me-2"></i>Gỡ
-                                                            </button>
-                                                        </div>
+                                                        @if (showMenuId === msg.id) {
+                                                            <div class="msg-dropdown"
+                                                                [ngStyle]="{'position': 'fixed', 'top.px': dropdownTop, 'left.px': dropdownLeft}">
+                                                                @if (msg.message_type === 'text') {
+                                                                    <button class="dropdown-item"
+                                                                        (click)="openEditModal(msg)">
+                                                                        <i class="bi bi-pencil me-2"></i>Sửa
+                                                                    </button>
+                                                                }
+                                                                <button class="dropdown-item" (click)="forwardMessage(msg)">
+                                                                    <i class="bi bi-forward me-2"></i>Chuyển tiếp
+                                                                </button>
+                                                                <button class="dropdown-item" (click)="pinMessage(msg)">
+                                                                    <i class="bi bi-pin-angle me-2"></i>Ghim
+                                                                </button>
+                                                                <button class="dropdown-item danger"
+                                                                    (click)="deleteMessage(msg)">
+                                                                    <i class="bi bi-trash me-2"></i>Gỡ
+                                                                </button>
+                                                            </div>
+                                                        }
                                                     </div>
+                                                }
 
-                                                    <!-- Bubble -->
-                                                    <div class="bubble-me" [class.bubble-deleted]="msg.is_deleted"
-                                                        [class.bubble-image]="msg.message_type === 'image'">
-                                                        <span *ngIf="msg.is_deleted">Tin nhắn đã được gỡ</span>
-
-                                                        <ng-container *ngIf="!msg.is_deleted">
-                                                            <!-- Image -->
-                                                            <div *ngIf="msg.message_type === 'image'"
-                                                                class="msg-image-wrap">
-                                                                <img [src]="msg.file_url" class="msg-image"
-                                                                    alt="Hình ảnh">
+                                                <!-- Bubble -->
+                                                <div class="bubble-me" [class.bubble-deleted]="msg.is_deleted"
+                                                    [class.bubble-image]="msg.message_type === 'image'">
+                                                    @if (msg.is_deleted) {
+                                                        Tin nhắn đã được gỡ
+                                                    } @else {
+                                                        <!-- Image -->
+                                                        @if (msg.message_type === 'image') {
+                                                            <div class="msg-image-wrap" (click)="openImageViewer(msg.file_url)">
+                                                                <img [src]="msg.file_url" class="msg-image" alt="Hình ảnh">
                                                             </div>
-
-                                                            <!-- Video -->
-                                                            <div *ngIf="msg.message_type === 'video'"
-                                                                class="msg-video-wrap">
-                                                                <video [src]="msg.file_url" controls
-                                                                    class="msg-video"></video>
+                                                        }
+                                                        <!-- Video -->
+                                                        @if (msg.message_type === 'video') {
+                                                            <div class="msg-video-wrap">
+                                                                <video [src]="msg.file_url" controls class="msg-video"></video>
                                                             </div>
-
-                                                            <!-- File -->
-                                                            <div *ngIf="msg.message_type === 'file'"
-                                                                class="msg-file-wrap">
-                                                                <a [href]="msg.file_url" target="_blank"
-                                                                    class="msg-file-link">
+                                                        }
+                                                        <!-- File -->
+                                                        @if (msg.message_type === 'file') {
+                                                            <div class="msg-file-wrap">
+                                                                <a [href]="msg.file_url" target="_blank" class="msg-file-link">
                                                                     <i class="bi bi-file-earmark-arrow-down"></i>
                                                                     <span>{{ msg.file_name || 'Tệp đính kèm' }}</span>
                                                                 </a>
                                                             </div>
-
-                                                            <!-- Text -->
-                                                            <div *ngIf="msg.message_type === 'text'"
-                                                                [innerHTML]="(msg.content || '').replace(/\n/g, '<br>')">
-                                                            </div>
-
-                                                            <!-- Upload progress bar -->
-                                                            <div *ngIf="msg._uploading" class="upload-progress">
+                                                        }
+                                                        <!-- Text -->
+                                                        @if (msg.message_type === 'text') {
+                                                            <div [innerHTML]="formatMessageText(msg.content)"></div>
+                                                            @if (getLinkPreviewForMessage(msg); as preview) {
+                                                                <a class="link-preview-card" [href]="preview.url" target="_blank"
+                                                                    rel="noopener noreferrer" (click)="$event.stopPropagation()">
+                                                                    @if (preview.image) {
+                                                                        <img class="link-preview-image" [src]="preview.image" [alt]="preview.title || preview.siteName">
+                                                                    }
+                                                                    <div class="link-preview-body">
+                                                                        <div class="link-preview-site">{{ preview.siteName || preview.hostname }}</div>
+                                                                        <div class="link-preview-title">{{ preview.title || preview.url }}</div>
+                                                                        @if (preview.description) {
+                                                                            <div class="link-preview-desc">{{ preview.description }}</div>
+                                                                        }
+                                                                    </div>
+                                                                </a>
+                                                            }
+                                                        }
+                                                        <!-- Upload progress bar -->
+                                                        @if (msg._uploading) {
+                                                            <div class="upload-progress">
                                                                 <div class="upload-progress-bar"></div>
-                                                                <span class="upload-progress-text">Đang tải
-                                                                    lên...</span>
+                                                                <span class="upload-progress-text">Đang tải lên...</span>
                                                             </div>
-
-                                                        </ng-container>
-                                                    </div>
-                                                </ng-container>
-
-                                                <ng-template #callTemplate>
-                                                    <div class="call-bubble-modern">
-                                                        <div class="call-top-section">
-                                                            <div class="call-icon-circle">
-                                                                <i [className]="getCallIcon(msg.call)"></i>
+                                                        }
+                                                    }
+                                                </div>
+                                            } @else {
+                                                <div class="call-bubble-modern">
+                                                    <div class="call-top-section">
+                                                        <div class="call-icon-circle">
+                                                            <i [className]="getCallIcon(msg.call)"></i>
+                                                        </div>
+                                                        <div class="call-info-cols">
+                                                            <div class="call-title-text">
+                                                                {{ getCallMainContent(msg.call) }}
                                                             </div>
-                                                            <div class="call-info-cols">
-                                                                <div class="call-title-text">
-                                                                    {{ getCallMainContent(msg.call) }}
-                                                                </div>
-                                                                <div class="call-sub-text">
-                                                                    {{ getCallDescription(msg.call) }}
-                                                                </div>
+                                                            <div class="call-sub-text">
+                                                                {{ getCallDescription(msg.call) }}
                                                             </div>
                                                         </div>
-
-                                                        <button class="call-action-btn-modern"
-                                                            (click)="handleVoiceCall()">
-                                                            Gọi lại
-                                                        </button>
                                                     </div>
-                                                </ng-template>
 
+                                                    <button class="call-action-btn-modern" (click)="handleVoiceCall()">
+                                                        Gọi lại
+                                                    </button>
+                                                </div>
+                                            }
+                                        </div>
 
-                                            </div>
+                                        <!-- Edited badge -->
+                                        @if (msg.is_edited && !msg.is_deleted) {
+                                            <div class="edited-badge me">Đã chỉnh sửa</div>
+                                        }
 
-                                            <!-- Edited badge -->
-                                            <div *ngIf="msg.is_edited && !msg.is_deleted" class="edited-badge me">Đã
-                                                chỉnh
-                                                sửa
-                                            </div>
-
-                                            <!-- Timestamp -->
-                                            <div *ngIf="i === getMessagesData().homeMessagesData.messages.length - 1 ||
-                              getMessagesData().homeMessagesData.messages[i+1].sender_id !== msg.sender_id ||
-                              getMessagesData().homeMessagesData.messages[i+1].message_type === 'system'"
-                                                class="msg-timestamp me">
-                                                <ng-container
-                                                    *ngIf="i === getMessagesData().homeMessagesData.messages.length - 1 && messageStatus() !== ''">
+                                        <!-- Timestamp -->
+                                        @if (i === getMessagesData().homeMessagesData.messages.length - 1 ||
+                                            getMessagesData().homeMessagesData.messages[i+1].sender_id !== msg.sender_id ||
+                                            getMessagesData().homeMessagesData.messages[i+1].message_type === 'system') {
+                                            <div class="msg-timestamp me">
+                                                @if (i === getMessagesData().homeMessagesData.messages.length - 1 && messageStatus() !== '') {
                                                     <span class="msg-status"
                                                         [ngClass]="{'msg-error': messageStatus() === 'Lỗi'}">
-                                                        <i class="bi bi-check-all"
-                                                            *ngIf="messageStatus() !== 'Lỗi'"></i>
-                                                        <i class="bi bi-exclamation-circle"
-                                                            *ngIf="messageStatus() === 'Lỗi'"></i>
+                                                        @if (messageStatus() !== 'Lỗi') {
+                                                            <i class="bi bi-check-all"></i>
+                                                        }
+                                                        @if (messageStatus() === 'Lỗi') {
+                                                            <i class="bi bi-exclamation-circle"></i>
+                                                        }
                                                         {{ messageStatus() }} lúc {{ formatTime(msg.created_at) }}
                                                     </span>
-                                                </ng-container>
-
+                                                }
                                             </div>
-                                        </div>
+                                        }
                                     </div>
                                 </div>
-                            </ng-container>
-
+                            </div>
+                        } @else {
                             <!-- ===== OTHER MESSAGES ===== -->
-                            <ng-template #otherMsg>
-                                <div class="message-row other-row" id="message-{{msg.id}}"
-                                    [class.highlighted]="highlightedMessageId === msg.id">
+                            <div class="message-row other-row" id="message-{{msg.id}}"
+                                [class.highlighted]="highlightedMessageId === msg.id">
 
-                                    <!-- Sender name (group only) -->
-                                    <div *ngIf="getMessagesData().homeMessagesData.conversation_type === 'group' &&
-                          (i === 0 || getMessagesData().homeMessagesData.messages[i-1].sender_id !== msg.sender_id ||
-                           getMessagesData().homeMessagesData.messages[i-1].message_type === 'system' ||
-                           getMessageDate(msg.created_at) !== getMessageDate(getMessagesData().homeMessagesData.messages[i-1]?.created_at)) &&
-                          !msg.parent_message_id" class="sender-name">
+                                <!-- Sender name (group only) -->
+                                @if (getMessagesData().homeMessagesData.conversation_type === 'group' &&
+                                    (i === 0 || getMessagesData().homeMessagesData.messages[i-1].sender_id !== msg.sender_id ||
+                                    getMessagesData().homeMessagesData.messages[i-1].message_type === 'system' ||
+                                    getMessageDate(msg.created_at) !== getMessageDate(getMessagesData().homeMessagesData.messages[i-1]?.created_at)) &&
+                                    !msg.parent_message_id) {
+                                    <div class="sender-name">
                                         {{ msg.sender_name }}
                                     </div>
+                                }
 
-                                    <div class="other-row-content">
-                                        <!-- Avatar -->
-                                        <div *ngIf="isLastOfSenderOrDay(i, getMessagesData().homeMessagesData.messages)"
-                                            class="msg-avatar-wrap">
+                                <div class="other-row-content">
+                                    <!-- Avatar -->
+                                    @if (isLastOfSenderOrDay(i, getMessagesData().homeMessagesData.messages)) {
+                                        <div class="msg-avatar-wrap">
                                             <img class="msg-avatar" [src]="msg.sender_avatar" [alt]="msg.sender_name"
                                                 (error)="msg.sender_avatar = 'null' + msg.sender_id">
                                         </div>
-                                        <div *ngIf="!isLastOfSenderOrDay(i, getMessagesData().homeMessagesData.messages)"
-                                            class="msg-avatar-placeholder">
-                                        </div>
+                                    } @else {
+                                        <div class="msg-avatar-placeholder"></div>
+                                    }
 
-                                        <div class="msg-content-col">
+                                    <div class="msg-content-col">
 
-                                            <!-- Reply preview -->
-                                            <ng-container *ngIf="msg.parent_message_id">
-                                                <div class="reply-sender-label other-label">
-                                                    <i class="bi bi-reply me-1"></i>
-                                                    <ng-container *ngIf="msg.sender_id === currentUserId">
-                                                        Bạn đã trả lời {{ msg.parent_message_info.parent_message_name }}
-                                                    </ng-container>
-                                                    <ng-container *ngIf="msg.sender_id !== currentUserId">
-                                                        <ng-container
-                                                            *ngIf="msg.parent_message_info.parent_message_sender_id === currentUserId">
-                                                            {{ msg.sender_name }} đã trả lời bạn
-                                                        </ng-container>
-                                                        <ng-container
-                                                            *ngIf="msg.parent_message_info.parent_message_sender_id !== currentUserId">
-                                                            {{ msg.sender_name }} đã trả lời {{
-                                                            msg.parent_message_info.parent_message_name }}
-                                                        </ng-container>
-                                                    </ng-container>
-                                                </div>
-                                                <div class="reply-info-other"
-                                                    (click)="scrollToMessage(msg.parent_message_info.parent_message_id)">
-                                                    <div class="reply-content-preview">
-                                                        <ng-container
-                                                            *ngIf="!msg.parent_message_info.parent_message_is_deleted">
+                                        <!-- Reply preview -->
+                                        @if (msg.parent_message_id) {
+                                            <div class="reply-sender-label other-label">
+                                                <i class="bi bi-reply me-1"></i>
+                                                @if (msg.sender_id === currentUserId) {
+                                                    Bạn đã trả lời {{ msg.parent_message_info.parent_message_name }}
+                                                } @else {
+                                                    @if (msg.parent_message_info.parent_message_sender_id === currentUserId) {
+                                                        {{ msg.sender_name }} đã trả lời bạn
+                                                    } @else {
+                                                        {{ msg.sender_name }} đã trả lời {{ msg.parent_message_info.parent_message_name }}
+                                                    }
+                                                }
+                                            </div>
+                                            <div class="reply-info-other"
+                                                (click)="scrollToMessage(msg.parent_message_info.parent_message_id)">
+                                                <div class="reply-content-preview">
+                                                    @if (!msg.parent_message_info.parent_message_is_deleted) {
+                                                        @if (msg.parent_message_info.parent_message_type === 'text') {
                                                             {{ msg.parent_message_info.parent_message_content }}
-                                                        </ng-container>
-                                                        <ng-container
-                                                            *ngIf="msg.parent_message_info.parent_message_is_deleted">
-                                                            <em>Tin nhắn đã bị gỡ</em>
-                                                        </ng-container>
-                                                    </div>
+                                                        } @else {
+                                                            @if (msg.parent_message_info.parent_message_type === 'image' || msg.parent_message_info.parent_message_type === 'video') {
+                                                                <img [src]="msg.parent_message_info.parent_message_thumbnail_url" class="reply-preview-img-bubble">
+                                                            } @else if (msg.parent_message_info.parent_message_type === 'file') {
+                                                                <div class="reply-preview-icon-bubble">
+                                                                    <i class="bi bi-file-earmark-arrow-down"></i>
+                                                                </div>
+                                                            }
+                                                            @else {
+                                                                Chi tiết tin nhắn
+                                                            }
+                                                        }
+                                                    } @else {
+                                                        <em>Tin nhắn đã bị gỡ</em>
+                                                    }
                                                 </div>
-                                            </ng-container>
+                                            </div>
+                                        }
 
-                                            <!-- Bubble + actions -->
-                                            <div class="bubble-row">
-                                                <!-- Bubble -->
-
-                                                <ng-container *ngIf="msg.message_type !== 'call'; else callTemplate">
-                                                    <ng-container *ngIf="msg.is_deleted">
-                                                        <div class="bubble-other bubble-deleted">Tin nhắn đã được gỡ
-                                                        </div>
-                                                    </ng-container>
-                                                    <ng-container *ngIf="!msg.is_deleted">
-                                                        <div class="bubble-other"
-                                                            [class.bubble-image]="msg.message_type === 'image'">
-                                                            <!-- Image -->
-                                                            <div *ngIf="msg.message_type === 'image'"
-                                                                class="msg-image-wrap">
-                                                                <img [src]="msg.file_url" class="msg-image"
-                                                                    alt="Hình ảnh">
+                                        <!-- Bubble + actions -->
+                                        <div class="bubble-row">
+                                            @if (msg.message_type !== 'call') {
+                                                @if (msg.is_deleted) {
+                                                    <div class="bubble-other bubble-deleted">Tin nhắn đã được gỡ</div>
+                                                } @else {
+                                                    <div class="bubble-other"
+                                                        [class.bubble-image]="msg.message_type === 'image'">
+                                                        <!-- Image -->
+                                                        @if (msg.message_type === 'image') {
+                                                            <div class="msg-image-wrap" (click)="openImageViewer(msg.file_url)">
+                                                                <img [src]="msg.file_url" class="msg-image" alt="Hình ảnh">
                                                             </div>
-
-                                                            <!-- Video -->
-                                                            <div *ngIf="msg.message_type === 'video'"
-                                                                class="msg-video-wrap">
-                                                                <video [src]="msg.file_url" controls
-                                                                    class="msg-video"></video>
+                                                        }
+                                                        <!-- Video -->
+                                                        @if (msg.message_type === 'video') {
+                                                            <div class="msg-video-wrap">
+                                                                <video [src]="msg.file_url" controls class="msg-video"></video>
                                                             </div>
-
-                                                            <!-- File -->
-                                                            <div *ngIf="msg.message_type === 'file'"
-                                                                class="msg-file-wrap">
-                                                                <a [href]="msg.file_url" target="_blank"
-                                                                    class="msg-file-link">
+                                                        }
+                                                        <!-- File -->
+                                                        @if (msg.message_type === 'file') {
+                                                            <div class="msg-file-wrap">
+                                                                <a [href]="msg.file_url" target="_blank" class="msg-file-link">
                                                                     <i class="bi bi-file-earmark-arrow-down"></i>
                                                                     <span>{{ msg.file_name || 'Tệp đính kèm' }}</span>
                                                                 </a>
                                                             </div>
+                                                        }
+                                                        <!-- Text -->
+                                                        @if (msg.message_type === 'text') {
+                                                            <div [innerHTML]="formatMessageText(msg.content)"></div>
+                                                            @if (getLinkPreviewForMessage(msg); as preview) {
+                                                                <a class="link-preview-card" [href]="preview.url" target="_blank"
+                                                                    rel="noopener noreferrer" (click)="$event.stopPropagation()">
+                                                                    @if (preview.image) {
+                                                                        <img class="link-preview-image" [src]="preview.image" [alt]="preview.title || preview.siteName">
+                                                                    }
+                                                                    <div class="link-preview-body">
+                                                                        <div class="link-preview-site">{{ preview.siteName || preview.hostname }}</div>
+                                                                        <div class="link-preview-title">{{ preview.title || preview.url }}</div>
+                                                                        @if (preview.description) {
+                                                                            <div class="link-preview-desc">{{ preview.description }}</div>
+                                                                        }
+                                                                    </div>
+                                                                </a>
+                                                            }
+                                                        }
+                                                    </div>
 
-                                                            <!-- Text -->
-                                                            <div *ngIf="msg.message_type === 'text'"
-                                                                [innerHTML]="(msg.content || '').replace(/\n/g, '<br>')">
-                                                            </div>
-                                                        </div>
-
-                                                        <!-- Actions (right of bubble for other) -->
-                                                        <div class="message-actions" (mouseleave)="closeMenu()">
-                                                            <button class="action-btn" title="Trả lời"
-                                                                (click)="replyMessage(msg.id)">
-                                                                <i class="bi bi-reply"></i>
-                                                            </button>
-                                                            <button class="action-btn" title="Tùy chọn"
-                                                                (click)="toggleMenu(msg.id, $event)">
-                                                                <i class="bi bi-three-dots-vertical"></i>
-                                                            </button>
-                                                            <!-- Dropdown -->
-                                                            <div class="msg-dropdown" *ngIf="showMenuId === msg.id"
+                                                    <!-- Actions (right of bubble for other) -->
+                                                    <div class="message-actions" (mouseleave)="closeMenu()">
+                                                        <button class="action-btn" title="Trả lời"
+                                                            (click)="replyMessage(msg.id)">
+                                                            <i class="bi bi-reply"></i>
+                                                        </button>
+                                                        <button class="action-btn" title="Tùy chọn"
+                                                            (click)="toggleMenu(msg.id, $event)">
+                                                            <i class="bi bi-three-dots-vertical"></i>
+                                                        </button>
+                                                        <!-- Dropdown -->
+                                                        @if (showMenuId === msg.id) {
+                                                            <div class="msg-dropdown"
                                                                 [ngStyle]="{'position': 'fixed', 'top.px': dropdownTop, 'left.px': dropdownLeft}">
-                                                                <button class="dropdown-item"
-                                                                    (click)="forwardMessage(msg)">
+                                                                <button class="dropdown-item" (click)="forwardMessage(msg)">
                                                                     <i class="bi bi-forward me-2"></i>Chuyển tiếp
                                                                 </button>
                                                                 <button class="dropdown-item" (click)="pinMessage(msg)">
                                                                     <i class="bi bi-pin-angle me-2"></i>Ghim
                                                                 </button>
                                                             </div>
-                                                        </div>
-                                                    </ng-container>
-                                                </ng-container>
-
-                                                <ng-template #callTemplate>
-                                                    <div class="call-bubble-modern">
-                                                        <div class="call-top-section">
-                                                            <div class="call-icon-circle">
-                                                                <i [className]="getCallIcon(msg.call)"></i>
-                                                            </div>
-                                                            <div class="call-info-cols">
-                                                                <div class="call-title-text">
-                                                                    {{ getCallMainContent(msg.call) }}
-                                                                </div>
-                                                                <div class="call-sub-text">
-                                                                    {{ getCallDescription(msg.call) }}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        <button class="call-action-btn-modern"
-                                                            (click)="handleVoiceCall()">
-                                                            Gọi lại
-                                                        </button>
+                                                        }
                                                     </div>
-                                                </ng-template>
+                                                }
+                                            } @else {
+                                                <div class="call-bubble-modern">
+                                                    <div class="call-top-section">
+                                                        <div class="call-icon-circle">
+                                                            <i [className]="getCallIcon(msg.call)"></i>
+                                                        </div>
+                                                        <div class="call-info-cols">
+                                                            <div class="call-title-text">
+                                                                {{ getCallMainContent(msg.call) }}
+                                                            </div>
+                                                            <div class="call-sub-text">
+                                                                {{ getCallDescription(msg.call) }}
+                                                            </div>
+                                                        </div>
+                                                    </div>
 
-                                            </div>
+                                                    <button class="call-action-btn-modern" (click)="handleVoiceCall()">
+                                                        Gọi lại
+                                                    </button>
+                                                </div>
+                                            }
+                                        </div>
 
-                                            <!-- Edited badge -->
-                                            <div *ngIf="msg.is_edited && !msg.is_deleted" class="edited-badge other">
-                                                Đã chỉnh sửa
-                                            </div>
+                                        <!-- Edited badge -->
+                                        @if (msg.is_edited && !msg.is_deleted) {
+                                            <div class="edited-badge other">Đã chỉnh sửa</div>
+                                        }
 
-                                            <!-- Timestamp -->
-                                            <div *ngIf="isLastOfSenderOrDay(i, getMessagesData().homeMessagesData.messages)"
-                                                class="msg-timestamp other">
+                                        <!-- Timestamp -->
+                                        @if (isLastOfSenderOrDay(i, getMessagesData().homeMessagesData.messages)) {
+                                            <div class="msg-timestamp other">
                                                 {{ formatTime(msg.created_at) }}
                                             </div>
-                                        </div>
+                                        }
                                     </div>
                                 </div>
-                            </ng-template>
+                            </div>
+                        }
+                    }
+                }
+            </div><!-- /.messages-inner -->
+        </div><!-- /.messages-scroll -->
 
-                        </ng-template>
-                    </ng-container>
-                </div><!-- /.messages-inner -->
-            </div><!-- /.messages-scroll -->
+        <!-- Scroll to bottom button -->
+        <button class="scroll-to-bottom" [class.visible]="showScrollToBottom" (click)="scrollToBottomClicked()"
+            title="Cuộn xuống dưới">
+            <i class="bi bi-chevron-down"></i>
+            @if (hasNewMessage) {
+                <span class="new-badge">Mới</span>
+            }
+        </button>
 
-            <!-- Scroll to bottom button -->
-            <button class="scroll-to-bottom" [class.visible]="showScrollToBottom" (click)="scrollToBottomClicked()"
-                title="Cuộn xuống dưới">
-                <i class="bi bi-chevron-down"></i>
-                <span class="new-badge" *ngIf="hasNewMessage">Mới</span>
-            </button>
-
-            <!-- ============================================================
+        <!-- ============================================================
          INPUT AREA
          ============================================================ -->
-            <div class="input-area">
+        <div class="input-area">
 
-                <!-- Reply preview strip -->
-                <div *ngIf="replyToMessage" class="reply-preview-strip">
+            <!-- Reply preview strip -->
+            @if (replyToMessage) {
+                <div class="reply-preview-strip">
                     <div class="reply-preview-content">
                         <div class="reply-preview-to">
                             Đang trả lời
-                            <strong>{{ replyToMessage.sender_id === currentUserId ? 'chính mình' :
-                                replyToMessage.sender_name }}</strong>
+                            <strong>{{ replyToMessage.sender_id === currentUserId ? 'chính mình' : replyToMessage.sender_name }}</strong>
                         </div>
-                        <div class="reply-preview-text">{{ replyToMessage.content }}</div>
+                        <div class="reply-preview-text">
+                            @if (replyToMessage.message_type === 'text') {
+                                {{ replyToMessage.content }}
+                            } @else if (replyToMessage.message_type === 'image') {
+                                <i class="bi bi-image me-1"></i> Hình ảnh
+                            } @else if (replyToMessage.message_type === 'video') {
+                                <i class="bi bi-camera-video me-1"></i> Video
+                            } @else if (replyToMessage.message_type === 'file') {
+                                <i class="bi bi-file-earmark-arrow-down me-1"></i> Tệp đính kèm
+                            } @else {
+                                Chi tiết tin nhắn
+                            }
+                        </div>
                     </div>
+
+                    <!-- Preview Thumbnail/Icon (Right side) -->
+                    @if (replyToMessage.message_type === 'image' || replyToMessage.message_type === 'video') {
+                        <img [src]="replyToMessage.thumbnail_url" class="reply-preview-img">
+                    } @else if (replyToMessage.message_type === 'file') {
+                        <div class="reply-preview-icon-wrap">
+                            <i class="bi bi-file-earmark-arrow-down"></i>
+                        </div>
+                    }
+
                     <button class="cancel-reply-btn" (click)="cancelReply()" title="Hủy trả lời">
                         <i class="bi bi-x-lg"></i>
                     </button>
                 </div>
+            }
 
-                <!-- Upload Preview Container -->
-                <div class="upload-preview-wrap" *ngIf="preUploadFiles().length > 0">
+            <!-- Upload Preview Container -->
+            @if (preUploadFiles().length > 0) {
+                <div class="upload-preview-wrap">
                     <div class="upload-preview-container">
-                        <div class="preview-item" *ngFor="let file of preUploadFiles(); let i = index">
-                            <div class="preview-thumb-wrap">
-                                <!-- Image preview -->
-                                <img *ngIf="file.isImage" [src]="file.previewUrl" class="preview-img">
-                                <!-- Video preview -->
-                                <div *ngIf="file.isVideo" class="preview-video-wrap">
-                                    <video [src]="file.previewUrl" class="preview-video" muted
-                                        preload="metadata"></video>
-                                    <div class="preview-video-play-icon">
-                                        <i class="bi bi-play-fill"></i>
+                        @for (file of preUploadFiles(); track $index; let i = $index) {
+                            <div class="preview-item">
+                                <div class="preview-thumb-wrap">
+                                    <!-- Image preview -->
+                                    @if (file.isImage) {
+                                        <img [src]="file.previewUrl" class="preview-img">
+                                    }
+                                    <!-- Video preview -->
+                                    @if (file.isVideo) {
+                                        <div class="preview-video-wrap">
+                                            <video [src]="file.previewUrl" class="preview-video" muted preload="metadata"></video>
+                                            <div class="preview-video-play-icon">
+                                                <i class="bi bi-play-fill"></i>
+                                            </div>
+                                        </div>
+                                    }
+                                    <!-- Other file icon -->
+                                    @if (!file.isImage && !file.isVideo) {
+                                        <div class="preview-file-icon">
+                                            <i class="bi bi-file-earmark-text"></i>
+                                        </div>
+                                    }
+                                    <button class="remove-preview-btn" (click)="removePreUploadFile(i)">
+                                        <i class="bi bi-x"></i>
+                                    </button>
+                                </div>
+                                @if (!file.isImage && !file.isVideo) {
+                                    <div class="preview-file-info">
+                                        <span class="preview-file-name">{{ file.name }}</span>
                                     </div>
-                                </div>
-                                <!-- Other file icon -->
-                                <div *ngIf="!file.isImage && !file.isVideo" class="preview-file-icon">
-                                    <i class="bi bi-file-earmark-text"></i>
-                                </div>
-                                <button class="remove-preview-btn" (click)="removePreUploadFile(i)">
-                                    <i class="bi bi-x"></i>
-                                </button>
+                                }
                             </div>
-                            <div class="preview-file-info" *ngIf="!file.isImage && !file.isVideo">
-                                <span class="preview-file-name">{{ file.name }}</span>
-                            </div>
-                        </div>
+                        }
                     </div>
                 </div>
+            }
 
-                <!-- Input row -->
-                <div class="input-row">
-                    <!-- Left icons -->
-                    <div class="input-side-btns">
-                        <button class="input-icon-btn" title="Đính kèm tệp" (click)="handleFileAttachment()">
-                            <i class="bi bi-paperclip"></i>
-                        </button>
-                        <input type="file" #fileInput (change)="onFileSelected($event)" multiple style="display: none;">
-                        <button class="input-icon-btn" title="Thu âm" (click)="handleVoiceRecording()">
-                            <i class="bi bi-mic"></i>
-                        </button>
-                    </div>
+            <!-- Input row -->
+            <div class="input-row">
+                <!-- Left icons -->
+                <div class="input-side-btns">
+                    <button class="input-icon-btn" title="Đính kèm tệp" (click)="handleFileAttachment()">
+                        <i class="bi bi-paperclip"></i>
+                    </button>
+                    <input type="file" #fileInput (change)="onFileSelected($event)" multiple style="display: none;">
+                    <button class="input-icon-btn" title="Thu âm" (click)="handleVoiceRecording()">
+                        <i class="bi bi-mic"></i>
+                    </button>
+                </div>
 
-                    <!-- Text box -->
-                    <div class="input-box">
-                        <textarea #messageInput class="msg-textarea" [(ngModel)]="newMessage"
-                            placeholder="Nhập tin nhắn..." (keydown)="handleKeyDown($event)" rows="1" autofocus>
+                <!-- Text box -->
+                <div class="input-box">
+                    <textarea #messageInput class="msg-textarea" [(ngModel)]="newMessage" placeholder="Nhập tin nhắn..."
+                        (keydown)="handleKeyDown($event)" rows="1" autofocus>
           </textarea>
-                        <button class="emoji-btn" title="Biểu tượng cảm xúc" (click)="toggleEmojiPicker()">
-                            <i class="bi bi-emoji-smile"></i>
-                        </button>
-                        <!-- Emoji picker -->
-                        <div *ngIf="showEmojiPicker" class="emoji-picker-wrap">
+                    <button class="emoji-btn" title="Biểu tượng cảm xúc" (click)="toggleEmojiPicker()">
+                        <i class="bi bi-emoji-smile"></i>
+                    </button>
+                    <!-- Emoji picker -->
+                    @if (showEmojiPicker) {
+                        <div class="emoji-picker-wrap">
                             <emoji-mart (emojiSelect)="addEmoji($event)" [set]="'apple'" [perLine]="8" [emojiSize]="32"
                                 [sheetSize]="32" [showPreview]="false">
                             </emoji-mart>
                         </div>
-                    </div>
-
-                    <!-- Send button -->
-                    <button class="send-btn" type="button" title="Gửi" (click)="handleSendBtn()">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor"
-                            viewBox="0 0 16 16">
-                            <path
-                                d="M15.964.686a.5.5 0 0 0-.65-.65L.767 5.855H.766l-.452.18a.5.5 0 0 0-.082.887l.41.26.001.002 4.995 3.178 3.178 4.995.002.002.26.41a.5.5 0 0 0 .886-.083l6-15Zm-1.833 1.89L6.637 10.07l-.215-.338a.5.5 0 0 0-.154-.154l-.338-.215 7.494-7.494 1.178-.471-.47 1.178Z" />
-                        </svg>
-                    </button>
+                    }
                 </div>
-            </div>
 
-    </ng-container>
+                <!-- Send button -->
+                <button class="send-btn" type="button" title="Gửi" (click)="handleSendBtn()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor"
+                        viewBox="0 0 16 16">
+                        <path
+                            d="M15.964.686a.5.5 0 0 0-.65-.65L.767 5.855H.766l-.452.18a.5.5 0 0 0-.082.887l.41.26.001.002 4.995 3.178 3.178 4.995.002.002.26.41a.5.5 0 0 0 .886-.083l6-15Zm-1.833 1.89L6.637 10.07l-.215-.338a.5.5 0 0 0-.154-.154l-.338-.215 7.494-7.494 1.178-.471-.47 1.178Z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    }
+
+    <!-- Image Viewer Modal Overlay (bounded to messages layout) -->
+    @if (isImageViewerOpen) {
+        <div class="image-viewer-overlay" (click)="closeImageViewer()">
+            <div class="viewer-toolbar" (click)="$event.stopPropagation()">
+                <button class="viewer-tool-btn" title="Thu nhỏ" (click)="zoomOutViewer($event)" [disabled]="viewerZoom <= viewerZoomMin">
+                    <i class="bi bi-zoom-out"></i>
+                </button>
+                <button class="viewer-tool-btn viewer-zoom-readout" title="Đặt lại" (click)="resetViewerZoom($event)">
+                    {{ (viewerZoom * 100).toFixed(0) }}%
+                </button>
+                <button class="viewer-tool-btn" title="Phóng to" (click)="zoomInViewer($event)" [disabled]="viewerZoom >= viewerZoomMax">
+                    <i class="bi bi-zoom-in"></i>
+                </button>
+            </div>
+            <button class="close-viewer" (click)="closeImageViewer()">
+                <i class="bi bi-x-lg"></i>
+            </button>
+            <div class="viewer-content" (pointermove)="onViewerPointerMove($event)" (pointerup)="onViewerPointerUp($event)"
+                (pointercancel)="onViewerPointerUp($event)" (pointerleave)="onViewerPointerUp($event)">
+                <img [src]="viewerImageUrl" class="viewer-image" [class.dragging]="isViewerDragging"
+                    [style.transform]="'translate(' + viewerPanX + 'px, ' + viewerPanY + 'px) scale(' + viewerZoom + ')'"
+                    (pointerdown)="onViewerPointerDown($event)"
+                    (click)="$event.stopPropagation()" alt="Full screen preview">
+            </div>
+        </div>
+    }
 </div>
 
 <!-- ============================================================
      FORWARD MESSAGE MODAL
      ============================================================ -->
-<div class="modal-overlay" *ngIf="showForwardModal" (click)="closeForwardModal()">
-    <div class="modal-card forward-modal" (click)="$event.stopPropagation()">
-        <div class="modal-card-header">
-            <h5>Chuyển tiếp tin nhắn</h5>
-            <button class="modal-close-btn" (click)="closeForwardModal()">
-                <i class="bi bi-x-lg"></i>
-            </button>
-        </div>
-
-        <div class="modal-card-body forward-modal-body">
-            <div class="forward-preview" *ngIf="forwardingMessage">
-                <div class="forward-preview-label">Nội dung chuyển tiếp</div>
-                <div class="forward-preview-text">
-                    <ng-container *ngIf="forwardingMessage.message_type === 'text'">
-                        {{ forwardingMessage.content }}
-                    </ng-container>
-                    <ng-container *ngIf="forwardingMessage.message_type !== 'text'">
-                        {{ forwardingMessage.content || ('[' + forwardingMessage.message_type + ']') }}
-                    </ng-container>
-                </div>
+@if (showForwardModal) {
+    <div class="modal-overlay" (click)="closeForwardModal()">
+        <div class="modal-card forward-modal" (click)="$event.stopPropagation()">
+            <div class="modal-card-header">
+                <h5>Chuyển tiếp tin nhắn</h5>
+                <button class="modal-close-btn" (click)="closeForwardModal()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
             </div>
 
-            <input
-                class="forward-search-input"
-                type="text"
-                [(ngModel)]="forwardSearch"
-                placeholder="Tìm cuộc hội thoại..."
-            >
-
-            <div class="forward-loading" *ngIf="forwardLoading">
-                Đang tải danh sách cuộc hội thoại...
-            </div>
-
-            <div class="forward-error" *ngIf="forwardError && !forwardLoading">
-                {{ forwardError }}
-            </div>
-
-            <div class="forward-list" *ngIf="!forwardLoading">
-                <label class="forward-item" *ngFor="let conv of getForwardConversationsFiltered(); trackBy: trackByConversationId">
-                    <input
-                        type="checkbox"
-                        class="forward-radio"
-                        [checked]="isForwardConversationSelected(conv.conversation_id)"
-                        (change)="toggleForwardConversation(conv.conversation_id, $any($event.target).checked)"
-                    >
-
-                    <ng-container *ngIf="isForwardConversationDirect(conv); else groupForwardAvatar">
-                        <img
-                            class="forward-avatar"
-                            [src]="getForwardDirectAvatar(conv)"
-                            [alt]="getForwardConversationTitle(conv)"
-                            referrerPolicy="no-referrer"
-                        >
-                    </ng-container>
-
-                    <ng-template #groupForwardAvatar>
-                        <ng-container *ngIf="hasForwardGroupAvatar(conv); else generatedForwardGroupAvatar">
-                            <img
-                                class="forward-avatar"
-                                [src]="conv.avatar_url"
-                                [alt]="getForwardConversationTitle(conv)"
-                                referrerPolicy="no-referrer"
-                            >
-                        </ng-container>
-
-                        <ng-template #generatedForwardGroupAvatar>
-                            <div class="forward-avatar-group">
-                                <app-group-avatar-layout
-                                    [members]="conv.participants || []"
-                                    [isGroup]="true"
-                                    [avatarUrl]="null"
-                                    [alt]="getForwardConversationTitle(conv)"
-                                    [size]="36"
-                                >
-                                </app-group-avatar-layout>
-                            </div>
-                        </ng-template>
-                    </ng-template>
-
-                    <div class="forward-meta">
-                        <div class="forward-title">{{ getForwardConversationTitle(conv) }}</div>
-                        <div class="forward-sub">{{ getForwardConversationSubtitle(conv) }}</div>
+            <div class="modal-card-body forward-modal-body">
+                @if (forwardingMessage) {
+                    <div class="forward-preview">
+                        <div class="forward-preview-label">Nội dung chuyển tiếp</div>
+                        <div class="forward-preview-text">
+                            @if (forwardingMessage.message_type === 'text') {
+                                {{ forwardingMessage.content }}
+                            } @else {
+                                @if (forwardingMessage.content) {
+                                    {{ forwardingMessage.content }}
+                                } @else {
+                                    [{{ forwardingMessage.message_type }}]
+                                }
+                            }
+                        </div>
                     </div>
-                </label>
+                }
 
-                <div class="forward-empty" *ngIf="getForwardConversationsFiltered().length === 0 && !forwardError">
-                    Không tìm thấy cuộc hội thoại phù hợp.
-                </div>
+                <input class="forward-search-input" type="text" [(ngModel)]="forwardSearch"
+                    placeholder="Tìm cuộc hội thoại...">
+
+                @if (forwardLoading) {
+                    <div class="forward-loading">
+                        Đang tải danh sách cuộc hội thoại...
+                    </div>
+                }
+
+                @if (forwardError && !forwardLoading) {
+                    <div class="forward-error">
+                        {{ forwardError }}
+                    </div>
+                }
+
+                @if (!forwardLoading) {
+                    <div class="forward-list">
+                        @for (conv of getForwardConversationsFiltered(); track trackByConversationId($index, conv)) {
+                            <label class="forward-item">
+                                <input type="checkbox" class="forward-radio"
+                                    [checked]="isForwardConversationSelected(conv.conversation_id)"
+                                    (change)="toggleForwardConversation(conv.conversation_id, $any($event.target).checked)">
+
+                                @if (isForwardConversationDirect(conv)) {
+                                    <img class="forward-avatar" [src]="getForwardDirectAvatar(conv)"
+                                        [alt]="getForwardConversationTitle(conv)" referrerPolicy="no-referrer">
+                                } @else {
+                                    @if (hasForwardGroupAvatar(conv)) {
+                                        <img class="forward-avatar" [src]="conv.avatar_url"
+                                            [alt]="getForwardConversationTitle(conv)" referrerPolicy="no-referrer">
+                                    } @else {
+                                        <div class="forward-avatar-group">
+                                            <app-group-avatar-layout [members]="conv.participants || []" [isGroup]="true"
+                                                [avatarUrl]="null" [alt]="getForwardConversationTitle(conv)" [size]="36">
+                                            </app-group-avatar-layout>
+                                        </div>
+                                    }
+                                }
+
+                                <div class="forward-meta">
+                                    <div class="forward-title">{{ getForwardConversationTitle(conv) }}</div>
+                                    <div class="forward-sub">{{ getForwardConversationSubtitle(conv) }}</div>
+                                </div>
+                            </label>
+                        } @empty {
+                            @if (!forwardError) {
+                                <div class="forward-empty">
+                                    Không tìm thấy cuộc hội thoại phù hợp.
+                                </div>
+                            }
+                        }
+                    </div>
+                }
             </div>
-        </div>
 
-        <div class="modal-card-footer forward-modal-footer">
-            <button class="modal-close-secondary" (click)="closeForwardModal()">Hủy</button>
-            <button
-                class="modal-save-btn"
-                [disabled]="forwardLoading || selectedForwardConversationIds.size === 0"
-                (click)="sendForwardMessages()"
-            >
-                Gửi ({{ selectedForwardConversationIds.size }})
-            </button>
+            <div class="modal-card-footer forward-modal-footer">
+                <button class="modal-close-secondary" (click)="closeForwardModal()">Hủy</button>
+                <button class="modal-save-btn" [disabled]="forwardLoading || selectedForwardConversationIds.size === 0"
+                    (click)="sendForwardMessages()">
+                    Gửi ({{ selectedForwardConversationIds.size }})
+                </button>
+            </div>
         </div>
     </div>
-</div>
+}
 
 <!-- ============================================================
      EDIT MESSAGE MODAL
      ============================================================ -->
-<div class="modal-overlay" *ngIf="editingMessage" (click)="closeEditModal()">
-    <div class="modal-card" (click)="$event.stopPropagation()">
-        <div class="modal-card-header">
-            <h5>Sửa tin nhắn</h5>
-            <button class="modal-close-btn" (click)="closeEditModal()">
-                <i class="bi bi-x-lg"></i>
-            </button>
-        </div>
-        <div class="modal-card-body">
-            <textarea class="modal-textarea" [(ngModel)]="editingContent" rows="4" placeholder="Nhập nội dung...">
+@if (editingMessage) {
+    <div class="modal-overlay" (click)="closeEditModal()">
+        <div class="modal-card" (click)="$event.stopPropagation()">
+            <div class="modal-card-header">
+                <h5>Sửa tin nhắn</h5>
+                <button class="modal-close-btn" (click)="closeEditModal()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="modal-card-body">
+                <textarea class="modal-textarea" [(ngModel)]="editingContent" rows="4" placeholder="Nhập nội dung...">
       </textarea>
-        </div>
-        <div class="modal-card-footer">
-            <button class="modal-save-btn" (click)="saveEditModal()">Lưu thay đổi</button>
+            </div>
+            <div class="modal-card-footer">
+                <button class="modal-save-btn" (click)="saveEditModal()">Lưu thay đổi</button>
+            </div>
         </div>
     </div>
-</div>
+}
