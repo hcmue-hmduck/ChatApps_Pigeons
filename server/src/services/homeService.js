@@ -9,55 +9,15 @@ const userblockService = require('./userblockServices');
 const postsService = require('./postsService');
 const commentsService = require('./commentsService');
 const postmediaService = require('./postmediaService');
+const linkpreviewService = require('./linkpreviewService');
 
 const { sequelize } = require('../configs/sequelizeConfig.js');
 const callService = require('./callService.js');
 const { CALL_STATUS } = require('../constants/call.constants.js');
 
 class HomeService {
-    extractFirstUrlFromText(content) {
-        if (!content || typeof content !== 'string') return null;
-        const matches = Array.from(content.matchAll(/((?:https?:\/\/|www\.)[^\s<]+)/gi));
-        if (matches.length !== 1) return null;
-        const rawUrl = (matches[0][1] || '').replace(/[.,!?;:]+$/, '');
-        if (!rawUrl) return null;
-        return /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
-    }
-
-    normalizePreviewUrl(rawUrl) {
-        if (!rawUrl || typeof rawUrl !== 'string') return null;
-        const trimmed = rawUrl.trim();
-        const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-
-        try {
-            const parsed = new URL(withProtocol);
-            if (!['http:', 'https:'].includes(parsed.protocol)) return null;
-            return parsed;
-        } catch {
-            return null;
-        }
-    }
-
-    extractMetaTag(html, attr, value) {
-        if (!html) return null;
-        const escapedValue = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const pattern = new RegExp(
-            `<meta[^>]*${attr}=[\"']${escapedValue}[\"'][^>]*content=[\"']([^\"']+)[\"'][^>]*>|` +
-            `<meta[^>]*content=[\"']([^\"']+)[\"'][^>]*${attr}=[\"']${escapedValue}[\"'][^>]*>`,
-            'i'
-        );
-        const match = html.match(pattern);
-        return match?.[1] || match?.[2] || null;
-    }
-
-    extractTitleTag(html) {
-        if (!html) return null;
-        const match = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-        return match?.[1]?.trim() || null;
-    }
-
     async getLinkPreview(rawUrl) {
-        const parsedUrl = this.normalizePreviewUrl(rawUrl);
+        const parsedUrl = linkpreviewService.normalizePreviewUrl(rawUrl);
         if (!parsedUrl) return null;
 
         const fallback = {
@@ -95,12 +55,12 @@ class HomeService {
 
             const html = await response.text();
 
-            const ogTitle = this.extractMetaTag(html, 'property', 'og:title');
-            const ogDescription = this.extractMetaTag(html, 'property', 'og:description');
-            const ogImage = this.extractMetaTag(html, 'property', 'og:image');
-            const ogSiteName = this.extractMetaTag(html, 'property', 'og:site_name');
-            const metaDescription = this.extractMetaTag(html, 'name', 'description');
-            const titleTag = this.extractTitleTag(html);
+            const ogTitle = linkpreviewService.extractMetaTag(html, 'property', 'og:title');
+            const ogDescription = linkpreviewService.extractMetaTag(html, 'property', 'og:description');
+            const ogImage = linkpreviewService.extractMetaTag(html, 'property', 'og:image');
+            const ogSiteName = linkpreviewService.extractMetaTag(html, 'property', 'og:site_name');
+            const metaDescription = linkpreviewService.extractMetaTag(html, 'name', 'description');
+            const titleTag = linkpreviewService.extractTitleTag(html);
 
             let imageUrl = ogImage || null;
             if (imageUrl) {
@@ -125,7 +85,6 @@ class HomeService {
             clearTimeout(timeout);
         }
     }
-
     // Lấy danh sách conversations của user để hiển thị sidebar
     async getAllUserMessagesInJoinedConversations(userId) {
         // 1. Lấy tất cả participant record của user
@@ -360,7 +319,7 @@ class HomeService {
 
         // Tận dụng các cột media hiện có để lưu link preview cho message text
         if (message_type === 'text' && content) {
-            const detectedUrl = this.extractFirstUrlFromText(content);
+            const detectedUrl = linkpreviewService.extractFirstUrlFromText(content);
             if (detectedUrl) {
                 resolvedFileUrl = resolvedFileUrl || detectedUrl;
 
@@ -672,6 +631,15 @@ class HomeService {
 
     async searchUsers(keyword) {
         return await usersService.getAllUsers({ full_name: keyword });
+    }
+
+    async createConversation(participants_id, conversation_type, name, avatar_url, created_by, last_message_id, last_message_at) {
+        const conv = await conversationsService.createConversation(conversation_type, name, avatar_url, created_by, last_message_id, last_message_at);
+        return {
+            conv,
+            participants: await participantsService.createParticipant(conv.id, participants_id),
+            you: await participantsService.createParticipant(conv.id, created_by)
+        }
     }
 }
 

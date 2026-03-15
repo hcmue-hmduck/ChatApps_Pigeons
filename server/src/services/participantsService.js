@@ -19,9 +19,13 @@ class ParticipantsService {
     }
 
     // Tạo participant mới
-    async createParticipant(participantData) {
-        participantData.joined_at = new Date().toISOString();
-        participantData.updated_at = new Date().toISOString();
+    async createParticipant(conversation_id, user_id) {
+        const participantData = {
+            conversation_id,
+            user_id,
+            joined_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        };
         return await participantsModel.create(participantData);
     }
 

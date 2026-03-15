@@ -1,26 +1,5 @@
 <div class="conv-root search-conv-root">
   <section class="search-glass-panel">
-        <header class="main-header-row search-header-row search-panel-header">
-          <div class="header-text intro-section">
-            <h2 class="section-title">Find your people</h2>
-            <p class="section-subtitle">Connect with millions of users across the CyberChat network.</p>
-          </div>
-
-          <div class="header-actions">
-            <div class="user-profile-circle">
-              <img
-                [src]="currentUser()?.avatar_url || 'assets/default-avatar.png'"
-                alt="User profile"
-                class="profile-img"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-            <button class="action-btn-icon" (click)="closeModal()" aria-label="Close search modal">
-              <i class="bi bi-x-lg"></i>
-            </button>
-          </div>
-        </header>
-
         <div class="filter-section search-form-section">
           <div class="search-bar-wrapper">
             <div class="search-icon-box">
@@ -48,7 +27,7 @@
           <div class="results-header">
             <h3 class="results-title">
               <i class="bi bi-person-plus title-icon"></i>
-              <span>Suggested People</span>
+              <span>Suggested People ({{ searchResults().length }})</span>
             </h3>
             <button class="reset-search-btn" (click)="loadingData()">
               Reset Filter
@@ -93,7 +72,7 @@
               <div class="profile-card-body">
                 <h4 class="user-full-name">{{ user.full_name }}</h4>
                 <p class="user-meta-info">
-                  {{ user.status === 'online' ? 'Active now' : 'Recently active' }} • {{ user.mutualFriends || 0 }} mutual friends
+                  {{ user.mutualFriends || 0 }} mutual friends
                 </p>
               </div>
 
@@ -134,17 +113,5 @@
           </div>
         </div>
 
-        <footer class="status-footer search-footer">
-          <div class="footer-stats">
-            <div class="stat-item">
-              <span class="pulse-dot"></span>
-              <span class="stat-label-online">{{ searchResults().length }} SUGGESTIONS</span>
-            </div>
-          </div>
-          <div class="encryption-status">
-            <i class="bi bi-shield-check"></i>
-            SECURE USER DISCOVERY
-          </div>
-        </footer>
   </section>
 </div>

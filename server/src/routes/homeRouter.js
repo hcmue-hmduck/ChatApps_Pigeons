@@ -23,6 +23,7 @@ router.post('/friends/:userId', homeController.createFriendByUserId);
 
 router.get('/conversation/:userID', homeController.getHomeConversation);
 router.put('/conversation/:convID', homeController.putHomeConversation);
+router.post('/conversation', homeController.createConversation);
 
 router.get('/link-preview', homeController.getLinkPreview);
 

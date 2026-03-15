@@ -363,6 +363,17 @@ class HomeController {
             },
         }).send(res);
     }
+
+    async createConversation(req, res) {
+        const { participants_id, conversation_type, name, avatar_url, created_by, last_message_id, last_message_at } = req.body;
+        const newConversation = await homeService.createConversation(participants_id, conversation_type, name, avatar_url, created_by, last_message_id, last_message_at);
+        new SuccessResponse({
+            message: 'Create conversation successfully',
+            metadata: {
+                newConversation: newConversation,
+            },
+        }).send(res);
+    }
 }
 
 module.exports = new HomeController();

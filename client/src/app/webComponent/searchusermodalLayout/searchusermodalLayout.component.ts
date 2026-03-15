@@ -1,10 +1,13 @@
-import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import Swal from 'sweetalert2';
 import { User } from '../../services/user';
 import { FriendRequest } from '../../services/friendrequest';
+import { Conversation } from '../../services/conversation';
+import { NavigationService } from '../../services/navigation';
+import { SocketService } from '../../services/socket';
 
 @Component({
   selector: 'app-search-user-modal',
@@ -17,6 +20,9 @@ export class SearchUserModalComponent {
   @Input() currentUserId: string = '';
   @Output() close = new EventEmitter<void>();
 
+  private navService = inject(NavigationService);
+  private socketService = inject(SocketService);
+
   searchKeyword = '';
   searchResults = signal<any[]>([]);
   isSearching = signal(false);
@@ -25,7 +31,8 @@ export class SearchUserModalComponent {
 
   constructor(
     private userService: User,
-    private friendRequestService: FriendRequest
+    private friendRequestService: FriendRequest,
+    private conversationService: Conversation
   ) { }
 
   ngOnInit() {
@@ -36,17 +43,26 @@ export class SearchUserModalComponent {
     this.isSearching.set(true);
     forkJoin({
       users: this.userService.getAllUsers(),
-      sentRequests: this.friendRequestService.getSentFriendRequestsByUserId(this.currentUserId),
-      currentUser: this.userService.getUserById(this.currentUserId)
+      sentRequests: this.friendRequestService.getSentFriendRequestsByUserId(this.currentUserId)
     }).subscribe({
       next: (res: any) => {
         const allUsers = res.users.metadata || [];
-        const filteredUsers = allUsers.filter((u: any) => u.id !== this.currentUserId);
+        const filteredUsers: any[] = [];
+        let curUser: any = null;
+
+        for (const u of allUsers) {
+          if (u.id === this.currentUserId) {
+            curUser = u;
+          } else {
+            filteredUsers.push(u);
+          }
+        }
+
         this.searchResults.set(filteredUsers);
+        this.currentUser.set(curUser);
 
-        this.currentUser.set(res.currentUser.metadata);
-
-        const sent = res.sentRequests.metadata.sentFriendRequests || [];
+        const sent = res.sentRequests.metadata?.sentFriendRequests || [];
+        this.sendingRequests = new Set<string>();
         sent.forEach((req: any) => {
           if (req.receiver_id) {
             this.sendingRequests.add(req.receiver_id);
@@ -152,6 +168,16 @@ export class SearchUserModalComponent {
   }
 
   sendMessage(receiverId: string) {
-    console.log('Người nhận', receiverId);
+    this.conversationService.createConversation(receiverId, 'direct', '', '', this.currentUserId, '', '').subscribe({
+      next: (res: any) => {
+        const conversationId = res?.metadata?.newConversation?.conv?.id;
+        if (conversationId) {
+          this.navService.openConversation(conversationId);
+        }
+      },
+      error: (err: any) => {
+        console.error('Error creating conversation:', err);
+      }
+    });
   }
 }

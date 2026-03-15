@@ -5,6 +5,7 @@ import {
     OnDestroy,
     signal,
     inject,
+    effect,
     ChangeDetectionStrategy,
     ChangeDetectorRef,
     ViewEncapsulation,
@@ -16,7 +17,6 @@ import { SocketService } from '../../services/socket';
 import { Conversation } from '../../services/conversation';
 import { GroupAvatarLayoutComponent } from '../groupAvatarLayout/groupAvatarLayout.component';
 import { IntroLayoutComponent } from '../introLayout/introLayout.component';
-import { SearchUserModalComponent } from '../searchusermodalLayout/searchusermodalLayout.component';
 
 export interface UserPresence {
     status: string;
@@ -28,7 +28,7 @@ import { ConversationInforLayoutComponent } from '../conversationInforLayout/con
 @Component({
     selector: 'conversation-layout',
     standalone: true,
-    imports: [CommonModule, MessagesLayoutComponent, ConversationInforLayoutComponent, GroupAvatarLayoutComponent, IntroLayoutComponent, SearchUserModalComponent],
+    imports: [CommonModule, MessagesLayoutComponent, ConversationInforLayoutComponent, GroupAvatarLayoutComponent, IntroLayoutComponent],
     templateUrl: './conversationLayout.component.html',
     styleUrls: ['./conversationLayout.component.css'],
     encapsulation: ViewEncapsulation.None,
@@ -47,7 +47,6 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
 
     // Sidebar toggle state
     showConversationInfor = signal(false);
-    isSearchModalOpen = signal(false);
 
     toggleConversationInfor() {
         this.showConversationInfor.update(v => !v);
@@ -68,7 +67,13 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     private interval60s: any;
     private interval3600s: any;
 
-    constructor(private socketService: SocketService) { }
+    constructor(private socketService: SocketService) {
+        effect(() => {
+            const pendingId = this.navService.pendingConversationId();
+            if (!pendingId) return;
+            this.selectOrReloadConversation(pendingId);
+        });
+    }
 
     ngOnInit() {
         if (this.currentUserId) {
@@ -84,6 +89,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         this.socketService.off('updateConversation');
         this.socketService.off('userStatusChanged');
         this.socketService.off('onlineUsersList');
+        this.socketService.off('newConversation');
         clearInterval(this.interval1s);
         clearInterval(this.interval60s);
         clearInterval(this.interval3600s);
@@ -149,6 +155,20 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                     last_online_at: data.last_online_at
                 });
                 return updatedMap;
+            });
+        });
+
+        this.socketService.on('newConversation', ({ conversationId }: { conversationId: string }) => {
+            this.conversationService.getConversations(this.currentUserId).subscribe({
+                next: (response) => {
+                    this.conversations = response.metadata || {};
+                    const joined = this.conversations?.homeConversationData?.joinedConversations || [];
+                    joined.forEach((conv: any) =>
+                        this.socketService.emit('joinConversation', conv.conversation_id)
+                    );
+                    this.cdr.markForCheck();
+                },
+                error: () => {}
             });
         });
 
@@ -274,11 +294,35 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     }
 
     createConversation() {
-        this.isSearchModalOpen.set(true);
+        this.navService.openFriendsSuggestions();
     }
 
-    closeSearchModal() {
-        this.isSearchModalOpen.set(false);
+    private selectOrReloadConversation(conversationId: string) {
+        const joined = this.conversations?.homeConversationData?.joinedConversations || [];
+        const found = joined.find((c: any) => c.conversation_id === conversationId);
+        if (found) {
+            this.handleConversationID(found);
+            this.navService.pendingConversationId.set(null);
+        } else {
+            this.conversationService.getConversations(this.currentUserId).subscribe({
+                next: (response) => {
+                    this.conversations = response.metadata || {};
+                    const newJoined = this.conversations?.homeConversationData?.joinedConversations || [];
+                    newJoined.forEach((conv: any) =>
+                        this.socketService.emit('joinConversation', conv.conversation_id)
+                    );
+                    const target = newJoined.find((c: any) => c.conversation_id === conversationId);
+                    if (target) {
+                        this.handleConversationID(target);
+                    }
+                    this.navService.pendingConversationId.set(null);
+                    this.cdr.markForCheck();
+                },
+                error: () => {
+                    this.navService.pendingConversationId.set(null);
+                }
+            });
+        }
     }
 
     hasConversations(): boolean {
@@ -337,7 +381,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
             : dateInput.getTime();
 
         const diff = Math.floor((Date.now() - timeToCompare) / 1000);
-        if (diff <= 60) { const _ = tick1s; return 'vừa xong'; }
+        if (diff <= 60) { const _ = tick1s; return 'Vừa xong'; }
         if (diff < 3600) { const _ = tick60s; return `${Math.floor(diff / 60)} phút`; }
         const _ = tick3600s;
         if (diff < 86400) return `${Math.floor(diff / 3600)} giờ`;

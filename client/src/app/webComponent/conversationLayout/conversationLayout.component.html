@@ -46,7 +46,7 @@
                                         <span class="status-text">
                                             {{ rTime.replace(' phút', 'p').replace(' giờ', 'g').replace(' ngày',
                                             'd').replace(' tuần', 'w').replace(' tháng', 'm').replace(' năm',
-                                            'y').replace('vừa xong', '1p') }}
+                                            'y').replace('Vừa xong', '1p') }}
                                         </span>
                                     </ng-container>
                                     <ng-template #offlineDot>
@@ -66,13 +66,13 @@
                             <span class="conv-last-msg">
                                 <ng-container *ngIf="conv.lastMessage">
                                     <span *ngIf="getLastMessageSenderName(conv)">{{ getLastMessageSenderName(conv)
-                                         }}&nbsp;</span>
+                                        }}&nbsp;</span>
                                     <ng-container *ngIf="conv.lastMessage.is_deleted">Tin nhắn đã được gỡ</ng-container>
                                     <ng-container *ngIf="!conv.lastMessage.is_deleted">
                                         <span [innerHTML]="conv.lastMessage.content"></span>
                                     </ng-container>
                                 </ng-container>
-                                <span *ngIf="!conv.lastMessage" class="empty-last-msg">Chưa có tin nhắn</span>
+                                <span *ngIf="!conv.lastMessage" class="empty-last-msg">Hãy bắt đầu đoạn chat ngay</span>
                             </span>
                             <span class="unread-badge" *ngIf="conv.unread_count > 0">{{ conv.unread_count }}</span>
                         </div>
@@ -100,28 +100,21 @@
             [joinedConversations]="conversations?.homeConversationData?.joinedConversations || []"
             (toggleDetails)="toggleConversationInfor()">
         </messages-layout>
-        <app-intro-layout *ngIf="!selectedConversationId && !isSearchModalOpen()" (startNewConversation)="createConversation()">
+        <app-intro-layout *ngIf="!selectedConversationId" (startNewConversation)="createConversation()">
         </app-intro-layout>
     </main>
 
-    <section class="welcome-screen" *ngIf="isFirstConversationReady() && !hasConversations() && !isSearchModalOpen()">
+    <section class="welcome-screen" *ngIf="isFirstConversationReady() && !hasConversations()">
         <app-intro-layout (startNewConversation)="createConversation()">
         </app-intro-layout>
     </section>
 
     <!-- ===================== PANEL 4: INFO SIDEBAR ===================== -->
     <app-conversation-infor-layout *ngIf="showConversationInfor() && hasConversations() && selectedConversationId"
-        (closePanel)="toggleConversationInfor()"
-        [userInfor]="conversations.homeConversationData?.userInfo" [currentUserId]="currentUserId"
-        [userPresence]="UserPresence()" [conversationAvatar]="getMessageInfor?.avatar_url" [tick1s]="tick1s()"
-        [tick60s]="tick60s()" [tick3600s]="tick3600s()"
+        (closePanel)="toggleConversationInfor()" [userInfor]="conversations.homeConversationData?.userInfo"
+        [currentUserId]="currentUserId" [userPresence]="UserPresence()"
+        [conversationAvatar]="getMessageInfor?.avatar_url" [tick1s]="tick1s()" [tick60s]="tick60s()"
+        [tick3600s]="tick3600s()"
         [conversationInfor]="conversations.homeConversationData?.joinedConversations?.find(conv => conv.conversation_id === selectedConversationId)">
     </app-conversation-infor-layout>
-
-    <!-- Search Modal -->
-    <app-search-user-modal 
-        *ngIf="isSearchModalOpen()" 
-        [currentUserId]="currentUserId"
-        (close)="closeSearchModal()"
-    ></app-search-user-modal>
 </div>

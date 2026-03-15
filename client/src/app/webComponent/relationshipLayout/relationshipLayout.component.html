@@ -4,13 +4,6 @@
   <!-- ── Main Content Area ── -->
   <main class="relations-main">
     <div class="layout-container">
-      <!-- Search Modal -->
-      <app-search-user-modal 
-        *ngIf="isSearchModalOpen()" 
-        [currentUserId]="currentUserId"
-        (close)="closeSearchModal()"
-      ></app-search-user-modal>
-
       <!-- Header Section -->
       <header class="main-header-row panel-header-row">
         <div class="header-text">
@@ -18,14 +11,12 @@
           <p>Manage your neural connections and active decryptors.</p>
         </div>
 
-        <button class="add-friend-btn" (click)="openSearchModal()">
-          <i class="bi bi-person-plus"></i>
-          THÊM BẠN
-        </button>
-      </header>
-
-        <!-- Tabs -->
         <div class="tabs-row">
+          <button class="tab-btn" [class.active]="currentTab === 'friends_suggestions'" (click)="setTab('friends_suggestions')">
+            GỢI Ý
+            <span class="active-bar" *ngIf="currentTab === 'friends_suggestions'"></span>
+          </button>
+
           <button class="tab-btn" [class.active]="currentTab === 'friends'" (click)="setTab('friends')">
             BẠN BÈ
             <span class="active-bar" *ngIf="currentTab === 'friends'"></span>
@@ -48,6 +39,7 @@
             <span class="active-bar" *ngIf="currentTab === 'blocked'"></span>
           </button>
         </div>
+      </header>
 
         <!-- Search & Filters -->
         <div class="filter-section" *ngIf="currentTab === 'friends'">
@@ -62,6 +54,14 @@
 
         <!-- Scrollable List -->
         <div class="list-container">
+
+          <!-- Suggestions Tab -->
+          <ng-container *ngIf="currentTab === 'friends_suggestions'">
+            <app-search-user-modal
+              [currentUserId]="currentUserId"
+              (close)="setTab('friends')"
+            ></app-search-user-modal>
+          </ng-container>
           
           <!-- Friends Tab -->
           <ng-container *ngIf="currentTab === 'friends'">
@@ -187,7 +187,7 @@
                   </div>
                   <div class="user-info">
                     <h3>{{ user.full_name }}</h3>
-                    <p class="activity-text">ENCRYPTION BLOCKED <span class="block-reason" *ngIf="user.reason"> • {{ user.reason }}</span></p>
+                    <p class="activity-text">ĐÃ CHẶN <span class="block-reason" *ngIf="user.reason"> • Lý do: {{ user.reason }}</span></p>
                   </div>
                 </div>
 

@@ -32,10 +32,17 @@ class ConversationsService {
     }
 
     // Tạo conversation mới
-    async createConversation(conversationData) {
-        conversationData.created_at = new Date().toISOString();
-        conversationData.updated_at = new Date().toISOString();
-        return await conversationsModel.create(conversationData);
+    async createConversation(conversation_type = "direct", name, avatar_url, created_by, last_message_id, last_message_at) {
+        return await conversationsModel.create({
+            conversation_type,
+            name: name || null,
+            avatar_url: avatar_url || null,
+            created_by: created_by || null,
+            last_message_id: last_message_id || null,
+            last_message_at: last_message_at || null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        });
     }
 
     // Cập nhật conversation

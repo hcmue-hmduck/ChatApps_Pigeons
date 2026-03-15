@@ -128,6 +128,19 @@ io.on('connection', (socket) => {
         console.log(`Socket ${socket.id} joined conversation ${conversationId}`);
     });
 
+    // Thông báo cho người nhận biết có cuộc trò chuyện mới
+    socket.on('notifyNewConversation', ({ receiverIds, conversationId }) => {
+        if (!Array.isArray(receiverIds)) return;
+        receiverIds.forEach((receiverId) => {
+            const receiverSockets = onlineUsers.get(receiverId);
+            if (receiverSockets) {
+                receiverSockets.forEach((socketId) => {
+                    io.to(socketId).emit('newConversation', { conversationId });
+                });
+            }
+        });
+    });
+
     // Nhận tin nhắn từ client và broadcast cho người khác
     socket.on('sendMessage', (data) => {
         // Broadcast tin nhắn tới tất cả clients trong conversation (trừ người gửi)

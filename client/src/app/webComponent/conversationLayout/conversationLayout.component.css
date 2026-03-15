@@ -25,14 +25,14 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--glass-strong);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
-  border-radius: 20px;
+  background: rgba(10, 20, 30, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 242, 255, 0.2);
+  border-radius: 16px;
   overflow: hidden;
   position: relative;
-  box-shadow: var(--glass-shadow-deep);
+  box-shadow: 0 0 20px rgba(0, 242, 255, 0.1);
 }
 
 /* Header */
@@ -490,13 +490,13 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background: var(--glass-strong);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
-  border-radius: 20px;
+  background: rgba(10, 20, 30, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 242, 255, 0.2);
+  border-radius: 16px;
   height: 100%;
-  box-shadow: var(--glass-shadow-deep);
+  box-shadow: 0 0 20px rgba(0, 242, 255, 0.1);
   transition: flex 0.3s ease;
 }
 

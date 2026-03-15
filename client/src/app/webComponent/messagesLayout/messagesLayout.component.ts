@@ -59,7 +59,13 @@ export class MessagesLayoutComponent
     authService = inject(AuthService);
     private cdr = inject(ChangeDetectorRef);
 
-    getMessagesData = signal<any>({});
+    getMessagesData = signal<any>({
+        homeMessagesData: {
+            messages: [],
+            conversation_type: '',
+            pinnedMessages: [],
+        },
+    });
 
     loading = false;
     error = '';
@@ -1022,6 +1028,14 @@ export class MessagesLayoutComponent
 
                     this.socketService.emit('sendMessage', realMessage);
                     this.socketService.emit('updateConversation', realMessage);
+
+                    // Thông báo cho các participants khác join room nếu chưa có
+                    const receiverIds = (this.getMessageInfor?.participants || [])
+                        .map((p: any) => p.user_id)
+                        .filter((id: string) => id !== this.currentUserId);
+                    if (receiverIds.length > 0) {
+                        this.socketService.emit('notifyNewConversation', { receiverIds, conversationId: this.conversationId });
+                    }
 
                     // Replace temp message bằng real message
                     this.getMessagesData.update((old) => ({

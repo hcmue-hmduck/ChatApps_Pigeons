@@ -23,6 +23,10 @@ export class Conversation {
         return this.http.get(`${this.apiUrl}/name/${conversationId}`);
     }
 
+    createConversation(participants_id: string, conversation_type: string, name: string, avatar_url: string, created_by: string, last_message_id: string, last_message_at: string): Observable<any> {
+        return this.http.post(`${this.apiUrl}`, { participants_id, conversation_type, name, avatar_url, created_by, last_message_id, last_message_at });
+    }
+
     postConversation(participantIds: string[]): Observable<any> {
         return this.http.post(`${this.apiUrl}`, { participantIds });
     }

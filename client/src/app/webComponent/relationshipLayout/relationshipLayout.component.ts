@@ -8,6 +8,7 @@ import { FriendRequest } from '../../services/friendrequest';
 import { User } from '../../services/user';
 import { UserBlock } from '../../services/userBlock';
 import { SocketService } from '../../services/socket';
+import { FriendsTab, NavigationService } from '../../services/navigation';
 import { UserInforModel } from '../userinforModel/userinforModel.component';
 import { response } from 'express';
 
@@ -24,7 +25,7 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
     protected readonly title = signal('Relationship');
     @Input() currentUserId: string = '';
 
-    currentTab: 'friends' | 'friend_requests' | 'blocked' | 'sent_requests' = 'friends';
+    currentTab: FriendsTab = 'friends_suggestions';
     currentSort = signal<'asc' | 'desc'>('asc');
 
     friends = signal<any[]>([]);
@@ -62,7 +63,6 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
     loading = false;
     error = '';
     showMoreMenuId: string | null = null;
-    isSearchModalOpen = signal(false);
 
     private updateProfileListener!: (data: any) => void;
 
@@ -81,11 +81,13 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
         private friendRequestService: FriendRequest,
         private userBlockService: UserBlock,
         private socketService: SocketService,
+        private navService: NavigationService,
         private cdr: ChangeDetectorRef,
     ) { }
 
     ngOnInit() {
         this.setupSocketListeners();
+        this.currentTab = this.navService.activeFriendsTab();
     }
 
     ngOnDestroy() {
@@ -100,16 +102,9 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
         }
     }
 
-    setTab(tab: 'friends' | 'friend_requests' | 'blocked' | 'sent_requests') {
+    setTab(tab: FriendsTab) {
         this.currentTab = tab;
-    }
-
-    openSearchModal() {
-        this.isSearchModalOpen.set(true);
-    }
-
-    closeSearchModal() {
-        this.isSearchModalOpen.set(false);
+        this.navService.setFriendsTab(tab);
     }
 
     toggleMoreMenu(friendId: string, event: Event) {
