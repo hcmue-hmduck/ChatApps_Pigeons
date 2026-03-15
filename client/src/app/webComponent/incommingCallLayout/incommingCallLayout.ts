@@ -108,11 +108,11 @@ export class IncommingCallLayout {
                 .createLogJoinGroupCall(conversationId) // Tạo message system tham gia cuộc gọi
                 .subscribe({
                     next: (res) => {
-                        const { userName, userAvatarUrl } = this.authService.getUserInfor();
+                        const { name, avatarUrl } = this.authService.getUserInfor();
                         const callMessage = {
                             ...res.metadata,
-                            sender_name: userName,
-                            sender_avatar: userAvatarUrl,
+                            sender_name: name,
+                            sender_avatar: avatarUrl,
                         };
                         // Thông báo cho messageLayout cập nhật UI
                         this.callService.announceNewLogJoinGroupCall({

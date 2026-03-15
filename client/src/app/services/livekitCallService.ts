@@ -80,10 +80,10 @@ export class LivekitCallService {
     }
 
     async joinRoom({ isInviter = false }) {
-        const { userId, userName, userAvatarUrl } = this.authService.getUserInfor();
+        const { id, name, avatarUrl } = this.authService.getUserInfor();
 
         this.livekitService
-            .getAccessToken(this.callState.conversationId, userId, userName, userAvatarUrl)
+            .getAccessToken(this.callState.conversationId, id, name, avatarUrl)
             .subscribe({
                 next: async ({ metadata }) => {
                     const token = metadata.token;
@@ -109,9 +109,9 @@ export class LivekitCallService {
                         this.socketService.emit('groupCall:inviteToJoinTheRoom', {
                             conversationId: this.callState.conversationId,
                             callId: this.callState.callId,
-                            inviterId: userId,
-                            inviterName: userName,
-                            inviterAvatarUrl: userAvatarUrl,
+                            inviterId: id,
+                            inviterName: name,
+                            inviterAvatarUrl: avatarUrl,
                             initializeVideo: this.callState.isCameraOn(),
                         });
 

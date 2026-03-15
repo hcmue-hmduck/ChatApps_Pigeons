@@ -1,11 +1,16 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { User } from './user';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
+import { HttpClient } from '@angular/common/http';
+import { LoginPayload, SignupPayload } from '../models/authData';
 
 interface UserInfor {
-    userId: string;
-    userName: string;
-    userAvatarUrl: string;
+    id: string;
+    name: string;
+    avatarUrl: string;
+    email: string;
+    role: string;
 }
 
 @Injectable({
@@ -13,34 +18,61 @@ interface UserInfor {
 })
 export class AuthService {
     private user = signal<UserInfor>({
-        userId: '',
-        userName: '',
-        userAvatarUrl: '',
+        id: '',
+        name: '',
+        avatarUrl: '',
+        email: '',
+        role: '',
     });
+    private apiUrl = `${environment.apiUrl}/access`;
 
     userService = inject(User);
+    httpClient = inject(HttpClient);
 
     async setUserInfor(userId: string) {
         try {
             const { metadata } = await firstValueFrom(this.userService.getUserById(userId));
-            const { id, full_name, avatar_url } = metadata.userInfor;
+            const { id, full_name, avatar_url, role, email } = metadata.userInfor;
             this.user.set({
-                userId: id,
-                userName: full_name,
-                userAvatarUrl: avatar_url,
+                id,
+                name: full_name,
+                avatarUrl: avatar_url,
+                role,
+                email,
             });
-            console.log('Đã setUserInfor: ', { id, full_name, avatar_url });
+            console.log('Đã setUserInfor: ', { id, full_name, avatar_url, role, email });
         } catch (error) {
             console.log('Lỗi setUserInfor:::');
             throw error;
         }
     }
 
+    async setUserInfo({ id = '', name = '', avatarUrl = '', role = '', email = '' }) {
+        this.user.set({ id, name, avatarUrl, role, email });
+        console.log('Đã setUserInfor: ', { id, name, avatarUrl, role, email });
+    }
+
     getUserId() {
-        return this.user().userId;
+        return this.user().id;
     }
 
     getUserInfor() {
         return this.user();
+    }
+
+    login(payload: LoginPayload): Observable<any> {
+        return this.httpClient.post(`${this.apiUrl}/login`, payload);
+    }
+
+    signup(payload: SignupPayload): Observable<any> {
+        return this.httpClient.post(`${this.apiUrl}/signup`, payload);
+    }
+
+    logout(): Observable<any> {
+        return this.httpClient.post(`${this.apiUrl}/logout`, {});
+    }
+
+    refreshToken(): Observable<any> {
+        return this.httpClient.post(`${this.apiUrl}/refresh-token`, {})
     }
 }

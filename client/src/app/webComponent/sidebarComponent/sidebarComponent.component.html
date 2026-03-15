@@ -33,7 +33,7 @@
             <div class="sidebar-user-avatar-placeholder" *ngIf="!userInfo()">
                 <i class="bi bi-person"></i>
             </div>
-            <button class="sidebar-logout-btn" title="Đăng xuất">
+            <button class="sidebar-logout-btn" title="Đăng xuất" (click)="handleLogout()">
                 <i class="bi bi-box-arrow-right"></i>
                 <span class="nav-tooltip">Đăng xuất</span>
             </button>

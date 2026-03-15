@@ -8,22 +8,22 @@ import { CallLayoutComponent } from './webComponent/callLayout/callLayout';
 export const routes: Routes = [
     {
         path: '',
-        component: HomeLayoutComponent
+        component: HomeLayoutComponent,
     },
     {
         path: 'conversations/:id',
-        component: SidebarComponent
+        component: SidebarComponent,
     },
     {
         path: 'admin/users',
-        component: UserAdminLayoutComponent
+        component: UserAdminLayoutComponent,
     },
     {
         path: 'messages/:id',
-        component: MessagesLayoutComponent
+        component: MessagesLayoutComponent,
     },
     {
         path: 'call-display',
-        component: CallLayoutComponent
-    }
+        component: CallLayoutComponent,
+    },
 ];

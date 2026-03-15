@@ -1869,12 +1869,12 @@ export class MessagesLayoutComponent
     handleCall(media_type: 'video' | 'audio') {
         this.callService.startCall(this.conversationId, this.conversationType, media_type).subscribe({
             next: async (res) => {
-                const { userName, userAvatarUrl } = this.authService.getUserInfor();
+                const { name, avatarUrl } = this.authService.getUserInfor();
 
                 const message = {
                     ...res.metadata,
-                    sender_name: userName,
-                    sender_avatar: userAvatarUrl,
+                    sender_name: name,
+                    sender_avatar: avatarUrl,
                 }
 
                 const callId = message.call.id;
@@ -1888,8 +1888,8 @@ export class MessagesLayoutComponent
                         next: (res) => {
                             const systemMessage = {
                                 ...res.metadata,
-                                sender_name: userName,
-                                sender_avatar: userAvatarUrl,
+                                sender_name: name,
+                                sender_avatar: avatarUrl,
                             };
 
                             this.updateUIWithNewMessage(message)

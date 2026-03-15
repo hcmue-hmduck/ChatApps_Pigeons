@@ -27,6 +27,11 @@ class UsersService {
         return await usersModel.findByPk(userId);
     }
 
+    // Lấy user theo email định danh
+    async getUserByEmail(email) {
+        return await usersModel.findOne({ where: { email } })
+    }
+
     // Tạo user mới
     async createUser(userData) {
         userData.created_at = new Date().toISOString();

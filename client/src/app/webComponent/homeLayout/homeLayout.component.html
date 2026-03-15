@@ -2,29 +2,54 @@
     <!-- Navbar -->
     <nav class="max-w-7xl px-6">
         <div class="glass-panel nav-container">
-            <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem">
                 <div class="logo-icon">
-                    <i class="bi bi-shield-lock" style="font-size: 1.5rem;"></i>
+                    <i class="bi bi-shield-lock" style="font-size: 1.5rem"></i>
                 </div>
-                <span class="text-xl font-black tracking-tighter uppercase text-white neon-glow"
-                    style="font-size: 1.25rem; font-weight: 900; letter-spacing: -0.05em; color: white;">
+                <span
+                    class="text-xl font-black tracking-tighter uppercase text-white neon-glow"
+                    style="
+                        font-size: 1.25rem;
+                        font-weight: 900;
+                        letter-spacing: -0.05em;
+                        color: white;
+                    "
+                >
                     CyberChat
                 </span>
             </div>
 
             <div class="nav-links">
                 @for (item of ['Network', 'Protocol', 'Nodes', 'Pricing']; track item) {
-                <a href="#" class="nav-link">{{item}}</a>
+                    <a href="#" class="nav-link">{{ item }}</a>
                 }
             </div>
 
-            <div style="display: flex; align-items: center; gap: 1rem;">
-                <button style="font-size: 0.875rem; font-weight: 700; color: var(--slate-400); transition: color 0.2s;"
-                    onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--slate-400)'">
+            <div style="display: flex; align-items: center; gap: 1rem">
+                <button
+                    style="
+                        font-size: 0.875rem;
+                        font-weight: 700;
+                        color: var(--slate-400);
+                        transition: color 0.2s;
+                    "
+                    onmouseover="this.style.color = 'var(--primary)'"
+                    onmouseout="this.style.color = 'var(--slate-400)'"
+                    (click)="goToLogin()"
+                >
                     Log In
                 </button>
-                <button class="bubble-me text-slate-900 px-6 py-2.5 rounded-xl font-black transition-all"
-                    style="padding: 0.625rem 1.5rem; border-radius: 0.75rem; font-size: 0.875rem; font-weight: 900; color: #0f172a;">
+                <button
+                    class="bubble-me text-slate-900 px-6 py-2.5 rounded-xl font-black transition-all"
+                    style="
+                        padding: 0.625rem 1.5rem;
+                        border-radius: 0.75rem;
+                        font-size: 0.875rem;
+                        font-weight: 900;
+                        color: #0f172a;
+                    "
+                    (click)="goToSignup()"
+                >
                     Get Started
                 </button>
             </div>
@@ -49,27 +74,26 @@
                 </h1>
 
                 <p class="hero-p">
-                    Experience a premium, high-tech interface with advanced glassmorphism and military-grade privacy.
-                    Built for the modern web with unparalleled speed.
+                    Experience a premium, high-tech interface with advanced glassmorphism and
+                    military-grade privacy. Built for the modern web with unparalleled speed.
                 </p>
 
                 <div class="hero-btns">
-                    <button class="bubble-me btn-primary">
-                        Create Private Vault
-                    </button>
-                    <button class="glass-card btn-secondary">
-                        View Protocol
-                    </button>
+                    <button class="bubble-me btn-primary">Create Private Vault</button>
+                    <button class="glass-card btn-secondary">View Protocol</button>
                 </div>
 
                 <div class="hero-stats">
                     <div class="avatars">
                         @for (i of [1, 2, 3]; track i) {
-                        <img [src]="'https://picsum.photos/seed/user' + i + '/100/100'" alt="User">
+                            <img
+                                [src]="'https://picsum.photos/seed/user' + i + '/100/100'"
+                                alt="User"
+                            />
                         }
                     </div>
                     <p class="stats-text">
-                        Trusted by <span style="color: white;">2M+ developers</span>
+                        Trusted by <span style="color: white">2M+ developers</span>
                     </p>
                 </div>
             </div>
@@ -78,7 +102,11 @@
                 <div class="glow-bg"></div>
                 <div class="mockup-container glass-panel">
                     <div class="mockup-inner">
-                        <img class="mockup-img" src="https://picsum.photos/seed/cyber/1200/900" alt="Dashboard Mockup">
+                        <img
+                            class="mockup-img"
+                            src="https://picsum.photos/seed/cyber/1200/900"
+                            alt="Dashboard Mockup"
+                        />
                         <div class="mockup-overlay glass-panel">
                             <div class="pulse-bar">
                                 <div class="dot"></div>
@@ -93,117 +121,281 @@
 
         <!-- Features Section -->
         <section class="features-grid">
-            @for (feature of [
-            { icon: 'bi-zap', title: 'Crystal Clear UI', desc: 'An interface that breathes. High-performance
-            glassmorphism effects for a focused, distraction-free experience.' },
-            { icon: 'bi-lock', title: 'AES-256 Vault', desc: 'Your messages are yours alone. End-to-end encryption
-            ensures that not even we can read your private data.' },
-            { icon: 'bi-lightning-fill', title: 'Hyper-Fast Sync', desc: 'Built on low-latency protocols. Instant
-            message delivery across all your devices in mere milliseconds.' }
-            ]; track feature.title) {
-            <div class="glass-panel feature-card">
-                <div class="feature-icon-wrap">
-                    <i [class]="'bi ' + feature.icon + ' feature-icon'"></i>
+            @for (
+                feature of [
+                    {
+                        icon: 'bi-zap',
+                        title: 'Crystal Clear UI',
+                        desc: 'An interface that breathes. High-performance
+            glassmorphism effects for a focused, distraction-free experience.',
+                    },
+                    {
+                        icon: 'bi-lock',
+                        title: 'AES-256 Vault',
+                        desc: 'Your messages are yours alone. End-to-end encryption
+            ensures that not even we can read your private data.',
+                    },
+                    {
+                        icon: 'bi-lightning-fill',
+                        title: 'Hyper-Fast Sync',
+                        desc: 'Built on low-latency protocols. Instant
+            message delivery across all your devices in mere milliseconds.',
+                    },
+                ];
+                track feature.title
+            ) {
+                <div class="glass-panel feature-card">
+                    <div class="feature-icon-wrap">
+                        <i [class]="'bi ' + feature.icon + ' feature-icon'"></i>
+                    </div>
+                    <h3 class="feature-h">{{ feature.title }}</h3>
+                    <p class="feature-p">{{ feature.desc }}</p>
                 </div>
-                <h3 class="feature-h">{{feature.title}}</h3>
-                <p class="feature-p">{{feature.desc}}</p>
-            </div>
             }
         </section>
 
         <!-- Auth Section -->
-        <section style="padding: 5rem 0;">
+        <section id="auth-section" style="padding: 5rem 0">
             <div class="glass-panel auth-container">
                 <div class="auth-grid">
                     <div class="auth-visual">
-                        <img src="https://picsum.photos/seed/secure/800/800" class="auth-img" alt="Secure Background">
+                        <img
+                            src="https://picsum.photos/seed/secure/800/800"
+                            class="auth-img"
+                            alt="Secure Background"
+                        />
                         <div class="auth-visual-content">
                             <h4 class="auth-visual-h">Secure Entry</h4>
-                            <p class="auth-visual-p">Access your encrypted workspace with hardware-level biometric keys.
+                            <p class="auth-visual-p">
+                                Access your encrypted workspace with hardware-level biometric keys.
                             </p>
                         </div>
                     </div>
 
                     <div class="auth-form-wrap">
                         <div class="auth-tabs">
-                            <button class="auth-tab" [class.active]="isLogin()" [class.inactive]="!isLogin()"
-                                (click)="isLogin.set(true)">Sign In</button>
-                            <button class="auth-tab" [class.active]="!isLogin()" [class.inactive]="isLogin()"
-                                (click)="isLogin.set(false)">Register</button>
+                            <button
+                                class="auth-tab"
+                                [class.active]="isLogin()"
+                                [class.inactive]="!isLogin()"
+                                (click)="goToLogin({isScroll: false})"
+                            >
+                                Log In
+                            </button>
+                            <button
+                                class="auth-tab"
+                                [class.active]="!isLogin()"
+                                [class.inactive]="isLogin()"
+                                (click)="goToSignup({isScroll: false})"
+                            >
+                                Register
+                            </button>
                         </div>
 
                         @if (isLogin()) {
-                        <!-- Login Form -->
-                        <form style="display: flex; flex-direction: column; gap: 1.5rem;">
-                            <div class="form-group">
-                                <label class="form-label">Node Identifier</label>
-                                <div class="input-wrap">
-                                    <i class="bi bi-envelope input-icon"></i>
-                                    <input class="input-field" placeholder="user@cyberchat.io" type="email">
+                            <!-- Login Form -->
+                            <form
+                                style="display: flex; flex-direction: column; gap: 1.5rem"
+                                [formGroup]="formLogin"
+                                (submit)="handleLogin($event)"
+                            >
+                                <div class="form-group">
+                                    <label class="form-label">Email</label>
+                                    <div class="input-wrap">
+                                        <i class="bi bi-envelope input-icon"></i>
+                                        <input
+                                            class="input-field"
+                                            [class.input-error]="
+                                                shouldShowError(formLogin, 'email', loginSubmitted)
+                                            "
+                                            placeholder="user@cyberchat.io"
+                                            type="email"
+                                            autocomplete="email"
+                                            formControlName="email"
+                                        />
+                                    </div>
+                                    @if (shouldShowError(formLogin, 'email', loginSubmitted)) {
+                                        <p class="field-error">
+                                            {{ getErrorMessage(formLogin, 'email') }}
+                                        </p>
+                                    }
                                 </div>
-                            </div>
 
-                            <div class="form-group">
-                                <label class="form-label">Access Key</label>
-                                <div class="input-wrap">
-                                    <i class="bi bi-lock input-icon"></i>
-                                    <input class="input-field" placeholder="••••••••••••" type="password">
+                                <div class="form-group">
+                                    <label class="form-label">Password</label>
+                                    <div class="input-wrap">
+                                        <i class="bi bi-lock input-icon"></i>
+                                        <input
+                                            class="input-field"
+                                            [class.input-error]="
+                                                shouldShowError(
+                                                    formLogin,
+                                                    'password',
+                                                    loginSubmitted
+                                                )
+                                            "
+                                            placeholder="••••••••••••"
+                                            type="password"
+                                            autocomplete="current-password"
+                                            formControlName="password"
+                                        />
+                                    </div>
+                                    @if (shouldShowError(formLogin, 'password', loginSubmitted)) {
+                                        <p class="field-error">
+                                            {{ getErrorMessage(formLogin, 'password') }}
+                                        </p>
+                                    }
                                 </div>
-                            </div>
 
-                            <div class="auth-options">
-                                <label class="remember-me">
-                                    <input type="checkbox">
-                                    <span>Remember Node</span>
-                                </label>
-                                <a href="#" class="lost-key">Lost Key?</a>
-                            </div>
+                                <div class="auth-options">
+                                    <label class="remember-me">
+                                        <input type="checkbox" formControlName="remember" />
+                                        <span>Remember Node</span>
+                                    </label>
+                                    <a href="#" class="lost-key">Lost Key?</a>
+                                </div>
 
-                            <button class="bubble-me btn-auth">
-                                AUTHORIZE ACCESS
-                                <i class="bi bi-box-arrow-in-right" style="font-size: 1.25rem;"></i>
-                            </button>
-                        </form>
+                                <button type="submit" class="bubble-me btn-auth">
+                                    AUTHORIZE ACCESS
+                                    <i
+                                        class="bi bi-box-arrow-in-right"
+                                        style="font-size: 1.25rem"
+                                    ></i>
+                                </button>
+                                @if (loginErrorMessage() !== '') {
+                                    <p class="field-error">{{ loginErrorMessage() }}</p>
+                                }
+                            </form>
                         } @else {
-                        <!-- Register Form -->
-                        <form style="display: flex; flex-direction: column; gap: 1.25rem;">
-                            <div class="form-group">
-                                <label class="form-label">Protocol Identity</label>
-                                <div class="input-wrap">
-                                    <i class="bi bi-person input-icon"></i>
-                                    <input class="input-field" placeholder="Cyber Operative" type="text">
+                            <!-- Register Form -->
+                            <form
+                                style="display: flex; flex-direction: column; gap: 1.25rem"
+                                [formGroup]="formSignup"
+                                (submit)="handleSignup($event)"
+                            >
+                                <div class="form-group">
+                                    <label class="form-label">Name</label>
+                                    <div class="input-wrap">
+                                        <i class="bi bi-person input-icon"></i>
+                                        <input
+                                            class="input-field"
+                                            [class.input-error]="
+                                                shouldShowError(
+                                                    formSignup,
+                                                    'full_name',
+                                                    signupSubmitted
+                                                )
+                                            "
+                                            placeholder="Cyber Operative"
+                                            type="text"
+                                            formControlName="full_name"
+                                        />
+                                    </div>
+                                    @if (
+                                        shouldShowError(formSignup, 'full_name', signupSubmitted)
+                                    ) {
+                                        <p class="field-error">
+                                            {{ getErrorMessage(formSignup, 'full_name') }}
+                                        </p>
+                                    }
                                 </div>
-                            </div>
 
-                            <div class="form-group">
-                                <label class="form-label">Communication Node</label>
-                                <div class="input-wrap">
-                                    <i class="bi bi-envelope input-icon"></i>
-                                    <input class="input-field" placeholder="user@cyberchat.io" type="email">
+                                <div class="form-group">
+                                    <label class="form-label">Email</label>
+                                    <div class="input-wrap">
+                                        <i class="bi bi-envelope input-icon"></i>
+                                        <input
+                                            class="input-field"
+                                            [class.input-error]="
+                                                shouldShowError(
+                                                    formSignup,
+                                                    'email',
+                                                    signupSubmitted
+                                                )
+                                            "
+                                            placeholder="user@cyberchat.io"
+                                            type="email"
+                                            autocomplete="email"
+                                            formControlName="email"
+                                        />
+                                    </div>
+                                    @if (shouldShowError(formSignup, 'email', signupSubmitted)) {
+                                        <p class="field-error">
+                                            {{ getErrorMessage(formSignup, 'email') }}
+                                        </p>
+                                    }
                                 </div>
-                            </div>
 
-                            <div class="form-group">
-                                <label class="form-label">Primary Access Key</label>
-                                <div class="input-wrap">
-                                    <i class="bi bi-lock input-icon"></i>
-                                    <input class="input-field" placeholder="••••••••••••" type="password">
+                                <div class="form-group">
+                                    <label class="form-label">Password</label>
+                                    <div class="input-wrap">
+                                        <i class="bi bi-lock input-icon"></i>
+                                        <input
+                                            class="input-field"
+                                            [class.input-error]="
+                                                shouldShowError(
+                                                    formSignup,
+                                                    'password',
+                                                    signupSubmitted
+                                                )
+                                            "
+                                            placeholder="••••••••••••"
+                                            type="password"
+                                            autocomplete="new-password"
+                                            formControlName="password"
+                                        />
+                                    </div>
+                                    @if (shouldShowError(formSignup, 'password', signupSubmitted)) {
+                                        <p class="field-error">
+                                            {{ getErrorMessage(formSignup, 'password') }}
+                                        </p>
+                                    }
                                 </div>
-                            </div>
 
-                            <div class="form-group">
-                                <label class="form-label">Key Verification</label>
-                                <div class="input-wrap">
-                                    <i class="bi bi-shield-check input-icon"></i>
-                                    <input class="input-field" placeholder="••••••••••••" type="password">
+                                <div class="form-group">
+                                    <label class="form-label">Confirm password</label>
+                                    <div class="input-wrap">
+                                        <i class="bi bi-shield-check input-icon"></i>
+                                        <input
+                                            class="input-field"
+                                            [class.input-error]="
+                                                shouldShowError(
+                                                    formSignup,
+                                                    'confirm_password',
+                                                    signupSubmitted
+                                                )
+                                            "
+                                            placeholder="••••••••••••"
+                                            type="password"
+                                            autocomplete="new-password"
+                                            formControlName="confirm_password"
+                                        />
+                                    </div>
+                                    @if (
+                                        shouldShowError(
+                                            formSignup,
+                                            'confirm_password',
+                                            signupSubmitted
+                                        )
+                                    ) {
+                                        <p class="field-error">
+                                            {{ getErrorMessage(formSignup, 'confirm_password') }}
+                                        </p>
+                                    }
                                 </div>
-                            </div>
 
-                            <button class="bubble-me btn-auth" style="margin-top: 0.5rem;">
-                                INITIALIZE IDENTITY
-                                <i class="bi bi-plus-circle" style="font-size: 1.125rem;"></i>
-                            </button>
-                        </form>
+                                <button
+                                    type="submit"
+                                    class="bubble-me btn-auth"
+                                    style="margin-top: 0.5rem"
+                                >
+                                    INITIALIZE IDENTITY
+                                    <i class="bi bi-plus-circle" style="font-size: 1.125rem"></i>
+                                </button>
+                                @if (signupErrorMessage() !== '') {
+                                    <p class="field-error">{{ signupErrorMessage() }}</p>
+                                }
+                            </form>
                         }
 
                         <div class="external-auth">
@@ -211,7 +403,7 @@
                             <div class="external-grid">
                                 <button class="glass-card btn-external">Google</button>
                                 <button class="glass-card btn-external">
-                                    <i class="bi bi-github" style="font-size: 1rem;"></i>
+                                    <i class="bi bi-github" style="font-size: 1rem"></i>
                                     GitHub
                                 </button>
                             </div>
@@ -227,26 +419,28 @@
         <div class="footer-container">
             <div class="footer-logo">
                 <div class="footer-logo-icon">
-                    <i class="bi bi-shield-lock" style="font-size: 1.25rem;"></i>
+                    <i class="bi bi-shield-lock" style="font-size: 1.25rem"></i>
                 </div>
-                <span class="text-white neon-glow"
-                    style="font-size: 1.125rem; font-weight: 900; text-transform: uppercase;">
+                <span
+                    class="text-white neon-glow"
+                    style="font-size: 1.125rem; font-weight: 900; text-transform: uppercase"
+                >
                     CyberChat
                 </span>
             </div>
 
             <div class="footer-links">
                 @for (item of ['Privacy', 'Transparency', 'API Keys', 'Status']; track item) {
-                <a href="#" class="footer-link">{{item}}</a>
+                    <a href="#" class="footer-link">{{ item }}</a>
                 }
             </div>
 
             <div class="footer-socials">
                 <button class="glass-card btn-social">
-                    <i class="bi bi-share" style="font-size: 1.25rem;"></i>
+                    <i class="bi bi-share" style="font-size: 1.25rem"></i>
                 </button>
                 <button class="glass-card btn-social">
-                    <i class="bi bi-envelope" style="font-size: 1.25rem;"></i>
+                    <i class="bi bi-envelope" style="font-size: 1.25rem"></i>
                 </button>
             </div>
         </div>

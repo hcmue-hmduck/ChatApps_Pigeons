@@ -21,17 +21,24 @@ import { ConversationLayoutComponent } from '../conversationLayout/conversationL
 import { RelationshipLayoutComponent } from '../relationshipLayout/relationshipLayout.component';
 import { UserInforModel } from '../userinforModel/userinforModel.component';
 import { NewFeedsLayoutComponent } from '../newFeedsLayout/newFeedsLayout.component';
+import { error } from 'console';
 
 @Component({
     selector: 'sidebar-component',
     standalone: true,
-    imports: [CommonModule, FormsModule, ConversationLayoutComponent, RelationshipLayoutComponent, UserInforModel, NewFeedsLayoutComponent],
+    imports: [
+        CommonModule,
+        FormsModule,
+        ConversationLayoutComponent,
+        RelationshipLayoutComponent,
+        UserInforModel,
+        NewFeedsLayoutComponent,
+    ],
     templateUrl: './sidebarComponent.component.html',
     styleUrls: ['./sidebarComponent.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SidebarComponent implements OnInit, OnDestroy {
-
     navService = inject(NavigationService);
     authService = inject(AuthService);
     cdr = inject(ChangeDetectorRef);
@@ -46,7 +53,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
         private router: ActivatedRoute,
         private userService: User,
         private socketService: SocketService,
-    ) { }
+    ) {}
 
     ngOnInit() {
         this.currentUserId = this.router.snapshot.paramMap.get('id') || '';
@@ -57,6 +64,15 @@ export class SidebarComponent implements OnInit, OnDestroy {
 
     ngOnDestroy() {
         this.socketService.off('updateProfile_sidebar');
+    }
+
+    handleLogout() {
+        this.authService
+            .logout()
+            .subscribe({
+                next: () => window.location.href = '/',
+                error: (error) => console.error(error),
+            });
     }
 
     // ── Socket Listeners ──────────────────────────────────

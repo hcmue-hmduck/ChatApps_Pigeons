@@ -10,6 +10,7 @@ const Server = require('socket.io');
 const models = require('./src/models/index'); // Khởi tạo tất cả associations
 const fs = require('fs');
 const morgan = require('morgan');
+const cookieParser = require('cookie-parser');
 
 const http = require('http');
 const https = require('https');
@@ -31,7 +32,7 @@ if (process.env.RENDER === 'true') {
             key: fs.readFileSync(path.join(__dirname, '../cert/cert.key')),
             cert: fs.readFileSync(path.join(__dirname, '../cert/cert.crt')),
         },
-        app
+        app,
     );
 }
 
@@ -69,6 +70,7 @@ app.use(morgan('dev'));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // Browsers often auto-request favicon; return no-content instead of triggering 404 logs.
 app.get('/favicon.ico', (req, res) => {
@@ -263,17 +265,19 @@ io.on('connection', (socket) => {
     });
 });
 
+// handle error
+
 app.use((req, res, next) => {
     const error = new Error('Not Found');
-    error.status_code = 404;
+    error.status = 404;
     next(error);
 });
 
 app.use((error, req, res, next) => {
     console.error(error.stack);
-    res.status(error.status_code || error.status || 500).json({
-        status: 'error',
+    res.status(error.status || 500).json({
         message: error.message || 'Internal Server Error',
+        code: error.code || 'INTERNAL_ERROR',
     });
 });
 

@@ -23,7 +23,7 @@ export class CallLayoutComponent implements OnInit {
     readonly avatarUrlDefault = '/assets/AvatarDefault.jpg';
 
     userAvatarUrl = computed<string>(() => {
-        return this.authService.getUserInfor().userAvatarUrl;
+        return this.authService.getUserInfor().avatarUrl;
     });
 
     remoteCount = computed<number>(() => {
