@@ -17,9 +17,9 @@ const { CALL_STATUS } = require('../constants/call.constants.js');
 class HomeService {
     extractFirstUrlFromText(content) {
         if (!content || typeof content !== 'string') return null;
-        const match = content.match(/((?:https?:\/\/|www\.)[^\s<]+)/i);
-        if (!match) return null;
-        const rawUrl = match[1].replace(/[.,!?;:]+$/, '');
+        const matches = Array.from(content.matchAll(/((?:https?:\/\/|www\.)[^\s<]+)/gi));
+        if (matches.length !== 1) return null;
+        const rawUrl = (matches[0][1] || '').replace(/[.,!?;:]+$/, '');
         if (!rawUrl) return null;
         return /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
     }
@@ -576,6 +576,25 @@ class HomeService {
         });
     }
 
+    async getSentFriendRequests(senderId) {
+        const friendRequests = await friendrequestsService.getSentFriendRequests(senderId);
+        if (friendRequests.length === 0) return [];
+
+        const receiverIds = friendRequests.map(req => req.receiver_id);
+        const receiverInfos = await usersService.getAllUsers({ id: receiverIds });
+
+        const receiverInfoMap = new Map(receiverInfos.map(user => [user.id, user]));
+
+        return friendRequests.map(req => {
+            const receiverInfo = receiverInfoMap.get(req.receiver_id) || {};
+            return {
+                ...req.dataValues,
+                receiver_name: receiverInfo.full_name,
+                receiver_avatar: receiverInfo.avatar_url,
+            };
+        });
+    }
+
     async createFriendRequest(senderId, receiverId, note) {
         return await friendrequestsService.createFriendRequest(senderId, receiverId, note);
     }
@@ -649,6 +668,10 @@ class HomeService {
             user_infor: userMap.get(post.user_id) || null,
             comments: commentsMap.get(post.id) || []
         }));
+    }
+
+    async searchUsers(keyword) {
+        return await usersService.getAllUsers({ full_name: keyword });
     }
 }
 

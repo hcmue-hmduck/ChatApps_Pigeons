@@ -26,15 +26,20 @@
     display: flex;
     flex-direction: column;
     padding: 12px;
-    overflow-y: auto;
+    overflow: hidden;
     position: relative;
     z-index: 1;
+    background: rgba(10, 20, 30, 0.85);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(0, 242, 255, 0.2);
+    border-radius: 16px;
+    box-shadow: 0 0 20px rgba(0, 242, 255, 0.1);
 }
 
 .layout-container {
-    max-width: 1200px;
+    max-width: none;
     width: 100%;
-    margin: 0 auto;
+    margin: 0;
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -45,6 +50,11 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+.panel-header-row {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid rgba(0, 242, 255, 0.1);
 }
 
 .header-text h1 {
@@ -82,19 +92,6 @@
 .add-friend-btn:hover {
     filter: brightness(1.1);
     transform: scale(1.05);
-}
-
-/* Central Panel */
-.glass-panel {
-    flex: 1;
-    background: rgba(10, 20, 30, 0.85);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(0, 242, 255, 0.2);
-    border-radius: 16px;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    box-shadow: 0 0 20px rgba(0, 242, 255, 0.1);
 }
 
 /* Tabs */
@@ -486,8 +483,8 @@
     to { transform: rotate(360deg); }
 }
 
-/* Glass Panel Hover */
-.glass-panel:hover {
+/* Main Panel Hover */
+.relations-main:hover {
     border-color: rgba(0, 242, 255, 0.3);
     box-shadow: 0 0 30px rgba(0, 242, 255, 0.15);
 }
@@ -508,6 +505,10 @@
         flex-direction: column;
         align-items: flex-start;
         gap: 16px;
+    }
+
+    .panel-header-row {
+        padding: 16px 12px;
     }
     
     .header-text h1 {

@@ -74,6 +74,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
         this.loading.set(true);
         this.userService.getUserById(this.currentUserId).subscribe({
             next: (response) => {
+                console.log('User', response.metadata?.userInfor);
                 this.userInfo.set(response.metadata?.userInfor || null);
                 this.isReady.set(true);
                 this.loading.set(false);

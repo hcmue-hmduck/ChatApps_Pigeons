@@ -218,17 +218,21 @@
                                                         } @else {
                                                             @if (msg.parent_message_info.parent_message_type === 'image' || msg.parent_message_info.parent_message_type === 'video') {
                                                                 <img [src]="msg.parent_message_info.parent_message_thumbnail_url" class="reply-preview-img-bubble">
-                                                            } @else if (msg.parent_message_info.parent_message_type === 'file') {
-                                                                <div class="reply-preview-icon-bubble">
-                                                                    <i class="bi bi-file-earmark-arrow-down"></i>
-                                                                </div>
                                                             }
-                                                            @else {
-                                                                Chi tiết tin nhắn
-                                                            }
+                                                            <div class="reply-preview-text-flex">
+                                                                @if (msg.parent_message_info.parent_message_type === 'image') {
+                                                                    <i class="bi bi-image me-1"></i> (Hình ảnh)
+                                                                } @else if (msg.parent_message_info.parent_message_type === 'video') {
+                                                                    <i class="bi bi-camera-video me-1"></i> (Video)
+                                                                } @else if (msg.parent_message_info.parent_message_type === 'file') {
+                                                                    <i class="bi bi-file-earmark-arrow-down me-1"></i> (Tệp đính kèm)
+                                                                } @else {
+                                                                    (Chi tiết tin nhắn)
+                                                                }
+                                                            </div>
                                                         }
                                                     } @else {
-                                                        <em>Tin nhắn đã bị gỡ</em>
+                                                        <span class="deleted-msg">Tin nhắn đã được gỡ</span>
                                                     }
                                                 </div>
                                             </div>
@@ -412,14 +416,12 @@
                                         @if (msg.parent_message_id) {
                                             <div class="reply-sender-label other-label">
                                                 <i class="bi bi-reply me-1"></i>
-                                                @if (msg.sender_id === currentUserId) {
-                                                    Bạn đã trả lời {{ msg.parent_message_info.parent_message_name }}
+                                                @if (msg.parent_message_info.parent_message_sender_id === currentUserId) {
+                                                    {{ msg.sender_name }} đã trả lời bạn
+                                                } @else if (msg.parent_message_info.parent_message_sender_id === msg.sender_id) {
+                                                    {{ msg.sender_name }} đã trả lời chính họ
                                                 } @else {
-                                                    @if (msg.parent_message_info.parent_message_sender_id === currentUserId) {
-                                                        {{ msg.sender_name }} đã trả lời bạn
-                                                    } @else {
-                                                        {{ msg.sender_name }} đã trả lời {{ msg.parent_message_info.parent_message_name }}
-                                                    }
+                                                    {{ msg.sender_name }} đã trả lời {{ msg.parent_message_info.parent_message_name }}
                                                 }
                                             </div>
                                             <div class="reply-info-other"
@@ -431,17 +433,21 @@
                                                         } @else {
                                                             @if (msg.parent_message_info.parent_message_type === 'image' || msg.parent_message_info.parent_message_type === 'video') {
                                                                 <img [src]="msg.parent_message_info.parent_message_thumbnail_url" class="reply-preview-img-bubble">
-                                                            } @else if (msg.parent_message_info.parent_message_type === 'file') {
-                                                                <div class="reply-preview-icon-bubble">
-                                                                    <i class="bi bi-file-earmark-arrow-down"></i>
-                                                                </div>
                                                             }
-                                                            @else {
-                                                                Chi tiết tin nhắn
-                                                            }
+                                                            <div class="reply-preview-text-flex">
+                                                                @if (msg.parent_message_info.parent_message_type === 'image') {
+                                                                    <i class="bi bi-image me-1"></i> (Hình ảnh)
+                                                                } @else if (msg.parent_message_info.parent_message_type === 'video') {
+                                                                    <i class="bi bi-camera-video me-1"></i> (Video)
+                                                                } @else if (msg.parent_message_info.parent_message_type === 'file') {
+                                                                    <i class="bi bi-file-earmark-arrow-down me-1"></i> (Tệp đính kèm)
+                                                                } @else {
+                                                                    (Chi tiết tin nhắn)
+                                                                }
+                                                            </div>
                                                         }
                                                     } @else {
-                                                        <em>Tin nhắn đã bị gỡ</em>
+                                                        <span class="deleted-msg">Tin nhắn đã được gỡ</span>
                                                     }
                                                 </div>
                                             </div>
@@ -673,7 +679,7 @@
                 <!-- Text box -->
                 <div class="input-box">
                     <textarea #messageInput class="msg-textarea" [(ngModel)]="newMessage" placeholder="Nhập tin nhắn..."
-                        (keydown)="handleKeyDown($event)" rows="1" autofocus>
+                        (keydown)="handleKeyDown($event)" (paste)="handleInputPaste($event)" rows="1" autofocus>
           </textarea>
                     <button class="emoji-btn" title="Biểu tượng cảm xúc" (click)="toggleEmojiPicker()">
                         <i class="bi bi-emoji-smile"></i>

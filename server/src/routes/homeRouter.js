@@ -4,8 +4,10 @@ const router = express.Router();
 const homeController = require('../controllers/homeController');
 
 router.get('/feeds', homeController.getHomePosts);
+router.get('/users/search', homeController.searchUsers);
 
 router.get('/friendrequests/:receiverId', homeController.getFriendRequests);
+router.get('/friendrequests/sent/:senderId', homeController.getSentFriendRequests);
 router.post('/friendrequests', homeController.createFriendRequest);
 router.put('/friendrequests/:id', homeController.updateFriendRequestStatus);
 

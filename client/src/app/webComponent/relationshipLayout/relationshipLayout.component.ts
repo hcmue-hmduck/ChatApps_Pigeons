@@ -11,10 +11,12 @@ import { SocketService } from '../../services/socket';
 import { UserInforModel } from '../userinforModel/userinforModel.component';
 import { response } from 'express';
 
+import { SearchUserModalComponent } from '../searchusermodalLayout/searchusermodalLayout.component';
+
 @Component({
     selector: 'relationship-layout',
     standalone: true,
-    imports: [CommonModule, FormsModule, UserInforModel],
+    imports: [CommonModule, FormsModule, UserInforModel, SearchUserModalComponent],
     templateUrl: './relationshipLayout.component.html',
     styleUrls: ['./relationshipLayout.component.css']
 })
@@ -22,12 +24,13 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
     protected readonly title = signal('Relationship');
     @Input() currentUserId: string = '';
 
-    currentTab: 'friends' | 'friend_requests' | 'blocked' = 'friends';
+    currentTab: 'friends' | 'friend_requests' | 'blocked' | 'sent_requests' = 'friends';
     currentSort = signal<'asc' | 'desc'>('asc');
 
     friends = signal<any[]>([]);
     blockedUser = signal<any[]>([]);
     friendRequests = signal<any[]>([]);
+    sentRequests = signal<any[]>([]);
 
     // Tự động tính toán lại danh sách hiển thị khi friends hoặc currentSort thay đổi
     groupedFriends = computed(() => {
@@ -59,6 +62,7 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
     loading = false;
     error = '';
     showMoreMenuId: string | null = null;
+    isSearchModalOpen = signal(false);
 
     private updateProfileListener!: (data: any) => void;
 
@@ -96,8 +100,16 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
         }
     }
 
-    setTab(tab: 'friends' | 'friend_requests' | 'blocked') {
+    setTab(tab: 'friends' | 'friend_requests' | 'blocked' | 'sent_requests') {
         this.currentTab = tab;
+    }
+
+    openSearchModal() {
+        this.isSearchModalOpen.set(true);
+    }
+
+    closeSearchModal() {
+        this.isSearchModalOpen.set(false);
     }
 
     toggleMoreMenu(friendId: string, event: Event) {
@@ -143,6 +155,7 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
         forkJoin({
             friends: this.friendService.getFriendByUserId(this.currentUserId),
             requests: this.friendRequestService.getFriendRequestsByUserId(this.currentUserId),
+            sentRequests: this.friendRequestService.getSentFriendRequestsByUserId(this.currentUserId),
             blocks: this.userBlockService.getBlockedUserByUserId(this.currentUserId)
         }).subscribe({
             next: (res: any) => {
@@ -170,9 +183,12 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
                     }
                 });
 
+                const sentRequests = res.sentRequests.metadata.sentFriendRequests || [];
+
                 this.friends.set(validFriends);
                 this.blockedUser.set(blockedList);
                 this.friendRequests.set(friendRequests);
+                this.sentRequests.set(sentRequests);
 
                 this.loading = false;
                 this.cdr.detectChanges();
@@ -380,6 +396,36 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
                     error: (error) => {
                         console.error('Error blocking user:', error);
                         Swal.fire('Lỗi', 'Không thể chặn người dùng này. Vui lòng thử lại.', 'error');
+                    }
+                });
+            }
+        });
+    }
+
+    cancelSentRequest(requestId: string) {
+        Swal.fire({
+            title: 'Hủy lời mời?',
+            text: 'Bạn có chắc chắn muốn hủy lời mời kết bạn này?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Có, hủy ngay',
+            cancelButtonText: 'Không',
+            confirmButtonColor: '#ef4444',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Using update with status 'rejected' or similar if delete not available
+                // For now, let's just remove it from UI after server response
+                this.friendRequestService.updateFriendRequest(requestId, 'rejected', 'Canceled by sender').subscribe({
+                    next: () => {
+                        this.sentRequests.update(list => list.filter(r => r.id !== requestId));
+                        Swal.fire({
+                            title: 'Đã hủy',
+                            icon: 'success',
+                            timer: 1500,
+                            showConfirmButton: false,
+                            toast: true,
+                            position: 'top-end'
+                        });
                     }
                 });
             }

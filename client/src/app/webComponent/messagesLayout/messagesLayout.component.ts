@@ -161,11 +161,10 @@ export class MessagesLayoutComponent
     private extractFirstUrl(content: string | null | undefined): string | null {
         if (!content) return null;
 
-        const urlPattern = /((?:https?:\/\/|www\.)[^\s<]+)/i;
-        const match = content.match(urlPattern);
-        if (!match) return null;
+        const matches = Array.from(content.matchAll(/((?:https?:\/\/|www\.)[^\s<]+)/gi));
+        if (matches.length !== 1) return null;
 
-        const rawUrl = match[1].replace(/[.,!?;:]+$/, '');
+        const rawUrl = (matches[0][1] || '').replace(/[.,!?;:]+$/, '');
         if (!rawUrl) return null;
 
         return /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
@@ -173,6 +172,7 @@ export class MessagesLayoutComponent
 
     private buildStoredLinkPreview(message: any): any | null {
         if (!message || message.message_type !== 'text') return null;
+        if (!this.extractFirstUrl(message.content)) return null;
         if (!message.file_url) return null;
 
         const hasPreviewData = !!(message.thumbnail_url || message.file_name);
@@ -523,11 +523,9 @@ export class MessagesLayoutComponent
         this.fileInput.nativeElement.click();
     }
 
-    onFileSelected(event: Event) {
-        const input = event.target as HTMLInputElement;
-        if (!input.files || input.files.length === 0) return;
+    private addFilesToStaging(files: File[]) {
+        if (!files || files.length === 0) return;
 
-        const files = Array.from(input.files);
         const newStagedFiles: StagedFile[] = files.map(file => ({
             file,
             previewUrl: (file.type.startsWith('image/') || file.type.startsWith('video/'))
@@ -536,13 +534,45 @@ export class MessagesLayoutComponent
             isImage: file.type.startsWith('image/'),
             isVideo: file.type.startsWith('video/'),
             name: file.name,
-            size: file.size
+            size: file.size,
         }));
 
         this.preUploadFiles.update(prev => [...prev, ...newStagedFiles]);
+    }
+
+    onFileSelected(event: Event) {
+        const input = event.target as HTMLInputElement;
+        if (!input.files || input.files.length === 0) return;
+
+        const files = Array.from(input.files);
+        this.addFilesToStaging(files);
 
         // Reset input value to allow selecting same file again
         input.value = '';
+    }
+
+    handleInputPaste(event: ClipboardEvent) {
+        const clipboard = event.clipboardData;
+        if (!clipboard?.items?.length) return;
+
+        const pastedImageFiles: File[] = [];
+        for (const item of Array.from(clipboard.items)) {
+            if (item.kind !== 'file') continue;
+            if (!item.type.startsWith('image/')) continue;
+
+            const file = item.getAsFile();
+            if (file) pastedImageFiles.push(file);
+        }
+
+        if (pastedImageFiles.length === 0) return;
+
+        // If clipboard only has image data, prevent default to avoid odd paste behavior in textarea.
+        const pastedText = clipboard.getData('text/plain');
+        if (!pastedText) {
+            event.preventDefault();
+        }
+
+        this.addFilesToStaging(pastedImageFiles);
     }
 
     removePreUploadFile(index: number) {

@@ -3,14 +3,17 @@ const usersModel = require('../models/usersModel');
 
 class UsersService {
     // Lấy users theo điều kiện filter
-    // Hỗ trợ: { id: [array] } hoặc bất kỳ where object nào
     async getAllUsers(where = {}) {
-        const resolvedWhere = { is_active: true };
+        const resolvedWhere = { is_active: true, ...where };
 
         if (where.id) {
             resolvedWhere.id = Array.isArray(where.id)
                 ? { [Op.in]: where.id }
                 : where.id;
+        }
+
+        if (where.full_name && typeof where.full_name === 'string') {
+            resolvedWhere.full_name = { [Op.like]: `%${where.full_name}%` };
         }
 
         return await usersModel.findAll({

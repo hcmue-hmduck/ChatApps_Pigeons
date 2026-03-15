@@ -14,6 +14,19 @@ class FriendRequestsService {
         }
     }
 
+    async getSentFriendRequests(sender_id) {
+        try {
+            return await friendrequestsModel.findAll({
+                where: {
+                    sender_id: sender_id,
+                    status: 'pending'
+                }
+            });
+        } catch (error) {
+            throw error;
+        }
+    }
+
     async createFriendRequest(sender_id, receiver_id, note) {
         try {
             const friendRequest = await friendrequestsModel.create({

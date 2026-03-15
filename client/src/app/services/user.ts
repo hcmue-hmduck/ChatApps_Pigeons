@@ -19,8 +19,8 @@ export class User {
   }
 
   // Lấy user theo ID
-  getUserById(id: string): Observable<any> {
-    return this.http.get(`${this.apiUrlHome}/${id}`);
+  getUserById(userID: string): Observable<any> {
+    return this.http.get(`${this.apiUrlHome}/${userID}`);
   }
 
   // Tạo user mới
@@ -31,6 +31,11 @@ export class User {
   // Cập nhật user
   updateUser(id: string, userData: any): Observable<any> {
     return this.http.put(`${this.apiUrlHome}/${id}`, userData);
+  }
+
+  // Tìm kiếm users
+  searchUsers(keyword: string): Observable<any> {
+    return this.http.get(`${environment.apiUrl}/home/users/search`, { params: { keyword } });
   }
 
   // Xóa user

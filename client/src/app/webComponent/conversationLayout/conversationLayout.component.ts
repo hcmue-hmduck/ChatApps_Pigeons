@@ -15,6 +15,8 @@ import { NavigationService } from '../../services/navigation';
 import { SocketService } from '../../services/socket';
 import { Conversation } from '../../services/conversation';
 import { GroupAvatarLayoutComponent } from '../groupAvatarLayout/groupAvatarLayout.component';
+import { IntroLayoutComponent } from '../introLayout/introLayout.component';
+import { SearchUserModalComponent } from '../searchusermodalLayout/searchusermodalLayout.component';
 
 export interface UserPresence {
     status: string;
@@ -26,7 +28,7 @@ import { ConversationInforLayoutComponent } from '../conversationInforLayout/con
 @Component({
     selector: 'conversation-layout',
     standalone: true,
-    imports: [CommonModule, MessagesLayoutComponent, ConversationInforLayoutComponent, GroupAvatarLayoutComponent],
+    imports: [CommonModule, MessagesLayoutComponent, ConversationInforLayoutComponent, GroupAvatarLayoutComponent, IntroLayoutComponent, SearchUserModalComponent],
     templateUrl: './conversationLayout.component.html',
     styleUrls: ['./conversationLayout.component.css'],
     encapsulation: ViewEncapsulation.None,
@@ -45,6 +47,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
 
     // Sidebar toggle state
     showConversationInfor = signal(false);
+    isSearchModalOpen = signal(false);
 
     toggleConversationInfor() {
         this.showConversationInfor.update(v => !v);
@@ -97,6 +100,10 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                         this.handleConversationID(joined[0]);
                     }
                 } else {
+                    this.selectedConversationId = '';
+                    this.selectedConversationType = '';
+                    this.getMessageInfor = {};
+                    this.showConversationInfor.set(false);
                     if (!this.isFirstConversationReady()) {
                         this.isFirstConversationReady.set(true);
                     }
@@ -266,7 +273,17 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         this.navService.setView('messages');
     }
 
-    createConversation() { }
+    createConversation() {
+        this.isSearchModalOpen.set(true);
+    }
+
+    closeSearchModal() {
+        this.isSearchModalOpen.set(false);
+    }
+
+    hasConversations(): boolean {
+        return (this.conversations?.homeConversationData?.joinedConversations?.length || 0) > 0;
+    }
 
     // ── Helpers ────────────────────────────────────────────
     getOtherParticipant(conv: any): any {

@@ -264,6 +264,17 @@ class HomeController {
         }).send(res);
     }
 
+    async getSentFriendRequests(req, res) {
+        const senderId = req.params.senderId;
+        const sentFriendRequests = await homeService.getSentFriendRequests(senderId);
+        new SuccessResponse({
+            message: 'Get sent friend requests successfully',
+            metadata: {
+                sentFriendRequests: sentFriendRequests,
+            },
+        }).send(res);
+    }
+
     async createFriendRequest(req, res) {
         const { senderId, receiverId, note } = req.body;
         const newFriendRequest = await homeService.createFriendRequest(senderId, receiverId, note);
@@ -342,6 +353,16 @@ class HomeController {
         }).send(res);
     }
 
+    async searchUsers(req, res) {
+        const keyword = req.query.keyword;
+        const users = await homeService.searchUsers(keyword);
+        new SuccessResponse({
+            message: 'Search users successfully',
+            metadata: {
+                users: users,
+            },
+        }).send(res);
+    }
 }
 
 module.exports = new HomeController();

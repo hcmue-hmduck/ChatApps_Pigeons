@@ -15,6 +15,10 @@ export class FriendRequest {
         return this.http.get(`${this.apiUrl}/${receiverId}`);
     }
 
+    getSentFriendRequestsByUserId(senderId: string): Observable<any> {
+        return this.http.get(`${this.apiUrl}/sent/${senderId}`);
+    }
+
     updateFriendRequest(id: string, status: string, note: string): Observable<any> {
         return this.http.put(`${this.apiUrl}/${id}`, { status, note });
     }
