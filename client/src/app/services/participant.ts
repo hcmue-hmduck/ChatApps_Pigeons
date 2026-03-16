@@ -1,0 +1,16 @@
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable, tap } from 'rxjs';
+import { environment } from '../../environments/environment';
+
+@Injectable({
+    providedIn: 'root',
+})
+export class Participant {
+    private apiUrl = `${environment.apiUrl}/home/participants`;
+    constructor(private http: HttpClient) { }
+
+    putParticipant(participant: any): Observable<any> {
+        return this.http.put(`${this.apiUrl}/${participant.id}`, participant);
+    }
+}

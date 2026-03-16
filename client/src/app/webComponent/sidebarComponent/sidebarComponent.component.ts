@@ -109,6 +109,10 @@ export class SidebarComponent implements OnInit, OnDestroy {
         this.navService.setView(view);
     }
 
+    goToMessagesWelcome() {
+        this.navService.goToMessagesWelcome();
+    }
+
     isActive(view: AppView): boolean {
         return this.navService.activeView() === view;
     }

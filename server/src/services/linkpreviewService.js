@@ -24,20 +24,43 @@ class LinkPreviewService {
 
     extractMetaTag(html, attr, value) {
         if (!html) return null;
+        // Escape value for regex
         const escapedValue = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        
+        // This regex is more flexible with attribute order and spacing
+        // It looks for a <meta> tag that contains both the target attribute/value pair and a content attribute
         const pattern = new RegExp(
-            `<meta[^>]*${attr}=[\"']${escapedValue}[\"'][^>]*content=[\"']([^\"']+)[\"'][^>]*>|` +
-            `<meta[^>]*content=[\"']([^\"']+)[\"'][^>]*${attr}=[\"']${escapedValue}[\"'][^>]*>`,
+            `<meta[^>]+(?:${attr}=[\"']${escapedValue}[\"'][^>]+content=[\"']([^\"']+)[\"']|content=[\"']([^\"']+)[\"'][^>]+${attr}=[\"']${escapedValue}[\"'])`,
             'i'
         );
+        
         const match = html.match(pattern);
-        return match?.[1] || match?.[2] || null;
+        const result = match?.[1] || match?.[2] || null;
+        
+        if (result) {
+            // Decode HTML entities (e.g., &#xa0; or &amp;)
+            return this.decodeHtmlEntities(result).trim();
+        }
+        return null;
+    }
+
+    decodeHtmlEntities(text) {
+        if (!text) return '';
+        return text
+            .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
+            .replace(/&#x([0-9a-f]+);/gi, (match, hex) => String.fromCharCode(parseInt(hex, 16)))
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&apos;/g, "'");
     }
 
     extractTitleTag(html) {
         if (!html) return null;
         const match = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-        return match?.[1]?.trim() || null;
+        const title = match?.[1]?.trim() || null;
+        return title ? this.decodeHtmlEntities(title) : null;
     }
 
     

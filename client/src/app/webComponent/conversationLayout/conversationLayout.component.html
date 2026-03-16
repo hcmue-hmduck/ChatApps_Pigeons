@@ -1,10 +1,7 @@
-<!-- ============================================================
-     CONVERSATION LAYOUT — Panel 2 + Panel 3 (Child Component)
-     ============================================================ -->
 <div class="conv-root">
-
     <!-- ===================== PANEL 2: CONVERSATIONS ===================== -->
-    <section class="conv-panel" *ngIf="isFirstConversationReady() && hasConversations()">
+    @if (isFirstConversationReady() && hasConversations()) {
+    <section class="conv-panel">
         <div class="conv-header">
             <h5>Tin nhắn</h5>
             <div class="conv-search-wrap">
@@ -13,108 +10,111 @@
             </div>
         </div>
 
-        <div class="conv-section-label">
-            Gần đây
-            <span class="conv-count-badge">{{ conversations?.homeConversationData?.joinedConversations?.length || 0
-                }}</span>
-        </div>
         <div class="conv-list">
-            <ng-container *ngIf="conversations?.homeConversationData?.joinedConversations?.length > 0">
-                <a *ngFor="let conv of conversations.homeConversationData.joinedConversations" href="javascript:void(0)"
-                    class="conv-item" [class.active]="selectedConversationId === conv.conversation_id"
+
+            @if (conversations?.homeConversationData?.joinedConversations?.length) {
+                @for (conv of conversations.homeConversationData.joinedConversations; track conv.conversation_id) {
+                <a href="javascript:void(0)" class="conv-item" 
+                    [class.active]="selectedConversationId === conv.conversation_id"
+                    [class.is-unread]="conv.unread_count > 0"
                     (click)="handleConversationID(conv)">
                     <div class="conv-avatar-col">
-                        <ng-container *ngIf="conv.type === 'group'">
-                            <div class="avatar-wrapper">
-                                <app-group-avatar-layout [members]="conv.participants || []" [isGroup]="true"
-                                    [avatarUrl]="conv.avatar_url && conv.avatar_url.trim() ? conv.avatar_url : null"
-                                    [alt]="conv.title" [size]="46">
-                                </app-group-avatar-layout>
-                                <span class="status-dot" [class.online]="hasOnlineUser(conv)"
-                                    [class.offline]="!hasOnlineUser(conv)"></span>
-                            </div>
-                        </ng-container>
-                        <ng-container *ngIf="conv.type === 'direct' && getOtherParticipant(conv) as other">
-                            <div class="avatar-wrapper">
-                                <img [src]="other.avatar_url" [alt]="other.full_name" class="avatar-img">
-                                <!-- NẾU ONLINE: Hiện dấu chấm xanh -->
-                                <span *ngIf="isUserOnline(other.user_id)" class="status-dot online"></span>
-                                <!-- NẾU OFFLINE: Hiện thời gian nhỏ ở dưới góc avatar, NẾU KHÔNG CÓ THỜI GIAN -> TRẢ VỀ DẤU CHẤM XÁM -->
-                                <ng-container *ngIf="!isUserOnline(other.user_id)">
-                                    <ng-container
-                                        *ngIf="getUserLastOnlineAt(other) && relativeTime(getUserLastOnlineAt(other), tick1s(), tick60s(), tick3600s()) as rTime; else offlineDot">
-                                        <span class="status-text">
-                                            {{ rTime.replace(' phút', 'p').replace(' giờ', 'g').replace(' ngày',
-                                            'd').replace(' tuần', 'w').replace(' tháng', 'm').replace(' năm',
-                                            'y').replace('Vừa xong', '1p') }}
-                                        </span>
-                                    </ng-container>
-                                    <ng-template #offlineDot>
-                                        <span class="status-dot offline"></span>
-                                    </ng-template>
-                                </ng-container>
-                            </div>
-                        </ng-container>
+                        @if (conv.type === 'group') {
+                        <div class="avatar-wrapper">
+                            <app-group-avatar-layout [members]="conv.participants || []" [isGroup]="true"
+                                [avatarUrl]="conv.avatar_url && conv.avatar_url.trim() ? conv.avatar_url : null"
+                                [alt]="conv.title" [size]="46">
+                            </app-group-avatar-layout>
+                            <span class="status-dot" [class.online]="hasOnlineUser(conv)"
+                                [class.offline]="!hasOnlineUser(conv)"></span>
+                        </div>
+                        } @else if (conv.type === 'direct' && getOtherParticipant(conv); as other) {
+                        <div class="avatar-wrapper">
+                            <img [src]="other.avatar_url" [alt]="other.full_name" class="avatar-img">
+                            @if (isUserOnline(other.user_id)) {
+                                <span class="status-dot online"></span>
+                            } @else {
+                                @if (getUserLastOnlineAt(other) && relativeTime(getUserLastOnlineAt(other), tick1s(), tick60s(), tick3600s()); as rTime) {
+                                <span class="status-text">
+                                    {{ rTime.replace(' phút', 'p').replace(' giờ', 'g').replace(' ngày',
+                                    'd').replace(' tuần', 'w').replace(' tháng', 'm').replace(' năm',
+                                    'y').replace('Vừa xong', '1p') }}
+                                </span>
+                                } @else {
+                                <span class="status-dot offline"></span>
+                                }
+                            }
+                        </div>
+                        }
                     </div>
                     <div class="conv-info">
                         <div class="conv-info-top">
                             <span class="conv-name">{{ conv.title }}</span>
-                            <span class="conv-time" *ngIf="conv.lastMessage">{{
-                                relativeTime(conv.lastMessage.created_at, tick1s(), tick60s(), tick3600s()) }}</span>
+                            @if (conv.lastMessage) {
+                            <span class="conv-time">
+                                {{ relativeTime(conv.lastMessage.created_at, tick1s(), tick60s(), tick3600s()) }}
+                            </span>
+                            }
                         </div>
                         <div class="conv-info-bottom">
                             <span class="conv-last-msg">
-                                <ng-container *ngIf="conv.lastMessage">
-                                    <span *ngIf="getLastMessageSenderName(conv)">{{ getLastMessageSenderName(conv)
-                                        }}&nbsp;</span>
-                                    <ng-container *ngIf="conv.lastMessage.is_deleted">Tin nhắn đã được gỡ</ng-container>
-                                    <ng-container *ngIf="!conv.lastMessage.is_deleted">
+                                @if (conv.lastMessage) {
+                                    @if (getLastMessageSenderName(conv)) {
+                                        <span>{{ getLastMessageSenderName(conv) }}&nbsp;</span>
+                                    }
+                                    @if (conv.lastMessage.is_deleted) {
+                                        Tin nhắn đã được gỡ
+                                    } @else {
                                         <span [innerHTML]="conv.lastMessage.content"></span>
-                                    </ng-container>
-                                </ng-container>
-                                <span *ngIf="!conv.lastMessage" class="empty-last-msg">Hãy bắt đầu đoạn chat ngay</span>
+                                    }
+                                } @else {
+                                    <span class="empty-last-msg">Hãy bắt đầu đoạn chat ngay</span>
+                                }
                             </span>
-                            <span class="unread-badge" *ngIf="conv.unread_count > 0">{{ conv.unread_count }}</span>
+                            @if (conv.unread_count > 0) {
+                                <span class="unread-badge">{{ conv.unread_count }}</span>
+                            }
                         </div>
                     </div>
                 </a>
-            </ng-container>
-
-            <div *ngIf="!conversations?.homeConversationData?.joinedConversations?.length" class="empty-state">
+                }
+            } @else {
+            <div class="empty-state">
                 <i class="bi bi-chat-left-text"></i>
                 <p>Chưa có cuộc trò chuyện nào</p>
-                <p class="empty-subtitle">Nhấn <i class="bi bi-pencil-square empty-icon-small"></i> để bắt đầu chat mới
-                </p>
+                <p class="empty-subtitle">Nhấn <i class="bi bi-pencil-square empty-icon-small"></i> để bắt đầu chat mới</p>
             </div>
+            }
         </div>
     </section>
 
     <!-- ===================== PANEL 3: CHAT AREA ===================== -->
-    <main class="chat-area" *ngIf="isFirstConversationReady() && hasConversations()"
-        [class.with-sidebar]="showConversationInfor()">
-        <messages-layout *ngIf="selectedConversationId && isFirstConversationReady()"
-            [conversationId]="selectedConversationId" [currentUserId]="currentUserId"
+    <main class="chat-area" [class.with-sidebar]="showConversationInfor()">
+        @if (selectedConversationId && isFirstConversationReady()) {
+        <messages-layout [conversationId]="selectedConversationId" [currentUserId]="currentUserId"
             [getMessageInfor]="getMessageInfor" [onlineUsers]="onlineUsers()"
             [conversationType]="selectedConversationType" [UserPresence]="UserPresence()" [tick1s]="tick1s()"
             [tick60s]="tick60s()" [tick3600s]="tick3600s()"
             [joinedConversations]="conversations?.homeConversationData?.joinedConversations || []"
             (toggleDetails)="toggleConversationInfor()">
         </messages-layout>
-        <app-intro-layout *ngIf="!selectedConversationId" (startNewConversation)="createConversation()">
-        </app-intro-layout>
+        } @else {
+        <app-intro-layout (startNewConversation)="createConversation()"></app-intro-layout>
+        }
     </main>
-
-    <section class="welcome-screen" *ngIf="isFirstConversationReady() && !hasConversations()">
-        <app-intro-layout (startNewConversation)="createConversation()">
-        </app-intro-layout>
+    } @else if (isFirstConversationReady() && !hasConversations()) {
+    <section class="welcome-screen">
+        <app-intro-layout (startNewConversation)="createConversation()"></app-intro-layout>
     </section>
+    }
 
     <!-- ===================== PANEL 4: INFO SIDEBAR ===================== -->
-    <app-conversation-infor-layout *ngIf="showConversationInfor() && hasConversations() && selectedConversationId"
-        (closePanel)="toggleConversationInfor()" [userInfor]="conversations.homeConversationData?.userInfo"
-        [currentUserId]="currentUserId" [userPresence]="UserPresence()"
-        [conversationAvatar]="getMessageInfor?.avatar_url" [tick1s]="tick1s()" [tick60s]="tick60s()"
-        [tick3600s]="tick3600s()"
+    @if (showConversationInfor() && hasConversations() && selectedConversationId) {
+    <app-conversation-infor-layout (closePanel)="toggleConversationInfor()"
+        [userInfor]="conversations.homeConversationData?.userInfo" [currentUserId]="currentUserId"
+        [userPresence]="UserPresence()" [conversationAvatar]="getMessageInfor?.avatar_url" [tick1s]="tick1s()"
+        [tick60s]="tick60s()" [tick3600s]="tick3600s()"
         [conversationInfor]="conversations.homeConversationData?.joinedConversations?.find(conv => conv.conversation_id === selectedConversationId)">
     </app-conversation-infor-layout>
+    }
 </div>

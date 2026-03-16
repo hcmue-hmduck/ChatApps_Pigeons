@@ -184,6 +184,12 @@ io.on('connection', (socket) => {
         io.emit('updateProfile', data);
     });
 
+    socket.on('updateParticipant', (data) => {
+        console.log('Received updateParticipant event on server:', data);
+        // Broadcast tới tất cả thành viên trong conversation room
+        socket.to(data.conversation_id).emit('updateParticipant', data);
+    });
+
     socket.on('disconnect', async () => {
         console.log('User disconnected:', socket.id);
 

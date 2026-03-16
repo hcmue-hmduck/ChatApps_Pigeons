@@ -30,11 +30,13 @@ class ParticipantsService {
     }
 
     // Cập nhật participant
-    async updateParticipant(participantId, participantData) {
-        const participant = await participantsModel.findByPk(participantId);
-        participantData.updated_at = new Date().toISOString();
+    async updateParticipant(id, participantData) {
+        const participant = await participantsModel.findByPk(id);
         if (participant) {
-            return await participant.update(participantData);
+            return await participant.update({
+                ...participantData,
+                updated_at: new Date().toISOString()
+            });
         }
         return null;
     }

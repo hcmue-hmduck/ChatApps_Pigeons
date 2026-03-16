@@ -3,6 +3,8 @@ const router = express.Router();
 
 const homeController = require('../controllers/homeController');
 
+router.put('/participants/:id', homeController.putParticipant);
+
 router.get('/feeds', homeController.getHomePosts);
 router.get('/users/search', homeController.searchUsers);
 

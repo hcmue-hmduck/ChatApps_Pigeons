@@ -8,6 +8,7 @@ export class NavigationService {
     activeView = signal<AppView>('messages');
     activeFriendsTab = signal<FriendsTab>('friends_suggestions');
     pendingConversationId = signal<string | null>(null);
+    messagesWelcomeResetTick = signal(0);
 
     setView(view: AppView) {
         this.activeView.set(view);
@@ -24,6 +25,12 @@ export class NavigationService {
 
     openConversation(conversationId: string) {
         this.pendingConversationId.set(conversationId);
+        this.setView('messages');
+    }
+
+    goToMessagesWelcome() {
+        this.pendingConversationId.set(null);
+        this.messagesWelcomeResetTick.update((v) => v + 1);
         this.setView('messages');
     }
 }

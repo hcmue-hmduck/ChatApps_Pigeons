@@ -38,8 +38,7 @@ class HomeService {
                 redirect: 'follow',
                 signal: controller.signal,
                 headers: {
-                    'User-Agent':
-                        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                    'User-Agent': 'facebookexternalhit/1.1',
                     Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
                 },
             });
@@ -56,13 +55,17 @@ class HomeService {
             const html = await response.text();
 
             const ogTitle = linkpreviewService.extractMetaTag(html, 'property', 'og:title');
+            const twitterTitle = linkpreviewService.extractMetaTag(html, 'name', 'twitter:title');
             const ogDescription = linkpreviewService.extractMetaTag(html, 'property', 'og:description');
+            const twitterDescription = linkpreviewService.extractMetaTag(html, 'name', 'twitter:description');
             const ogImage = linkpreviewService.extractMetaTag(html, 'property', 'og:image');
+            const twitterImage = linkpreviewService.extractMetaTag(html, 'name', 'twitter:image');
             const ogSiteName = linkpreviewService.extractMetaTag(html, 'property', 'og:site_name');
+            const twitterSite = linkpreviewService.extractMetaTag(html, 'name', 'twitter:site');
             const metaDescription = linkpreviewService.extractMetaTag(html, 'name', 'description');
             const titleTag = linkpreviewService.extractTitleTag(html);
 
-            let imageUrl = ogImage || null;
+            let imageUrl = ogImage || twitterImage || null;
             if (imageUrl) {
                 try {
                     imageUrl = new URL(imageUrl, parsedUrl).toString();
@@ -73,10 +76,10 @@ class HomeService {
 
             return {
                 url: parsedUrl.toString(),
-                title: (ogTitle || titleTag || parsedUrl.hostname || '').trim(),
-                description: (ogDescription || metaDescription || '').trim(),
+                title: (ogTitle || twitterTitle || titleTag || parsedUrl.hostname || '').trim(),
+                description: (ogDescription || twitterDescription || metaDescription || '').trim(),
                 image: imageUrl,
-                siteName: (ogSiteName || parsedUrl.hostname || '').trim(),
+                siteName: (ogSiteName || twitterSite || parsedUrl.hostname || '').trim(),
                 hostname: parsedUrl.hostname,
             };
         } catch {
@@ -101,19 +104,28 @@ class HomeService {
             participantsService.getAllParticipants({ conversation_id: conversationIds }),
         ]);
 
-        // 3. Thu thập userIds duy nhất → batch query users song song với lastMessages
+        // 3. Thu thập userIds duy nhất & relevant message IDs → batch query song song
         const userIds = [...new Set(allParticipants.map((p) => p.user_id))];
         const lastMessageIds = conversations.map((conv) => conv.last_message_id).filter(Boolean);
 
-        const [users, lastMessagesArr] = await Promise.all([
+        const currentUserParticipants = allParticipants.filter(p => p.user_id === userId);
+        const lastReadMessageIds = currentUserParticipants.map(p => p.last_read_message_id).filter(Boolean);
+
+        const allRelevantMessageIds = [...new Set([...lastMessageIds, ...lastReadMessageIds])];
+
+        const [users, allRelevantMessages] = await Promise.all([
             usersService.getAllUsers({ id: userIds }),
-            lastMessageIds.length > 0 ? messagesService.getMessagesByIds(lastMessageIds) : Promise.resolve([]),
+            allRelevantMessageIds.length > 0 ? messagesService.getMessagesByIds(allRelevantMessageIds) : Promise.resolve([]),
         ]);
 
         // 4. Tạo Map để lookup O(1)
-        const lastMessagesMap = new Map(lastMessagesArr.map((msg) => [msg.id, msg]));
+        const messagesMap = new Map(allRelevantMessages.map((msg) => [msg.id, msg]));
         const usersMap = new Map(users.map((u) => [u.id, u]));
         const conversationsMap = new Map(conversations.map((c) => [c.id, c]));
+
+        // Chuẩn bị thông tin unread count
+        const convReadTimestamps = [];
+        const lastReadAtMap = new Map(); // conv_id -> timestamp
 
         // Build participantsMap & ownerInfoMap trong 1 lần duyệt
         const participantsMap = new Map();
@@ -126,15 +138,22 @@ class HomeService {
 
             const participantInfo = user
                 ? {
+                    id: p.id,
                     user_id: user.id,
                     full_name: user.full_name,
                     avatar_url: user.avatar_url,
                     last_online_at: user.last_online_at,
-                    owner: isOwner,
+                    owner: p.role,
+                    joinned_at: p.joinned_at,
+                    left_at: p.left_at,
+                    nick_name: p.nick_name,
+                    is_muted: p.is_muted,
+                    is_pinned: p.is_pinned,
+                    last_read_message_id: p.last_read_message_id,
                 }
                 : {
                     user_id: p.user_id,
-                    owner: isOwner,
+                    owner: p.role,
                 };
 
             if (!participantsMap.has(p.conversation_id)) {
@@ -145,7 +164,37 @@ class HomeService {
             if (isOwner) {
                 ownerInfoMap.set(p.conversation_id, participantInfo);
             }
+
+            // Lưu timestamp tin nhắn cuối đã đọc của current user
+            if (p.user_id === userId) {
+                const lastReadMsg = messagesMap.get(p.last_read_message_id);
+                const lastReadAt = lastReadMsg ? lastReadMsg.created_at : new Date(0); // Nếu chưa đọc bao giờ thì coi như từ đầu thời gian
+                lastReadAtMap.set(p.conversation_id, lastReadAt);
+
+                const conv = conversationsMap.get(p.conversation_id);
+                if (conv && conv.last_message_id !== p.last_read_message_id) {
+                    convReadTimestamps.push({
+                        conversation_id: p.conversation_id,
+                        last_read_at: lastReadAt
+                    });
+                }
+            }
         });
+
+        // 5. Batch count unread messages
+        const unreadCountsMap = await messagesService.countUnreadMessages(convReadTimestamps);
+        
+        // Log results for verification
+        if (convReadTimestamps.length > 0) {
+            console.log('--- Unread Messages Count ---');
+            convReadTimestamps.forEach(item => {
+                const count = unreadCountsMap[item.conversation_id] || 0;
+                if (count > 0) {
+                    console.log(`Conv ${item.conversation_id}: ${count} unread messages since message (at ${item.last_read_at})`);
+                }
+            });
+            console.log('-----------------------------');
+        }
 
         // Build userInfo cho current user
         const currentUser = usersMap.get(userId);
@@ -186,9 +235,11 @@ class HomeService {
                 type: conv.conversation_type,
                 ownerInfo: ownerInfoMap.get(conv.id) || null,
                 participants: convParticipants,
-                lastMessage: lastMessagesMap.get(conv.last_message_id) || null,
+                lastMessage: messagesMap.get(conv.last_message_id) || null,
+                unread_count: unreadCountsMap[conv.id] || 0,
             };
         });
+
 
         return { userInfo, joinedConversations };
     }
@@ -640,6 +691,10 @@ class HomeService {
             participants: await participantsService.createParticipant(conv.id, participants_id),
             you: await participantsService.createParticipant(conv.id, created_by)
         }
+    }
+
+    async updateParticipant(id, participantData) {
+        return await participantsService.updateParticipant(id, participantData);
     }
 }
 

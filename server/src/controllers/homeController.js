@@ -374,6 +374,18 @@ class HomeController {
             },
         }).send(res);
     }
+
+    async putParticipant (req, res) {
+        const id = req.params.id;
+        const participantData = req.body;
+        const updatedParticipant = await homeService.updateParticipant(id, participantData);
+        new SuccessResponse({
+            message: 'Update participant successfully',
+            metadata: {
+                updatedParticipant: updatedParticipant,
+            },
+        }).send(res);
+    }
 }
 
 module.exports = new HomeController();

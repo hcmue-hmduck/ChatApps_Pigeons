@@ -5,7 +5,7 @@
 
     <!-- ── NAV SIDEBAR (Always show) ── -->
     <aside class="icon-sidebar">
-        <img src="assets/PigeonLogo.png" alt="Pigeons" class="sidebar-logo">
+        <img src="assets/PigeonLogo.png" alt="Pigeons" class="sidebar-logo" (click)="goToMessagesWelcome()">
         <nav class="nav-icons">
             <button class="sidebar-nav-btn" [class.active]="isActive('messages')" title="Tin nhắn"
                 (click)="setView('messages')">

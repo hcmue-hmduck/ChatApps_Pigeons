@@ -137,6 +137,7 @@
 .sidebar-logo:hover {
     opacity: 1;
     transform: scale(1.06);
+    cursor: pointer;
 }
 
 .nav-icons {

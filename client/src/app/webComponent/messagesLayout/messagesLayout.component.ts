@@ -29,6 +29,7 @@ import { Conversation } from '../../services/conversation';
 import { Messages } from '../../services/messages';
 import { SocketService } from '../../services/socket';
 import { UploadService } from '../../services/uploadService';
+import { Participant } from '../../services/participant';
 import { GroupAvatarLayoutComponent } from '../groupAvatarLayout/groupAvatarLayout.component';
 
 export interface UserPresence {
@@ -494,6 +495,7 @@ export class MessagesLayoutComponent
     constructor(
         private messagesService: Messages,
         private conversationService: Conversation,
+        private participantService: Participant,
         private uploadService: UploadService,
         private socketService: SocketService,
     ) {
@@ -1029,12 +1031,16 @@ export class MessagesLayoutComponent
                     this.socketService.emit('sendMessage', realMessage);
                     this.socketService.emit('updateConversation', realMessage);
 
-                    // Thông báo cho các participants khác join room nếu chưa có
-                    const receiverIds = (this.getMessageInfor?.participants || [])
-                        .map((p: any) => p.user_id)
-                        .filter((id: string) => id !== this.currentUserId);
-                    if (receiverIds.length > 0) {
-                        this.socketService.emit('notifyNewConversation', { receiverIds, conversationId: this.conversationId });
+                    // Chỉ notify khi conversation chưa có trong danh sách local (thường là cuộc trò chuyện mới tạo)
+                    const isKnownConversation = (this.joinedConversations || [])
+                        .some((conv: any) => conv.conversation_id === this.conversationId);
+                    if (!isKnownConversation) {
+                        const receiverIds = (this.getMessageInfor?.participants || [])
+                            .map((p: any) => p.user_id)
+                            .filter((id: string) => id !== this.currentUserId);
+                        if (receiverIds.length > 0) {
+                            this.socketService.emit('notifyNewConversation', { receiverIds, conversationId: this.conversationId });
+                        }
                     }
 
                     // Replace temp message bằng real message
@@ -1049,6 +1055,20 @@ export class MessagesLayoutComponent
                             ),
                         },
                     }));
+
+                    this.participantService.putParticipant({
+                        id: this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId)?.id,
+                        last_read_message_id: realId
+                    }).subscribe({
+                        next: () => {
+                            this.socketService.emit('updateParticipant', {
+                                conversation_id: this.conversationId,
+                                user_id: this.currentUserId,
+                                last_read_message_id: realId
+                            });
+                        },
+                        error: (err) => console.error('Error updating participant:', err),
+                    });
                 },
                 error: (error) => {
                     this.loading = false;
