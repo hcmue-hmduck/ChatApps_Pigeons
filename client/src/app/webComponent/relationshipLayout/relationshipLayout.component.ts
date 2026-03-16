@@ -5,6 +5,7 @@ import { forkJoin } from 'rxjs';
 import Swal from 'sweetalert2';
 import { Friend } from '../../services/friend';
 import { FriendRequest } from '../../services/friendrequest';
+import { Conversation } from '../../services/conversation';
 import { User } from '../../services/user';
 import { UserBlock } from '../../services/userBlock';
 import { SocketService } from '../../services/socket';
@@ -12,12 +13,10 @@ import { FriendsTab, NavigationService } from '../../services/navigation';
 import { UserInforModel } from '../userinforModel/userinforModel.component';
 import { response } from 'express';
 
-import { SearchUserModalComponent } from '../searchusermodalLayout/searchusermodalLayout.component';
-
 @Component({
     selector: 'relationship-layout',
     standalone: true,
-    imports: [CommonModule, FormsModule, UserInforModel, SearchUserModalComponent],
+    imports: [CommonModule, FormsModule, UserInforModel],
     templateUrl: './relationshipLayout.component.html',
     styleUrls: ['./relationshipLayout.component.css']
 })
@@ -32,6 +31,12 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
     blockedUser = signal<any[]>([]);
     friendRequests = signal<any[]>([]);
     sentRequests = signal<any[]>([]);
+
+    searchKeyword = '';
+    searchResults = signal<any[]>([]);
+    isSearching = signal(false);
+    sendingRequests = new Set<string>();
+    currentUser = signal<any>(null);
 
     // Tự động tính toán lại danh sách hiển thị khi friends hoặc currentSort thay đổi
     groupedFriends = computed(() => {
@@ -78,7 +83,9 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
 
     constructor(
         private friendService: Friend,
+        private userService: User,
         private friendRequestService: FriendRequest,
+        private conversationService: Conversation,
         private userBlockService: UserBlock,
         private socketService: SocketService,
         private navService: NavigationService,
@@ -99,12 +106,17 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
     ngOnChanges(changes: SimpleChanges) {
         if (changes['currentUserId'] && this.currentUserId) {
             this.loadData();
+            this.loadingData();
         }
     }
 
     setTab(tab: FriendsTab) {
         this.currentTab = tab;
         this.navService.setFriendsTab(tab);
+
+        if (tab === 'friends_suggestions' && !this.isSearching() && this.searchResults().length === 0) {
+            this.loadingData();
+        }
     }
 
     toggleMoreMenu(friendId: string, event: Event) {
@@ -423,6 +435,140 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
                         });
                     }
                 });
+            }
+        });
+    }
+
+    loadingData() {
+        this.isSearching.set(true);
+        forkJoin({
+            users: this.userService.getAllUsers(),
+            sentRequests: this.friendRequestService.getSentFriendRequestsByUserId(this.currentUserId)
+        }).subscribe({
+            next: (res: any) => {
+                const allUsers = res.users.metadata || [];
+                const filteredUsers: any[] = [];
+                let curUser: any = null;
+
+                for (const u of allUsers) {
+                    if (u.id === this.currentUserId) {
+                        curUser = u;
+                    } else {
+                        filteredUsers.push(u);
+                    }
+                }
+
+                this.searchResults.set(filteredUsers);
+                this.currentUser.set(curUser);
+
+                const sent = res.sentRequests.metadata?.sentFriendRequests || [];
+                this.sendingRequests = new Set<string>();
+                sent.forEach((req: any) => {
+                    if (req.receiver_id) {
+                        this.sendingRequests.add(req.receiver_id);
+                    }
+                });
+
+                this.isSearching.set(false);
+            },
+            error: (err: any) => {
+                console.error('Error loading initial modal data:', err);
+                this.isSearching.set(false);
+            }
+        });
+    }
+
+    onSearch() {
+        if (!this.searchKeyword.trim()) {
+            this.searchResults.set([]);
+            return;
+        }
+
+        this.isSearching.set(true);
+        forkJoin({
+            results: this.userService.searchUsers(this.searchKeyword),
+            sentRequests: this.friendRequestService.getSentFriendRequestsByUserId(this.currentUserId)
+        }).subscribe({
+            next: (res: any) => {
+                const users = (res.results.metadata?.users || []).filter((u: any) => u.id !== this.currentUserId);
+                this.searchResults.set(users);
+
+                const sent = res.sentRequests.metadata?.sentFriendRequests || [];
+                this.sendingRequests = new Set<string>();
+                sent.forEach((req: any) => {
+                    if (req.receiver_id) {
+                        this.sendingRequests.add(req.receiver_id);
+                    }
+                });
+
+                this.isSearching.set(false);
+            },
+            error: (err: any) => {
+                console.error('Search error:', err);
+                this.isSearching.set(false);
+            }
+        });
+    }
+
+    sendFriendRequest(receiverId: string) {
+        if (this.sendingRequests.has(receiverId)) return;
+
+        const defaultMsg = `Mình là ${this.currentUser()?.full_name || 'người quen'}, kết bạn với mình nhé!`;
+
+        Swal.fire({
+            title: 'Lời mời kết bạn',
+            input: 'textarea',
+            inputLabel: 'Tin nhắn làm quen',
+            inputValue: defaultMsg,
+            inputPlaceholder: 'Nhập lời nhắn...',
+            showCancelButton: true,
+            confirmButtonText: 'Gửi lời mời',
+            cancelButtonText: 'Hủy',
+            confirmButtonColor: '#00f2ff',
+            background: '#0a1622',
+            color: '#fff',
+            inputAttributes: {
+                'style': 'background: rgba(0,0,0,0.3); color: #fff; border: 1px solid rgba(255,255,255,0.1);'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const note = result.value || '';
+                this.sendingRequests.add(receiverId);
+                this.friendRequestService.createFriendRequest(this.currentUserId, receiverId, note).subscribe({
+                    next: () => {
+                        Swal.fire({
+                            title: 'Đã gửi!',
+                            icon: 'success',
+                            timer: 1500,
+                            showConfirmButton: false,
+                            toast: true,
+                            position: 'top-end'
+                        });
+                    },
+                    error: (err: any) => {
+                        console.error('Error sending friend request:', err);
+                        this.sendingRequests.delete(receiverId);
+                        Swal.fire('Lỗi', 'Không thể gửi lời mời. Vui lòng thử lại.', 'error');
+                    }
+                });
+            }
+        });
+    }
+
+    isRequestSent(userId: string): boolean {
+        return this.sendingRequests.has(userId);
+    }
+
+    sendMessage(receiverId: string) {
+        this.conversationService.createConversation(receiverId, 'direct', '', '', this.currentUserId, '', '').subscribe({
+            next: (res: any) => {
+                const conversationId = res?.metadata?.newConversation?.conv?.id;
+                if (conversationId) {
+                    this.navService.openConversation(conversationId);
+                }
+            },
+            error: (err: any) => {
+                console.error('Error creating conversation:', err);
             }
         });
     }

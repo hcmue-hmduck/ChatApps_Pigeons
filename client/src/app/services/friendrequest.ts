@@ -9,7 +9,7 @@ import { environment } from '../../environments/environment';
 export class FriendRequest {
     private apiUrl = `${environment.apiUrl}/home/friendrequests`;
 
-    constructor(private http: HttpClient) {}
+    constructor(private http: HttpClient) { }
 
     getFriendRequestsByUserId(receiverId: string): Observable<any> {
         return this.http.get(`${this.apiUrl}/${receiverId}`);
