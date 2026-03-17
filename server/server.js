@@ -11,6 +11,7 @@ const models = require('./src/models/index'); // Khởi tạo tất cả associa
 const fs = require('fs');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
+const passport = require('./src/configs/passportConfig.js')
 
 const http = require('http');
 const https = require('https');
@@ -71,6 +72,9 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+app.use(passport.initialize())
+
 
 // Browsers often auto-request favicon; return no-content instead of triggering 404 logs.
 app.get('/favicon.ico', (req, res) => {

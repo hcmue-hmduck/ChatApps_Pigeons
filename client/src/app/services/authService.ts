@@ -29,7 +29,7 @@ export class AuthService {
     userService = inject(User);
     httpClient = inject(HttpClient);
 
-    async setUserInfor(userId: string) {
+    async setUserInfo(userId: string) {
         try {
             const { metadata } = await firstValueFrom(this.userService.getUserById(userId));
             const { id, full_name, avatar_url, role, email } = metadata.userInfor;
@@ -45,11 +45,6 @@ export class AuthService {
             console.log('Lỗi setUserInfor:::');
             throw error;
         }
-    }
-
-    async setUserInfo({ id = '', name = '', avatarUrl = '', role = '', email = '' }) {
-        this.user.set({ id, name, avatarUrl, role, email });
-        console.log('Đã setUserInfor: ', { id, name, avatarUrl, role, email });
     }
 
     getUserId() {
@@ -74,5 +69,9 @@ export class AuthService {
 
     refreshToken(): Observable<any> {
         return this.httpClient.post(`${this.apiUrl}/refresh-token`, {})
+    }
+
+    googleLogin(): Observable<any> {
+        return this.httpClient.get(`${this.apiUrl}/google`)
     }
 }

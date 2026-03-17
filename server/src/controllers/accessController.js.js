@@ -1,6 +1,9 @@
 const accessService = require('../services/accessService.js');
 const SuccessResponse = require('../core/successResponse.js');
 const { setCookieTokens, clearCookieTokens } = require('../utils/authUtil.js');
+const {
+    app: { frontendUrl },
+} = require('../configs/index.js');
 
 class AccessController {
     // [POST] /access/signup
@@ -16,13 +19,21 @@ class AccessController {
 
     // [POST] /access/login
     async login(req, res, next) {
-        const results = await accessService.login(req.body);
+        const results = await accessService.login(req.user);
         const { accessToken, refreshToken } = results.tokens;
         setCookieTokens(res, accessToken, refreshToken);
         return new SuccessResponse({
             message: 'login successfully',
             metadata: results.user,
         }).send(res);
+    }
+
+    // [POST] /access/[social]
+    async loginSocial(req, res, next) {
+        const results = await accessService.login(req.user);
+        const { accessToken, refreshToken } = results.tokens;
+        setCookieTokens(res, accessToken, refreshToken);
+        return res.redirect(`${frontendUrl}/conversations/${results.user.id}`);
     }
 
     // [POST] /access/logout

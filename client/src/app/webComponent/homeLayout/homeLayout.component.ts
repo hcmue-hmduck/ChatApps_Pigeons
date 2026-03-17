@@ -10,8 +10,9 @@ import {
     ɵInternalFormsSharedModule,
 } from '@angular/forms';
 import { Router } from '@angular/router';
-import { AuthService } from '../../services/authService';
+import { environment } from '../../../environments/environment';
 import { LoginPayload, SignupPayload } from '../../models/authData';
+import { AuthService } from '../../services/authService';
 
 @Component({
     selector: 'home-layout',
@@ -24,12 +25,13 @@ export class HomeLayoutComponent implements OnInit {
     private authService = inject(AuthService);
     private router = inject(Router);
     protected readonly title = signal('Home');
-    protected isLogin = signal(false);
+    protected isLogin = signal(true);
     private fb = inject(FormBuilder).nonNullable;
     protected loginSubmitted = false;
     protected signupSubmitted = false;
     protected loginErrorMessage = signal('');
     protected signupErrorMessage = signal('');
+    protected apiUrl = `${environment.apiUrl}/access`;
 
     formSignup = this.fb.group(
         {
@@ -100,7 +102,10 @@ export class HomeLayoutComponent implements OnInit {
         const payload = this.formLogin.value;
         this.authService.login(payload as LoginPayload).subscribe({
             next: (res) => {
-                void this.handleAuthSuccess(res);
+                const { id } = res?.metadata;
+                if (!id) this.router.navigate(['/']);
+
+                this.router.navigate(['/conversations', id]);
             },
             error: (error) => {
                 console.error(error.error);
@@ -122,7 +127,10 @@ export class HomeLayoutComponent implements OnInit {
         const payload = this.formSignup.value;
         this.authService.signup(payload as SignupPayload).subscribe({
             next: (res) => {
-                void this.handleAuthSuccess(res);
+                const { id } = res?.metadata;
+                if (!id) this.router.navigate(['/']);
+
+                this.router.navigate(['/conversations', id]);
             },
             error: (error) => {
                 console.error(error.error);
@@ -132,18 +140,6 @@ export class HomeLayoutComponent implements OnInit {
                 else this.signupErrorMessage.set('Đăng ký thất bại');
             },
         });
-    }
-
-    private async handleAuthSuccess(res: any): Promise<void> {
-        const { id, role, full_name, avatar_url, email } = res?.metadata;
-        if (!id) {
-            await this.router.navigate(['/home']);
-            return;
-        }
-
-        this.authService.setUserInfo({ id, role, name: full_name, avatarUrl: avatar_url, email });
-
-        await this.router.navigate(['/conversations', id]);
     }
 
     protected shouldShowError(form: FormGroup, controlName: string, submitted: boolean): boolean {

@@ -1,7 +1,7 @@
 const userService = require('./usersService.js');
 const redisService = require('./redisService.js');
-const { BadRequestError, ConflictResqueseError, UnauthorizedError } = require('../core/errorResponse.js');
-const { hashPassword, createKey, signJWT, createHashString, comparePassword } = require('../utils/authUtil.js');
+const { BadRequestError, ConflictResqueseError } = require('../core/errorResponse.js');
+const { hashPassword, createKey, signJWT } = require('../utils/authUtil.js');
 const crypto = require('crypto');
 
 class AccessService {
@@ -19,20 +19,32 @@ class AccessService {
         const tokens = await this.#createSession(id, role);
 
         return {
-            user: { id, role, full_name, avatar_url,email },
+            user: { id, role, full_name, avatar_url, email },
             tokens,
         };
     }
 
-    async login({ email, password }) {
-        if (!email || !password) throw new BadRequestError('missing parameters');
-        const foundUser = await userService.getUserByEmail(email);
-        if (!foundUser) throw new UnauthorizedError('invalid email or password');
+    // async login({ email, password }) {
+    //     if (!email || !password) throw new BadRequestError('missing parameters');
+    //     const foundUser = await userService.getUserByEmail(email);
+    //     if (!foundUser) throw new UnauthorizedError('invalid email or password');
 
-        const isMatch = await comparePassword(password, foundUser.password_hash);
-        if (!isMatch) throw new UnauthorizedError('invalid email or password');
+    //     const isMatch = await comparePassword(password, foundUser.password_hash);
+    //     if (!isMatch) throw new UnauthorizedError('invalid email or password');
 
-        const { id, role, full_name, avatar_url } = foundUser;
+    //     const { id, role, full_name, avatar_url } = foundUser;
+    //     const tokens = await this.#createSession(id, role);
+
+    //     return {
+    //         user: { id, role, full_name, avatar_url, email },
+    //         tokens,
+    //     };
+    // }
+
+    async login(user) {
+        if (!user) throw new BadRequestError('missing parameters');
+
+        const { id, role, full_name, avatar_url, email } = user;
         const tokens = await this.#createSession(id, role);
 
         return {

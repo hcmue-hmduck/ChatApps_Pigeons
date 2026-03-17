@@ -178,7 +178,7 @@
                                 class="auth-tab"
                                 [class.active]="isLogin()"
                                 [class.inactive]="!isLogin()"
-                                (click)="goToLogin({isScroll: false})"
+                                (click)="goToLogin({ isScroll: false })"
                             >
                                 Log In
                             </button>
@@ -186,7 +186,7 @@
                                 class="auth-tab"
                                 [class.active]="!isLogin()"
                                 [class.inactive]="isLogin()"
-                                (click)="goToSignup({isScroll: false})"
+                                (click)="goToSignup({ isScroll: false })"
                             >
                                 Register
                             </button>
@@ -401,11 +401,13 @@
                         <div class="external-auth">
                             <p class="external-label">External Protocols</p>
                             <div class="external-grid">
-                                <button class="glass-card btn-external">Google</button>
-                                <button class="glass-card btn-external">
+                                <a class="glass-card btn-external" [href]="apiUrl + '/google'"
+                                    >Google</a
+                                >
+                                <a class="glass-card btn-external" [href]="apiUrl + '/github'">
                                     <i class="bi bi-github" style="font-size: 1rem"></i>
                                     GitHub
-                                </button>
+                                </a>
                             </div>
                         </div>
                     </div>

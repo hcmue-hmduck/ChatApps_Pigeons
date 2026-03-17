@@ -81,7 +81,7 @@ export class CallLayoutComponent implements OnInit {
                 inviterAvatarUrl,
                 callId,
             } = event.data;
-            await this.authService.setUserInfor(userId);
+            await this.authService.setUserInfo(userId);
             this.socketService.emit('joinConversation', conversationId);
 
             const mode = this.activatedRoute.snapshot.queryParamMap.get('mode');
