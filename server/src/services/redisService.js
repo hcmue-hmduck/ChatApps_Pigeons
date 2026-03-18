@@ -69,6 +69,23 @@ class RedisService {
         const key = `auth:session:${userId}:${sid}`;
         return await redis.hgetall(key);
     }
+
+    async setOTP(email, otp) {
+        if (!email || !otp) throw new BadRequestError('missing parameters');
+        const key = `auth:otp:${email}`;
+        return await redis.set(key, otp, 'EX', 60 * 5);
+    }
+
+    async getOTP(email) {
+        if (!email) throw new BadRequestError('missing parameters');
+        const key = `auth:otp:${email}`;
+        return await redis.get(key);
+    }
+
+    async deleteOTP(email) {
+        const key = `auth:otp:${email}`;
+        return (await redis.del(key)) > 0;
+    }
 }
 
 module.exports = new RedisService();

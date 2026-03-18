@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import {
     AbstractControl,
     FormBuilder,
@@ -31,6 +31,19 @@ export class HomeLayoutComponent implements OnInit {
     protected signupSubmitted = false;
     protected loginErrorMessage = signal('');
     protected signupErrorMessage = signal('');
+    protected showVerifyModal = signal(false);
+    protected verifyEmail = signal('');
+    protected verifyName = signal('');
+    protected verifyCode = signal<string[]>(['', '', '', '', '', '']);
+    protected verifyErrorMessage = signal('');
+    protected isResendingOtp = signal(false);
+    protected isAuthenticating = signal(false);
+    protected countdown = signal(0);
+    protected showLoginPassword = signal(false);
+    protected showSignupPassword = signal(false);
+    protected showSignupConfirmPassword = signal(false);
+    private countdownIntervalId?: ReturnType<typeof setInterval>;
+    private signupUserId = '';
     protected apiUrl = `${environment.apiUrl}/access`;
 
     formSignup = this.fb.group(
@@ -68,6 +81,10 @@ export class HomeLayoutComponent implements OnInit {
 
     ngOnInit() {}
 
+    ngOnDestroy() {
+        this.clearCountdown();
+    }
+
     goToLogin({ isScroll = true } = {}) {
         this.isLogin.set(true);
         this.loginSubmitted = false;
@@ -81,6 +98,7 @@ export class HomeLayoutComponent implements OnInit {
         this.signupSubmitted = false;
         this.signupErrorMessage.set('');
         this.formSignup.reset();
+        this.closeVerifyModal();
         if (isScroll) this.scrollToAuth();
     }
 
@@ -99,6 +117,7 @@ export class HomeLayoutComponent implements OnInit {
             this.formLogin.markAllAsTouched();
             return;
         }
+
         const payload = this.formLogin.value;
         this.authService.login(payload as LoginPayload).subscribe({
             next: (res) => {
@@ -124,22 +143,202 @@ export class HomeLayoutComponent implements OnInit {
             this.formSignup.markAllAsTouched();
             return;
         }
-        const payload = this.formSignup.value;
-        this.authService.signup(payload as SignupPayload).subscribe({
-            next: (res) => {
-                const { id } = res?.metadata;
-                if (!id) this.router.navigate(['/']);
 
-                this.router.navigate(['/conversations', id]);
+        const payload = this.formSignup.value;
+        const currentCountdown = this.countdown();
+
+        // Nếu countdown còn > 0, chỉ mở modal không gửi OTP
+        if (currentCountdown > 0) {
+            this.verifyEmail.set(payload.email!);
+            this.verifyName.set(payload.full_name!);
+            this.openVerifyModal();
+            return;
+        }
+
+        // Countdown = 0, gửi OTP mới
+        this.isAuthenticating.set(true);
+        this.authService.requestSignupOTP({ 
+            email: payload.email!, 
+            name: payload.full_name! 
+        }).subscribe({
+            next: () => {
+                this.isAuthenticating.set(false);
+                this.verifyEmail.set(payload.email!);
+                this.verifyName.set(payload.full_name!);
+                this.openVerifyModal();
+                this.startCountdown(59);
+            },
+            error: (error) => {
+                this.isAuthenticating.set(false);
+                console.error(error.error);
+                if (error.status === 409) {
+                    this.signupErrorMessage.set('Email đăng ký đã tồn tại');
+                } else {
+                    this.signupErrorMessage.set('Không thể gửi mã xác thực, vui lòng thử lại');
+                }
+            }
+        });
+    }
+
+    protected openVerifyModal() {
+        this.showVerifyModal.set(true);
+        this.verifyErrorMessage.set('');
+        this.verifyCode.set(['', '', '', '', '', '']);
+
+        // Focus vào ô nhập OTP đầu tiên sau khi modal mở
+        setTimeout(() => {
+            const firstInput = document.getElementById('verify-digit-0') as HTMLInputElement | null;
+            firstInput?.focus();
+        }, 100);
+    }
+
+    protected closeVerifyModal() {
+        this.showVerifyModal.set(false);
+        this.verifyErrorMessage.set('');
+        this.verifyCode.set(['', '', '', '', '', '']);
+    }
+
+    protected handleModalBackdropClick(event: MouseEvent) {
+        const target = event.target as HTMLElement;
+        if (target.classList.contains('verify-modal-overlay')) {
+            this.closeVerifyModal();
+        }
+    }
+
+    protected onCodeInput(index: number, event: Event) {
+        const input = event.target as HTMLInputElement;
+        const raw = input.value.replace(/\D/g, '');
+        const digit = raw.slice(-1);
+        const current = [...this.verifyCode()];
+        current[index] = digit;
+        this.verifyCode.set(current);
+        input.value = digit;
+
+        if (digit && index < 5) {
+            const next = document.getElementById(`verify-digit-${index + 1}`) as
+                | HTMLInputElement
+                | null;
+            next?.focus();
+            next?.select();
+        }
+
+        // Tự động xác thực khi nhập đủ 6 số
+        if (current.every(d => d !== '')) {
+            this.authenticateCode();
+        }
+    }
+
+    protected onCodeKeydown(index: number, event: KeyboardEvent) {
+        const input = event.target as HTMLInputElement;
+        if (event.key === 'Backspace' && !input.value && index > 0) {
+            const prev = document.getElementById(`verify-digit-${index - 1}`) as
+                | HTMLInputElement
+                | null;
+            prev?.focus();
+            prev?.select();
+        }
+    }
+
+    protected sendOtp() {
+        const email = this.verifyEmail();
+        const name = this.verifyName() || 'Cyber Operative';
+        if (!email || this.isResendingOtp() || this.countdown() > 0) {
+            return;
+        }
+
+        this.isResendingOtp.set(true);
+        this.verifyErrorMessage.set('');
+        this.authService.requestSignupOTP({ email, name }).subscribe({
+            next: () => {
+                this.startCountdown(59);
+                this.isResendingOtp.set(false);
             },
             error: (error) => {
                 console.error(error.error);
-
-                if (error.statusText === 'Conflict')
-                    this.signupErrorMessage.set('Email đăng ký đã tồn tại');
-                else this.signupErrorMessage.set('Đăng ký thất bại');
+                this.verifyErrorMessage.set('Không thể gửi mã xác thực, vui lòng thử lại');
+                this.isResendingOtp.set(false);
             },
         });
+    }
+
+    protected authenticateCode() {
+        if (this.isAuthenticating()) {
+            return;
+        }
+
+        const otp = this.verifyCode().join('');
+        if (otp.length < 6) {
+            this.verifyErrorMessage.set('Vui lòng nhập đủ 6 chữ số');
+            return;
+        }
+
+        const email = this.verifyEmail();
+        const signupPayload = this.formSignup.value;
+
+        this.isAuthenticating.set(true);
+        this.verifyErrorMessage.set('');
+
+        // Step 1: Verify OTP
+        this.authService.verifySignupOTP({ email, otp }).subscribe({
+            next: (res) => {
+                // Step 2: OTP valid -> Call Signup
+                this.authService.signup(signupPayload as SignupPayload).subscribe({
+                    next: (signupRes) => {
+                        const { id } = signupRes?.metadata;
+                        this.isAuthenticating.set(false);
+                        this.closeVerifyModal();
+                        if (!id) {
+                            this.router.navigate(['/']);
+                        } else {
+                            this.router.navigate(['/conversations', id]);
+                        }
+                    },
+                    error: (signupError) => {
+                        this.isAuthenticating.set(false);
+                        console.error(signupError.error);
+                        this.verifyErrorMessage.set('Đăng ký thất bại, vui lòng thử lại sau');
+                    }
+                });
+            },
+            error: (verifyError) => {
+                this.isAuthenticating.set(false);
+                console.error(verifyError.error);
+                this.verifyErrorMessage.set('Mã xác thực không chính xác hoặc đã hết hạn');
+                // Optional: Clear code on error
+                this.verifyCode.set(['', '', '', '', '', '']);
+                const firstInput = document.getElementById('verify-digit-0') as HTMLInputElement | null;
+                firstInput?.focus();
+            }
+        });
+    }
+
+    protected getCountdownDisplay(): string {
+        const value = this.countdown();
+        const mins = Math.floor(value / 60)
+            .toString()
+            .padStart(2, '0');
+        const secs = (value % 60).toString().padStart(2, '0');
+        return `${mins}:${secs}`;
+    }
+
+    private startCountdown(seconds: number) {
+        this.clearCountdown();
+        this.countdown.set(seconds);
+        this.countdownIntervalId = setInterval(() => {
+            const current = this.countdown();
+            if (current <= 0) {
+                this.clearCountdown();
+                return;
+            }
+            this.countdown.set(current - 1);
+        }, 1000);
+    }
+
+    private clearCountdown() {
+        if (this.countdownIntervalId) {
+            clearInterval(this.countdownIntervalId);
+            this.countdownIntervalId = undefined;
+        }
     }
 
     protected shouldShowError(form: FormGroup, controlName: string, submitted: boolean): boolean {

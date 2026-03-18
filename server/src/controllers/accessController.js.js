@@ -58,6 +58,26 @@ class AccessController {
             metadata: results,
         }).send(res);
     }
+
+    // [POST] /access/otp/send-signup
+    async requestSignupOTP(req, res, next) {
+        const { email, name } = req.body;
+
+        return new SuccessResponse({
+            message: 'send otp successfully',
+            metadata: await accessService.requestSignupOTP({ email, name }),
+        }).send(res);
+    }
+
+    // [POST] /access/otp/verify-signup
+    async verifySignupOTP(req, res, next) {
+        const { email, otp } = req.body;
+
+        return new SuccessResponse({
+            message: 'verify otp successfully',
+            metadata: await accessService.verifySignupOTP({ email, otp }),
+        }).send(res);
+    }
 }
 
 module.exports = new AccessController();

@@ -1,7 +1,7 @@
 const { Op } = require('sequelize');
 const usersModel = require('../models/usersModel');
 const { comparePassword } = require('../utils/authUtil.js');
-const {BadRequestError, UnauthorizedError} = require('../core/errorResponse.js')
+const { BadRequestError, UnauthorizedError } = require('../core/errorResponse.js');
 
 class UsersService {
     // Lấy users theo điều kiện filter
@@ -33,7 +33,7 @@ class UsersService {
     }
 
     async getUserByEmailAndPassword(email, password) {
-        console.log(email, password)
+        console.log(email, password);
         if (!email || !password) throw new BadRequestError('missing parameters');
 
         const foundUser = await this.getUserByEmail(email);
@@ -60,6 +60,7 @@ class UsersService {
             foundUser = await this.createUser({
                 email,
                 full_name: displayName,
+                is_email_verified: true,
             });
 
         return foundUser;

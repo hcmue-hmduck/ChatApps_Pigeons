@@ -235,10 +235,17 @@
                                                 )
                                             "
                                             placeholder="••••••••••••"
-                                            type="password"
+                                            [type]="showLoginPassword() ? 'text' : 'password'"
                                             autocomplete="current-password"
                                             formControlName="password"
                                         />
+                                        <button 
+                                            type="button" 
+                                            class="password-toggle"
+                                            (click)="showLoginPassword.set(!showLoginPassword())"
+                                        >
+                                            <i class="bi" [class.bi-eye-slash]="!showLoginPassword()" [class.bi-eye]="showLoginPassword()"></i>
+                                        </button>
                                     </div>
                                     @if (shouldShowError(formLogin, 'password', loginSubmitted)) {
                                         <p class="field-error">
@@ -340,10 +347,17 @@
                                                 )
                                             "
                                             placeholder="••••••••••••"
-                                            type="password"
+                                            [type]="showSignupPassword() ? 'text' : 'password'"
                                             autocomplete="new-password"
                                             formControlName="password"
                                         />
+                                        <button 
+                                            type="button" 
+                                            class="password-toggle"
+                                            (click)="showSignupPassword.set(!showSignupPassword())"
+                                        >
+                                            <i class="bi" [class.bi-eye-slash]="!showSignupPassword()" [class.bi-eye]="showSignupPassword()"></i>
+                                        </button>
                                     </div>
                                     @if (shouldShowError(formSignup, 'password', signupSubmitted)) {
                                         <p class="field-error">
@@ -366,10 +380,17 @@
                                                 )
                                             "
                                             placeholder="••••••••••••"
-                                            type="password"
+                                            [type]="showSignupConfirmPassword() ? 'text' : 'password'"
                                             autocomplete="new-password"
                                             formControlName="confirm_password"
                                         />
+                                        <button 
+                                            type="button" 
+                                            class="password-toggle"
+                                            (click)="showSignupConfirmPassword.set(!showSignupConfirmPassword())"
+                                        >
+                                            <i class="bi" [class.bi-eye-slash]="!showSignupConfirmPassword()" [class.bi-eye]="showSignupConfirmPassword()"></i>
+                                        </button>
                                     </div>
                                     @if (
                                         shouldShowError(
@@ -401,9 +422,10 @@
                         <div class="external-auth">
                             <p class="external-label">External Protocols</p>
                             <div class="external-grid">
-                                <a class="glass-card btn-external" [href]="apiUrl + '/google'"
-                                    >Google</a
-                                >
+                                <a class="glass-card btn-external" [href]="apiUrl + '/google'">
+                                    <i class="bi bi-google" style="font-size: 1rem"></i>
+                                    Google
+                                </a>
                                 <a class="glass-card btn-external" [href]="apiUrl + '/github'">
                                     <i class="bi bi-github" style="font-size: 1rem"></i>
                                     GitHub
@@ -450,4 +472,83 @@
             © 2024 CyberChat Encrypted Systems • Built for a secure tomorrow
         </div>
     </footer>
+
+    @if (showVerifyModal()) {
+        <div class="verify-modal-overlay" (click)="handleModalBackdropClick($event)">
+            <div class="verify-modal glass-panel" role="dialog" aria-modal="true">
+                <header class="verify-header">
+                    <div class="verify-brand">
+                        <div class="verify-brand-icon">
+                            <i class="bi bi-shield-lock" style="font-size: 1rem"></i>
+                        </div>
+                        <h2>CyberChat</h2>
+                    </div>
+                    <div class="verify-chip">
+                        <i class="bi bi-shield-lock-fill" style="font-size: 0.625rem"></i>
+                        <span>SECURE PROTOCOL</span>
+                    </div>
+                </header>
+
+                <div class="verify-content">
+                    <div class="verify-title-wrap">
+                        <h3>VERIFY <span>EMAIL</span></h3>
+                        <p>Identity check</p>
+                        <p class="verify-subtitle">
+                            Enter the 6-digit code sent to {{ verifyEmail() || 'your email' }}
+                        </p>
+                    </div>
+
+                    <div class="verify-code-grid">
+                        @for (digit of verifyCode(); track $index) {
+                            <input
+                                [id]="'verify-digit-' + $index"
+                                class="verify-code-input"
+                                type="text"
+                                inputmode="numeric"
+                                autocomplete="one-time-code"
+                                maxlength="1"
+                                [value]="digit"
+                                [placeholder]="digit ? '' : '·'"
+                                (input)="onCodeInput($index, $event)"
+                                (keydown)="onCodeKeydown($index, $event)"
+                            />
+                        }
+                    </div>
+
+                    <div class="verify-meta-row">
+                        <div class="verify-meta-block">
+                            <span class="verify-meta-label">Status</span>
+                            <div class="verify-status-live">
+                                <span class="verify-ping"></span>
+                                <span>{{ isAuthenticating() ? 'VALIDATING...' : 'AWAITING SYNC' }}</span>
+                            </div>
+                        </div>
+                        <div class="verify-divider"></div>
+                        <div class="verify-meta-block">
+                            <span class="verify-meta-label">Re-syncing in</span>
+                            <span class="verify-countdown">{{ getCountdownDisplay() }}</span>
+                        </div>
+                    </div>
+
+                    <button
+                        class="verify-resend"
+                        type="button"
+                        [disabled]="isResendingOtp() || countdown() > 0"
+                        (click)="sendOtp()"
+                    >
+                        <i class="bi bi-arrow-clockwise" style="font-size: 0.75rem"></i>
+                        Request New Token
+                    </button>
+
+                    @if (verifyErrorMessage() !== '') {
+                        <p class="field-error" style="text-align: center">{{ verifyErrorMessage() }}</p>
+                    }
+                </div>
+
+                <button class="verify-close" type="button" (click)="closeVerifyModal()" aria-label="Close">
+                    <i class="bi bi-x-lg" style="font-size: 0.875rem"></i>
+                </button>
+            </div>
+        </div>
+    }
 </div>

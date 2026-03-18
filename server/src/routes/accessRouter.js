@@ -9,15 +9,13 @@ const {
 const router = express.Router();
 
 router.post('/signup', accessController.signup);
-// router.post('/login', accessController.login);
+router.post('/otp/send-signup', accessController.requestSignupOTP);
+router.post('/otp/verify-signup', accessController.verifySignupOTP);
+
 router.post('/refresh-token', refreshAuthentication, accessController.refreshToken);
 router.post('/logout', authentication, accessController.logout);
 
-router.post(
-    '/login',
-    passport.authenticate('local', { session: false }),
-    accessController.login,
-);
+router.post('/login', passport.authenticate('local', { session: false }), accessController.login);
 
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 router.get(

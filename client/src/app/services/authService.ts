@@ -13,6 +13,11 @@ interface UserInfor {
     role: string;
 }
 
+interface SendOtpPayload {
+    email: string;
+    name: string;
+}
+
 @Injectable({
     providedIn: 'root',
 })
@@ -63,15 +68,23 @@ export class AuthService {
         return this.httpClient.post(`${this.apiUrl}/signup`, payload);
     }
 
+    requestSignupOTP(payload: SendOtpPayload): Observable<any> {
+        return this.httpClient.post(`${this.apiUrl}/otp/send-signup`, payload);
+    }
+
+    verifySignupOTP(payload: { email: string; otp: string }): Observable<any> {
+        return this.httpClient.post(`${this.apiUrl}/otp/verify-signup`, payload);
+    }
+
     logout(): Observable<any> {
         return this.httpClient.post(`${this.apiUrl}/logout`, {});
     }
 
     refreshToken(): Observable<any> {
-        return this.httpClient.post(`${this.apiUrl}/refresh-token`, {})
+        return this.httpClient.post(`${this.apiUrl}/refresh-token`, {});
     }
 
     googleLogin(): Observable<any> {
-        return this.httpClient.get(`${this.apiUrl}/google`)
+        return this.httpClient.get(`${this.apiUrl}/google`);
     }
 }
