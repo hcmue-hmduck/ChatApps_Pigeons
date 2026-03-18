@@ -343,6 +343,17 @@ class HomeController {
         }).send(res);
     }
 
+    async createNewPost(req, res) {
+        const newPostData = req.body;
+        const newPost = await homeService.createNewPost(newPostData);
+        new SuccessResponse({
+            message: 'Create new post successfully',
+            metadata: {
+                newPost: newPost,
+            },
+        }).send(res);
+    }
+
     async getLinkPreview(req, res) {
         const linkPreview = await homeService.getLinkPreview(req.query.url);
         new SuccessResponse({
@@ -375,7 +386,19 @@ class HomeController {
         }).send(res);
     }
 
-    async putParticipant (req, res) {
+    async createParticipant(req, res) {
+        const convID = req.params.convID;
+        const participantData = req.body;
+        const newParticipant = await homeService.createParticipant(convID, participantData);
+        new SuccessResponse({
+            message: 'Create participant successfully',
+            metadata: {
+                newParticipant: newParticipant,
+            },
+        }).send(res);
+    }
+
+    async putParticipant(req, res) {
         const id = req.params.id;
         const participantData = req.body;
         const updatedParticipant = await homeService.updateParticipant(id, participantData);
@@ -383,6 +406,44 @@ class HomeController {
             message: 'Update participant successfully',
             metadata: {
                 updatedParticipant: updatedParticipant,
+            },
+        }).send(res);
+    }
+
+    async getHomeMessagesMedia(req, res) {
+        const convID = req.params.convID;
+        const mediaMesssage = await homeService.getHomeMessagesMedia(convID);
+        new SuccessResponse({
+            message: 'Get home messages media successfully',
+            metadata: {
+                mediaMesssage: mediaMesssage,
+            },
+        }).send(res);
+    }
+
+    async getAllEmojis(req, res) {
+        try {
+            const emojis = await homeService.getAllEmojis();
+            new SuccessResponse({
+                message: 'Get all emojis successfully',
+                metadata: {
+                    emojis: emojis,
+                },
+            }).send(res);
+        } catch (error) {
+            console.error('Error in getAllEmojis:', error);
+            res.status(500).json({ message: 'Internal Server Error', error: error.message });
+        }
+    }
+
+    async createComment(req, res) {
+        const postID = req.params.postID;
+        const commentData = req.body;
+        const newComment = await homeService.createComment(postID, commentData);
+        new SuccessResponse({
+            message: 'Create comment successfully',
+            metadata: {
+                newComment: newComment,
             },
         }).send(res);
     }

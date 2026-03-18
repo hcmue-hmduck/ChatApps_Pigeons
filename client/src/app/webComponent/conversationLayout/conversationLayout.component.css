@@ -480,13 +480,8 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background: rgba(10, 20, 30, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 242, 255, 0.2);
-  border-radius: 16px;
+  background: transparent;
   height: 100%;
-  box-shadow: 0 0 20px rgba(0, 242, 255, 0.1);
   transition: flex 0.3s ease;
 }
 
@@ -508,6 +503,7 @@ app-conversation-infor-layout {
     opacity: 0;
     transform: translateX(20px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -665,4 +661,3 @@ app-conversation-infor-layout {
 }
 
 /* pf-* styles live in userinforModel.component.css */
-

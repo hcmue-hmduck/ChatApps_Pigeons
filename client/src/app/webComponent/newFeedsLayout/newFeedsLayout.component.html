@@ -5,12 +5,12 @@
                 <div class="brand-icon">
                     <i class="bi bi-lightning-charge-fill"></i>
                 </div>
-                <h1 class="brand-title">CyberChat</h1>
+                <h1 class="brand-title">ChatPigeons</h1>
             </div>
 
             <div class="search-wrap">
                 <i class="bi bi-search search-icon"></i>
-                <input class="search-input" placeholder="Search for nodes or tags..." type="text">
+                <input class="search-input" placeholder="Nhập từ khoá để tìm kiếm..." type="text">
             </div>
 
             <div class="header-actions">
@@ -28,25 +28,112 @@
             <main class="feed-main custom-scrollbar">
                 <section class="cyber-glass create-post">
                     <div class="create-grid">
-                        <img [src]="currentUser.avatar" alt="Avatar" class="avatar-m" referrerPolicy="no-referrer">
-
                         <div class="create-body">
-                            <textarea class="creator-textarea" placeholder="What's happening in the mesh?"></textarea>
+                            <div class="create-header-info">
+                                <img [src]="currentUser.avatar" alt="Avatar" class="avatar-s create-avatar" referrerPolicy="no-referrer">
+                                <div class="create-header-meta">
+                                    <div class="create-meta-top-row">
+                                        <span class="user-name">{{ userInfor?.full_name || 'User' }}</span>
+                                        <div class="privacy-selector">
+                                            <select class="cyber-select-small" [(ngModel)]="newPostPrivacy">
+                                                <option value="public">🌐 Công khai</option>
+                                                <option value="friends">👥 Bạn bè</option>
+                                                <option value="only_me">🔒 Chỉ mình tôi</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="create-meta-bottom-row">
+                                        <div class="location-selector-wrap">
+                                            <select class="cyber-select-subtle" [(ngModel)]="newPostLocation">
+                                                <option value="">📍 Location...</option>
+                                                @for (p of provinces(); track p.code) {
+                                                <option [value]="p.name">📍 {{ p.name }}</option>
+                                                }
+                                            </select>
+                                        </div>
+                                        <div class="feeling-selector-wrap">
+                                            <select class="cyber-select-subtle" [(ngModel)]="newPostFeeling">
+                                                <option value="">😊 Feeling...</option>
+                                                @for (e of emojis(); track e.id) {
+                                                <option [value]="e.unicode_char + ' ' + e.name">{{ e.unicode_char }} {{ e.name }}</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <textarea class="creator-textarea" placeholder="Bạn đang nghĩ gì ?"
+                                [(ngModel)]="newPostContent"></textarea>
+
+                            @if (selectedMediaPreviews.length > 0 || selectedAttachmentFiles.length > 0) {
+                            <div class="create-preview-list">
+                                @if (selectedMediaPreviews.length > 0) {
+                                <div class="create-preview-card image-preview-card">
+                                    <div class="media-grid creator-media-preview" [ngClass]="getCreatorMediaLayoutClass()">
+                                        @for (media of selectedMediaPreviews.slice(0, 4); track media.id) {
+                                        <div class="media-item" (click)="openCreatorMediaPreview($index)">
+                                            @if (media.media_type === 'image') {
+                                            <img [src]="media.media_url" alt="Selected image preview" class="media-content" referrerPolicy="no-referrer">
+                                            } @else if (media.media_type === 'video') {
+                                            <video [src]="media.media_url" class="media-content" controls muted preload="metadata"></video>
+                                            }
+
+                                            <button class="preview-remove-btn preview-remove-btn-float" type="button" (click)="removeSelectedMedia(media.id)" aria-label="Remove selected media">
+                                                <i class="bi bi-x-lg"></i>
+                                            </button>
+
+                                            @if (selectedMediaPreviews.length > 4 && $index === 3) {
+                                            <div class="overlay-count">
+                                                <span>+{{ selectedMediaPreviews.length - 3 }}</span>
+                                            </div>
+                                            }
+                                        </div>
+                                        }
+                                    </div>
+
+                                    <button class="preview-clear-all-btn" type="button" (click)="clearSelectedMedia()">Xóa tất cả ảnh/video</button>
+                                </div>
+                                }
+
+                                @if (selectedAttachmentFiles.length > 0) {
+                                @for (file of selectedAttachmentFiles; track file.name + '-' + file.lastModified; let i = $index) {
+                                <div class="create-preview-card file-preview-card">
+                                    <div class="preview-file-icon">
+                                        <i class="bi" [class]="'bi ' + getAttachmentIconClass(file)"></i>
+                                    </div>
+                                    <div class="preview-meta">
+                                        <p class="preview-title">{{ file.name }}</p>
+                                        <p class="preview-subtitle">{{ formatFileSize(file.size) }} • {{ getFileExtension(file.name) }}</p>
+                                    </div>
+                                    <button class="preview-remove-btn" type="button" (click)="removeSelectedAttachment(i)" aria-label="Remove selected file">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </div>
+                                }
+
+                                <button class="preview-clear-all-btn" type="button" (click)="clearSelectedAttachments()">Xóa tất cả tệp</button>
+                                }
+                            </div>
+                            }
 
                             <div class="create-footer">
                                 <div class="create-actions">
-                                    <button class="icon-btn subtle" type="button" title="Add image">
+                                    <button class="icon-btn subtle" type="button" title="Add image" (click)="triggerImagePicker(imageInput)">
                                         <i class="bi bi-image"></i>
                                     </button>
-                                    <button class="icon-btn subtle" type="button" title="Attach file">
+                                    <button class="icon-btn subtle" type="button" title="Attach file" (click)="triggerAttachmentPicker(attachmentInput)">
                                         <i class="bi bi-paperclip"></i>
                                     </button>
-                                    <button class="icon-btn subtle" type="button" title="Add location">
-                                        <i class="bi bi-geo-alt"></i>
-                                    </button>
+                                    <input id="create-post-image-input" #imageInput type="file" accept="image/*,video/*" multiple class="hidden-file-input" (change)="onMediaSelected($event)">
+                                    <input id="create-post-attachment-input" #attachmentInput type="file" multiple class="hidden-file-input" (change)="onAttachmentSelected($event)">
                                 </div>
 
-                                <button class="btn-primary" type="button">Post</button>
+                                <button class="btn-primary" type="button" (click)="handlePostFeed()"
+                                    [disabled]="(!newPostContent.trim() && selectedMediaPreviews.length === 0 && selectedAttachmentFiles.length === 0) || loading()">
+                                    {{ loading() ? 'Posting...' : 'Post' }}
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -70,9 +157,10 @@
                         <div class="post-head">
                             <div class="author-row">
                                 <div class="author-avatar-wrap">
-                                    <img [src]="getPostAuthorAvatar(post)" [alt]="getPostAuthorName(post)" class="avatar-m"
-                                        referrerPolicy="no-referrer">
-                                    <span class="status-dot" [class.online]="post?.user_infor?.status === 'online'"></span>
+                                    <img [src]="getPostAuthorAvatar(post)" [alt]="getPostAuthorName(post)"
+                                        class="avatar-m" referrerPolicy="no-referrer">
+                                    <span class="status-dot"
+                                        [class.online]="post?.user_infor?.status === 'online'"></span>
                                 </div>
 
                                 <div class="author-meta">
@@ -91,11 +179,11 @@
 
                         <p class="post-text">
                             @for (word of parseContent(post.content); track $index) {
-                            @if (word.startsWith('#')) {
-                            <span class="text-primary">{{ word }} </span>
-                            } @else {
-                            {{ word }}
-                            }
+                                @if (word.startsWith('#')) {
+                                <span class="text-primary">{{ word }} </span>
+                                } @else {
+                                    {{ word }}
+                                }
                             }
                         </p>
 
@@ -141,7 +229,8 @@
                                     <i class="bi bi-folder2-open"></i>
                                 </div>
                                 <div>
-                                    <div class="attachment-title">{{ post.attachment?.name || post.attachment_name }}</div>
+                                    <div class="attachment-title">{{ post.attachment?.name || post.attachment_name }}
+                                    </div>
                                     <div class="attachment-meta">
                                         {{ post.attachment?.size || post.attachment_size || 'Unknown size' }} • {{
                                         post.attachment?.type || post.attachment_type || 'ARCHIVED' }}
@@ -175,11 +264,10 @@
                         <div class="comments-section">
                             <div class="comments-list">
                                 @for (comment of getRootComments(post); track comment.id) {
-                                <div class="comment-group" [class.has-replies]="getReplies(post, comment.id).length > 0">
+                                <div class="comment-wrapper">
                                     <div class="comment-item">
                                         <div class="comment-avatar-wrap">
-                                            <img [src]="getCommentAuthorAvatar(comment)" [alt]="getCommentAuthorName(comment)"
-                                                class="avatar-s" referrerPolicy="no-referrer">
+                                            <img [src]="getCommentAuthorAvatar(comment)" [alt]="getCommentAuthorName(comment)" class="avatar-s" referrerPolicy="no-referrer">
                                         </div>
 
                                         <div class="comment-content-wrap">
@@ -190,32 +278,59 @@
 
                                             <div class="comment-footer">
                                                 <button class="comment-action-btn" type="button">Like</button>
-                                                <button class="comment-action-btn" type="button">Reply</button>
+                                                <button class="comment-action-btn" type="button" (click)="toggleReply(comment.id)">Reply</button>
                                                 <span class="comment-time">{{ formatPostTime(comment.created_at) }}</span>
                                             </div>
                                         </div>
                                     </div>
 
                                     @let replies = getReplies(post, comment.id);
-                                    @if (replies.length > 0) {
-                                    <div class="replies-list">
+                                    @if (replies.length > 0 || replyToCommentId === comment.id) {
+                                    <div class="replies-container">
                                         @for (reply of replies; track reply.id) {
-                                        <div class="comment-item reply-item">
-                                            <div class="comment-avatar-wrap">
-                                                <img [src]="getCommentAuthorAvatar(reply)" [alt]="getCommentAuthorName(reply)"
-                                                    class="avatar-xs" referrerPolicy="no-referrer">
-                                            </div>
-
-                                            <div class="comment-content-wrap">
-                                                <div class="comment-bubble">
-                                                    <span class="comment-author">{{ getCommentAuthorName(reply) }}</span>
-                                                    <p class="comment-text">{{ reply.content }}</p>
+                                        <div class="comment-wrapper">
+                                            <div class="comment-item">
+                                                <div class="comment-avatar-wrap">
+                                                    <img [src]="getCommentAuthorAvatar(reply)" [alt]="getCommentAuthorName(reply)" class="avatar-xs" referrerPolicy="no-referrer">
                                                 </div>
 
-                                                <div class="comment-footer">
-                                                    <button class="comment-action-btn" type="button">Like</button>
-                                                    <button class="comment-action-btn" type="button">Reply</button>
-                                                    <span class="comment-time">{{ formatPostTime(reply.created_at) }}</span>
+                                                <div class="comment-content-wrap">
+                                                    <div class="comment-bubble">
+                                                        <span class="comment-author">{{ getCommentAuthorName(reply) }}</span>
+                                                        <p class="comment-text">{{ reply.content }}</p>
+                                                    </div>
+
+                                                    <div class="comment-footer">
+                                                        <button class="comment-action-btn" type="button">Like</button>
+                                                        <button class="comment-action-btn" type="button" (click)="toggleReply(reply.id)">Reply</button>
+                                                        <span class="comment-time">{{ formatPostTime(reply.created_at) }}</span>
+                                                    </div>
+
+                                                    @if (replyToCommentId === reply.id) {
+                                                    <div class="comment-input-wrap">
+                                                        <img [src]="currentUser.avatar" alt="My avatar" class="avatar-xs" referrerPolicy="no-referrer">
+                                                        <div class="input-pill">
+                                                            <input type="text" placeholder="Replying..." class="comment-input" [(ngModel)]="newReplyContent" (keyup.enter)="sendComment(post.id, reply.id)">
+                                                            <button class="send-btn" type="button" (click)="sendComment(post.id, reply.id)">
+                                                                <i class="bi bi-send"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                        }
+
+                                        @if (replyToCommentId === comment.id) {
+                                        <div class="comment-wrapper">
+                                            <div class="comment-input-wrap">
+                                                <img [src]="currentUser.avatar" alt="My avatar" class="avatar-xs" referrerPolicy="no-referrer">
+                                                <div class="input-pill">
+                                                    <input type="text" placeholder="Replying..." class="comment-input" [(ngModel)]="newReplyContent" (keyup.enter)="sendComment(post.id, comment.id)">
+                                                    <button class="send-btn" type="button" (click)="sendComment(post.id, comment.id)">
+                                                        <i class="bi bi-send"></i>
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
@@ -229,8 +344,8 @@
                             <div class="comment-input-wrap">
                                 <img [src]="currentUser.avatar" alt="My avatar" class="avatar-s" referrerPolicy="no-referrer">
                                 <div class="input-pill">
-                                    <input type="text" placeholder="Transmit a thought..." class="comment-input">
-                                    <button class="send-btn" type="button">
+                                    <input type="text" placeholder="Transmit a thought..." class="comment-input" [(ngModel)]="newCommentContent">
+                                    <button class="send-btn" type="button" (click)="sendComment(post.id)">
                                         <i class="bi bi-send"></i>
                                     </button>
                                 </div>
@@ -278,7 +393,8 @@
                         <div class="friend-item" [class.offline]="node.status !== 'online' && node.status !== 'active'">
                             <div class="friend-left">
                                 <div class="friend-avatar-wrap">
-                                    <img [src]="node.avatar" [alt]="node.name" class="avatar-s" referrerPolicy="no-referrer">
+                                    <img [src]="node.avatar" [alt]="node.name" class="avatar-s"
+                                        referrerPolicy="no-referrer">
                                     <span class="status-dot"
                                         [class.online]="node.status === 'online' || node.status === 'active'"></span>
                                 </div>

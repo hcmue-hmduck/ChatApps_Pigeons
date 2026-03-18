@@ -10,6 +10,7 @@ const postsService = require('./postsService');
 const commentsService = require('./commentsService');
 const postmediaService = require('./postmediaService');
 const linkpreviewService = require('./linkpreviewService');
+const emojisService = require('./emojisService');
 
 const { sequelize } = require('../configs/sequelizeConfig.js');
 const callService = require('./callService.js');
@@ -367,6 +368,7 @@ class HomeService {
         let resolvedFileSize = file_size;
         let resolvedThumbnailUrl = thumbnail_url;
         let resolvedDuration = duration;
+        let has_link = false;
 
         // Tận dụng các cột media hiện có để lưu link preview cho message text
         if (message_type === 'text' && content) {
@@ -377,6 +379,7 @@ class HomeService {
                 const needFetchPreview = !resolvedFileName || !resolvedThumbnailUrl;
                 if (needFetchPreview) {
                     const preview = await this.getLinkPreview(detectedUrl);
+                    has_link = true;
                     if (preview) {
                         resolvedFileUrl = resolvedFileUrl || preview.url || detectedUrl;
                         resolvedFileName = resolvedFileName || preview.title || preview.siteName || null;
@@ -394,6 +397,7 @@ class HomeService {
                 content,
                 parent_message_id,
                 message_type,
+                has_link: has_link,
                 file_url: resolvedFileUrl,
                 file_name: resolvedFileName,
                 file_size: resolvedFileSize,
@@ -680,6 +684,10 @@ class HomeService {
         }));
     }
 
+    async createNewPost(newPostData) {
+        return await postsService.createPost(newPostData);
+    }
+
     async searchUsers(keyword) {
         return await usersService.getAllUsers({ full_name: keyword });
     }
@@ -693,8 +701,24 @@ class HomeService {
         }
     }
 
+    async createParticipant(convID, participantData) {
+        return await participantsService.createParticipant(convID, participantData);
+    }
+
     async updateParticipant(id, participantData) {
         return await participantsService.updateParticipant(id, participantData);
+    }
+
+    async getHomeMessagesMedia(convID) {
+        return await messagesService.getHomeMessagesMedia(convID);
+    }
+
+    async getAllEmojis() {
+        return await emojisService.getAllEmojis();
+    }
+
+    async createComment(postID, commentData) {
+        return await commentsService.createComment(postID, commentData);
     }
 }
 

@@ -117,6 +117,27 @@ class MessagesService {
         return result;
     }
 
+    async getHomeMessagesMedia(convID) {
+        const media = await messagesModel.findAll({
+            where: {
+                conversation_id: convID,
+                [Op.or]: [
+                    { message_type: { [Op.in]: ['image', 'video', 'file'] } },
+                    {
+                        message_type: 'text',
+                        has_link: true
+                    }
+                ]
+            },
+            order: [['created_at', 'DESC']]
+        });
+        return {
+            video: media.filter(m => m.message_type === 'video'),
+            image: media.filter(m => m.message_type === 'image'),
+            file: media.filter(m => m.message_type === 'file'),
+            link: media.filter(m => m.message_type === 'text'),
+        }
+    }
 }
 
 module.exports = new MessagesService();

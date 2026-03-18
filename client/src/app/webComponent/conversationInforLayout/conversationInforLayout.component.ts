@@ -1,15 +1,19 @@
-import { Component, signal, Output, EventEmitter, Input } from '@angular/core';
+import { Component, signal, Output, EventEmitter, Input, OnInit, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GroupAvatarLayoutComponent } from '../groupAvatarLayout/groupAvatarLayout.component';
+import { Media } from '../../services/media';
+import { Friend } from '../../services/friend';
+import { Participant } from '../../services/participant';
+import { FormsModule } from '@angular/forms';
 
 @Component({
     selector: 'app-conversation-infor-layout',
     standalone: true,
-    imports: [CommonModule, GroupAvatarLayoutComponent],
+    imports: [CommonModule, GroupAvatarLayoutComponent, FormsModule],
     templateUrl: './conversationInforLayout.component.html',
     styleUrls: ['./conversationInforLayout.component.css']
 })
-export class ConversationInforLayoutComponent {
+export class ConversationInforLayoutComponent implements OnInit {
     @Output() closePanel = new EventEmitter<void>();
 
     @Input() userInfor: any;
@@ -21,6 +25,67 @@ export class ConversationInforLayoutComponent {
     @Input() tick60s = 0;
     @Input() tick3600s = 0;
 
+    imgData = signal<any[]>([]);
+    vidData = signal<any[]>([]);
+    fileData = signal<any[]>([]);
+    linkData = signal<any[]>([]);
+
+    // Image viewer modal state
+    isImageViewerOpen = false;
+    currentViewerIndex = 0;
+    viewerZoom = 1;
+    readonly viewerZoomMin = 0.5;
+    readonly viewerZoomMax = 3;
+    readonly viewerZoomStep = 0.2;
+    viewerPanX = 0;
+    viewerPanY = 0;
+    isViewerDragging = false;
+    private viewerDragStartX = 0;
+    private viewerDragStartY = 0;
+    private viewerPanStartX = 0;
+    private viewerPanStartY = 0;
+
+    // Video viewer modal state
+    isVideoViewerOpen = false;
+    currentVideoIndex = 0;
+
+    // Add Member modal state
+    isAddMemberModalOpen = false;
+    friends: any[] = [];
+    selectedFriendIds = new Set<string>();
+    addMemberSearchQuery = '';
+    isAddingMembers = false;
+    addMemberError = '';
+
+    constructor(
+        private media: Media,
+        private friendService: Friend,
+        private participantService: Participant
+    ) { }
+
+    ngOnInit(): void {
+        this.loadMediaData();
+    }
+
+    loadMediaData() {
+        const convID = this.conversationInfor?.conversation_id;
+        if (!convID) return;
+
+        this.media.getMedia(convID).subscribe((res: any) => {
+            const data = res?.metadata?.mediaMesssage;
+            if (data) {
+                this.imgData.set(data.image || []);
+                this.vidData.set(data.video || []);
+                this.fileData.set(data.file || []);
+                this.linkData.set(data.link || []);
+            }
+            console.log('Image Data: ', this.imgData());
+            console.log('Video Data: ', this.vidData());
+            console.log('File Data: ', this.fileData());
+            console.log('Link Data: ', this.linkData());
+        });
+    }
+
     get participants(): any[] {
         return this.conversationInfor?.participants || [];
     }
@@ -31,18 +96,18 @@ export class ConversationInforLayoutComponent {
 
     get otherParticipant(): any | null {
         if (this.isGroupConversation) return null;
-        return this.conversationInfor?.other_participant || this.participants[0] || null;
+        return this.conversationInfor?.participants.find((p: any) => p.user_id !== this.currentUserId)
     }
 
     get profileName(): string {
-        return this.conversationInfor?.title || this.otherParticipant?.full_name || 'Cuoc tro chuyen';
+        return this.conversationInfor?.title || this.otherParticipant?.full_name || 'Cuộc trò chuyện';
     }
 
     get profileAvatar(): string {
         if (this.isGroupConversation) {
-            return this.conversationAvatar || this.conversationInfor?.avatar_url || 'https://picsum.photos/seed/group/200/200';
+            return this.conversationAvatar || this.conversationInfor?.avatar_url;
         }
-        return this.otherParticipant?.avatar_url || 'https://picsum.photos/seed/user/200/200';
+        return this.otherParticipant?.avatar_url;
     }
 
     // Backward-compatible getters for any stale template cache still referencing old names
@@ -60,82 +125,16 @@ export class ConversationInforLayoutComponent {
         return Math.max(0, this.participants.length - 3);
     }
 
-    get profileStatus(): string {
-        if (this.isGroupConversation) {
-            const onlineCount = this.participants.filter((p: any) => {
-                if (!p?.user_id || p.user_id === this.currentUserId) return false;
-                return this.userPresence.get(p.user_id)?.status === 'online';
-            }).length;
-            return `${this.participants.length} thành viên ${onlineCount > 0 ? ` • ${onlineCount} đang online` : ''}`;
-        }
-
-        const targetUserId = this.otherParticipant?.user_id;
-        if (!targetUserId) return 'Không có trạng thái';
-
-        const presence = this.userPresence.get(targetUserId);
-        if (presence?.status === 'online') return 'Đang hoạt động';
-
-        const lastOnline = this.getUserLastOnlineAt(this.otherParticipant);
-        if (!lastOnline) return 'Offline';
-
-        return `Hoạt động ${this.relativeTimeFromNow(lastOnline)} trước`;
-    }
-
-    get chatBio(): string {
-        return this.otherParticipant?.bio || this.userInfor?.bio || 'Chưa cập nhật mô tả';
-    }
-
-    get chatUsername(): string {
-        const source = this.otherParticipant?.full_name || this.profileName;
-        return `@${(source || 'chat').toLowerCase().replace(/\s+/g, '_')}`;
-    }
-
-    get recentMedia(): Array<{ id: number; url: string }> {
-        return this.conversationInfor?.recentMedia || [];
-    }
-
-    get recentFiles(): Array<{ name: string; size: string; date: string; type: string }> {
-        return this.conversationInfor?.recentFiles || [];
-    }
-
-    private getUserLastOnlineAt(participant: any): string | Date {
-        if (!participant?.user_id) return '';
-        const presence = this.userPresence.get(participant.user_id);
-        if (presence?.last_online_at) {
-            return presence.last_online_at;
-        }
-        return participant.last_online_at;
-    }
-
-    private relativeTimeFromNow(dateInput: string | Date): string {
-        const timeToCompare = typeof dateInput === 'string'
-            ? new Date(dateInput.endsWith('Z') || dateInput.length !== 23 ? dateInput : dateInput.replace(' ', 'T') + 'Z').getTime()
-            : dateInput.getTime();
-        if (Number.isNaN(timeToCompare)) return 'gần đây';
-
-        const diff = Math.max(0, Math.floor((Date.now() - timeToCompare) / 1000));
-        if (diff <= 60) {
-            const _ = this.tick1s;
-            return 'vừa xong';
-        }
-        if (diff < 3600) {
-            const _ = this.tick60s;
-            return `${Math.floor(diff / 60)} phút`;
-        }
-        const _ = this.tick3600s;
-        if (diff < 86400) return `${Math.floor(diff / 3600)} giờ`;
-        if (diff < 604800) return `${Math.floor(diff / 86400)} ngày`;
-        if (diff < 2592000) return `${Math.floor(diff / 604800)} tuần`;
-        if (diff < 31536000) return `${Math.floor(diff / 2592000)} tháng`;
-        return `${Math.floor(diff / 31536000)} năm`;
-    }
 
     // Accordion States
     sections = signal({
         chatInfo: false,
         customization: false,
         members: false,
-        media: true,
+        image: true,
+        video: false,
+        file: false,
+        link: false,
         privacy: false
     });
 
@@ -144,6 +143,219 @@ export class ConversationInforLayoutComponent {
         this.sections.set({
             ...current,
             [sectionName]: !current[sectionName]
+        });
+    }
+
+    // --- Image Viewer Methods ---
+
+    openGallery(index: number) {
+        if (this.imgData().length === 0) return;
+        this.currentViewerIndex = index;
+        this.resetViewerState();
+        this.isImageViewerOpen = true;
+    }
+
+    private resetViewerState() {
+        this.viewerZoom = 1;
+        this.viewerPanX = 0;
+        this.viewerPanY = 0;
+        this.isViewerDragging = false;
+    }
+
+    closeImageViewer() {
+        this.isImageViewerOpen = false;
+        this.resetViewerState();
+    }
+
+    get viewerImageUrl(): string {
+        return this.imgData()[this.currentViewerIndex]?.file_url || '';
+    }
+
+    nextImage(event?: Event) {
+        event?.stopPropagation();
+        if (this.currentViewerIndex < this.imgData().length - 1) {
+            this.currentViewerIndex++;
+            this.resetViewerState();
+        }
+    }
+
+    prevImage(event?: Event) {
+        event?.stopPropagation();
+        if (this.currentViewerIndex > 0) {
+            this.currentViewerIndex--;
+            this.resetViewerState();
+        }
+    }
+
+    zoomInViewer(event?: Event) {
+        event?.stopPropagation();
+        this.viewerZoom = Math.min(
+            this.viewerZoomMax,
+            Number((this.viewerZoom + this.viewerZoomStep).toFixed(2)),
+        );
+    }
+
+    zoomOutViewer(event?: Event) {
+        event?.stopPropagation();
+        this.viewerZoom = Math.max(
+            this.viewerZoomMin,
+            Number((this.viewerZoom - this.viewerZoomStep).toFixed(2)),
+        );
+
+        if (this.viewerZoom <= 1) {
+            this.viewerPanX = 0;
+            this.viewerPanY = 0;
+            this.isViewerDragging = false;
+        }
+    }
+
+    resetViewerZoom(event?: Event) {
+        event?.stopPropagation();
+        this.resetViewerState();
+    }
+
+    onViewerPointerDown(event: PointerEvent) {
+        if (this.viewerZoom <= 1) return;
+
+        event.stopPropagation();
+        event.preventDefault();
+        this.isViewerDragging = true;
+        this.viewerDragStartX = event.clientX;
+        this.viewerDragStartY = event.clientY;
+        this.viewerPanStartX = this.viewerPanX;
+        this.viewerPanStartY = this.viewerPanY;
+    }
+
+    onViewerPointerMove(event: PointerEvent) {
+        if (!this.isViewerDragging || this.viewerZoom <= 1) return;
+
+        event.stopPropagation();
+        event.preventDefault();
+        const deltaX = event.clientX - this.viewerDragStartX;
+        const deltaY = event.clientY - this.viewerDragStartY;
+        this.viewerPanX = this.viewerPanStartX + deltaX;
+        this.viewerPanY = this.viewerPanStartY + deltaY;
+    }
+
+    onViewerPointerUp(event?: PointerEvent) {
+        event?.stopPropagation();
+        this.isViewerDragging = false;
+    }
+
+    // --- Video Viewer Methods ---
+
+    openVideoGallery(index: number) {
+        if (this.vidData().length === 0) return;
+        this.currentVideoIndex = index;
+        this.isVideoViewerOpen = true;
+    }
+
+    closeVideoViewer() {
+        this.isVideoViewerOpen = false;
+    }
+
+    get viewerVideoUrl(): string {
+        return this.vidData()[this.currentVideoIndex]?.file_url || '';
+    }
+
+    nextVideo(event?: Event) {
+        event?.stopPropagation();
+        if (this.currentVideoIndex < this.vidData().length - 1) {
+            this.currentVideoIndex++;
+        }
+    }
+
+    prevVideo(event?: Event) {
+        event?.stopPropagation();
+        if (this.currentVideoIndex > 0) {
+            this.currentVideoIndex--;
+        }
+    }
+
+    openLink(link: string) {
+        if (link) {
+            window.open(link, '_blank');
+        }
+    }
+
+    handleAddMember() {
+        this.openAddMemberModal();
+    }
+
+    openAddMemberModal() {
+        if (!this.currentUserId) return;
+
+        this.addMemberError = '';
+        this.friendService.getFriendByUserId(this.currentUserId).subscribe({
+            next: (res: any) => {
+                // Filter out users who are already participants
+                const currentParticipantIds = new Set(this.participants.map(p => p.user_id));
+                this.friends = (res?.metadata?.friends || []).filter((f: any) => !currentParticipantIds.has(f.friend_id));
+                this.isAddMemberModalOpen = true;
+            },
+            error: (err) => {
+                console.error('Error fetching friends:', err);
+                this.addMemberError = 'Không thể tải danh sách bạn bè.';
+                this.isAddMemberModalOpen = true;
+            }
+        });
+    }
+
+    closeAddMemberModal() {
+        this.isAddMemberModalOpen = false;
+        this.selectedFriendIds.clear();
+        this.addMemberSearchQuery = '';
+        this.addMemberError = '';
+    }
+
+    toggleFriendSelection(friendId: string, checked: boolean) {
+        if (checked) {
+            this.selectedFriendIds.add(friendId);
+        } else {
+            this.selectedFriendIds.delete(friendId);
+        }
+    }
+
+    get filteredFriends() {
+        if (!this.addMemberSearchQuery.trim()) return this.friends;
+        const query = this.addMemberSearchQuery.toLowerCase();
+        return this.friends.filter(f =>
+            f.full_name?.toLowerCase().includes(query) ||
+            f.email?.toLowerCase().includes(query)
+        );
+    }
+
+    submitAddMembers() {
+        if (this.selectedFriendIds.size === 0 || this.isAddingMembers) return;
+
+        const convID = this.conversationInfor?.conversation_id;
+        if (!convID) return;
+
+        this.isAddingMembers = true;
+        this.addMemberError = '';
+
+        const promises = Array.from(this.selectedFriendIds).map(userId => {
+            return new Promise((resolve, reject) => {
+                this.participantService.postParticipant({
+                    conversation_id: convID,
+                    user_id: userId,
+                    role: 'member'
+                }).subscribe({
+                    next: resolve,
+                    error: reject
+                });
+            });
+        });
+
+        Promise.all(promises).then(() => {
+            this.isAddingMembers = false;
+            this.closeAddMemberModal();
+            // Optionally reload conversation info to show new members
+            // For now, assume parent handles or websocket updates
+        }).catch(err => {
+            console.error('Error adding members:', err);
+            this.addMemberError = 'Gặp lỗi khi thêm thành viên.';
+            this.isAddingMembers = false;
         });
     }
 }

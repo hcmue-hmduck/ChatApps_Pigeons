@@ -560,15 +560,37 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
     }
 
     sendMessage(receiverId: string) {
-        this.conversationService.createConversation(receiverId, 'direct', '', '', this.currentUserId, '', '').subscribe({
+        this.conversationService.getConversations(this.currentUserId).subscribe({
             next: (res: any) => {
-                const conversationId = res?.metadata?.newConversation?.conv?.id;
-                if (conversationId) {
-                    this.navService.openConversation(conversationId);
+                const joinedConversations = res.metadata?.homeConversationData?.joinedConversations || [];
+                // Tìm cuộc trò chuyện direct đã tồn tại với receiverId
+                const existingConv = joinedConversations.find((conv: any) =>
+                    conv.type === 'direct' &&
+                    conv.participants.some((p: any) => p.user_id === receiverId)
+                );
+
+                if (existingConv) {
+                    this.navService.openConversation(existingConv.conversation_id);
+                } else {
+                    this.conversationService.createConversation(receiverId, 'direct', '', '', this.currentUserId, '', '').subscribe({
+                        next: (createRes: any) => {
+                            const newId = createRes?.metadata?.newConversation?.conv?.id;
+                            if (newId) {
+                                this.navService.openConversation(newId);
+                            }
+                        },
+                        error: (err: any) => console.error('Error creating conversation:', err)
+                    });
                 }
             },
             error: (err: any) => {
-                console.error('Error creating conversation:', err);
+                console.error('Error checking existing conversations:', err);
+                this.conversationService.createConversation(receiverId, 'direct', '', '', this.currentUserId, '', '').subscribe({
+                    next: (createRes: any) => {
+                        const newId = createRes?.metadata?.newConversation?.conv?.id;
+                        if (newId) this.navService.openConversation(newId);
+                    }
+                });
             }
         });
     }

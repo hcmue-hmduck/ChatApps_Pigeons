@@ -37,6 +37,13 @@ class CommentsService {
             throw error;
         }
     }
+
+    async createComment(postID, commentData) {
+        return await commentsModel.create({
+            post_id: postID,
+            ...commentData,
+        });
+    }
 }
 
 module.exports = new CommentsService();

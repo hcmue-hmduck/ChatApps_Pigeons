@@ -32,7 +32,6 @@ export class Messages {
             duration?: number;
         }
     ): Observable<any> {
-        // conversationId += "s";
         const body: any = { senderId, content, message_type, ...file_metadata };
         if (replyTo) body.parent_message_id = replyTo;
         return this.http.post(`${this.apiUrl}/${conversationId}`, body);

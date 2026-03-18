@@ -7,8 +7,8 @@
       <!-- Header Section -->
       <header class="main-header-row panel-header-row">
         <div class="header-text">
-          <h1>SOCIAL <span class="accent">HUB</span></h1>
-          <p>Manage your neural connections and active decryptors.</p>
+          <h1>KẾT NỐI <span class="accent">XÃ HỘI</span></h1>
+          <p>Quản lý các liên kết và kết nối bạn bè của bạn.</p>
         </div>
 
         <div class="tabs-row">
@@ -69,14 +69,14 @@
                           [(ngModel)]="searchKeyword"
                           (keyup.enter)="onSearch()"
                           class="search-input-field"
-                          placeholder="Search by name, username or user ID..."
+                          placeholder="Tìm kiếm theo tên, biệt danh hoặc ID..."
                         />
                         <button
                           class="search-submit-btn"
                           (click)="onSearch()"
                           [disabled]="isSearching()"
                         >
-                          <span *ngIf="!isSearching()">Search</span>
+                          <span *ngIf="!isSearching()">Tìm kiếm</span>
                           <div *ngIf="isSearching()" class="spinner-border spinner-border-sm" role="status"></div>
                         </button>
                       </div>  
@@ -86,10 +86,10 @@
                       <div class="results-header">
                         <h3 class="results-title">
                           <i class="bi bi-person-plus title-icon"></i>
-                          <span>Suggested People ({{ searchResults().length }})</span>
+                          <span>Gợi ý kết bạn ({{ searchResults().length }})</span>
                         </h3>
                         <button class="reset-search-btn" (click)="loadingData()">
-                          Reset Filter
+                          Xóa bộ lọc
                         </button>
                       </div>
 
@@ -104,10 +104,10 @@
 
                       <div *ngIf="!isSearching() && searchResults().length === 0" class="empty-results-state">
                         <i class="bi bi-person-x empty-state-icon"></i>
-                        <h4 class="empty-state-title">No users found</h4>
-                        <p class="empty-state-msg">Try searching for a different name or browse suggestions.</p>
+                        <h4 class="empty-state-title">Không tìm thấy người dùng</h4>
+                        <p class="empty-state-msg">Hãy thử tìm kiếm với tên khác hoặc xem các gợi ý.</p>
                         <button (click)="loadingData()" class="reset-search-btn">
-                          Reload Suggestions
+                          Tải lại gợi ý
                         </button>
                       </div>
 
@@ -131,7 +131,7 @@
                           <div class="profile-card-body">
                             <h4 class="user-full-name">{{ user.full_name }}</h4>
                             <p class="user-meta-info">
-                              {{ user.mutualFriends || 0 }} mutual friends
+                              {{ user.mutualFriends || 0 }} bạn chung
                             </p>
                           </div>
 
@@ -142,7 +142,7 @@
                               (click)="sendFriendRequest(user.id)"
                             >
                               <i class="bi bi-person-plus-fill"></i>
-                              Add Friend
+                              Thêm bạn bè
                             </button>
 
                             <button
@@ -151,7 +151,7 @@
                               disabled
                             >
                               <i class="bi bi-clock-history"></i>
-                              Request Sent
+                              Đã gửi yêu cầu
                             </button>
 
                             <button
@@ -159,7 +159,7 @@
                               class="btn-secondary-glass"
                             >
                               <i class="bi bi-chat-dots"></i>
-                              Message
+                              Nhắn tin
                             </button>
                           </div>
                         </div>
@@ -167,7 +167,7 @@
 
                       <div class="pagination-footer" *ngIf="searchResults().length > 0">
                         <button class="load-more-btn">
-                          Load More Suggestions
+                          Tải thêm gợi ý
                         </button>
                       </div>
                     </div>
@@ -186,7 +186,7 @@
             <!-- Empty -->
             <div class="empty-state" *ngIf="!loading && friends().length === 0">
               <i class="bi bi-people"></i>
-              <p>No neural connections found matching your query.</p>
+              <p>Không tìm thấy kết nối nào khớp với tìm kiếm của bạn.</p>
             </div>
 
             <!-- List -->
@@ -202,19 +202,19 @@
                     </div>
                     <div class="user-info">
                       <h3 (click)="viewProfile(friend.friend_id)" style="cursor: pointer;">{{ friend.full_name }}</h3>
-                      <p class="activity-text">ONLINE</p>
+                      <p class="activity-text">ĐANG HOẠT ĐỘNG</p>
                     </div>
                   </div>
 
                   <div class="actions-cell">
                     <button class="action-main-btn">
                       <i class="bi bi-chat-dots"></i>
-                      MESSAGE
+                      NHẮN TIN
                     </button>
-                    <button class="action-icon-btn" title="Remove Friend">
+                    <button class="action-icon-btn" title="Xóa bạn bè">
                       <i class="bi bi-person-dash"></i>
                     </button>
-                    <button class="action-icon-btn" (click)="blockUser(friend)" title="Block Connection">
+                    <button class="action-icon-btn" (click)="blockUser(friend)" title="Chặn kết nối">
                       <i class="bi bi-shield-slash"></i>
                     </button>
                   </div>
@@ -227,7 +227,7 @@
           <ng-container *ngIf="currentTab === 'friend_requests'">
             <div class="empty-state" *ngIf="!loading && friendRequests().length === 0">
               <i class="bi bi-person-plus"></i>
-              <p>No pending connection requests.</p>
+              <p>Hiện không có yêu cầu kết nối nào.</p>
             </div>
 
             <div class="requests-list" *ngIf="!loading && friendRequests().length > 0">
@@ -245,9 +245,9 @@
 
                 <div class="actions-cell">
                   <button class="action-main-btn" (click)="processFriendRequest(request.id, request.sender_id, 'accepted', request.note)">
-                    ACCEPT
+                    CHẤP NHẬN
                   </button>
-                  <button class="action-icon-btn" (click)="processFriendRequest(request.id, request.sender_id, 'rejected', request.note)" title="Reject Request">
+                  <button class="action-icon-btn" (click)="processFriendRequest(request.id, request.sender_id, 'rejected', request.note)" title="Từ chối yêu cầu">
                     <i class="bi bi-person-dash"></i>
                   </button>
                 </div>
@@ -259,7 +259,7 @@
           <ng-container *ngIf="currentTab === 'sent_requests'">
             <div class="empty-state" *ngIf="!loading && sentRequests().length === 0">
               <i class="bi bi-send-check"></i>
-              <p>No sent connection requests.</p>
+              <p>Bạn chưa gửi yêu cầu kết nối nào.</p>
             </div>
 
             <div class="requests-list" *ngIf="!loading && sentRequests().length > 0">
@@ -277,7 +277,7 @@
 
                 <div class="actions-cell">
                   <button class="action-main-btn danger" (click)="cancelSentRequest(request.id)">
-                    CANCEL
+                    HỦY BỎ
                   </button>
                 </div>
               </div>
@@ -288,7 +288,7 @@
           <ng-container *ngIf="currentTab === 'blocked'">
             <div class="empty-state" *ngIf="!loading && blockedUser().length === 0">
               <i class="bi bi-shield-slash"></i>
-              <p>Your blocked list is currently empty.</p>
+              <p>Danh sách chặn của bạn đang trống.</p>
             </div>
 
             <div class="blocked-list" *ngIf="!loading && blockedUser().length > 0">
@@ -306,7 +306,7 @@
 
                 <div class="actions-cell">
                   <button class="action-main-btn" (click)="unblockUser(user.block_id, user.full_name)">
-                    UNBLOCK
+                    BỎ CHẶN
                   </button>
                 </div>
               </div>
@@ -320,16 +320,16 @@
         <div class="footer-stats">
           <div class="stat-item">
             <span class="pulse-dot"></span>
-            <span class="stat-label-online">{{ friends().length }} ONLINE</span>
+            <span class="stat-label-online">{{ friends().length }} ĐANG HOẠT ĐỘNG</span>
           </div>
           <div class="stat-item total">
             <span class="stat-dot-gray"></span>
-            <span>TOTAL: {{ friends().length + blockedUser().length }}</span>
+            <span>TỔNG CỘNG: {{ friends().length + blockedUser().length }}</span>
           </div>
         </div>
         <div class="encryption-status">
           <i class="bi bi-shield-check"></i>
-          ENCRYPTED CONNECTION ACTIVE
+          KẾT NỐI ĐƯỢC MÃ HÓA
         </div>
       </footer>
     </div>

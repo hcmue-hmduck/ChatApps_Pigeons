@@ -13,4 +13,8 @@ export class Participant {
     putParticipant(participant: any): Observable<any> {
         return this.http.put(`${this.apiUrl}/${participant.id}`, participant);
     }
+
+    postParticipant(participantData: any): Observable<any> {
+        return this.http.post(`${this.apiUrl}/${participantData.conversation_id}`, participantData);
+    }
 }

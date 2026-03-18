@@ -8,7 +8,7 @@ import { environment } from '../../environments/environment';
 })
 export class Conversation {
     private apiUrl = `${environment.apiUrl}/home/conversation`;
-    constructor(private http: HttpClient) {}
+    constructor(private http: HttpClient) { }
 
     // Lấy tất cả conversations của users này
     getConversations(userId: string): Observable<any> {

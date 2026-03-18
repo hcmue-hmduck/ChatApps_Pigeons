@@ -62,6 +62,11 @@ const Message = sequelize.define('Message', {
         allowNull: true,
         field: 'call_id'
     },
+    has_link: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+        field: 'has_link'
+    },
     is_edited: {
         type: DataTypes.BOOLEAN,
         defaultValue: false,

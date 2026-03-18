@@ -1,7 +1,9 @@
-import { Component, Input, signal } from '@angular/core';
+import { Component, Input, signal, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Feeds } from "../../services/feeds";
+import { Emojis } from "../../services/emojis";
+import { Comment } from '../../services/comment';
 
 @Component({
     selector: 'new-feeds-layout',
@@ -10,8 +12,12 @@ import { Feeds } from "../../services/feeds";
     templateUrl: './newFeedsLayout.component.html',
     styleUrl: './newFeedsLayout.component.css'
 })
-export class NewFeedsLayoutComponent {
-    constructor(private feedsService: Feeds) { }
+export class NewFeedsLayoutComponent implements OnDestroy {
+    constructor(
+        private feedsService: Feeds,
+        private emojisService: Emojis,
+        private commentService: Comment
+    ) { }
 
     private _userInfor: any;
     @Input() set userInfor(value: any) {
@@ -27,6 +33,7 @@ export class NewFeedsLayoutComponent {
     }
 
     posts = signal<any[]>([]);
+    emojis = signal<any[]>([]);
     loading = signal(false);
     error = signal<string | null>(null);
     currentUser = {
@@ -57,6 +64,26 @@ export class NewFeedsLayoutComponent {
     ];
     expandedPosts = new Set<string>();
 
+    newPostContent = '';
+    newPostPrivacy = 'public';
+    newPostFeeling = '';
+    newPostLocation = '';
+    selectedMediaFiles: File[] = [];
+    selectedMediaPreviews: Array<{
+        id: string;
+        media_type: 'image' | 'video';
+        media_url: string;
+        width: number;
+        height: number;
+    }> = [];
+    selectedAttachmentFiles: File[] = [];
+    newCommentContent = '';
+    replyToCommentId: string | null = null;
+    newReplyContent = '';
+
+    // Metadata signals
+    provinces = signal<any[]>([]);
+
     // Lightbox State
     isLightboxOpen = false;
     selectedMediaPost: any = null;
@@ -64,6 +91,186 @@ export class NewFeedsLayoutComponent {
 
     ngOnInit() {
         this.loadFeeds();
+        this.loadMetadata();
+    }
+
+    ngOnDestroy() {
+        this.clearSelectedMedia(false);
+    }
+
+    triggerImagePicker(input: HTMLInputElement) {
+        input.click();
+    }
+
+    triggerAttachmentPicker(input: HTMLInputElement) {
+        input.click();
+    }
+
+    onMediaSelected(event: Event) {
+        const input = event.target as HTMLInputElement;
+        const files = Array.from(input.files || []);
+        if (!files.length) return;
+
+        const mediaFiles = files.filter(file => file.type.startsWith('image/') || file.type.startsWith('video/'));
+        if (!mediaFiles.length) {
+            input.value = '';
+            return;
+        }
+
+        for (const file of mediaFiles) {
+            const objectUrl = URL.createObjectURL(file);
+            const previewId = `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`;
+            const mediaType = file.type.startsWith('video/') ? 'video' : 'image';
+            const previewItem = {
+                id: previewId,
+                media_type: mediaType as 'image' | 'video',
+                media_url: objectUrl,
+                width: 1,
+                height: 1
+            };
+
+            this.selectedMediaFiles.push(file);
+            this.selectedMediaPreviews.push(previewItem);
+
+            if (mediaType === 'image') {
+                const img = new Image();
+                img.onload = () => {
+                    const target = this.selectedMediaPreviews.find(item => item.id === previewId);
+                    if (target) {
+                        target.width = img.naturalWidth || 1;
+                        target.height = img.naturalHeight || 1;
+                    }
+                };
+                img.src = objectUrl;
+            } else {
+                const video = document.createElement('video');
+                video.preload = 'metadata';
+                video.onloadedmetadata = () => {
+                    const target = this.selectedMediaPreviews.find(item => item.id === previewId);
+                    if (target) {
+                        target.width = video.videoWidth || 1;
+                        target.height = video.videoHeight || 1;
+                    }
+                };
+                video.src = objectUrl;
+            }
+        }
+
+        input.value = '';
+    }
+
+    onAttachmentSelected(event: Event) {
+        const input = event.target as HTMLInputElement;
+        const files = Array.from(input.files || []);
+        if (!files.length) return;
+
+        const nonMediaFiles = files.filter(file => !(file.type.startsWith('image/') || file.type.startsWith('video/')));
+        if (!nonMediaFiles.length) {
+            input.value = '';
+            return;
+        }
+
+        for (const file of nonMediaFiles) {
+            const existed = this.selectedAttachmentFiles.some(
+                item => item.name === file.name && item.size === file.size && item.lastModified === file.lastModified
+            );
+            if (!existed) {
+                this.selectedAttachmentFiles.push(file);
+            }
+        }
+
+        input.value = '';
+    }
+
+    removeSelectedMedia(previewId: string) {
+        const index = this.selectedMediaPreviews.findIndex(item => item.id === previewId);
+        if (index === -1) return;
+
+        URL.revokeObjectURL(this.selectedMediaPreviews[index].media_url);
+        this.selectedMediaPreviews.splice(index, 1);
+        this.selectedMediaFiles.splice(index, 1);
+    }
+
+    clearSelectedMedia(resetInput = true) {
+        for (const preview of this.selectedMediaPreviews) {
+            URL.revokeObjectURL(preview.media_url);
+        }
+        this.selectedMediaFiles = [];
+        this.selectedMediaPreviews = [];
+
+        if (resetInput) {
+            const imageInput = document.getElementById('create-post-image-input') as HTMLInputElement | null;
+            if (imageInput) imageInput.value = '';
+        }
+    }
+
+    removeSelectedAttachment(index: number) {
+        if (index < 0 || index >= this.selectedAttachmentFiles.length) return;
+        this.selectedAttachmentFiles.splice(index, 1);
+    }
+
+    clearSelectedAttachments() {
+        this.selectedAttachmentFiles = [];
+        const attachmentInput = document.getElementById('create-post-attachment-input') as HTMLInputElement | null;
+        if (attachmentInput) attachmentInput.value = '';
+    }
+
+    formatFileSize(bytes: number): string {
+        if (!bytes && bytes !== 0) return 'Unknown size';
+        if (bytes < 1024) return `${bytes} B`;
+        const kb = bytes / 1024;
+        if (kb < 1024) return `${kb.toFixed(1)} KB`;
+        const mb = kb / 1024;
+        if (mb < 1024) return `${mb.toFixed(1)} MB`;
+        const gb = mb / 1024;
+        return `${gb.toFixed(1)} GB`;
+    }
+
+    getFileExtension(filename: string): string {
+        const parts = filename.split('.');
+        if (parts.length < 2) return 'FILE';
+        return parts[parts.length - 1].toUpperCase();
+    }
+
+    getAttachmentIconClass(file: File): string {
+        const type = file.type || '';
+        if (type.startsWith('image/')) return 'bi-file-earmark-image';
+        if (type.startsWith('video/')) return 'bi-file-earmark-play';
+        if (type.includes('pdf')) return 'bi-file-earmark-pdf';
+        if (type.includes('zip') || type.includes('rar') || type.includes('compressed')) return 'bi-file-earmark-zip';
+        if (type.includes('word') || type.includes('document')) return 'bi-file-earmark-word';
+        if (type.includes('sheet') || type.includes('excel') || type.includes('spreadsheet')) return 'bi-file-earmark-spreadsheet';
+        return 'bi-file-earmark';
+    }
+
+    getCreatorMediaLayoutClass(): string {
+        return this.getMediaLayoutClass({ post_media: this.selectedMediaPreviews });
+    }
+
+    openCreatorMediaPreview(index: number) {
+        if (!this.selectedMediaPreviews.length) return;
+        this.openLightbox({ post_media: this.selectedMediaPreviews }, index);
+    }
+
+    loadMetadata() {
+        // Load Emojis
+        this.emojisService.getEmojis().subscribe({
+            next: (data) => {
+                const emojisList = data.metadata?.emojis || [];
+                this.emojis.set(emojisList);
+                console.log('Emojis loaded:', emojisList);
+            },
+            error: (err) => console.error('Error loading emojis:', err)
+        });
+
+        // Load Provinces
+        this.feedsService.getProvinces().subscribe({
+            next: (data) => {
+                this.provinces.set(data);
+                console.log('Provinces loaded:', data.length);
+            },
+            error: (err) => console.error('Error loading provinces:', err)
+        });
     }
 
     toggleComments(postId: string) {
@@ -85,6 +292,7 @@ export class NewFeedsLayoutComponent {
         this.feedsService.getFeeds().subscribe({
             next: (data) => {
                 this.posts.set(data.metadata.homePosts || []);
+                console.log('Feeds loaded successfully:', data.metadata.homePosts);
                 this.loading.set(false);
             },
             error: (err) => {
@@ -108,11 +316,11 @@ export class NewFeedsLayoutComponent {
     }
 
     getCommentAuthorName(comment: any): string {
-        return comment?.user_infor?.full_name || 'Anonymous';
+        return comment?.user_infor?.full_name;
     }
 
     getCommentAuthorAvatar(comment: any): string {
-        return comment?.user_infor?.avatar_url || 'https://ui-avatars.com/api/?name=User&background=06131f&color=00f2ff';
+        return comment?.user_infor?.avatar_url;
     }
 
     getPostImage(post: any): string | null {
@@ -227,4 +435,100 @@ export class NewFeedsLayoutComponent {
         }
     }
 
+    handlePostFeed() {
+        const content = this.newPostContent.trim();
+        if (!content && this.selectedMediaFiles.length === 0 && this.selectedAttachmentFiles.length === 0) return;
+
+        const userId = this._userInfor?.id;
+        if (!userId) {
+            console.error('User information not available');
+            return;
+        }
+
+        console.log('Post feed: ', content, userId, this.newPostPrivacy, this.newPostFeeling);
+
+        const postData = {
+            user_id: userId,
+            content: content,
+            privacy: this.newPostPrivacy,
+            feeling: this.newPostFeeling,
+            location: this.newPostLocation,
+            attachment_name: this.selectedAttachmentFiles[0]?.name || null,
+            attachment_size: this.selectedAttachmentFiles[0] ? this.formatFileSize(this.selectedAttachmentFiles[0].size) : null,
+            attachment_type: this.selectedAttachmentFiles[0]?.type || null,
+            attachment_names: this.selectedAttachmentFiles.map(file => file.name),
+            attachment_count: this.selectedAttachmentFiles.length,
+            media_preview_names: this.selectedMediaFiles.map(file => file.name),
+            media_preview_count: this.selectedMediaFiles.length
+        };
+
+        this.loading.set(true);
+        this.feedsService.createNewPost(postData).subscribe({
+            next: (data) => {
+                data.metadata.newPost.user_infor = this._userInfor;
+                console.log('Post created successfully:', data.metadata.newPost);
+                this.loading.set(false);
+                this.posts.update(prev => [data.metadata.newPost, ...prev]);
+
+                // Reset state
+                this.newPostContent = '';
+                this.newPostFeeling = '';
+                this.newPostPrivacy = 'public';
+                this.newPostLocation = '';
+                this.clearSelectedMedia();
+                this.clearSelectedAttachments();
+            },
+            error: (err) => {
+                console.error('Error creating post:', err);
+                this.loading.set(false);
+            }
+        });
+    }
+
+    sendComment(postId: string, parentCommentId: string | null = null) {
+        const content = parentCommentId ? this.newReplyContent.trim() : this.newCommentContent.trim();
+        if (!content) return;
+
+        const commentData = {
+            content: content,
+            user_id: this._userInfor?.id,
+            post_id: postId,
+            parent_comment_id: parentCommentId || null
+        };
+
+        console.log('Sending comment:', commentData);
+
+        this.commentService.createComment(postId, commentData).subscribe({
+            next: (data: any) => {
+                console.log('Comment created successfully:', data.metadata.newComment);
+                data.metadata.newComment.user_infor = this._userInfor;
+                
+                this.posts.update(prev => prev.map(post => {
+                    if (post.id === postId) {
+                        return { ...post, comments: [...post.comments, data.metadata.newComment] };
+                    }
+                    return post;
+                }));
+
+                if (parentCommentId) {
+                    this.newReplyContent = '';
+                    this.replyToCommentId = null;
+                } else {
+                    this.newCommentContent = '';
+                }
+            },
+            error: (err: any) => {
+                console.error('Error creating comment:', err);
+            }
+        });
+    }
+
+    toggleReply(commentId: string) {
+        if (this.replyToCommentId === commentId) {
+            this.replyToCommentId = null;
+        } else {
+            this.replyToCommentId = commentId;
+            this.newReplyContent = '';
+        }
+    }
 }

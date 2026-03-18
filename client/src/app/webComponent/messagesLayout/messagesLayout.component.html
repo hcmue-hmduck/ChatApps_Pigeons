@@ -1,14 +1,4 @@
-<div class="messages-wrapper">
-
-    <!-- No conversation loaded -->
-    @if (!isLoaded) {
-    <div class="chat-empty">
-        <i class="bi bi-chat-text"></i>
-        <p>Không có tin nhắn nào.</p>
-    </div>
-    }
-
-    <!-- ============================================================
+<!-- ============================================================
         HEADER
         ============================================================ -->
     <div class="chat-header">
@@ -80,80 +70,44 @@
         PINNED MESSAGE BAR
         ============================================================ -->
     @if (pinnedMessages() && pinnedMessages().length > 0) {
-    <!-- Bar hiển thị tin nhắn ghim đầu tiên (click để scroll) -->
-    @if (!showPinnedDropdown) {
-    <div class="pinned-bar" (click)="scrollToMessage(pinnedMessages()[pinnedMessages().length - 1].message_id)">
+    <div class="pinned-bar-wrap">
+        <!-- Bar hiển thị tin nhắn ghim đầu tiên (click để scroll) -->
+        @if (!showPinnedDropdown) {
+        <div class="pinned-bar" (click)="scrollToMessage(pinnedMessages()[pinnedMessages().length - 1].message_id)">
 
-        <div class="pinned-item-icon">
-            <i class="bi bi-pin-angle"></i>
-        </div>
-        <div class="pinned-item-body">
-            <div class="pinned-item-title">Tin nhắn</div>
-            <div class="pinned-item-preview">
-                <span class="pinned-item-sender">{{ pinnedMessages()[pinnedMessages().length - 1].sender_name || 'Ai đó'
-                    }}: </span>
-                <span class="pinned-item-text">{{ pinnedMessages()[pinnedMessages().length - 1].content }}</span>
-            </div>
-        </div>
-
-        <!-- Nút +X ghim nếu có nhiều hơn 1 -->
-        @if (pinnedMessages().length > 1) {
-        <button class="pinned-more-btn" (click)="togglePinnedDropdown($event)">
-            +{{ pinnedMessages().length - 1 }} ghim
-        </button>
-        } @else {
-        <i class="bi bi-pin-angle pinned-icon"></i>
-        }
-
-        <!-- Three-dots menu cho preview bar -->
-        <div class="pinned-menu-wrap" (click)="$event.stopPropagation()" (mouseenter)="onPinnedMenuMouseEnter()"
-            (mouseleave)="onPinnedMenuMouseLeave()">
-            <button class="pinned-item-menu"
-                (click)="togglePinnedMenu($event, pinnedMessages()[pinnedMessages().length - 1].id)">
-                <i class="bi bi-three-dots"></i>
-            </button>
-            @if (openPinnedMenuId === pinnedMessages()[pinnedMessages().length - 1].id) {
-            <div class="pinned-context-menu">
-                <button class="pinned-ctx-item danger"
-                    (click)="unpinMessage(pinnedMessages()[pinnedMessages().length - 1]); openPinnedMenuId = null">
-                    <i class="bi bi-pin-angle"></i> Bỏ ghim
-                </button>
-            </div>
-            }
-        </div>
-    </div>
-    }
-
-    <!-- Dropdown danh sách toàn bộ tin nhắn đã ghim -->
-    @if (showPinnedDropdown) {
-    <div class="pinned-panel-list">
-        <div class="pinned-panel-header-sub">
-            <span>Tất cả tin nhắn đã ghim ({{ pinnedMessages().length }})</span>
-            <button class="pinned-dropdown-close" (click)="showPinnedDropdown = false">
-                <i class="bi bi-x-lg"></i>
-            </button>
-        </div>
-        @for (pm of pinnedMessages(); track pm.id) {
-        <div class="pinned-panel-item" (click)="scrollToMessage(pm.message_id); showPinnedDropdown = false">
             <div class="pinned-item-icon">
                 <i class="bi bi-pin-angle"></i>
             </div>
             <div class="pinned-item-body">
                 <div class="pinned-item-title">Tin nhắn</div>
                 <div class="pinned-item-preview">
-                    <span class="pinned-item-sender">{{ pm.sender_name || 'Ai đó' }}: </span>
-                    <span class="pinned-item-text">{{ pm.content }}</span>
+                    <span class="pinned-item-sender">{{ pinnedMessages()[pinnedMessages().length - 1].sender_name || 'Ai
+                        đó'
+                        }}: </span>
+                    <span class="pinned-item-text">{{ pinnedMessages()[pinnedMessages().length - 1].content }}</span>
                 </div>
             </div>
-            <!-- Three-dots menu từng item -->
+
+            <!-- Nút +X ghim nếu có nhiều hơn 1 -->
+            @if (pinnedMessages().length > 1) {
+            <button class="pinned-more-btn" (click)="togglePinnedDropdown($event)">
+                +{{ pinnedMessages().length - 1 }} ghim
+            </button>
+            } @else {
+            <i class="bi bi-pin-angle pinned-icon"></i>
+            }
+
+            <!-- Three-dots menu cho preview bar -->
             <div class="pinned-menu-wrap" (click)="$event.stopPropagation()" (mouseenter)="onPinnedMenuMouseEnter()"
                 (mouseleave)="onPinnedMenuMouseLeave()">
-                <button class="pinned-item-menu" (click)="togglePinnedMenu($event, pm.id)">
+                <button class="pinned-item-menu"
+                    (click)="togglePinnedMenu($event, pinnedMessages()[pinnedMessages().length - 1].id)">
                     <i class="bi bi-three-dots"></i>
                 </button>
-                @if (openPinnedMenuId === pm.id) {
+                @if (openPinnedMenuId === pinnedMessages()[pinnedMessages().length - 1].id) {
                 <div class="pinned-context-menu">
-                    <button class="pinned-ctx-item danger" (click)="unpinMessage(pm); openPinnedMenuId = null">
+                    <button class="pinned-ctx-item danger"
+                        (click)="unpinMessage(pinnedMessages()[pinnedMessages().length - 1]); openPinnedMenuId = null">
                         <i class="bi bi-pin-angle"></i> Bỏ ghim
                     </button>
                 </div>
@@ -161,17 +115,65 @@
             </div>
         </div>
         }
+
+        <!-- Dropdown danh sách toàn bộ tin nhắn đã ghim -->
+        @if (showPinnedDropdown) {
+        <div class="pinned-panel-list">
+            <div class="pinned-panel-header-sub">
+                <span>Tất cả tin nhắn đã ghim ({{ pinnedMessages().length }})</span>
+                <button class="pinned-dropdown-close" (click)="showPinnedDropdown = false">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            @for (pm of pinnedMessages(); track pm.id) {
+            <div class="pinned-panel-item" (click)="scrollToMessage(pm.message_id); showPinnedDropdown = false">
+                <div class="pinned-item-icon">
+                    <i class="bi bi-pin-angle"></i>
+                </div>
+                <div class="pinned-item-body">
+                    <div class="pinned-item-title">Tin nhắn</div>
+                    <div class="pinned-item-preview">
+                        <span class="pinned-item-sender">{{ pm.sender_name || 'Ai đó' }}: </span>
+                        <span class="pinned-item-text">{{ pm.content }}</span>
+                    </div>
+                </div>
+                <!-- Three-dots menu từng item -->
+                <div class="pinned-menu-wrap" (click)="$event.stopPropagation()" (mouseenter)="onPinnedMenuMouseEnter()"
+                    (mouseleave)="onPinnedMenuMouseLeave()">
+                    <button class="pinned-item-menu" (click)="togglePinnedMenu($event, pm.id)">
+                        <i class="bi bi-three-dots"></i>
+                    </button>
+                    @if (openPinnedMenuId === pm.id) {
+                    <div class="pinned-context-menu">
+                        <button class="pinned-ctx-item danger" (click)="unpinMessage(pm); openPinnedMenuId = null">
+                            <i class="bi bi-pin-angle"></i> Bỏ ghim
+                        </button>
+                    </div>
+                    }
+                </div>
+            </div>
+            }
+        </div>
+        }
     </div>
-    }
     }
 
     <!-- ============================================================
         MESSAGES SCROLL AREA
         ============================================================ -->
-    <div class="messages-scroll" #messagesContent (scroll)="onMessagesScroll()">
+    <div class="messages-scroll" [class.is-loading]="!isLoaded || loading"
+        [class.has-pinned]="pinnedMessages() && pinnedMessages().length > 0" #messagesContent
+        (scroll)="onMessagesScroll()">
         <div class="messages-inner">
 
-            @if ((getMessagesData().homeMessagesData?.messages?.length || 0) === 0) {
+            @if (!isLoaded || loading) {
+            <div class="chat-empty is-loading">
+                <i class="bi bi-arrow-repeat"></i>
+                <p>Đang tải tin nhắn...</p>
+            </div>
+            }
+            @else if (isLoaded && !loading && (getMessagesData().homeMessagesData?.messages?.length || 0) === 0) {
+
             <div class="no-messages">
                 <div class="no-messages-icon-wrap">
                     <i class="bi bi-chat-square-heart"></i>
@@ -192,7 +194,8 @@
             <div class="loading-more">Đang tải thêm tin nhắn...</div>
             }
 
-            @for (msg of (getMessagesData().homeMessagesData?.messages || []); track trackByMessageId($index, msg); let i =
+            @for (msg of (getMessagesData().homeMessagesData?.messages || []); track trackByMessageId($index, msg); let
+            i =
             $index) {
             <!-- Date separator -->
             @if (shouldShowDateSeparator(msg, getMessagesData().homeMessagesData.messages[i-1])) {
@@ -300,19 +303,20 @@
                                 <!-- Image -->
                                 @if (msg.message_type === 'image') {
                                 <div class="msg-image-wrap" (click)="openImageViewer(msg.file_url)">
-                                    <img [src]="msg.file_url" class="msg-image" alt="Hình ảnh">
+                                    <img [src]="resolveMediaUrl(msg.file_url)" class="msg-image" alt="Hình ảnh">
                                 </div>
                                 }
                                 <!-- Video -->
                                 @if (msg.message_type === 'video') {
                                 <div class="msg-video-wrap">
-                                    <video [src]="msg.file_url" controls class="msg-video"></video>
+                                    <video [src]="resolveMediaUrl(msg.file_url)" controls class="msg-video"></video>
                                 </div>
                                 }
                                 <!-- File -->
                                 @if (msg.message_type === 'file') {
                                 <div class="msg-file-wrap">
-                                    <a [href]="msg.file_url" target="_blank" class="msg-file-link">
+                                    <a [attr.href]="resolveMediaUrl(msg.file_url) || null" target="_blank" rel="noopener noreferrer"
+                                        class="msg-file-link" (click)="openFileInNewTab(msg.file_url, $event)">
                                         <i class="bi bi-file-earmark-arrow-down"></i>
                                         <span>{{ msg.file_name || 'Tệp đính kèm' }}</span>
                                     </a>
@@ -480,19 +484,20 @@
                                 <!-- Image -->
                                 @if (msg.message_type === 'image') {
                                 <div class="msg-image-wrap" (click)="openImageViewer(msg.file_url)">
-                                    <img [src]="msg.file_url" class="msg-image" alt="Hình ảnh">
+                                    <img [src]="resolveMediaUrl(msg.file_url)" class="msg-image" alt="Hình ảnh">
                                 </div>
                                 }
                                 <!-- Video -->
                                 @if (msg.message_type === 'video') {
                                 <div class="msg-video-wrap">
-                                    <video [src]="msg.file_url" controls class="msg-video"></video>
+                                    <video [src]="resolveMediaUrl(msg.file_url)" controls class="msg-video"></video>
                                 </div>
                                 }
                                 <!-- File -->
                                 @if (msg.message_type === 'file') {
                                 <div class="msg-file-wrap">
-                                    <a [href]="msg.file_url" target="_blank" class="msg-file-link">
+                                    <a [attr.href]="resolveMediaUrl(msg.file_url) || null" target="_blank" rel="noopener noreferrer"
+                                        class="msg-file-link" (click)="openFileInNewTab(msg.file_url, $event)">
                                         <i class="bi bi-file-earmark-arrow-down"></i>
                                         <span>{{ msg.file_name || 'Tệp đính kèm' }}</span>
                                     </a>
@@ -749,7 +754,6 @@
         </div>
     </div>
     }
-</div>
 
 <!-- ============================================================
      FORWARD MESSAGE MODAL

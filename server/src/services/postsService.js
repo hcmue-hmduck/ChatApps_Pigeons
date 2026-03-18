@@ -14,6 +14,16 @@ class PostsService {
             throw error;
         }
     }
+
+    async createPost(newPostData) {
+        try {
+            const newPost = await postsModel.create(newPostData);
+            return newPost;
+        } catch (error) {
+            console.error('Error creating new post:', error);
+            throw error;
+        }
+    }
 }
 
 module.exports = new PostsService();

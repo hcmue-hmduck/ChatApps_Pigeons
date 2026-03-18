@@ -36,7 +36,6 @@
 	height: var(--group-size);
 	position: relative;
 	border-radius: 50%;
-	overflow: hidden;
 	border: var(--frame-border) solid var(--accent-light);
 	box-shadow: 0 0 12px rgba(0, 242, 255, 0.18), 0 2px 6px rgba(0, 0, 0, 0.40);
 	background: var(--bg-color);
@@ -61,19 +60,19 @@
 	top: 0;
 	left: 50%;
 	transform: translateX(-50%);
-	z-index: 1;
+	z-index: 10;
 }
 
 .group-3 .avatar-item:nth-child(2) {
 	bottom: 5%;
 	left: 0;
-	z-index: 2;
+	z-index: 11;
 }
 
 .group-3 .avatar-item:nth-child(3) {
 	bottom: 5%;
 	right: 0;
-	z-index: 3;
+	z-index: 12;
 }
 
 .group-3 .avatar-item:only-child {
@@ -95,19 +94,19 @@
 .group-4plus .avatar-item:nth-child(1) {
 	top: 0;
 	left: 0;
-	z-index: 1;
+	z-index: 10;
 }
 
 .group-4plus .avatar-item:nth-child(2) {
 	top: 0;
 	right: 0;
-	z-index: 2;
+	z-index: 11;
 }
 
 .group-4plus .avatar-item:nth-child(3) {
 	bottom: 0;
 	left: 0;
-	z-index: 3;
+	z-index: 12;
 }
 
 .more-count {
@@ -123,7 +122,7 @@
 	color: var(--gray-text);
 	font-weight: 600;
 	font-size: calc(var(--group-size) * 0.22);
-	z-index: 4;
+	z-index: 13;
 	box-sizing: border-box;
 }
 

@@ -1,5 +1,6 @@
-import { Component, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import packageInfo from '../../../../package.json';
 
 @Component({
   selector: 'app-intro-layout',
@@ -10,6 +11,8 @@ import { CommonModule } from '@angular/common';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class IntroLayoutComponent {
+  version = packageInfo.version;
+  @Input() hasConversations: boolean = false;
   @Output() startNewConversation = new EventEmitter<void>();
 
   handleStart() {

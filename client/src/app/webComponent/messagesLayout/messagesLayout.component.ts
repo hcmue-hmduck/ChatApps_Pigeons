@@ -30,6 +30,7 @@ import { Messages } from '../../services/messages';
 import { SocketService } from '../../services/socket';
 import { UploadService } from '../../services/uploadService';
 import { Participant } from '../../services/participant';
+import { environment } from '../../../environments/environment';
 import { GroupAvatarLayoutComponent } from '../groupAvatarLayout/groupAvatarLayout.component';
 
 export interface UserPresence {
@@ -143,6 +144,53 @@ export class MessagesLayoutComponent
             return trimmed;
         }
         return `https://${trimmed}`;
+    }
+    resolveMediaUrl(rawUrl: string | null | undefined): string {
+        if (!rawUrl) return '';
+
+        const trimmed = String(rawUrl).trim();
+        if (!trimmed) return '';
+
+        if (/^(blob:|data:)/i.test(trimmed)) {
+            return trimmed;
+        }
+
+        if (/^https?:\/\//i.test(trimmed)) {
+            return trimmed;
+        }
+
+        if (/^\/\//.test(trimmed)) {
+            return `https:${trimmed}`;
+        }
+
+        if (/^(\/)?uploads\//i.test(trimmed)) {
+            const normalizedPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+            try {
+                const backendOrigin = new URL(environment.apiUrl).origin;
+                return `${backendOrigin}${normalizedPath}`;
+            } catch {
+                return `${window.location.origin}${normalizedPath}`;
+            }
+        }
+
+        if (/^[\w.-]+\.[a-z]{2,}(?:[/:?#]|$)/i.test(trimmed)) {
+            return `https://${trimmed}`;
+        }
+
+        return trimmed;
+    }
+    
+    openFileInNewTab(rawUrl: string | null | undefined, event?: MouseEvent) {
+        event?.preventDefault();
+        event?.stopPropagation();
+
+        const resolved = this.resolveMediaUrl(rawUrl);
+        if (!resolved) {
+            this.error = 'Liên kết tệp không hợp lệ.';
+            return;
+        }
+
+        window.open(resolved, '_blank', 'noopener,noreferrer');
     }
 
     formatMessageText(content: string | null | undefined): string {
@@ -277,7 +325,7 @@ export class MessagesLayoutComponent
     private viewerDragStartY = 0;
     private viewerPanStartX = 0;
     private viewerPanStartY = 0;
-    
+
     // Forward modal state
     showForwardModal = false;
     forwardingMessage: any = null;
@@ -343,8 +391,9 @@ export class MessagesLayoutComponent
     }
 
     openImageViewer(url: string) {
-        if (!url) return;
-        this.viewerImageUrl = url;
+        const resolved = this.resolveMediaUrl(url);
+        if (!resolved) return;
+        this.viewerImageUrl = resolved;
         this.viewerZoom = 1;
         this.viewerPanX = 0;
         this.viewerPanY = 0;
@@ -803,16 +852,13 @@ export class MessagesLayoutComponent
 
     ngOnInit() {
         console.log('Online User', this.onlineUsers);
-        if (!this.isLoaded) {
-            this.isLoaded = true;
+        if (this.conversationId) {
             this.loadMessages(this.conversationId);
             this.setupSocketListener(this.conversationId);
         }
     }
 
     ngOnChanges(changes: SimpleChanges) {
-        this.isLoaded = true;
-
         if (changes['conversationId']) {
             const newConversationId = changes['conversationId'].currentValue;
             const oldConversationId = changes['conversationId'].previousValue;
@@ -864,6 +910,8 @@ export class MessagesLayoutComponent
     }
 
     loadMessages(conversationId: string) {
+        if (!conversationId) return;
+        this.isLoaded = false;
         this.loading = true;
         this.messagesService.getMessages(conversationId).subscribe({
             next: (response) => {
@@ -871,6 +919,7 @@ export class MessagesLayoutComponent
                 this.getMessagesData.set(response.metadata || {});
                 this.pinnedMessages.set(response.metadata?.homeMessagesData?.pinnedMessages || []);
                 this.loading = false;
+                this.isLoaded = true;
 
                 // Clear cache khi load conversation mới
                 this.dateCache.clear();
@@ -893,6 +942,7 @@ export class MessagesLayoutComponent
                 console.error('Error:', error);
                 this.error = error.message;
                 this.loading = false;
+                this.isLoaded = true;
             },
         });
     }
@@ -1134,6 +1184,7 @@ export class MessagesLayoutComponent
 
         // 2. Nếu có files, upload files
         if (stagedFiles.length > 0) {
+            this.loading = false; // Progress được hiện qua _uploading trên từng temp message
             this.uploadFileAttachment(stagedFiles);
             this.clearPreUploadFiles();
         } else {

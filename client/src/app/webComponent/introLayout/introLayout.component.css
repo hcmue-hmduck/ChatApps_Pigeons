@@ -7,11 +7,13 @@
   color: var(--text-secondary);
   overflow: hidden;
   position: relative;
-  background: var(--glass-strong);
+
+  /* Self-contained glass panel styling */
+  background: rgba(15, 23, 42, 0.40); /* Match --glass-strong */
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--glass-border);
-  border-radius: 20px;
+  border-radius: 16px;
   box-shadow: var(--glass-shadow-deep);
 }
 
@@ -103,9 +105,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(5, 24, 44, 0.88);
-  border: 1px solid rgba(0, 242, 255, 0.26);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
 }
 
 .visual-icon {
@@ -277,6 +276,42 @@
   color: rgba(144, 184, 212, 0.72);
   text-transform: uppercase;
   letter-spacing: 0.14em;
+}
+
+.author-name {
+  color: var(--accent);
+  text-shadow: 0 0 8px rgba(0, 242, 255, 0.4);
+}
+
+.collaborative-icon {
+  font-size: 0.85em;
+  margin: 0 4px;
+  opacity: 0.8;
+  color: var(--text-muted);
+}
+
+.status-divider {
+  width: 1px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.status-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.status-link:hover {
+  color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.status-link i {
+  font-size: 14px;
 }
 
 .status-item {

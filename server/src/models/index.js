@@ -16,6 +16,8 @@ const CommentReaction = require('./commentreactionsModel');
 const Share = require('./sharesModel');
 const PostTag = require('./posttagsModel');
 const SavedPost = require('./savedpostsModel');
+const Emojis = require('./emojisModel');
+const MessageReaction = require('./messagereactionsModel');
 
 // Tổng hợp tất cả models
 const models = {
@@ -35,7 +37,9 @@ const models = {
     CommentReaction,
     Share,
     PostTag,
-    SavedPost
+    SavedPost,
+    Emojis,
+    MessageReaction
 };
 
 // Khởi tạo tất cả associations

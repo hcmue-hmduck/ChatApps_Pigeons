@@ -3,9 +3,16 @@ const router = express.Router();
 
 const homeController = require('../controllers/homeController');
 
+router.get('/emojis', homeController.getAllEmojis);
+
+router.post('/comments/:postID', homeController.createComment);
+
+router.post('/participants/:convID', homeController.createParticipant);
 router.put('/participants/:id', homeController.putParticipant);
 
 router.get('/feeds', homeController.getHomePosts);
+router.post('/feeds', homeController.createNewPost);
+
 router.get('/users/search', homeController.searchUsers);
 
 router.get('/friendrequests/:receiverId', homeController.getFriendRequests);
@@ -23,9 +30,6 @@ router.put('/userinfor/:userID', homeController.putUserInfor);
 router.get('/friends/:userId', homeController.getFriendByUserId);
 router.post('/friends/:userId', homeController.createFriendByUserId);
 
-router.get('/conversation/:userID', homeController.getHomeConversation);
-router.put('/conversation/:convID', homeController.putHomeConversation);
-router.post('/conversation', homeController.createConversation);
 
 router.get('/link-preview', homeController.getLinkPreview);
 
@@ -33,13 +37,11 @@ router.post('/messages/pinmessage', homeController.postHomePinMessage);
 router.put('/messages/pinmessage/:pinMessID', homeController.putHomePinMessage);
 router.delete('/messages/pinmessage/:pinMessID', homeController.deleteHomePinMessage);
 
+router.get('/messages/:convID/media', homeController.getHomeMessagesMedia);
 router.delete('/messages/:messID', homeController.deleteHomeMessages);
 router.put('/messages/:messID', homeController.putHomeMessages);
 router.post('/messages/:convID', homeController.postHomeMessages);
 router.get('/messages/:convID', homeController.getHomeMessages);
-router.get('/conversation/:userID', homeController.getHomeConversation);
-router.get('/conversation/name/:convID', homeController.getConversationNameById);
-router.put('/conversation/:convID', homeController.putHomeConversation);
 
 router.post('/call/:convID', homeController.startHomeCall);
 router.post('/call/logs-group-call/:convID', homeController.createLogJoinGroupCall);

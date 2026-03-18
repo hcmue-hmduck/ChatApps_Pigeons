@@ -3,7 +3,7 @@
     @if (isFirstConversationReady() && hasConversations()) {
     <section class="conv-panel">
         <div class="conv-header">
-            <h5>Tin nhắn</h5>
+            <h5>ChatPigeons</h5>
             <div class="conv-search-wrap">
                 <i class="bi bi-search"></i>
                 <input type="text" class="conv-search-input" placeholder="Tìm kiếm...">
@@ -99,12 +99,12 @@
             (toggleDetails)="toggleConversationInfor()">
         </messages-layout>
         } @else {
-        <app-intro-layout (startNewConversation)="createConversation()"></app-intro-layout>
+        <app-intro-layout [hasConversations]="conversations?.homeConversationData?.joinedConversations?.length > 0" (startNewConversation)="createConversation()"></app-intro-layout>
         }
     </main>
     } @else if (isFirstConversationReady() && !hasConversations()) {
     <section class="welcome-screen">
-        <app-intro-layout (startNewConversation)="createConversation()"></app-intro-layout>
+        <app-intro-layout [hasConversations]="conversations?.homeConversationData?.joinedConversations?.length > 0" (startNewConversation)="createConversation()"></app-intro-layout>
     </section>
     }
 
