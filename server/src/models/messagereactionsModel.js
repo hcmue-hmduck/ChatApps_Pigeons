@@ -30,12 +30,12 @@ const MessageReaction = sequelize.define('MessageReaction', {
             key: 'id'
         }
     },
-    emoji_id: {
+    conversation_id: {
         type: DataTypes.UUID,
         allowNull: true,
-        field: 'emoji_id',
+        field: 'conversation_id',
         references: {
-            model: 'emojis',
+            model: 'conversations',
             key: 'id'
         }
     },
@@ -65,8 +65,8 @@ const MessageReaction = sequelize.define('MessageReaction', {
             fields: ['user_id']
         },
         {
-            name: 'idx_message_reactions_emoji_id',
-            fields: ['emoji_id']
+            name: 'idx_message_reactions_conversation_id',
+            fields: ['conversation_id']
         },
         {
             name: 'idx_message_reactions_created_at',
@@ -85,9 +85,9 @@ MessageReaction.associate = (models) => {
         foreignKey: 'user_id',
         as: 'user'
     });
-    MessageReaction.belongsTo(models.Emojis, {
-        foreignKey: 'emoji_id',
-        as: 'emoji'
+    MessageReaction.belongsTo(models.Conversation, {
+        foreignKey: 'conversation_id',
+        as: 'conversation'
     });
 };
 

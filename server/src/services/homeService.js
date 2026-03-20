@@ -11,6 +11,7 @@ const commentsService = require('./commentsService');
 const postmediaService = require('./postmediaService');
 const linkpreviewService = require('./linkpreviewService');
 const emojisService = require('./emojisService');
+const messageReactionService = require('./messagereactionsService');
 
 const { sequelize } = require('../configs/sequelizeConfig.js');
 const callService = require('./callService.js');
@@ -248,10 +249,11 @@ class HomeService {
     // Lấy tất cả messages trong 1 conversation (có phân trang)
     async getMessagesByConversation(conversationId, limit = 100, offset = 0) {
         // 1. Song song hóa queries ban đầu
-        const [conversation, messages, pinnedMessages] = await Promise.all([
+        const [conversation, messages, pinnedMessages, messageReactions] = await Promise.all([
             conversationsService.getConversationById(conversationId),
             messagesService.getAllMessagesByConversationId(conversationId, limit, offset),
             pinnedmessagesService.getPinnedMessagesByConversationId(conversationId),
+            messageReactionService.getMessageReactions(conversationId),
         ]);
 
         if (!conversation) {
@@ -298,6 +300,14 @@ class HomeService {
         const userMap = new Map([...knownUsers.map((u) => [u.id, u]), ...refSenderUsers.map((u) => [u.id, u])]);
         const refMessagesMap = new Map(refMessages.map((m) => [m.id, m]));
 
+        // Group reactions by message_id
+        const reactionsMap = {};
+        (messageReactions || []).forEach((r) => {
+            const mId = r.message_id;
+            if (!reactionsMap[mId]) reactionsMap[mId] = [];
+            reactionsMap[mId].push(r.dataValues || r);
+        });
+
         // 6. Map Pinned Messages → plain objects
         const mappedPinnedMessages = safePinned.map((pin) => {
             const pinner = userMap.get(pin.pinned_by);
@@ -322,6 +332,7 @@ class HomeService {
                 sender_avatar: sender ? sender.avatar_url : '',
                 sender_status: sender ? sender.status : '',
                 parent_message_info: null,
+                reactions: reactionsMap[m.id] || [],
             };
 
             if (m.parent_message_id) {
@@ -747,6 +758,14 @@ class HomeService {
 
     async getAllEmojis() {
         return await emojisService.getAllEmojis();
+    }
+
+    async getMessageReactions(conversation_id) {
+        return await messageReactionService.getMessageReactions(conversation_id);
+    }
+
+    async addMessageReaction(message_id, user_id, conversation_id, emoji_char) {
+        return await messageReactionService.addMessageReaction(message_id, user_id, conversation_id, emoji_char);
     }
 
     async createComment(postID, commentData) {

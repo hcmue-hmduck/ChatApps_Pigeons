@@ -392,9 +392,9 @@ class HomeController {
     async updatePost(req, res) {
         const postId = req.params.postID;
         const { postData, mediaData } = req.body;
-        
+
         await homeService.updatePostById(postId, postData, mediaData);
-        
+
         new SuccessResponse({
             message: 'Update post successfully',
             metadata: {
@@ -466,6 +466,29 @@ class HomeController {
             message: 'Get home messages media successfully',
             metadata: {
                 mediaMesssage: mediaMesssage,
+            },
+        }).send(res);
+    }
+    
+    async getMessageReactions(req, res) {
+        const convID = req.params.convID;
+        const messageReactions = await homeService.getMessageReactions(convID);
+        new SuccessResponse({
+            message: 'Get message reactions successfully',
+            metadata: {
+                messageReactions: messageReactions,
+            },
+        }).send(res);
+    }
+
+    async addMessageReaction(req, res) {
+        const { convID } = req.params;
+        const { message_id, user_id, emoji_char } = req.body;
+        const newReaction = await homeService.addMessageReaction(message_id, user_id, convID, emoji_char);
+        new SuccessResponse({
+            message: 'Add message reaction successfully',
+            metadata: {
+                newReaction: newReaction,
             },
         }).send(res);
     }

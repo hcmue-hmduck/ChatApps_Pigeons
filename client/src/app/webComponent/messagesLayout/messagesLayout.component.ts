@@ -353,6 +353,13 @@ export class MessagesLayoutComponent
     preUploadFiles = signal<StagedFile[]>([]);
     showPinnedDropdown = false;
     openPinnedMenuId: string | null = null;
+    private onNewMessageSocket?: (data: any) => void;
+    private onUpdateMessageSocket?: (data: any) => void;
+    private onUpdateConversationSocket?: (data: any) => void;
+    private onPinMessageSocket?: (data: any) => void;
+    private onUnpinMessageSocket?: (data: any) => void;
+    private onUpdateProfileSocket?: (data: any) => void;
+    private onDeleteMessageSocket?: (data: any) => void;
     private pinnedMenuTimeout: any;
 
     onPinnedMenuMouseLeave() {
@@ -672,20 +679,32 @@ export class MessagesLayoutComponent
         console.log('Voice recording clicked');
     }
 
+    private detachMessageSocketListeners() {
+        if (this.onNewMessageSocket) this.socketService.off('newMessage', this.onNewMessageSocket);
+        if (this.onUpdateMessageSocket) this.socketService.off('updateMessage', this.onUpdateMessageSocket);
+        if (this.onUpdateConversationSocket) this.socketService.off('updateConversation', this.onUpdateConversationSocket);
+        if (this.onPinMessageSocket) this.socketService.off('pinMessage', this.onPinMessageSocket);
+        if (this.onUnpinMessageSocket) this.socketService.off('unpinMessage', this.onUnpinMessageSocket);
+        if (this.onUpdateProfileSocket) this.socketService.off('updateProfile', this.onUpdateProfileSocket);
+        if (this.onDeleteMessageSocket) this.socketService.off('deleteMessage', this.onDeleteMessageSocket);
+
+        this.onNewMessageSocket = undefined;
+        this.onUpdateMessageSocket = undefined;
+        this.onUpdateConversationSocket = undefined;
+        this.onPinMessageSocket = undefined;
+        this.onUnpinMessageSocket = undefined;
+        this.onUpdateProfileSocket = undefined;
+        this.onDeleteMessageSocket = undefined;
+    }
+
     setupSocketListener(conversationId: string) {
-        // Cleanup listeners cũ trước khi setup mới để tránh trùng lặp
-        this.socketService.off('newMessage');
-        this.socketService.off('updateMessage');
-        this.socketService.off('updateConversation');
-        this.socketService.off('deleteMessage');
-        this.socketService.off('pinMessage');
-        this.socketService.off('unpinMessage');
-        this.socketService.off('updateProfile');
+        // Cleanup listeners cũ của component này trước khi setup mới, không ảnh hưởng component khác
+        this.detachMessageSocketListeners();
 
         this.socketService.emit('joinConversation', conversationId);
 
         // Setup listener cho tin nhắn mới
-        this.socketService.on('newMessage', (data: any) => {
+        this.onNewMessageSocket = (data: any) => {
             if (data.conversation_id === conversationId && data.sender_id !== this.currentUserId) {
                 this.lastMessageId = data.id;
                 console.log('this.lastMessageId', this.lastMessageId);
@@ -723,10 +742,11 @@ export class MessagesLayoutComponent
                     }
                 }
             }
-        });
+        };
+        this.socketService.on('newMessage', this.onNewMessageSocket);
 
         // Setup listener cho cập nhật tin nhắn
-        this.socketService.on('updateMessage', (data: any) => {
+        this.onUpdateMessageSocket = (data: any) => {
             if (data.conversation_id === conversationId) {
                 this.getMessagesData.update((old) => ({
                     ...old,
@@ -763,10 +783,12 @@ export class MessagesLayoutComponent
                     )
                 );
             }
-        });
+        };
+        this.socketService.on('updateMessage', this.onUpdateMessageSocket);
 
         // Đồng bộ thay đổi trạng thái call vào message list (pending/ongoing/completed/missed...)
-        this.socketService.on('updateConversation', (data: any) => {
+        this.onUpdateConversationSocket = (data: any) => {
+            console.log('Received updateConversation event in Messages:', data);
             if (data?.conversation_id !== conversationId) return;
             if (!(data?.message_type === 'call' || data?.call || data?.call_id)) return;
 
@@ -804,22 +826,25 @@ export class MessagesLayoutComponent
                     }),
                 },
             }));
-        });
+        };
+        this.socketService.on('updateConversation', this.onUpdateConversationSocket);
 
         // Setup listener cho pin tin nhắn
-        this.socketService.on('pinMessage', (data: any) => {
+        this.onPinMessageSocket = (data: any) => {
             if (data.conversation_id === conversationId) {
                 this.pinnedMessages.update(prev => [...prev, data]);
             }
-        });
+        };
+        this.socketService.on('pinMessage', this.onPinMessageSocket);
 
-        this.socketService.on('unpinMessage', (data: any) => {
+        this.onUnpinMessageSocket = (data: any) => {
             if (data.conversation_id === conversationId) {
                 this.pinnedMessages.update(prev => prev.filter(p => p.id !== data.id));
             }
-        });
+        };
+        this.socketService.on('unpinMessage', this.onUnpinMessageSocket);
 
-        this.socketService.on('updateProfile', (data: any) => {
+        this.onUpdateProfileSocket = (data: any) => {
             console.log('Received updateProfile event in Messages:', data);
 
             this.getMessagesData.update((old) => {
@@ -874,10 +899,11 @@ export class MessagesLayoutComponent
                     return m;
                 });
             });
-        });
+        };
+        this.socketService.on('updateProfile', this.onUpdateProfileSocket);
 
         // Setup listener cho xóa tin nhắn
-        this.socketService.on('deleteMessage', (data: any) => {
+        this.onDeleteMessageSocket = (data: any) => {
             if (data.conversation_id === conversationId) {
                 this.getMessagesData.update((old) => ({
                     ...old,
@@ -906,7 +932,8 @@ export class MessagesLayoutComponent
                     },
                 }));
             }
-        });
+        };
+        this.socketService.on('deleteMessage', this.onDeleteMessageSocket);
     }
 
     ngOnInit() {
@@ -958,14 +985,8 @@ export class MessagesLayoutComponent
         if (this.scrollTimeout) {
             clearTimeout(this.scrollTimeout);
         }
-        // Cleanup all socket listeners to prevent memory leaks and high CPU usage
-        this.socketService.off('newMessage');
-        this.socketService.off('updateMessage');
-        this.socketService.off('updateConversation');
-        this.socketService.off('deleteMessage');
-        this.socketService.off('pinMessage');
-        this.socketService.off('unpinMessage');
-        this.socketService.off('updateProfile'); // Aded missing cleanup
+        // Cleanup listeners của component này, không chạm listener ở component khác
+        this.detachMessageSocketListeners();
         
         if (this.highlightTimeout) {
             clearTimeout(this.highlightTimeout);
@@ -1374,74 +1395,58 @@ export class MessagesLayoutComponent
         });
     }
 
-    dropdownTop = 0;
-    dropdownLeft = 0;
+    menuDropUpId: string | number | null = null;
 
     // Menu methods
     toggleMenu(messageId: string | number, event: MouseEvent) {
+        event.stopPropagation();
         if (this.showMenuId === messageId) {
             this.showMenuId = null;
+            this.menuDropUpId = null;
         } else {
             this.showMenuId = messageId;
+            // Default direction: render upward.
+            this.menuDropUpId = messageId;
 
-            // Tính toán vị trí fixed
-            const target = event.currentTarget as HTMLElement;
-            const rect = target.getBoundingClientRect();
-            const isMeRow = target.closest('.me-row');
+            const target = event.currentTarget as HTMLElement | null;
+            const chatArea = target?.closest('.chat-area') as HTMLElement | null;
+            const areaRect = chatArea?.getBoundingClientRect();
+            const targetRect = target?.getBoundingClientRect();
 
-            // Kích thước ước lượng (tương đương CSS min-width 140px + padding/border)
-            const dropdownWidth = 150;
-            const dropdownHeight = 175;
-            const padding = 12;
-
-            let left = 0;
-            let top = rect.top + 10; // Căn hơi thụt xuống so với nút
-
-            // X-Axis logic: Position dropdown NEXT TO the button, not overlapping it
-            if (isMeRow) {
-                // Nhắn của mình (bên phải): Menu nằm bên TRÁI của nút
-                left = rect.left - dropdownWidth - 8;
-            } else {
-                // Nhắn của người khác (bên trái): Menu nằm bên PHẢI của nút
-                left = rect.right + 8;
+            if (!chatArea || !areaRect || !targetRect) {
+                return;
             }
 
-            // --- FIX POSITIONAL OFFSET DUE TO CONTAINING BLOCK (backdrop-filter) ---
-            // If any parent has backdrop-filter, it creates a new containing block for position:fixed.
-            // We need to subtract the chat-area's own rect to get local coordinates.
-            const container = target.closest('.chat-area');
-            if (container) {
-                const containerRect = container.getBoundingClientRect();
-                left -= containerRect.left;
-                top -= containerRect.top;
+            const headerEl = chatArea.querySelector('.chat-header') as HTMLElement | null;
+            const pinnedEl = chatArea.querySelector('.pinned-bar-wrap') as HTMLElement | null;
+
+            let topBlockedUntil = areaRect.top;
+            if (headerEl) {
+                topBlockedUntil = Math.max(topBlockedUntil, headerEl.getBoundingClientRect().bottom);
             }
 
-            // Boundary checks - Ngang (X)
-            // Lấy width của container hoặc window
-            const boundaryWidth = container ? container.clientWidth : window.innerWidth;
-            if (left + dropdownWidth > boundaryWidth - padding) {
-                left = boundaryWidth - dropdownWidth - padding;
-            }
-            if (left < padding) {
-                left = padding;
+            if (pinnedEl && pinnedEl.offsetHeight > 0) {
+                topBlockedUntil = Math.max(topBlockedUntil, pinnedEl.getBoundingClientRect().bottom);
             }
 
-            // Boundary checks - Dọc (Y)
-            const boundaryHeight = container ? container.clientHeight : window.innerHeight;
-            if (top + dropdownHeight > boundaryHeight - 80) {
-                // Nếu tràn dưới (gần input area), đẩy dropdown lên trên nút
-                top = top - dropdownHeight - (container ? 0 : 4);
-                if (top < padding) top = padding;
-            }
+            const gap = 8;
+            const menuHeightEstimate = 190;
+            const spaceBelow = areaRect.bottom - targetRect.bottom - gap;
+            const spaceAbove = targetRect.top - topBlockedUntil - gap;
 
-            this.dropdownTop = top;
-            this.dropdownLeft = left;
+            const shouldDropDown = spaceAbove < menuHeightEstimate && spaceBelow > spaceAbove;
+            this.menuDropUpId = shouldDropDown ? null : messageId;
         }
+    }
+
+    isMenuDropUp(messageId: string | number): boolean {
+        return this.showMenuId === messageId && this.menuDropUpId === messageId;
     }
 
     closeMenu() {
         setTimeout(() => {
             this.showMenuId = null;
+            this.menuDropUpId = null;
         }, 250);
     }
 

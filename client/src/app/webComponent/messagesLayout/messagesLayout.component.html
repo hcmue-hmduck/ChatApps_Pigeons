@@ -264,7 +264,8 @@
                                 @if (msg.message_type !== 'call') {
                                 <div class="bubble-anchor me">
                                     @if (!msg.is_deleted) {
-                                    <div class="message-actions" (mouseleave)="closeMenu()">
+                                    <div class="message-actions"
+                                        [class.active]="showMenuId === msg.id || reactionPickerMessageId === msg.id">
                                         <button class="action-btn" title="Tùy chọn" (click)="toggleMenu(msg.id, $event)">
                                             <i class="bi bi-three-dots-vertical"></i>
                                         </button>
@@ -286,8 +287,8 @@
                                         </div>
                                         }
                                         @if (showMenuId === msg.id) {
-                                        <div class="msg-dropdown"
-                                            [ngStyle]="{'position': 'fixed', 'top.px': dropdownTop, 'left.px': dropdownLeft}">
+                                        <div class="msg-dropdown" [class.drop-up]="isMenuDropUp(msg.id)"
+                                            [class.drop-down]="!isMenuDropUp(msg.id)">
                                             @if (msg.message_type === 'text') {
                                             <button class="dropdown-item" (click)="openEditModal(msg)">
                                                 <i class="bi bi-pencil me-2"></i>Sửa
@@ -499,7 +500,8 @@
                                 </div>
                                 } @else {
                                 <div class="bubble-anchor other">
-                                    <div class="message-actions" (mouseleave)="closeMenu()">
+                                    <div class="message-actions"
+                                        [class.active]="showMenuId === msg.id || reactionPickerMessageId === msg.id">
                                         <button class="action-btn reaction-btn" title="Thả emoji"
                                             (click)="toggleReactionPicker(msg.id, $event)">
                                             <i class="bi bi-emoji-smile"></i>
@@ -521,8 +523,8 @@
                                         </div>
                                         }
                                         @if (showMenuId === msg.id) {
-                                        <div class="msg-dropdown"
-                                            [ngStyle]="{'position': 'fixed', 'top.px': dropdownTop, 'left.px': dropdownLeft}">
+                                        <div class="msg-dropdown" [class.drop-up]="isMenuDropUp(msg.id)"
+                                            [class.drop-down]="!isMenuDropUp(msg.id)">
                                             <button class="dropdown-item" (click)="forwardMessage(msg)">
                                                 <i class="bi bi-forward me-2"></i>Chuyển tiếp
                                             </button>

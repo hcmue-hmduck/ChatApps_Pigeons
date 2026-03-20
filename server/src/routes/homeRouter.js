@@ -3,6 +3,10 @@ const router = express.Router();
 
 const homeController = require('../controllers/homeController');
 
+router.post('/message-reactions/:convID', homeController.addMessageReaction);
+// router.delete('/message-reactions/:id', homeController.removeMessageReaction);
+router.get('/message-reactions/:convID', homeController.getMessageReactions);
+
 router.get('/emojis', homeController.getAllEmojis);
 
 router.post('/comments/:postID', homeController.createComment);
