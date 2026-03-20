@@ -1,4 +1,4 @@
-import { Component, signal, computed, OnChanges, SimpleChanges, Input, ChangeDetectorRef, HostListener, ViewChild, OnInit, OnDestroy } from '@angular/core';
+import { Component, signal, computed, OnChanges, SimpleChanges, Input, ChangeDetectorRef, HostListener, ViewChild, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
@@ -11,14 +11,14 @@ import { UserBlock } from '../../services/userBlock';
 import { SocketService } from '../../services/socket';
 import { FriendsTab, NavigationService } from '../../services/navigation';
 import { UserInforModel } from '../userinforModel/userinforModel.component';
-import { response } from 'express';
 
 @Component({
     selector: 'relationship-layout',
     standalone: true,
     imports: [CommonModule, FormsModule, UserInforModel],
     templateUrl: './relationshipLayout.component.html',
-    styleUrls: ['./relationshipLayout.component.css']
+    styleUrls: ['./relationshipLayout.component.css'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy {
     protected readonly title = signal('Relationship');
@@ -35,7 +35,9 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
     searchKeyword = '';
     searchResults = signal<any[]>([]);
     isSearching = signal(false);
-    sendingRequests = new Set<string>();
+    sendingRequestsIds = new Set<string>();
+    friendRequestsIds = new Set<string>(); // Đây là Set chứa sender_id của người gửi yêu cầu kết bạn cho mình
+    friendIds = new Set<string>();         // Set chứa friend_id của những người đã là bạn bè
     currentUser = signal<any>(null);
 
     // Tự động tính toán lại danh sách hiển thị khi friends hoặc currentSort thay đổi
@@ -98,25 +100,24 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
     }
 
     ngOnDestroy() {
-        if (this.updateProfileListener) {
-            this.socketService.off('updateProfile', this.updateProfileListener);
-        }
+        // Gỡ bỏ tất cả socket listeners để tránh memory leak và lag máy
+        this.socketService.off('updateProfile');
+        this.socketService.off('updateFriend');
+        this.socketService.off('sendFriendRequest');
+        this.socketService.off('cancelSentRequest');
+        this.socketService.off('rejectFriendRequest');
+        this.socketService.off('acceptFriendRequest');
     }
 
     ngOnChanges(changes: SimpleChanges) {
         if (changes['currentUserId'] && this.currentUserId) {
             this.loadData();
-            this.loadingData();
         }
     }
 
     setTab(tab: FriendsTab) {
         this.currentTab = tab;
         this.navService.setFriendsTab(tab);
-
-        if (tab === 'friends_suggestions' && !this.isSearching() && this.searchResults().length === 0) {
-            this.loadingData();
-        }
     }
 
     toggleMoreMenu(friendId: string, event: Event) {
@@ -144,58 +145,171 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
                 }
                 return friend;
             });
+            let newUser = false;
+            const updatedUsers = this.searchResults().map((user: any) => {
+                if (user.id === data.id) {
+                    updated = true;
+                    newUser = true;
+                    user.full_name = data.full_name;
+                    user.avatar_url = data.avatar_url;
+                }
+                return user;
+            });
+
+
             this.friends.set(updatedFriends);
+
+            if (newUser) {
+                this.searchResults.set(updatedUsers);
+            }
 
             if (updated) {
                 this.cdr.markForCheck();
             }
         };
 
+        // Cleanup trước khi đăng ký để tránh trùng lặp
+        this.socketService.off('updateProfile');
+        this.socketService.off('updateFriend');
+        this.socketService.off('sendFriendRequest');
+        this.socketService.off('cancelSentRequest');
+        this.socketService.off('rejectFriendRequest');
+        this.socketService.off('acceptFriendRequest');
+
         this.socketService.on('updateProfile', this.updateProfileListener);
+
+        this.socketService.on('updateFriend', (data: any) => {
+            console.log('Received updateFriend event:', data);
+            // remover_id is the ID of the person who performed the deletion
+            const removerId = data.remover_id;
+
+            this.friends.update((friends: any) => friends.filter((f: any) => {
+                const f_id = f.friend_id || f.id;
+                return f_id !== removerId;
+            }));
+
+            this.friendIds.delete(removerId);
+            this.sendingRequestsIds.delete(removerId);
+        });
+
+        this.socketService.on('sendFriendRequest', (data: any) => {
+            if (data.receiver_id === this.currentUserId) {
+                console.log('sendFriendRequestEmit', data);
+                this.friendRequestsIds.add(data.sender_id);
+                this.friendRequests.update((requests: any) => [...requests, data]);
+            }
+        });
+
+        this.socketService.on('cancelSentRequest', (data: any) => {
+            console.log('cancelSentRequestEmit', data);
+            console.log('FR', this.friendRequests());
+            this.friendRequests.update((requests: any) => requests.filter((request: any) => request.id !== data));
+            this.sentRequests.update((requests: any) => requests.filter((request: any) => request.id !== data));
+        });
+
+        this.socketService.on('rejectFriendRequest', (data: any) => {
+            this.sentRequests.update((requests: any) => requests.filter((request: any) => request.id !== data));
+        });
+
+        this.socketService.on('acceptFriendRequest', (data: any) => {
+            console.log('Received acceptFriendRequest event:', data);
+            // Check if we are the person who originally sent this request
+            if (data.sender_id === this.currentUserId) {
+                this.friendIds.add(data.friend_id);
+                this.friends.update((friends: any) => [...friends, data]);
+                this.sentRequests.update((requests: any) => requests.filter((r: any) => r.id !== data.request_id));
+            }
+        });
+
+        this.socketService.on('blockUser', (data: any) => {
+            console.log('Received blockUser event:', data);
+            if (data.blocked_id === this.currentUserId) {
+                this.searchResults.update((results: any) => results.filter((r: any) => r.id !== data.blocker_id));
+                this.friends.update((friends: any) => friends.filter((f: any) => f.friend_id !== data.blocker_id));
+                this.sentRequests.update((requests: any) => requests.filter((r: any) => r.id !== data.blocker_id));
+                this.friendRequests.update((requests: any) => requests.filter((r: any) => r.id !== data.blocker_id));
+            }
+        });
+
+        this.socketService.on('unblockUser', (data: any) => {
+            console.log('Received unblockUser event:', data);
+            if (data.blocked_id === this.currentUserId) {
+                console.log('blockUser', this.blockedUser());
+                this.blockedUser.update((blocks: any) => blocks.filter((b: any) => b.id !== data.blocked_id));
+                this.searchResults.update((results: any) => [...results, data]);
+                this.friends.update((friends: any) => [...friends, data]);
+            }
+        });
     }
 
     loadData() {
         if (!this.currentUserId) return;
         this.loading = true;
+        this.isSearching.set(true);
 
-        // Sử dụng forkJoin để đợi cả 3 API trả về cùng lúc
         forkJoin({
             friends: this.friendService.getFriendByUserId(this.currentUserId),
             requests: this.friendRequestService.getFriendRequestsByUserId(this.currentUserId),
             sentRequests: this.friendRequestService.getSentFriendRequestsByUserId(this.currentUserId),
-            blocks: this.userBlockService.getBlockedUserByUserId(this.currentUserId)
+            blocks: this.userBlockService.getBlockedUserByUserId(this.currentUserId),
+            users: this.userService.getAllUsers(),
         }).subscribe({
             next: (res: any) => {
                 const allFriends = res.friends.metadata.friends || [];
-                const friendRequests = res.requests.metadata.friendRequests || [];
+                const receivedRequests = res.requests.metadata.friendRequests || [];
                 const userBlocksRaw = res.blocks.metadata.userBlocks || [];
+                const allUsers = res.users.metadata || [];
+                const sentRequests = res.sentRequests.metadata.sentFriendRequests || [];
 
-                const blockMap = new Map<string, any>(userBlocksRaw.map((b: any) => [b.blocked_id, b]));
+                this.isSearching.set(false);
 
-                const validFriends: any[] = [];
+                // Identify IDs that indicate an existing relationship
+                const friendIds = new Set<string>(allFriends.map((f: any) => f.friend_id));
+                const receivedRequestSenderIds = new Set<string>(receivedRequests.map((r: any) => r.sender_id));
+                const sentRequestReceiverIds = new Set<string>(sentRequests.map((r: any) => r.receiver_id));
+                const blockedIds = new Set(userBlocksRaw.map((b: any) => b.blocked_id));
+
+                this.sendingRequestsIds = sentRequestReceiverIds;
+                this.friendRequestsIds = receivedRequestSenderIds; // Lưu sender_id để check nhanh trong template
+                this.friendIds = friendIds;
+
                 const blockedList: any[] = [];
+                const suggestions: any[] = [];
+                let curUser: any = null;
 
-                console.log(blockMap);
+                allUsers.forEach((u: any) => {
+                    if (u.id === this.currentUserId) {
+                        curUser = u;
+                        return;
+                    }
 
-                allFriends.forEach((f: any) => {
-                    const blockData = blockMap.get(f.friend_id);
-                    if (!blockData) {
-                        validFriends.push(f);
-                    } else {
+                    // Map blocked users
+                    const blockData = userBlocksRaw.find((b: any) => b.blocked_id === u.id);
+                    if (blockData) {
                         blockedList.push({
-                            ...f,
+                            ...u,
                             block_id: blockData.id,
                             reason: blockData.reason
                         });
+                        console.log('Block', blockData);
+                        // this.socketService.emit('blockUser', blockData);
+                        return;
                     }
+
+                    suggestions.push(u);
                 });
 
-                const sentRequests = res.sentRequests.metadata.sentFriendRequests || [];
+                this.searchResults.set(suggestions);
+                this.currentUser.set(curUser);
 
-                this.friends.set(validFriends);
+                // Filter friends to exclude anyone who is now blocked (though normally they shouldn't be in both)
+                this.friends.set(allFriends.filter((f: any) => !blockedIds.has(f.friend_id)));
                 this.blockedUser.set(blockedList);
-                this.friendRequests.set(friendRequests);
+                this.friendRequests.set(receivedRequests);
                 this.sentRequests.set(sentRequests);
+
+                console.log('sentRequests', this.sentRequests());
+                console.log('friendRequests', this.friendRequests());
 
                 this.loading = false;
                 this.cdr.detectChanges();
@@ -204,6 +318,7 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
                 console.error('Error loading data:', error);
                 this.error = error.message;
                 this.loading = false;
+                this.isSearching.set(false);
                 this.cdr.detectChanges();
             }
         });
@@ -234,9 +349,19 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
                             position: 'top-end'
                         });
                         const unblockedUser = this.blockedUser().find(u => u.block_id === block_id);
+                        console.log('unblockedUser', unblockedUser);
+                        // CÒN BUG LOGIC
+                        // const userInfo = await this.userService.getUserById(unblockedUser.user_id);
                         if (unblockedUser) {
                             this.friends.update(list => [...list, unblockedUser]);
                             this.blockedUser.update(list => list.filter(u => u.block_id !== block_id));
+                            const dataBlock = {
+                                ...unblockedUser,
+                                blocker_id: this.currentUser().id,
+                                blocked_id: unblockedUser.friend_id,
+                            }
+                            console.log(dataBlock);
+                            this.socketService.emit('unblockUser', dataBlock);
                         }
                     },
                     error: (error) => {
@@ -303,7 +428,6 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
             this.friendRequestService.updateFriendRequest(requestId, action, note).subscribe({
                 next: () => {
                     this.loading = false;
-                    this.friendRequests.update((requests: any) => requests.filter((r: any) => r.id !== requestId));
                     Swal.fire({
                         icon: 'success',
                         title: 'Đã từ chối',
@@ -313,6 +437,8 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
                         position: 'top-end',
                         toast: true
                     });
+                    this.friendRequests.update((requests: any) => requests.filter((r: any) => r.id !== requestId));
+                    this.socketService.emit('rejectFriendRequest', requestId);
                 },
                 error: (error) => {
                     console.error('Error processing friend request:', error);
@@ -326,18 +452,20 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
             forkJoin([updateRequest$, createFriend$]).subscribe({
                 next: ([updateRes, createRes]: [any, any]) => {
                     this.loading = false;
+                    console.log('Request', requestInfo);
+                    const fullFriendData = {
+                        ...requestInfo,
+                        full_name: requestInfo.sender_name,
+                        avatar_url: requestInfo.sender_avatar,
+                        // friend_id cần đồng bộ với format của list friends
+                        friend_id: sender_id,
+                        request_id: requestId,
+                    };
+                    console.log('Full friend data:', fullFriendData);
 
-                    // Thêm vào danh sách bạn bè với đầy đủ thông tin (name, avatar) từ request
-                    if (createRes.metadata && createRes.metadata.newFriend && requestInfo) {
-                        const fullFriendData = {
-                            ...createRes.metadata.newFriend,
-                            full_name: requestInfo.sender_name,
-                            avatar_url: requestInfo.sender_avatar,
-                            // friend_id cần đồng bộ với format của list friends
-                            friend_id: sender_id
-                        };
-                        this.friends.update((friends: any) => [...friends, fullFriendData]);
-                    }
+                    this.friends.update((friends: any) => [...friends, fullFriendData]);
+                    this.friendIds.add(sender_id);
+                    this.friendRequestsIds.delete(sender_id);
 
                     // Xoá khỏi danh sách request
                     this.friendRequests.update((requests: any) => requests.filter((r: any) => r.id !== requestId));
@@ -350,6 +478,17 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
                         position: 'top-end',
                         toast: true
                     });
+                    const fullFriendData2 = {
+                        ...requestInfo,
+                        full_name: this.currentUser().full_name,
+                        avatar_url: this.currentUser().avatar_url,
+                        // This ID will be used by the RECEIVER (the original sender) 
+                        // to add the ACCEPTOR (current user) to their friends list.
+                        friend_id: this.currentUserId,
+                        request_id: requestId,
+                    };
+                    console.log('Emitting acceptFriendRequest:', fullFriendData2);
+                    this.socketService.emit('acceptFriendRequest', fullFriendData2);
                 },
                 error: (error) => {
                     console.error('Error accepting friend request:', error);
@@ -360,7 +499,9 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
     }
 
     blockUser(friend: any) {
-        const { friend_id, full_name } = friend;
+        const full_name = friend.full_name;
+        const friend_id = friend.friend_id ? friend.friend_id : friend.id;
+        console.log('Blocked', friend);
         Swal.fire({
             title: `Chặn "${full_name}"?`,
             text: 'Bạn có chắc chắn muốn chặn người này không? Họ sẽ không thể gửi tin nhắn cho bạn.',
@@ -396,9 +537,15 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
                             toast: true,
                             position: 'top-end'
                         });
-
-                        this.friends.update((friends: any) => friends.filter((friend: any) => friend.friend_id !== friend_id));
+                        this.searchResults.update((results: any) => results.filter((result: any) => (result.friend_id ? result.friend_id !== friend_id : result.id !== friend_id)));
+                        this.friends.update((friends: any) => friends.filter((friend: any) => (friend.friend_id ? friend.friend_id !== friend_id : friend.id !== friend_id)));
                         this.blockedUser.update((blockedUsers: any) => [...blockedUsers, blockedUser]);
+                        const dataBlock = {
+                            blocker_id: this.currentUser().id,
+                            blocked_id: friend_id,
+
+                        }
+                        this.socketService.emit('blockUser', dataBlock);
                     },
                     error: (error) => {
                         console.error('Error blocking user:', error);
@@ -424,7 +571,7 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
                 // For now, let's just remove it from UI after server response
                 this.friendRequestService.updateFriendRequest(requestId, 'rejected', 'Canceled by sender').subscribe({
                     next: () => {
-                        this.sentRequests.update(list => list.filter(r => r.id !== requestId));
+                        this.socketService.emit('cancelSentRequest', requestId);
                         Swal.fire({
                             title: 'Đã hủy',
                             icon: 'success',
@@ -439,41 +586,52 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
         });
     }
 
-    loadingData() {
-        this.isSearching.set(true);
-        forkJoin({
-            users: this.userService.getAllUsers(),
-            sentRequests: this.friendRequestService.getSentFriendRequestsByUserId(this.currentUserId)
-        }).subscribe({
-            next: (res: any) => {
-                const allUsers = res.users.metadata || [];
-                const filteredUsers: any[] = [];
-                let curUser: any = null;
+    deleteFriend(friend: any) {
+        const friend_id = friend.friend_id || friend.id;
+        const full_name = friend.full_name;
 
-                for (const u of allUsers) {
-                    if (u.id === this.currentUserId) {
-                        curUser = u;
-                    } else {
-                        filteredUsers.push(u);
-                    }
-                }
+        Swal.fire({
+            title: `Xóa "${full_name}" khỏi danh sách bạn bè?`,
+            text: 'Bạn có chắc chắn muốn xóa người này khỏi danh sách bạn bè không?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Xóa',
+            cancelButtonText: 'Hủy',
+            confirmButtonColor: '#ef4444',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                this.friendService.deleteFriend(this.currentUserId, friend_id).subscribe({
+                    next: () => {
+                        // 1. Update local UI: Remove by friend's ID
+                        this.friends.update((friends: any) => friends.filter((f: any) => {
+                            const f_id = f.friend_id || f.id;
+                            return f_id !== friend_id;
+                        }));
 
-                this.searchResults.set(filteredUsers);
-                this.currentUser.set(curUser);
+                        this.friendIds.delete(friend_id);
+                        this.sendingRequestsIds.delete(friend_id);
 
-                const sent = res.sentRequests.metadata?.sentFriendRequests || [];
-                this.sendingRequests = new Set<string>();
-                sent.forEach((req: any) => {
-                    if (req.receiver_id) {
-                        this.sendingRequests.add(req.receiver_id);
+                        // 2. Notify other users: Tell them WHO removed WHOM
+                        this.socketService.emit('updateFriend', {
+                            remover_id: this.currentUserId,
+                            target_id: friend_id
+                        });
+
+
+
+                        Swal.fire({
+                            title: 'Đã xóa',
+                            icon: 'success',
+                            timer: 1500,
+                            showConfirmButton: false,
+                            toast: true,
+                            position: 'top-end'
+                        });
+                    },
+                    error: (error) => {
+                        console.error('Error deleting friend:', error);
                     }
                 });
-
-                this.isSearching.set(false);
-            },
-            error: (err: any) => {
-                console.error('Error loading initial modal data:', err);
-                this.isSearching.set(false);
             }
         });
     }
@@ -494,10 +652,10 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
                 this.searchResults.set(users);
 
                 const sent = res.sentRequests.metadata?.sentFriendRequests || [];
-                this.sendingRequests = new Set<string>();
+                this.sendingRequestsIds = new Set<string>();
                 sent.forEach((req: any) => {
                     if (req.receiver_id) {
-                        this.sendingRequests.add(req.receiver_id);
+                        this.sendingRequestsIds.add(req.receiver_id);
                     }
                 });
 
@@ -510,8 +668,9 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
         });
     }
 
-    sendFriendRequest(receiverId: string) {
-        if (this.sendingRequests.has(receiverId)) return;
+    sendFriendRequest(user: any) {
+        const receiverId = user.id;
+        if (this.sendingRequestsIds.has(receiverId)) return;
 
         const defaultMsg = `Mình là ${this.currentUser()?.full_name || 'người quen'}, kết bạn với mình nhé!`;
 
@@ -533,9 +692,26 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
         }).then((result) => {
             if (result.isConfirmed) {
                 const note = result.value || '';
-                this.sendingRequests.add(receiverId);
                 this.friendRequestService.createFriendRequest(this.currentUserId, receiverId, note).subscribe({
-                    next: () => {
+                    next: (res) => {
+                        console.log('Data send friend request', res.metadata?.newFriendRequest);
+                        this.sendingRequestsIds.add(receiverId);
+                        const newFriendRequest = {
+                            id: res.metadata?.newFriendRequest?.id,
+                            sender_id: this.currentUserId,
+                            receiver_id: receiverId,
+                            note: note,
+                            status: 'pending',
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString(),
+                            sender_name: this.currentUser()?.full_name,
+                            sender_avatar: this.currentUser()?.avatar_url,
+                            receiver_name: user.full_name,
+                            receiver_avatar: user.avatar_url,
+                        };
+                        this.sentRequests.update((requests: any) => [newFriendRequest, ...requests]);
+                        this.sendingRequestsIds.add(receiverId);
+                        this.socketService.emit('sendFriendRequest', newFriendRequest);
                         Swal.fire({
                             title: 'Đã gửi!',
                             icon: 'success',
@@ -547,7 +723,7 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
                     },
                     error: (err: any) => {
                         console.error('Error sending friend request:', err);
-                        this.sendingRequests.delete(receiverId);
+                        this.sendingRequestsIds.delete(receiverId);
                         Swal.fire('Lỗi', 'Không thể gửi lời mời. Vui lòng thử lại.', 'error');
                     }
                 });
@@ -556,7 +732,19 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
     }
 
     isRequestSent(userId: string): boolean {
-        return this.sendingRequests.has(userId);
+        return this.sendingRequestsIds.has(userId);
+    }
+
+    isFriendRequest(userId: string): boolean {
+        return this.friendRequestsIds.has(userId);
+    }
+
+    isFriend(userId: string): boolean {
+        return this.friendIds.has(userId);
+    }
+
+    getReceivedRequest(userId: string): any {
+        return this.friendRequests().find(req => req.sender_id === userId);
     }
 
     sendMessage(receiverId: string) {

@@ -259,119 +259,135 @@
                         </div>
                         }
 
-                        <!-- Bubble + actions -->
-                        <div class="bubble-row">
-                            @if (msg.message_type !== 'call') {
-                            <!-- Actions (left of bubble for me) -->
-                            @if (!msg.is_deleted) {
-                            <div class="message-actions" (mouseleave)="closeMenu()">
-                                <button class="action-btn" title="Tùy chọn" (click)="toggleMenu(msg.id, $event)">
-                                    <i class="bi bi-three-dots-vertical"></i>
-                                </button>
-                                <button class="action-btn" title="Trả lời" (click)="replyMessage(msg.id)">
-                                    <i class="bi bi-reply"></i>
-                                </button>
-                                <!-- Dropdown -->
-                                @if (showMenuId === msg.id) {
-                                <div class="msg-dropdown"
-                                    [ngStyle]="{'position': 'fixed', 'top.px': dropdownTop, 'left.px': dropdownLeft}">
-                                    @if (msg.message_type === 'text') {
-                                    <button class="dropdown-item" (click)="openEditModal(msg)">
-                                        <i class="bi bi-pencil me-2"></i>Sửa
-                                    </button>
-                                    }
-                                    <button class="dropdown-item" (click)="forwardMessage(msg)">
-                                        <i class="bi bi-forward me-2"></i>Chuyển tiếp
-                                    </button>
-                                    <button class="dropdown-item" (click)="pinMessage(msg)">
-                                        <i class="bi bi-pin-angle me-2"></i>Ghim
-                                    </button>
-                                    <button class="dropdown-item danger" (click)="deleteMessage(msg)">
-                                        <i class="bi bi-trash me-2"></i>Gỡ
-                                    </button>
-                                </div>
-                                }
-                            </div>
-                            }
-
-                            <!-- Bubble -->
-                            <div class="bubble-me" [class.bubble-deleted]="msg.is_deleted"
-                                [class.bubble-image]="msg.message_type === 'image'">
-                                @if (msg.is_deleted) {
-                                Tin nhắn đã được gỡ
-                                } @else {
-                                <!-- Image -->
-                                @if (msg.message_type === 'image') {
-                                <div class="msg-image-wrap" (click)="openImageViewer(msg.file_url)">
-                                    <img [src]="resolveMediaUrl(msg.file_url)" class="msg-image" alt="Hình ảnh">
-                                </div>
-                                }
-                                <!-- Video -->
-                                @if (msg.message_type === 'video') {
-                                <div class="msg-video-wrap">
-                                    <video [src]="resolveMediaUrl(msg.file_url)" controls class="msg-video"></video>
-                                </div>
-                                }
-                                <!-- File -->
-                                @if (msg.message_type === 'file') {
-                                <div class="msg-file-wrap">
-                                    <a [attr.href]="resolveMediaUrl(msg.file_url) || null" target="_blank" rel="noopener noreferrer"
-                                        class="msg-file-link" (click)="openFileInNewTab(msg.file_url, $event)">
-                                        <i class="bi bi-file-earmark-arrow-down"></i>
-                                        <span>{{ msg.file_name || 'Tệp đính kèm' }}</span>
-                                    </a>
-                                </div>
-                                }
-                                <!-- Text -->
-                                @if (msg.message_type === 'text') {
-                                <div [innerHTML]="formatMessageText(msg.content)"></div>
-                                @if (getLinkPreviewForMessage(msg); as preview) {
-                                <a class="link-preview-card" [href]="preview.url" target="_blank"
-                                    rel="noopener noreferrer" (click)="$event.stopPropagation()">
-                                    @if (preview.image) {
-                                    <img class="link-preview-image" [src]="preview.image"
-                                        [alt]="preview.title || preview.siteName">
-                                    }
-                                    <div class="link-preview-body">
-                                        <div class="link-preview-site">{{ preview.siteName || preview.hostname }}</div>
-                                        <div class="link-preview-title">{{ preview.title || preview.url }}</div>
-                                        @if (preview.description) {
-                                        <div class="link-preview-desc">{{ preview.description }}</div>
+                        <div class="bubble-stack me">
+                            <div class="bubble-row">
+                                @if (msg.message_type !== 'call') {
+                                <div class="bubble-anchor me">
+                                    @if (!msg.is_deleted) {
+                                    <div class="message-actions" (mouseleave)="closeMenu()">
+                                        <button class="action-btn" title="Tùy chọn" (click)="toggleMenu(msg.id, $event)">
+                                            <i class="bi bi-three-dots-vertical"></i>
+                                        </button>
+                                        <button class="action-btn" title="Trả lời" (click)="replyMessage(msg.id)">
+                                            <i class="bi bi-reply"></i>
+                                        </button>
+                                        <button class="action-btn reaction-btn" title="Thả emoji"
+                                            (click)="toggleReactionPicker(msg.id, $event)">
+                                            <i class="bi bi-emoji-smile"></i>
+                                        </button>
+                                        @if (reactionPickerMessageId === msg.id) {
+                                        <div class="reaction-picker" (click)="$event.stopPropagation()">
+                                            @for (emoji of quickReactionEmojis; track emoji) {
+                                            <button class="reaction-emoji-btn" type="button"
+                                                (click)="addReaction(msg, emoji, $event)">
+                                                {{ emoji }}
+                                            </button>
+                                            }
+                                        </div>
+                                        }
+                                        @if (showMenuId === msg.id) {
+                                        <div class="msg-dropdown"
+                                            [ngStyle]="{'position': 'fixed', 'top.px': dropdownTop, 'left.px': dropdownLeft}">
+                                            @if (msg.message_type === 'text') {
+                                            <button class="dropdown-item" (click)="openEditModal(msg)">
+                                                <i class="bi bi-pencil me-2"></i>Sửa
+                                            </button>
+                                            }
+                                            <button class="dropdown-item" (click)="forwardMessage(msg)">
+                                                <i class="bi bi-forward me-2"></i>Chuyển tiếp
+                                            </button>
+                                            <button class="dropdown-item" (click)="pinMessage(msg)">
+                                                <i class="bi bi-pin-angle me-2"></i>Ghim
+                                            </button>
+                                            <button class="dropdown-item danger" (click)="deleteMessage(msg)">
+                                                <i class="bi bi-trash me-2"></i>Gỡ
+                                            </button>
+                                        </div>
                                         }
                                     </div>
-                                </a>
-                                }
-                                }
-                                <!-- Upload progress bar -->
-                                @if (msg._uploading) {
-                                <div class="upload-progress">
-                                    <div class="upload-progress-bar"></div>
-                                    <span class="upload-progress-text">Đang tải lên...</span>
-                                </div>
-                                }
-                                }
-                            </div>
-                            } @else {
-                            <div class="call-bubble-modern">
-                                <div class="call-top-section">
-                                    <div class="call-icon-circle">
-                                        <i [className]="getCallIcon(msg.call)"></i>
-                                    </div>
-                                    <div class="call-info-cols">
-                                        <div class="call-title-text">
-                                            {{ getCallMainContent(msg.call) }}
-                                        </div>
-                                        <div class="call-sub-text">
-                                            {{ getCallDescription(msg.call) }}
-                                        </div>
-                                    </div>
-                                </div>
+                                    }
 
-                                <button class="call-action-btn-modern" (click)="handleVoiceCall()">
-                                    Gọi lại
-                                </button>
+                                    <div class="bubble-me" [class.bubble-deleted]="msg.is_deleted"
+                                        [class.bubble-image]="msg.message_type === 'image'">
+                                        @if (msg.is_deleted) {
+                                        Tin nhắn đã được gỡ
+                                        } @else {
+                                        @if (msg.message_type === 'image') {
+                                        <div class="msg-image-wrap" (click)="openImageViewer(msg.file_url)">
+                                            <img [src]="resolveMediaUrl(msg.file_url)" class="msg-image" alt="Hình ảnh">
+                                        </div>
+                                        }
+                                        @if (msg.message_type === 'video') {
+                                        <div class="msg-video-wrap">
+                                            <video [src]="resolveMediaUrl(msg.file_url)" controls class="msg-video"></video>
+                                        </div>
+                                        }
+                                        @if (msg.message_type === 'file') {
+                                        <div class="msg-file-wrap">
+                                            <button type="button" class="msg-file-link"
+                                                (click)="openFileInNewTab(msg.file_url, $event)">
+                                                <i class="bi bi-file-earmark-arrow-down"></i>
+                                                <span>{{ msg.file_name || 'Tệp đính kèm' }}</span>
+                                            </button>
+                                        </div>
+                                        }
+                                        @if (msg.message_type === 'text') {
+                                        <div [innerHTML]="formatMessageText(msg.content)"></div>
+                                        @if (getLinkPreviewForMessage(msg); as preview) {
+                                        <a class="link-preview-card" [href]="preview.url" target="_blank"
+                                            rel="noopener noreferrer" (click)="$event.stopPropagation()">
+                                            @if (preview.image) {
+                                            <img class="link-preview-image" [src]="preview.image"
+                                                [alt]="preview.title || preview.siteName">
+                                            }
+                                            <div class="link-preview-body">
+                                                <div class="link-preview-site">{{ preview.siteName || preview.hostname }}</div>
+                                                <div class="link-preview-title">{{ preview.title || preview.url }}</div>
+                                                @if (preview.description) {
+                                                <div class="link-preview-desc">{{ preview.description }}</div>
+                                                }
+                                            </div>
+                                        </a>
+                                        }
+                                        }
+                                        @if (msg._uploading) {
+                                        <div class="upload-progress">
+                                            <div class="upload-progress-bar"></div>
+                                            <span class="upload-progress-text">Đang tải lên...</span>
+                                        </div>
+                                        }
+                                        }
+                                    </div>
+
+                                    @if (msg.message_type !== 'call' && !msg.is_deleted && getMessageReactions(msg).length > 0) {
+                                    <div class="message-reactions me">
+                                        @for (reaction of getMessageReactions(msg); track trackByReactionEmoji($index, reaction)) {
+                                        <button class="reaction-chip" type="button" [class.active]="reaction.reactedByCurrentUser"
+                                            (click)="addReaction(msg, reaction.emoji, $event)">
+                                            <span class="reaction-emoji">{{ reaction.emoji }}</span>
+                                            @if (reaction.count > 1) {
+                                            <span class="reaction-count">{{ reaction.count }}</span>
+                                            }
+                                        </button>
+                                        }
+                                    </div>
+                                    }
+                                </div>
+                                } @else {
+                                <div class="call-bubble-modern">
+                                    <div class="call-top-section">
+                                        <div class="call-icon-circle">
+                                            <i [className]="getCallIcon(msg.call)"></i>
+                                        </div>
+                                        <div class="call-info-cols">
+                                            <div class="call-title-text">{{ getCallMainContent(msg.call) }}</div>
+                                            <div class="call-sub-text">{{ getCallDescription(msg.call) }}</div>
+                                        </div>
+                                    </div>
+                                    <button class="call-action-btn-modern" (click)="handleVoiceCall()">Gọi lại</button>
+                                </div>
+                                }
                             </div>
-                            }
                         </div>
 
                         <!-- Edited badge -->
@@ -438,7 +454,7 @@
                             @if (msg.parent_message_info.parent_message_sender_id === currentUserId) {
                             {{ msg.sender_name }} đã trả lời bạn
                             } @else if (msg.parent_message_info.parent_message_sender_id === msg.sender_id) {
-                            {{ msg.sender_name }} đã trả lời chính họ
+                            {{ msg.sender_name }} đã trả lời chính mình
                             } @else {
                             {{ msg.sender_name }} đã trả lời {{ msg.parent_message_info.parent_message_name }}
                             }
@@ -474,100 +490,120 @@
                         </div>
                         }
 
-                        <!-- Bubble + actions -->
-                        <div class="bubble-row">
-                            @if (msg.message_type !== 'call') {
-                            @if (msg.is_deleted) {
-                            <div class="bubble-other bubble-deleted">Tin nhắn đã được gỡ</div>
-                            } @else {
-                            <div class="bubble-other" [class.bubble-image]="msg.message_type === 'image'">
-                                <!-- Image -->
-                                @if (msg.message_type === 'image') {
-                                <div class="msg-image-wrap" (click)="openImageViewer(msg.file_url)">
-                                    <img [src]="resolveMediaUrl(msg.file_url)" class="msg-image" alt="Hình ảnh">
+                        <div class="bubble-stack other">
+                            <div class="bubble-row">
+                                @if (msg.message_type !== 'call') {
+                                @if (msg.is_deleted) {
+                                <div class="bubble-anchor other">
+                                    <div class="bubble-other bubble-deleted">Tin nhắn đã được gỡ</div>
                                 </div>
-                                }
-                                <!-- Video -->
-                                @if (msg.message_type === 'video') {
-                                <div class="msg-video-wrap">
-                                    <video [src]="resolveMediaUrl(msg.file_url)" controls class="msg-video"></video>
-                                </div>
-                                }
-                                <!-- File -->
-                                @if (msg.message_type === 'file') {
-                                <div class="msg-file-wrap">
-                                    <a [attr.href]="resolveMediaUrl(msg.file_url) || null" target="_blank" rel="noopener noreferrer"
-                                        class="msg-file-link" (click)="openFileInNewTab(msg.file_url, $event)">
-                                        <i class="bi bi-file-earmark-arrow-down"></i>
-                                        <span>{{ msg.file_name || 'Tệp đính kèm' }}</span>
-                                    </a>
-                                </div>
-                                }
-                                <!-- Text -->
-                                @if (msg.message_type === 'text') {
-                                <div [innerHTML]="formatMessageText(msg.content)"></div>
-                                @if (getLinkPreviewForMessage(msg); as preview) {
-                                <a class="link-preview-card" [href]="preview.url" target="_blank"
-                                    rel="noopener noreferrer" (click)="$event.stopPropagation()">
-                                    @if (preview.image) {
-                                    <img class="link-preview-image" [src]="preview.image"
-                                        [alt]="preview.title || preview.siteName">
-                                    }
-                                    <div class="link-preview-body">
-                                        <div class="link-preview-site">{{ preview.siteName || preview.hostname }}</div>
-                                        <div class="link-preview-title">{{ preview.title || preview.url }}</div>
-                                        @if (preview.description) {
-                                        <div class="link-preview-desc">{{ preview.description }}</div>
+                                } @else {
+                                <div class="bubble-anchor other">
+                                    <div class="message-actions" (mouseleave)="closeMenu()">
+                                        <button class="action-btn reaction-btn" title="Thả emoji"
+                                            (click)="toggleReactionPicker(msg.id, $event)">
+                                            <i class="bi bi-emoji-smile"></i>
+                                        </button>
+                                        <button class="action-btn" title="Trả lời" (click)="replyMessage(msg.id)">
+                                            <i class="bi bi-reply"></i>
+                                        </button>
+                                        <button class="action-btn" title="Tùy chọn" (click)="toggleMenu(msg.id, $event)">
+                                            <i class="bi bi-three-dots-vertical"></i>
+                                        </button>
+                                        @if (reactionPickerMessageId === msg.id) {
+                                        <div class="reaction-picker" (click)="$event.stopPropagation()">
+                                            @for (emoji of quickReactionEmojis; track emoji) {
+                                            <button class="reaction-emoji-btn" type="button"
+                                                (click)="addReaction(msg, emoji, $event)">
+                                                {{ emoji }}
+                                            </button>
+                                            }
+                                        </div>
+                                        }
+                                        @if (showMenuId === msg.id) {
+                                        <div class="msg-dropdown"
+                                            [ngStyle]="{'position': 'fixed', 'top.px': dropdownTop, 'left.px': dropdownLeft}">
+                                            <button class="dropdown-item" (click)="forwardMessage(msg)">
+                                                <i class="bi bi-forward me-2"></i>Chuyển tiếp
+                                            </button>
+                                            <button class="dropdown-item" (click)="pinMessage(msg)">
+                                                <i class="bi bi-pin-angle me-2"></i>Ghim
+                                            </button>
+                                        </div>
                                         }
                                     </div>
-                                </a>
-                                }
-                                }
-                            </div>
 
-                            <!-- Actions (right of bubble for other) -->
-                            <div class="message-actions" (mouseleave)="closeMenu()">
-                                <button class="action-btn" title="Trả lời" (click)="replyMessage(msg.id)">
-                                    <i class="bi bi-reply"></i>
-                                </button>
-                                <button class="action-btn" title="Tùy chọn" (click)="toggleMenu(msg.id, $event)">
-                                    <i class="bi bi-three-dots-vertical"></i>
-                                </button>
-                                <!-- Dropdown -->
-                                @if (showMenuId === msg.id) {
-                                <div class="msg-dropdown"
-                                    [ngStyle]="{'position': 'fixed', 'top.px': dropdownTop, 'left.px': dropdownLeft}">
-                                    <button class="dropdown-item" (click)="forwardMessage(msg)">
-                                        <i class="bi bi-forward me-2"></i>Chuyển tiếp
-                                    </button>
-                                    <button class="dropdown-item" (click)="pinMessage(msg)">
-                                        <i class="bi bi-pin-angle me-2"></i>Ghim
-                                    </button>
+                                    <div class="bubble-other" [class.bubble-image]="msg.message_type === 'image'">
+                                        @if (msg.message_type === 'image') {
+                                        <div class="msg-image-wrap" (click)="openImageViewer(msg.file_url)">
+                                            <img [src]="resolveMediaUrl(msg.file_url)" class="msg-image" alt="Hình ảnh">
+                                        </div>
+                                        }
+                                        @if (msg.message_type === 'video') {
+                                        <div class="msg-video-wrap">
+                                            <video [src]="resolveMediaUrl(msg.file_url)" controls class="msg-video"></video>
+                                        </div>
+                                        }
+                                        @if (msg.message_type === 'file') {
+                                        <div class="msg-file-wrap">
+                                            <button type="button" class="msg-file-link"
+                                                (click)="openFileInNewTab(msg.file_url, $event)">
+                                                <i class="bi bi-file-earmark-arrow-down"></i>
+                                                <span>{{ msg.file_name || 'Tệp đính kèm' }}</span>
+                                            </button>
+                                        </div>
+                                        }
+                                        @if (msg.message_type === 'text') {
+                                        <div [innerHTML]="formatMessageText(msg.content)"></div>
+                                        @if (getLinkPreviewForMessage(msg); as preview) {
+                                        <a class="link-preview-card" [href]="preview.url" target="_blank"
+                                            rel="noopener noreferrer" (click)="$event.stopPropagation()">
+                                            @if (preview.image) {
+                                            <img class="link-preview-image" [src]="preview.image"
+                                                [alt]="preview.title || preview.siteName">
+                                            }
+                                            <div class="link-preview-body">
+                                                <div class="link-preview-site">{{ preview.siteName || preview.hostname }}</div>
+                                                <div class="link-preview-title">{{ preview.title || preview.url }}</div>
+                                                @if (preview.description) {
+                                                <div class="link-preview-desc">{{ preview.description }}</div>
+                                                }
+                                            </div>
+                                        </a>
+                                        }
+                                        }
+                                    </div>
+
+                                    @if (!msg.is_deleted && getMessageReactions(msg).length > 0) {
+                                    <div class="message-reactions other">
+                                        @for (reaction of getMessageReactions(msg); track trackByReactionEmoji($index, reaction)) {
+                                        <button class="reaction-chip" type="button" [class.active]="reaction.reactedByCurrentUser"
+                                            (click)="addReaction(msg, reaction.emoji, $event)">
+                                            <span class="reaction-emoji">{{ reaction.emoji }}</span>
+                                            @if (reaction.count > 1) {
+                                            <span class="reaction-count">{{ reaction.count }}</span>
+                                            }
+                                        </button>
+                                        }
+                                    </div>
+                                    }
+                                </div>
+                                }
+                                } @else {
+                                <div class="call-bubble-modern">
+                                    <div class="call-top-section">
+                                        <div class="call-icon-circle">
+                                            <i [className]="getCallIcon(msg.call)"></i>
+                                        </div>
+                                        <div class="call-info-cols">
+                                            <div class="call-title-text">{{ getCallMainContent(msg.call) }}</div>
+                                            <div class="call-sub-text">{{ getCallDescription(msg.call) }}</div>
+                                        </div>
+                                    </div>
+                                    <button class="call-action-btn-modern" (click)="handleVoiceCall()">Gọi lại</button>
                                 </div>
                                 }
                             </div>
-                            }
-                            } @else {
-                            <div class="call-bubble-modern">
-                                <div class="call-top-section">
-                                    <div class="call-icon-circle">
-                                        <i [className]="getCallIcon(msg.call)"></i>
-                                    </div>
-                                    <div class="call-info-cols">
-                                        <div class="call-title-text">
-                                            {{ getCallMainContent(msg.call) }}
-                                        </div>
-                                        <div class="call-sub-text">
-                                            {{ getCallDescription(msg.call) }}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <button class="call-action-btn-modern" (click)="handleVoiceCall()">
-                                    Gọi lại
-                                </button>
-                            </div>
-                            }
                         </div>
 
                         <!-- Edited badge -->
@@ -603,6 +639,7 @@
     <!-- ============================================================
         INPUT AREA
         ============================================================ -->
+    @if (!isBlocked()) {
     <div class="input-area">
 
         <!-- Reply preview strip -->
@@ -725,7 +762,17 @@
             </button>
         </div>
     </div>
-
+    }
+    @else {
+    <div class="blocked-message">
+        <div class="blocked-icon">
+            <i class="bi bi-lock-fill"></i>
+        </div>
+        <div class="blocked-text">
+            <p>Bạn đã bị chặn bởi người này</p>
+        </div>
+    </div>
+    }
     <!-- Image Viewer Modal Overlay (bounded to messages layout) -->
     @if (isImageViewerOpen) {
     <div class="image-viewer-overlay" (click)="closeImageViewer()">

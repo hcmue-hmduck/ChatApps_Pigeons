@@ -26,11 +26,12 @@
 
         <div class="feed-grid">
             <main class="feed-main custom-scrollbar">
-                <section class="cyber-glass create-post">
+                <section class="cyber-glass create-post" [class.is-posting]="isPosting()">
                     <div class="create-grid">
                         <div class="create-body">
                             <div class="create-header-info">
-                                <img [src]="currentUser.avatar" alt="Avatar" class="avatar-s create-avatar" referrerPolicy="no-referrer">
+                                <img [src]="currentUser.avatar" alt="Avatar" class="avatar-s create-avatar"
+                                    referrerPolicy="no-referrer">
                                 <div class="create-header-meta">
                                     <div class="create-meta-top-row">
                                         <span class="user-name">{{ userInfor?.full_name || 'User' }}</span>
@@ -56,7 +57,8 @@
                                             <select class="cyber-select-subtle" [(ngModel)]="newPostFeeling">
                                                 <option value="">😊 Feeling...</option>
                                                 @for (e of emojis(); track e.id) {
-                                                <option [value]="e.unicode_char + ' ' + e.name">{{ e.unicode_char }} {{ e.name }}</option>
+                                                <option [value]="e.unicode_char + ' ' + e.name">{{ e.unicode_char }} {{
+                                                    e.name }}</option>
                                                 }
                                             </select>
                                         </div>
@@ -71,16 +73,21 @@
                             <div class="create-preview-list">
                                 @if (selectedMediaPreviews.length > 0) {
                                 <div class="create-preview-card image-preview-card">
-                                    <div class="media-grid creator-media-preview" [ngClass]="getCreatorMediaLayoutClass()">
+                                    <div class="media-grid creator-media-preview"
+                                        [ngClass]="getCreatorMediaLayoutClass()">
                                         @for (media of selectedMediaPreviews.slice(0, 4); track media.id) {
                                         <div class="media-item" (click)="openCreatorMediaPreview($index)">
                                             @if (media.media_type === 'image') {
-                                            <img [src]="media.media_url" alt="Selected image preview" class="media-content" referrerPolicy="no-referrer">
+                                            <img [src]="media.media_url" alt="Selected image preview"
+                                                class="media-content" referrerPolicy="no-referrer">
                                             } @else if (media.media_type === 'video') {
-                                            <video [src]="media.media_url" class="media-content" controls muted preload="metadata"></video>
+                                            <video [src]="media.media_url" class="media-content" muted
+                                                preload="metadata"></video>
                                             }
 
-                                            <button class="preview-remove-btn preview-remove-btn-float" type="button" (click)="removeSelectedMedia(media.id)" aria-label="Remove selected media">
+                                            <button class="preview-remove-btn preview-remove-btn-float" type="button"
+                                                (click)="removeSelectedMedia(media.id)"
+                                                aria-label="Remove selected media">
                                                 <i class="bi bi-x-lg"></i>
                                             </button>
 
@@ -93,50 +100,71 @@
                                         }
                                     </div>
 
-                                    <button class="preview-clear-all-btn" type="button" (click)="clearSelectedMedia()">Xóa tất cả ảnh/video</button>
+                                    <button class="preview-clear-all-btn" type="button"
+                                        (click)="clearSelectedMedia()">Xóa tất cả ảnh/video</button>
                                 </div>
                                 }
 
                                 @if (selectedAttachmentFiles.length > 0) {
-                                @for (file of selectedAttachmentFiles; track file.name + '-' + file.lastModified; let i = $index) {
+                                @for (file of selectedAttachmentFiles; track file.name + '-' + file.lastModified; let i
+                                = $index) {
                                 <div class="create-preview-card file-preview-card">
                                     <div class="preview-file-icon">
                                         <i class="bi" [class]="'bi ' + getAttachmentIconClass(file)"></i>
                                     </div>
                                     <div class="preview-meta">
                                         <p class="preview-title">{{ file.name }}</p>
-                                        <p class="preview-subtitle">{{ formatFileSize(file.size) }} • {{ getFileExtension(file.name) }}</p>
+                                        <p class="preview-subtitle">{{ formatFileSize(file.size) }} • {{
+                                            getFileExtension(file.name) }}</p>
                                     </div>
-                                    <button class="preview-remove-btn" type="button" (click)="removeSelectedAttachment(i)" aria-label="Remove selected file">
+                                    <button class="preview-remove-btn" type="button"
+                                        (click)="removeSelectedAttachment(i)" aria-label="Remove selected file">
                                         <i class="bi bi-x-lg"></i>
                                     </button>
                                 </div>
                                 }
 
-                                <button class="preview-clear-all-btn" type="button" (click)="clearSelectedAttachments()">Xóa tất cả tệp</button>
+                                <button class="preview-clear-all-btn" type="button"
+                                    (click)="clearSelectedAttachments()">Xóa tất cả tệp</button>
                                 }
                             </div>
                             }
 
                             <div class="create-footer">
                                 <div class="create-actions">
-                                    <button class="icon-btn subtle" type="button" title="Add image" (click)="triggerImagePicker(imageInput)">
+                                    <button class="icon-btn subtle" type="button" title="Add image"
+                                        (click)="triggerImagePicker(imageInput)">
                                         <i class="bi bi-image"></i>
                                     </button>
-                                    <button class="icon-btn subtle" type="button" title="Attach file" (click)="triggerAttachmentPicker(attachmentInput)">
+                                    <button class="icon-btn subtle" type="button" title="Attach file"
+                                        (click)="triggerAttachmentPicker(attachmentInput)">
                                         <i class="bi bi-paperclip"></i>
                                     </button>
-                                    <input id="create-post-image-input" #imageInput type="file" accept="image/*,video/*" multiple class="hidden-file-input" (change)="onMediaSelected($event)">
-                                    <input id="create-post-attachment-input" #attachmentInput type="file" multiple class="hidden-file-input" (change)="onAttachmentSelected($event)">
+                                    <input id="create-post-image-input" #imageInput type="file" accept="image/*,video/*"
+                                        multiple class="hidden-file-input" (change)="onMediaSelected($event)">
+                                    <input id="create-post-attachment-input" #attachmentInput type="file" multiple
+                                        class="hidden-file-input" (change)="onAttachmentSelected($event)">
                                 </div>
 
                                 <button class="btn-primary" type="button" (click)="handlePostFeed()"
-                                    [disabled]="(!newPostContent.trim() && selectedMediaPreviews.length === 0 && selectedAttachmentFiles.length === 0) || loading()">
-                                    {{ loading() ? 'Posting...' : 'Post' }}
+                                    [disabled]="(!newPostContent.trim() && selectedMediaPreviews.length === 0 && selectedAttachmentFiles.length === 0) || isPosting()">
+                                    {{ isPosting() ? 'Đang đăng...' : 'Post' }}
                                 </button>
                             </div>
                         </div>
                     </div>
+
+                    @if (isPosting()) {
+                    <div class="create-upload-overlay" aria-live="polite">
+                        <div class="upload-spinner" aria-hidden="true"></div>
+                        <div class="upload-headline">Đang tải file lên Cloudinary...</div>
+                        <div class="upload-subline">
+                            @if (uploadStage() === 'creating') { Đang tạo bài viết... }
+                            @if (uploadStage() === 'uploading') { Đang tải file... }
+                            @if (uploadStage() === 'saving') { Đang hoàn tất dữ liệu... }
+                        </div>
+                    </div>
+                    }
                 </section>
 
                 <div class="posts-list">
@@ -172,18 +200,43 @@
                                 </div>
                             </div>
 
-                            <button class="icon-btn subtle" type="button" aria-label="More options">
-                                <i class="bi bi-three-dots"></i>
-                            </button>
+                            <div class="post-options-wrap">
+                                <button class="icon-btn subtle" type="button" aria-label="More options"
+                                    (click)="toggleMenu(post, $event)">
+                                    <i class="bi bi-three-dots"></i>
+                                </button>
+
+                                @if (activeMenuPostId() === post.id) {
+                                <div class="post-options-dropdown cyber-glass">
+                                    @if (isUserPost(post.user_id)) {
+                                        <button class="dropdown-item" type="button">
+                                            <i class="bi bi-pencil"></i>
+                                            <span>Chỉnh sửa bài viết</span>
+                                        </button>
+                                        <div class="dropdown-divider"></div>
+                                        <button class="dropdown-item danger" type="button" (click)="onDeletePost(post.id)">
+                                            <i class="bi bi-trash3"></i>
+                                            <span>Xóa bài viết</span>
+                                        </button>
+                                    }
+                                    @else {
+                                        <button class="dropdown-item danger" type="button" (click)="$event.stopPropagation()">
+                                            <i class="bi bi-flag"></i>
+                                            <span>Báo cáo</span>
+                                        </button>
+                                    }
+                                </div>
+                                }
+                            </div>
                         </div>
 
                         <p class="post-text">
                             @for (word of parseContent(post.content); track $index) {
-                                @if (word.startsWith('#')) {
-                                <span class="text-primary">{{ word }} </span>
-                                } @else {
-                                    {{ word }}
-                                }
+                            @if (word.startsWith('#')) {
+                            <span class="text-primary">{{ word }} </span>
+                            } @else {
+                            {{ word }}
+                            }
                             }
                         </p>
 
@@ -201,46 +254,51 @@
                         </p>
                         }
 
-                        @if (post.post_media && post.post_media.length > 0) {
-                        <div class="media-grid" [ngClass]="getMediaLayoutClass(post)">
-                            @for (media of post.post_media.slice(0, 4); track media.id) {
-                            <div class="media-item" (click)="openLightbox(post, $index)">
-                                @if (media.media_type === 'image') {
-                                <img [src]="media.media_url" alt="Post media" class="media-content"
-                                    referrerPolicy="no-referrer">
-                                } @else if (media.media_type === 'video') {
-                                <video [src]="media.media_url" class="media-content" controls></video>
-                                }
+                        <!-- Media Section (Images & Videos) -->
+                        @if (getMediaItems(post).length > 0) {
+                        <div class="media-section">
+                            <div class="media-grid" [ngClass]="getMediaLayoutClass(post)">
+                                @for (media of getMediaItems(post).slice(0, 4); track media.id) {
+                                <div class="media-item" (click)="openLightbox(post, $index)">
+                                    @if (media.media_type === 'image') {
+                                    <img [src]="media.media_url" alt="Post media" class="media-content"
+                                        referrerPolicy="no-referrer">
+                                    } @else if (media.media_type === 'video') {
+                                    <video [src]="media.media_url" class="media-content" muted preload="metadata"></video>
+                                    }
 
-                                @if (post.post_media.length > 4 && $index === 3) {
-                                <div class="overlay-count">
-                                    <span>+{{ post.post_media.length - 3 }}</span>
+                                    @if (getMediaItems(post).length > 4 && $index === 3) {
+                                    <div class="overlay-count">
+                                        <span>+{{ getMediaItems(post).length - 3 }}</span>
+                                    </div>
+                                    }
                                 </div>
                                 }
                             </div>
-                            }
                         </div>
                         }
 
-                        @if (post.attachment_name || post.attachment?.name) {
-                        <div class="attachment-card">
-                            <div class="attachment-left">
-                                <div class="attachment-icon">
-                                    <i class="bi bi-folder2-open"></i>
-                                </div>
-                                <div>
-                                    <div class="attachment-title">{{ post.attachment?.name || post.attachment_name }}
+                        <!-- Attachments Section (Files) -->
+                        @if (getAttachmentItems(post).length > 0) {
+                        <div class="attachments-section">
+                            @for (attachment of getAttachmentItems(post); track attachment.id) {
+                            <div class="attachment-card" (click)="viewAttachmentInGoogle(attachment)">
+                                <div class="attachment-left">
+                                    <div class="attachment-icon">
+                                        <i class="bi bi-folder2-open"></i>
                                     </div>
-                                    <div class="attachment-meta">
-                                        {{ post.attachment?.size || post.attachment_size || 'Unknown size' }} • {{
-                                        post.attachment?.type || post.attachment_type || 'ARCHIVED' }}
+                                    <div>
+                                            <div class="attachment-title">{{ attachment.file_name ||
+                                            getFileName(attachment.media_url) }}
+                                        </div>
+                                        <div class="attachment-meta">
+                                            {{ formatFileSize(attachment.file_size || 0) }} • {{
+                                            getFileExtension(attachment.file_name || attachment.media_url) }}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-
-                            <button class="download-btn" type="button" aria-label="Download attachment">
-                                <i class="bi bi-download"></i>
-                            </button>
+                            }
                         </div>
                         }
 
@@ -267,7 +325,9 @@
                                 <div class="comment-wrapper">
                                     <div class="comment-item">
                                         <div class="comment-avatar-wrap">
-                                            <img [src]="getCommentAuthorAvatar(comment)" [alt]="getCommentAuthorName(comment)" class="avatar-s" referrerPolicy="no-referrer">
+                                            <img [src]="getCommentAuthorAvatar(comment)"
+                                                [alt]="getCommentAuthorName(comment)" class="avatar-s"
+                                                referrerPolicy="no-referrer">
                                         </div>
 
                                         <div class="comment-content-wrap">
@@ -278,8 +338,10 @@
 
                                             <div class="comment-footer">
                                                 <button class="comment-action-btn" type="button">Like</button>
-                                                <button class="comment-action-btn" type="button" (click)="toggleReply(comment.id)">Reply</button>
-                                                <span class="comment-time">{{ formatPostTime(comment.created_at) }}</span>
+                                                <button class="comment-action-btn" type="button"
+                                                    (click)="toggleReply(comment.id)">Reply</button>
+                                                <span class="comment-time">{{ formatPostTime(comment.created_at)
+                                                    }}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -291,27 +353,36 @@
                                         <div class="comment-wrapper">
                                             <div class="comment-item">
                                                 <div class="comment-avatar-wrap">
-                                                    <img [src]="getCommentAuthorAvatar(reply)" [alt]="getCommentAuthorName(reply)" class="avatar-xs" referrerPolicy="no-referrer">
+                                                    <img [src]="getCommentAuthorAvatar(reply)"
+                                                        [alt]="getCommentAuthorName(reply)" class="avatar-xs"
+                                                        referrerPolicy="no-referrer">
                                                 </div>
 
                                                 <div class="comment-content-wrap">
                                                     <div class="comment-bubble">
-                                                        <span class="comment-author">{{ getCommentAuthorName(reply) }}</span>
+                                                        <span class="comment-author">{{ getCommentAuthorName(reply)
+                                                            }}</span>
                                                         <p class="comment-text">{{ reply.content }}</p>
                                                     </div>
 
                                                     <div class="comment-footer">
                                                         <button class="comment-action-btn" type="button">Like</button>
-                                                        <button class="comment-action-btn" type="button" (click)="toggleReply(reply.id)">Reply</button>
-                                                        <span class="comment-time">{{ formatPostTime(reply.created_at) }}</span>
+                                                        <button class="comment-action-btn" type="button"
+                                                            (click)="toggleReply(reply.id)">Reply</button>
+                                                        <span class="comment-time">{{ formatPostTime(reply.created_at)
+                                                            }}</span>
                                                     </div>
 
                                                     @if (replyToCommentId === reply.id) {
                                                     <div class="comment-input-wrap">
-                                                        <img [src]="currentUser.avatar" alt="My avatar" class="avatar-xs" referrerPolicy="no-referrer">
+                                                        <img [src]="currentUser.avatar" alt="My avatar"
+                                                            class="avatar-xs" referrerPolicy="no-referrer">
                                                         <div class="input-pill">
-                                                            <input type="text" placeholder="Replying..." class="comment-input" [(ngModel)]="newReplyContent" (keyup.enter)="sendComment(post.id, reply.id)">
-                                                            <button class="send-btn" type="button" (click)="sendComment(post.id, reply.id)">
+                                                            <input type="text" placeholder="Replying..."
+                                                                class="comment-input" [(ngModel)]="newReplyContent"
+                                                                (keyup.enter)="sendComment(post.id, reply.id)">
+                                                            <button class="send-btn" type="button"
+                                                                (click)="sendComment(post.id, reply.id)">
                                                                 <i class="bi bi-send"></i>
                                                             </button>
                                                         </div>
@@ -325,10 +396,14 @@
                                         @if (replyToCommentId === comment.id) {
                                         <div class="comment-wrapper">
                                             <div class="comment-input-wrap">
-                                                <img [src]="currentUser.avatar" alt="My avatar" class="avatar-xs" referrerPolicy="no-referrer">
+                                                <img [src]="currentUser.avatar" alt="My avatar" class="avatar-xs"
+                                                    referrerPolicy="no-referrer">
                                                 <div class="input-pill">
-                                                    <input type="text" placeholder="Replying..." class="comment-input" [(ngModel)]="newReplyContent" (keyup.enter)="sendComment(post.id, comment.id)">
-                                                    <button class="send-btn" type="button" (click)="sendComment(post.id, comment.id)">
+                                                    <input type="text" placeholder="Replying..." class="comment-input"
+                                                        [(ngModel)]="newReplyContent"
+                                                        (keyup.enter)="sendComment(post.id, comment.id)">
+                                                    <button class="send-btn" type="button"
+                                                        (click)="sendComment(post.id, comment.id)">
                                                         <i class="bi bi-send"></i>
                                                     </button>
                                                 </div>
@@ -342,9 +417,11 @@
                             </div>
 
                             <div class="comment-input-wrap">
-                                <img [src]="currentUser.avatar" alt="My avatar" class="avatar-s" referrerPolicy="no-referrer">
+                                <img [src]="currentUser.avatar" alt="My avatar" class="avatar-s"
+                                    referrerPolicy="no-referrer">
                                 <div class="input-pill">
-                                    <input type="text" placeholder="Transmit a thought..." class="comment-input" [(ngModel)]="newCommentContent">
+                                    <input type="text" placeholder="Transmit a thought..." class="comment-input"
+                                        [(ngModel)]="newCommentContent">
                                     <button class="send-btn" type="button" (click)="sendComment(post.id)">
                                         <i class="bi bi-send"></i>
                                     </button>

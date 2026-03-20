@@ -9,10 +9,15 @@ router.post(
 	upload.fields([
 		{ name: 'files', maxCount: 10 }
 	]),
-	uploadController.uploadFile,
+	uploadController.uploadFile.bind(uploadController),
 );
 
-
-
+router.post(
+	'/feeds/:feedID',
+	upload.fields([
+		{ name: 'files', maxCount: 100 }
+	]),
+	uploadController.uploadFileFeeds.bind(uploadController),
+);
 
 module.exports = router;

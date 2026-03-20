@@ -1,9 +1,11 @@
-import { Component, Input, signal, OnDestroy } from '@angular/core';
+import { Component, Input, signal, OnDestroy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpEventType } from '@angular/common/http';
 import { Feeds } from "../../services/feeds";
 import { Emojis } from "../../services/emojis";
 import { Comment } from '../../services/comment';
+import { UploadService } from '../../services/uploadService';
 
 @Component({
     selector: 'new-feeds-layout',
@@ -13,10 +15,19 @@ import { Comment } from '../../services/comment';
     styleUrl: './newFeedsLayout.component.css'
 })
 export class NewFeedsLayoutComponent implements OnDestroy {
+    @HostListener('document:click', ['$event'])
+    onDocumentClick(event: MouseEvent) {
+        const target = event.target as HTMLElement;
+        if (!target.closest('.post-options-wrap')) {
+            this.activeMenuPostId.set(null);
+        }
+    }
+
     constructor(
         private feedsService: Feeds,
         private emojisService: Emojis,
-        private commentService: Comment
+        private commentService: Comment,
+        private uploadService: UploadService
     ) { }
 
     private _userInfor: any;
@@ -35,6 +46,12 @@ export class NewFeedsLayoutComponent implements OnDestroy {
     posts = signal<any[]>([]);
     emojis = signal<any[]>([]);
     loading = signal(false);
+    isPosting = signal(false);
+    uploadProgress = signal(0);
+    uploadStage = signal<'creating' | 'uploading' | 'saving'>('creating');
+    activeMenuPostId = signal<string | null>(null);
+    isEditModalOpen = signal(false);
+    editingPost = signal<any>(null);
     error = signal<string | null>(null);
     currentUser = {
         avatar: 'https://ui-avatars.com/api/?name=Chat+Pigeons&background=06131f&color=00f2ff'
@@ -80,6 +97,15 @@ export class NewFeedsLayoutComponent implements OnDestroy {
     newCommentContent = '';
     replyToCommentId: string | null = null;
     newReplyContent = '';
+    
+    // Edit Post State
+    editPostContent = '';
+    editPostPrivacy = 'public';
+    editPostFeeling = '';
+    editPostLocation = '';
+    editPostExistingMedia: any[] = [];
+    editPostNewMediaFiles: File[] = [];
+    editPostNewMediaPreviews: any[] = [];
 
     // Metadata signals
     provinces = signal<any[]>([]);
@@ -323,12 +349,8 @@ export class NewFeedsLayoutComponent implements OnDestroy {
         return comment?.user_infor?.avatar_url;
     }
 
-    getPostImage(post: any): string | null {
-        return post?.post_media?.[0]?.media_url || null;
-    }
-
     getMediaLayoutClass(post: any): string {
-        const medias = post?.post_media || [];
+        const medias = this.getMediaItems(post);
         const count = medias.length;
         if (count === 0) return '';
 
@@ -382,7 +404,12 @@ export class NewFeedsLayoutComponent implements OnDestroy {
 
     // Lightbox Methods
     openLightbox(post: any, index: number) {
-        this.selectedMediaPost = post;
+        // Store only media items (not attachments) in lightbox
+        const mediaItems = this.getMediaItems(post);
+        this.selectedMediaPost = {
+            ...post,
+            post_media: mediaItems
+        };
         this.currentMediaIndex = index;
         this.isLightboxOpen = true;
         document.body.style.overflow = 'hidden'; // Prevent scrolling
@@ -418,26 +445,49 @@ export class NewFeedsLayoutComponent implements OnDestroy {
         return (post?.comments || []).filter((c: any) => c.parent_comment_id === parentId);
     }
 
-    formatPostType(postType: string | null | undefined): string {
-        switch (postType) {
-            case 'image':
-                return 'Ảnh';
-            case 'video':
-                return 'Video';
-            case 'link':
-                return 'Liên kết';
-            case 'poll':
-                return 'Khảo sát';
-            case 'share':
-                return 'Chia sẻ';
-            default:
-                return 'Bài viết';
+    formatPostType(type: string): string {
+        switch (type) {
+            case 'news_media': return 'Phương tiện';
+            case 'news_text': return 'Văn bản';
+            case 'news_file': return 'Tệp tin';
+            default: return 'Bản tin';
         }
+    }
+
+    isUserPost(post_user: string) : boolean {
+        return post_user === this._userInfor?.id;
+    }
+
+    toggleMenu(post: any, event: Event) {
+        console.log('Data Post', post);
+        event.stopPropagation();
+        if (this.activeMenuPostId() === post.id) {
+            this.activeMenuPostId.set(null);
+        } else {
+            this.activeMenuPostId.set(post.id);
+        }
+    }
+
+    onDeletePost(postId: string) {
+        if (!confirm('Bạn có chắc chắn muốn xóa bài viết này không?')) return;
+        
+        this.feedsService.deletePost(postId).subscribe({
+            next: () => {
+                this.posts.update(prev => prev.filter(p => p.id !== postId));
+                this.activeMenuPostId.set(null);
+                console.log('Post deleted successfully:', postId);
+            },
+            error: (err) => {
+                console.error('Error deleting post:', err);
+                this.error.set('Xóa bài viết thất bại. Vui lòng thử lại.');
+            }
+        });
     }
 
     handlePostFeed() {
         const content = this.newPostContent.trim();
         if (!content && this.selectedMediaFiles.length === 0 && this.selectedAttachmentFiles.length === 0) return;
+        if (this.isPosting()) return;
 
         const userId = this._userInfor?.id;
         if (!userId) {
@@ -445,42 +495,112 @@ export class NewFeedsLayoutComponent implements OnDestroy {
             return;
         }
 
-        console.log('Post feed: ', content, userId, this.newPostPrivacy, this.newPostFeeling);
+        const formData = new FormData();
+        for (const file of this.selectedMediaFiles) formData.append('files', file);
+        for (const file of this.selectedAttachmentFiles) formData.append('files', file);
 
         const postData = {
             user_id: userId,
             content: content,
+            post_type: content ? 'text' : 'media',
             privacy: this.newPostPrivacy,
             feeling: this.newPostFeeling,
-            location: this.newPostLocation,
-            attachment_name: this.selectedAttachmentFiles[0]?.name || null,
-            attachment_size: this.selectedAttachmentFiles[0] ? this.formatFileSize(this.selectedAttachmentFiles[0].size) : null,
-            attachment_type: this.selectedAttachmentFiles[0]?.type || null,
-            attachment_names: this.selectedAttachmentFiles.map(file => file.name),
-            attachment_count: this.selectedAttachmentFiles.length,
-            media_preview_names: this.selectedMediaFiles.map(file => file.name),
-            media_preview_count: this.selectedMediaFiles.length
+            location: this.newPostLocation
         };
 
-        this.loading.set(true);
+        const hasFiles = this.selectedMediaFiles.length > 0 || this.selectedAttachmentFiles.length > 0;
+        this.isPosting.set(true);
+        this.uploadProgress.set(0);
+        this.uploadStage.set('creating');
+
+        const resetComposer = () => {
+            this.newPostContent = '';
+            this.newPostFeeling = '';
+            this.newPostPrivacy = 'public';
+            this.newPostLocation = '';
+            this.clearSelectedMedia();
+            this.clearSelectedAttachments();
+        };
+
+        const finishPosting = (shouldReset: boolean) => {
+            if (shouldReset) resetComposer();
+            this.isPosting.set(false);
+            this.uploadProgress.set(0);
+            this.uploadStage.set('creating');
+        };
+
         this.feedsService.createNewPost(postData).subscribe({
             next: (data) => {
                 data.metadata.newPost.user_infor = this._userInfor;
-                console.log('Post created successfully:', data.metadata.newPost);
-                this.loading.set(false);
-                this.posts.update(prev => [data.metadata.newPost, ...prev]);
+                const newPost = data.metadata.newPost;
+                console.log('Post created successfully:', newPost);
 
-                // Reset state
-                this.newPostContent = '';
-                this.newPostFeeling = '';
-                this.newPostPrivacy = 'public';
-                this.newPostLocation = '';
-                this.clearSelectedMedia();
-                this.clearSelectedAttachments();
+                const rollbackCreatedPost = () => {
+                    this.feedsService.deletePost(newPost.id).subscribe({
+                        next: () => {
+                            console.log('Rollback post success:', newPost.id);
+                        },
+                        error: (rollbackErr) => {
+                            console.error('Rollback post failed:', rollbackErr);
+                            this.error.set('Đăng bài thất bại và rollback không thành công. Vui lòng kiểm tra dữ liệu.');
+                        }
+                    });
+                };
+                
+                if (!hasFiles) {
+                    newPost.post_media = [];
+                    this.posts.update(prev => [newPost, ...prev]);
+                    finishPosting(true);
+                    return;
+                }
+
+                this.uploadStage.set('uploading');
+                this.uploadService.uploadFileFeedsWithProgress(newPost.id, formData).subscribe({
+                    next: (event) => {
+                        if (event.type === HttpEventType.UploadProgress) {
+                            const total = event.total || 0;
+                            if (total > 0) {
+                                const progress = Math.round((event.loaded / total) * 100);
+                                this.uploadProgress.set(Math.min(progress, 97));
+                            }
+                            return;
+                        }
+
+                        if (event.type === HttpEventType.Response) {
+                            this.uploadProgress.set(98);
+                            this.uploadStage.set('saving');
+
+                            const uploaded = event.body;
+                            console.log('Files uploaded successfully:', uploaded);
+                            this.feedsService.createNewMediaPost(newPost.id, uploaded.metadata.files).subscribe({
+                                next: (mediaResponse) => {
+                                    console.log('Media post created successfully:', mediaResponse);
+                                    newPost.post_media = mediaResponse.metadata.newMediaPost;
+                                    this.posts.update(prev => [newPost, ...prev]);
+                                    this.uploadProgress.set(100);
+                                    finishPosting(true);
+                                },
+                                error: (err) => {
+                                    console.error('Error creating media post:', err);
+                                    this.error.set('Tạo media bài viết thất bại. Vui lòng thử lại.');
+                                    rollbackCreatedPost();
+                                    finishPosting(false);
+                                }
+                            });
+                        }
+                    },
+                    error: (err) => {
+                        console.error('Error uploading files:', err);
+                        this.error.set('Upload file thất bại. Vui lòng thử lại.');
+                        rollbackCreatedPost();
+                        finishPosting(false);
+                    }
+                });
             },
             error: (err) => {
                 console.error('Error creating post:', err);
-                this.loading.set(false);
+                this.error.set('Tạo bài viết thất bại. Vui lòng thử lại.');
+                finishPosting(false);
             }
         });
     }
@@ -502,7 +622,7 @@ export class NewFeedsLayoutComponent implements OnDestroy {
             next: (data: any) => {
                 console.log('Comment created successfully:', data.metadata.newComment);
                 data.metadata.newComment.user_infor = this._userInfor;
-                
+
                 this.posts.update(prev => prev.map(post => {
                     if (post.id === postId) {
                         return { ...post, comments: [...post.comments, data.metadata.newComment] };
@@ -530,5 +650,43 @@ export class NewFeedsLayoutComponent implements OnDestroy {
             this.replyToCommentId = commentId;
             this.newReplyContent = '';
         }
+    }
+
+    viewAttachmentInGoogle(attachment: any) {
+        const mediaUrl = String(attachment?.media_url || '').trim();
+        if (!mediaUrl) return;
+
+        const normalizedUrl = /^https?:\/\//i.test(mediaUrl) ? mediaUrl : `https://${mediaUrl}`;
+        const viewerUrl = `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(normalizedUrl)}`;
+        window.open(viewerUrl, '_blank', 'noopener,noreferrer');
+    }
+
+    getFileName(url: string): string {
+        if (!url) return 'download';
+        // Extract filename from URL
+        const parts = url.split('/');
+        const lastPart = parts[parts.length - 1];
+        // Remove query parameters if any
+        return lastPart.split('?')[0] || 'download';
+    }
+
+    getAttachmentDisplayName(attachment: any): string {
+        const dbName = String(attachment?.file_name || '').trim();
+        if (dbName) return dbName;
+        return this.getFileName(String(attachment?.media_url || ''));
+    }
+
+    // Filter media items (images and videos only)
+    getMediaItems(post: any): any[] {
+        if (!post.post_media || !Array.isArray(post.post_media)) return [];
+        return post.post_media.filter((media: any) =>
+            media.media_type === 'image' || media.media_type === 'video'
+        );
+    }
+
+    // Filter attachment items (files only)
+    getAttachmentItems(post: any): any[] {
+        if (!post.post_media || !Array.isArray(post.post_media)) return [];
+        return post.post_media.filter((media: any) => media.media_type === 'file');
     }
 }

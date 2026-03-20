@@ -17,4 +17,8 @@ export class Friend {
     createFriend(userId: string, friendId: string, is_favorite: boolean, note: string): Observable<any> {
         return this.http.post(`${this.apiUrl}/${userId}`, { friend_id: friendId, is_favorite, notes: note });
     }
+
+    deleteFriend(userId: string, friendId: string): Observable<any> {
+        return this.http.delete(`${this.apiUrl}/${userId}`, { body: { friend_id: friendId } });
+    }
 }

@@ -12,6 +12,9 @@ router.put('/participants/:id', homeController.putParticipant);
 
 router.get('/feeds', homeController.getHomePosts);
 router.post('/feeds', homeController.createNewPost);
+router.post('/feeds/:postID', homeController.createNewMediaPost);
+router.put('/feeds/:postID', homeController.updatePost);
+router.delete('/feeds/:postID', homeController.deletePost);
 
 router.get('/users/search', homeController.searchUsers);
 
@@ -29,6 +32,7 @@ router.put('/userinfor/:userID', homeController.putUserInfor);
 
 router.get('/friends/:userId', homeController.getFriendByUserId);
 router.post('/friends/:userId', homeController.createFriendByUserId);
+router.delete('/friends/:userId', homeController.deleteFriendByUserId);
 
 
 router.get('/link-preview', homeController.getLinkPreview);

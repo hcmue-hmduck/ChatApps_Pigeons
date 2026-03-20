@@ -17,7 +17,8 @@ import {
     untracked,
     ChangeDetectorRef,
     Output,
-    EventEmitter
+    EventEmitter,
+    ChangeDetectionStrategy
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PickerModule } from '@ctrl/ngx-emoji-mart';
@@ -47,12 +48,19 @@ export interface StagedFile {
     size: number;
 }
 
+interface MessageReactionView {
+    emoji: string;
+    count: number;
+    reactedByCurrentUser: boolean;
+}
+
 @Component({
     selector: 'messages-layout',
     standalone: true,
     imports: [CommonModule, FormsModule, PickerModule, GroupAvatarLayoutComponent],
     templateUrl: './messagesLayout.component.html',
     styleUrls: ['./messagesLayout.component.css'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class MessagesLayoutComponent
     implements OnInit, OnChanges, AfterViewInit, AfterViewChecked, OnDestroy {
@@ -79,6 +87,7 @@ export class MessagesLayoutComponent
     @Input() currentUserId: any = {};
     @Input() getMessageInfor: any = {};
     @Input() joinedConversations: any[] = [];
+    @Input() userBlock: any[] = [];
     @Input() onlineUsers: Set<string> = new Set();
     @Input() UserPresence: Map<string, UserPresence> = new Map();
     @Input() tick1s: number = 0;
@@ -190,7 +199,8 @@ export class MessagesLayoutComponent
             return;
         }
 
-        window.open(resolved, '_blank', 'noopener,noreferrer');
+        const viewerUrl = `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(resolved)}`;
+        window.open(viewerUrl, '_blank', 'noopener,noreferrer');
     }
 
     formatMessageText(content: string | null | undefined): string {
@@ -306,6 +316,9 @@ export class MessagesLayoutComponent
 
     // Menu state
     showMenuId: string | number | null = null;
+    reactionPickerMessageId: string | number | null = null;
+    readonly quickReactionEmojis: string[] = ['👍', '❤️', '😂', '😮', '😢', '😡'];
+    private messageReactions = new Map<string, MessageReactionView[]>();
 
     // Highlight state for reply navigation
     highlightedMessageId: string | null = null;
@@ -660,13 +673,14 @@ export class MessagesLayoutComponent
     }
 
     setupSocketListener(conversationId: string) {
-        // Cleanup listener cũ trước khi setup mới
+        // Cleanup listeners cũ trước khi setup mới để tránh trùng lặp
         this.socketService.off('newMessage');
         this.socketService.off('updateMessage');
         this.socketService.off('updateConversation');
         this.socketService.off('deleteMessage');
         this.socketService.off('pinMessage');
         this.socketService.off('unpinMessage');
+        this.socketService.off('updateProfile');
 
         this.socketService.emit('joinConversation', conversationId);
 
@@ -944,13 +958,15 @@ export class MessagesLayoutComponent
         if (this.scrollTimeout) {
             clearTimeout(this.scrollTimeout);
         }
-        // Cleanup socket listener để tránh memory leak
+        // Cleanup all socket listeners to prevent memory leaks and high CPU usage
         this.socketService.off('newMessage');
         this.socketService.off('updateMessage');
         this.socketService.off('updateConversation');
         this.socketService.off('deleteMessage');
         this.socketService.off('pinMessage');
         this.socketService.off('unpinMessage');
+        this.socketService.off('updateProfile'); // Aded missing cleanup
+        
         if (this.highlightTimeout) {
             clearTimeout(this.highlightTimeout);
         }
@@ -960,6 +976,8 @@ export class MessagesLayoutComponent
         if (!conversationId) return;
         this.isLoaded = false;
         this.loading = true;
+        this.reactionPickerMessageId = null;
+        this.messageReactions.clear();
         this.messagesService.getMessages(conversationId).subscribe({
             next: (response) => {
                 this.lastMessageId = response.metadata?.homeMessagesData?.last_message_id || '';
@@ -1427,6 +1445,109 @@ export class MessagesLayoutComponent
         }, 250);
     }
 
+    private messageKey(messageId: string | number): string {
+        return String(messageId);
+    }
+
+    private toComparableUserId(userId: any): string {
+        return String(userId || '');
+    }
+
+    private normalizeMessageReactions(message: any): MessageReactionView[] {
+        if (!message) return [];
+
+        const source =
+            message?.message_reactions ||
+            message?.reactions ||
+            message?.MessageReactions ||
+            [];
+
+        if (!Array.isArray(source)) return [];
+
+        const reactionMap = new Map<string, MessageReactionView>();
+        const currentUser = this.toComparableUserId(this.currentUserId);
+
+        source.forEach((reaction: any) => {
+            const emoji =
+                reaction?.emoji_char ||
+                reaction?.emoji?.unicode_char ||
+                reaction?.unicode_char ||
+                reaction?.emoji ||
+                '';
+
+            if (!emoji) return;
+
+            const existing = reactionMap.get(emoji) || {
+                emoji,
+                count: 0,
+                reactedByCurrentUser: false,
+            };
+
+            existing.count += 1;
+
+            if (this.toComparableUserId(reaction?.user_id) === currentUser) {
+                existing.reactedByCurrentUser = true;
+            }
+
+            reactionMap.set(emoji, existing);
+        });
+
+        return Array.from(reactionMap.values()).sort((a, b) => b.count - a.count);
+    }
+
+    getMessageReactions(message: any): MessageReactionView[] {
+        if (!message?.id) return [];
+
+        const messageId = this.messageKey(message.id);
+        const localReactions = this.messageReactions.get(messageId);
+        if (localReactions) return localReactions;
+
+        return this.normalizeMessageReactions(message);
+    }
+
+    toggleReactionPicker(messageId: string | number, event: Event) {
+        event.stopPropagation();
+        this.showMenuId = null;
+        this.reactionPickerMessageId =
+            this.reactionPickerMessageId === messageId ? null : messageId;
+    }
+
+    addReaction(message: any, emoji: string, event?: Event) {
+        event?.stopPropagation();
+        if (!message?.id || !emoji) return;
+
+        const messageId = this.messageKey(message.id);
+        const currentReactions = this.getMessageReactions(message).map((item) => ({ ...item }));
+        const existingIndex = currentReactions.findIndex((item) => item.emoji === emoji);
+
+        if (existingIndex >= 0) {
+            const existing = currentReactions[existingIndex];
+            if (existing.reactedByCurrentUser) {
+                existing.count = Math.max(0, existing.count - 1);
+                existing.reactedByCurrentUser = false;
+                if (existing.count === 0) {
+                    currentReactions.splice(existingIndex, 1);
+                }
+            } else {
+                existing.count += 1;
+                existing.reactedByCurrentUser = true;
+            }
+        } else {
+            currentReactions.push({
+                emoji,
+                count: 1,
+                reactedByCurrentUser: true,
+            });
+        }
+
+        this.messageReactions.set(messageId, currentReactions);
+        this.reactionPickerMessageId = null;
+    }
+
+    trackByReactionEmoji(index: number, reaction: MessageReactionView): string {
+        return reaction.emoji;
+    }
+
     @HostListener('document:click', ['$event'])
     onDocumentClick(event: MouseEvent) {
         const target = event.target as HTMLElement;
@@ -1437,6 +1558,14 @@ export class MessagesLayoutComponent
         ) {
             this.closeMenu();
         }
+
+        if (
+            !target.closest('.reaction-picker') &&
+            !target.closest('.reaction-btn')
+        ) {
+            this.reactionPickerMessageId = null;
+        }
+
         // Đóng emoji picker chỉ khi click thực sự bên ngoài picker và nút toggle
         if (
             !target.closest('.emoji-picker-wrap') &&
@@ -1952,6 +2081,12 @@ export class MessagesLayoutComponent
         this.highlightTimeout = setTimeout(() => {
             this.highlightedMessageId = null;
         }, 2000);
+    }
+
+    isBlocked(): boolean {
+        if (this.getMessageInfor.participants.length > 2) return false;
+        const parti = this.getMessageInfor.participants.find((p: any) => p.user_id !== this.currentUserId);
+        return this.userBlock.find((block: any) => block.blocked_id === parti.user_id);
     }
 
     async openCallWindow({ initializeVideo, callId }: { initializeVideo: boolean, callId: string }) {

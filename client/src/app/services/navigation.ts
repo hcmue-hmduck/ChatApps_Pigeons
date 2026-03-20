@@ -5,7 +5,7 @@ export type FriendsTab = 'friends' | 'friend_requests' | 'blocked' | 'sent_reque
 
 @Injectable({ providedIn: 'root' })
 export class NavigationService {
-    activeView = signal<AppView>('messages');
+    activeView = signal<AppView>('newFeeds');
     activeFriendsTab = signal<FriendsTab>('friends_suggestions');
     pendingConversationId = signal<string | null>(null);
     messagesWelcomeResetTick = signal(0);

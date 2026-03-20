@@ -841,6 +841,9 @@
 }
 
 .msg-file-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     padding: 10px 14px;
     background: rgba(0, 242, 255, 0.05);
     border-radius: 12px;
@@ -898,12 +901,18 @@
     display: flex;
     align-items: center;
     gap: 10px;
+    width: 100%;
     color: #e2efff;
     text-decoration: none;
     font-weight: 500;
     font-size: 13px;
     font-family: 'Inter', sans-serif;
     min-width: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    text-align: left;
 }
 
 .msg-file-link span {
@@ -1060,12 +1069,40 @@
 
 
 /* ---- BUBBLE WRAPPER ---- */
+.bubble-stack {
+    display: flex;
+    flex-direction: column;
+    width: fit-content;
+    max-width: 100%;
+}
+
+.msg-content-col-me .bubble-stack {
+    align-self: flex-end;
+}
+
+.msg-content-col .bubble-stack {
+    align-self: flex-start;
+}
+
 .bubble-row {
     display: flex;
     align-items: center;
     gap: 6px;
     width: 100%;
     position: relative;
+}
+
+.bubble-anchor {
+    display: flex;
+    flex-direction: column;
+    width: fit-content;
+    max-width: 100%;
+    align-items: center;
+    position: relative;
+}
+
+.bubble-anchor:has(.message-reactions) {
+    padding-bottom: 6px;
 }
 
 .me-row .bubble-row {
@@ -1080,20 +1117,26 @@
 
 /* Me: actions left, bubble right */
 .me-row .bubble-row .message-actions {
-    order: 1;
+    position: absolute;
+    top: 50%;
+    right: calc(100% + 8px);
+    transform: translateY(-50%);
 }
 
-.me-row .bubble-row .bubble-me {
-    order: 2;
+.me-row .bubble-row .bubble-anchor {
+    align-items: flex-start;
 }
 
 /* Other: bubble left, actions right */
-.other-row .bubble-row .bubble-other {
-    order: 1;
+.other-row .bubble-row .bubble-anchor {
+    align-items: flex-end;
 }
 
 .other-row .bubble-row .message-actions {
-    order: 2;
+    position: absolute;
+    top: 50%;
+    left: calc(100% + 8px);
+    transform: translateY(-50%);
 }
 
 /* ---- BUBBLES · Dark Glass ---- */
@@ -1110,22 +1153,18 @@
 }
 
 .bubble-me {
-    /* Significantly more opaque for solid feel */
     background: linear-gradient(135deg, rgba(0, 31, 46, 0.95), rgba(0, 242, 255, 0.15));
     color: var(--text-primary);
-    border-radius: 20px 20px 4px 20px;
-    /* Stronger glow */
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 15px rgba(0, 242, 255, 0.12);
-    /* Border is more defined */
+    border-radius: 12px 12px 4px 12px;
     border: 1px solid rgba(0, 242, 255, 0.35);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 15px rgba(0, 242, 255, 0.12);
     backdrop-filter: blur(12px);
 }
 
 .bubble-other {
     background: rgba(13, 20, 36, 0.96);
-    /* Almost solid deep slate */
     color: var(--text-secondary);
-    border-radius: 20px 20px 20px 4px;
+    border-radius: 12px 12px 12px 4px;
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
     border: 1px solid rgba(255, 255, 255, 0.12);
@@ -1441,6 +1480,109 @@
     color: var(--accent);
     transform: scale(1.15);
     box-shadow: 0 0 15px rgba(0, 242, 255, 0.3);
+}
+
+.reaction-btn {
+    color: #9ed8ff;
+}
+
+.reaction-picker {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px;
+    border-radius: 999px;
+    background: rgba(8, 16, 36, 0.97);
+    border: 1px solid rgba(126, 207, 255, 0.28);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+    z-index: 20;
+}
+
+.me-row .reaction-picker {
+    left: auto;
+    right: 0;
+}
+
+.reaction-emoji-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.reaction-emoji-btn:hover {
+    background: rgba(126, 207, 255, 0.16);
+    transform: translateY(-1px) scale(1.08);
+}
+
+.message-reactions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1px;
+    margin: 0;
+    padding: 0;
+    width: max-content;
+    border-radius: 6px;
+    background: rgba(8, 16, 36, 0.42);
+    border: 1px solid rgba(126, 207, 255, 0.18);
+    position: absolute;
+    bottom: 0;
+    margin-bottom: -7px;
+    z-index: 2;
+}
+
+.bubble-anchor .message-reactions {
+    margin: 0;
+}
+
+/* .message-reactions.me {
+    left: 10px;
+}
+
+.message-reactions.other {
+    right: 10px;
+} */
+
+.reaction-chip {
+    display: inline-flex;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    border: none;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    color: #e8f7ff;
+    border-radius: 8px;
+    font-size: 11px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+
+
+.reaction-emoji {
+    display: inline-block;
+    font-size: 15px;
+    line-height: 1;
+    padding: 0;
+}
+
+.reaction-count {
+    font-size: 10px;
+    font-weight: 600;
+    color: #b0b3b8;
+    line-height: 1;
 }
 
 /* Dropdown menu · Dark glass */
@@ -2633,7 +2775,7 @@
     display: inline-flex;
     align-items: center;
     gap: 3px;
-    margin-left: 6px;
+    margin-top: 2px;
     font-size: 11px;
 }
 

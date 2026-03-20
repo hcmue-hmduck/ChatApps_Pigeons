@@ -29,12 +29,26 @@ class FriendRequestsService {
 
     async createFriendRequest(sender_id, receiver_id, note) {
         try {
-            const friendRequest = await friendrequestsModel.create({
-                sender_id,
-                receiver_id,
-                note
+            const existingRequest = await friendrequestsModel.findOne({
+                where: {
+                    sender_id: sender_id,
+                    receiver_id: receiver_id,
+                }
             });
-            return friendRequest;
+            if (existingRequest) {
+                // Return updated instance
+                return await existingRequest.update({
+                    status: 'pending',
+                    note
+                });
+            } else {
+                // Return created instance
+                return await friendrequestsModel.create({
+                    sender_id,
+                    receiver_id,
+                    note
+                });
+            }
         } catch (error) {
             throw error;
         }

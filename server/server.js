@@ -194,6 +194,41 @@ io.on('connection', (socket) => {
         socket.to(data.conversation_id).emit('updateParticipant', data);
     });
 
+    socket.on('updateFriend', (data) => {
+        console.log('Received updateFriend event on server:', data);
+        io.emit('updateFriend', data);
+    });
+
+    socket.on('sendFriendRequest', (data) => {
+        console.log('Received sendFriendRequest event on server:', data);
+        io.emit('sendFriendRequest', data);
+    })
+
+    socket.on('cancelSentRequest', (data) => {
+        console.log('Received cancelSentRequest event on server:', data);
+        io.emit('cancelSentRequest', data);
+    })
+
+    socket.on('rejectFriendRequest', (data) => {
+        console.log('Received rejectFriendRequest event on server:', data);
+        io.emit('rejectFriendRequest', data);
+    })
+
+    socket.on('acceptFriendRequest', (data) => {
+        console.log('Received acceptFriendRequest event on server:', data);
+        io.emit('acceptFriendRequest', data);
+    })
+
+    socket.on('blockUser', (data) => {
+        console.log('Received blockUser event on server:', data);
+        io.emit('blockUser', data);
+    })
+
+    socket.on('unblockUser', (data) => {
+        console.log('Received unblockUser event on server:', data);
+        io.emit('unblockUser', data);
+    })
+
     socket.on('disconnect', async () => {
         console.log('User disconnected:', socket.id);
 

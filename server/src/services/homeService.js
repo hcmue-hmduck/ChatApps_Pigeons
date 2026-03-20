@@ -571,6 +571,10 @@ class HomeService {
         return await friendsService.createFriendByUserId(userId, friend_id, is_favorite, notes);
     }
 
+    async deleteFriendByUserId(userId, friend_id) {
+        return await friendsService.deleteFriendByUserId(userId, friend_id);
+    }
+
     async getFriendRequests(receiverId) {
         const friendRequests = await friendrequestsService.getFriendRequests(receiverId);
         if (friendRequests.length === 0) return [];
@@ -686,6 +690,34 @@ class HomeService {
 
     async createNewPost(newPostData) {
         return await postsService.createPost(newPostData);
+    }
+
+    async createPostMedia(postId, mediaData) {
+        return await postmediaService.createPostMedia(postId, mediaData);
+    }
+
+    async updatePostById(postId, postData, mediaData) {
+        const transaction = await sequelize.transaction();
+        try {
+            await postsService.updatePost(postId, postData, { transaction });
+            
+            if (mediaData && Array.isArray(mediaData)) {
+                await postmediaService.deletePostMedia(postId, { transaction });
+                if (mediaData.length > 0) {
+                    await postmediaService.createPostMedia(postId, mediaData, { transaction });
+                }
+            }
+            
+            await transaction.commit();
+            return true;
+        } catch (error) {
+            await transaction.rollback();
+            throw error;
+        }
+    }
+
+    async deletePostById(postId) {
+        return await postsService.deletePost(postId);
     }
 
     async searchUsers(keyword) {

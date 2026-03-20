@@ -24,6 +24,24 @@ class PostsService {
             throw error;
         }
     }
+
+    async updatePost(postId, data) {
+        try {
+            return await postsModel.update(data, { where: { id: postId } });
+        } catch (error) {
+            console.error('Error updating post:', error);
+            throw error;
+        }
+    }
+
+    async deletePost(postId) {
+        try {
+            return await postsModel.destroy({ where: { id: postId } });
+        } catch (error) {
+            console.error('Error deleting post:', error);
+            throw error;
+        }
+    }
 }
 
 module.exports = new PostsService();

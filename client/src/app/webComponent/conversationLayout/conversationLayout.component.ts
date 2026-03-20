@@ -18,6 +18,7 @@ import { Conversation } from '../../services/conversation';
 import { GroupAvatarLayoutComponent } from '../groupAvatarLayout/groupAvatarLayout.component';
 import { IntroLayoutComponent } from '../introLayout/introLayout.component';
 import { Participant } from '../../services/participant';
+import { UserBlock } from '../../services/userBlock';
 
 export interface UserPresence {
     status: string;
@@ -46,6 +47,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     cdr = inject(ChangeDetectorRef);
     conversationService = inject(Conversation);
     participantService = inject(Participant);
+    userBlockService = inject(UserBlock);
 
     // Sidebar toggle state
     showConversationInfor = signal(false);
@@ -54,6 +56,8 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         this.showConversationInfor.update(v => !v);
     }
 
+    userBlock = signal<any[]>([]);
+    
     // Conversation selection state (local to this component)
     selectedConversationId: string = '';
     selectedConversationType = '';
@@ -143,6 +147,16 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
             error: (error) => {
                 console.error('Error loading conversations:', error);
                 this.isFirstConversationReady.set(true);
+            },
+        });
+
+        this.userBlockService.getBlockedUserByUserId(this.currentUserId).subscribe({
+            next: (response) => {
+                this.userBlock.set(response.metadata?.userBlocks || []);
+                console.log('User Block:', this.userBlock());
+            },
+            error: (error) => {
+                console.error('Error:', error);
             },
         });
     }

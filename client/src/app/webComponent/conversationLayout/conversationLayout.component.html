@@ -96,6 +96,7 @@
             [conversationType]="selectedConversationType" [UserPresence]="UserPresence()" [tick1s]="tick1s()"
             [tick60s]="tick60s()" [tick3600s]="tick3600s()"
             [joinedConversations]="conversations?.homeConversationData?.joinedConversations || []"
+            [userBlock]="userBlock()"
             (toggleDetails)="toggleConversationInfor()">
         </messages-layout>
         } @else {

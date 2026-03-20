@@ -253,6 +253,18 @@ class HomeController {
         }).send(res);
     }
 
+    async deleteFriendByUserId(req, res) {
+        const userId = req.params.userId;
+        const { friend_id } = req.body;
+        const deleteResult = await homeService.deleteFriendByUserId(userId, friend_id);
+        new SuccessResponse({
+            message: 'Delete friend successfully',
+            metadata: {
+                deleteResult: deleteResult,
+            },
+        }).send(res);
+    }
+
     async getFriendRequests(req, res) {
         const receiverId = req.params.receiverId;
         const friendRequests = await homeService.getFriendRequests(receiverId);
@@ -350,6 +362,43 @@ class HomeController {
             message: 'Create new post successfully',
             metadata: {
                 newPost: newPost,
+            },
+        }).send(res);
+    }
+
+    async createNewMediaPost(req, res) {
+        const postId = req.params.postID;
+        const mediaData = req.body;
+        const newMediaPost = await homeService.createPostMedia(postId, mediaData);
+        new SuccessResponse({
+            message: 'Create new media post successfully',
+            metadata: {
+                newMediaPost: newMediaPost,
+            },
+        }).send(res);
+    }
+
+    async deletePost(req, res) {
+        const postId = req.params.postID;
+        const deletedRows = await homeService.deletePostById(postId);
+        new SuccessResponse({
+            message: 'Delete post successfully',
+            metadata: {
+                deletedRows,
+            },
+        }).send(res);
+    }
+
+    async updatePost(req, res) {
+        const postId = req.params.postID;
+        const { postData, mediaData } = req.body;
+        
+        await homeService.updatePostById(postId, postData, mediaData);
+        
+        new SuccessResponse({
+            message: 'Update post successfully',
+            metadata: {
+                postId,
             },
         }).send(res);
     }
