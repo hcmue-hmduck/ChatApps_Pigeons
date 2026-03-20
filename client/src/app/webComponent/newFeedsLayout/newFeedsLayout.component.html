@@ -209,36 +209,29 @@
                                 @if (activeMenuPostId() === post.id) {
                                 <div class="post-options-dropdown cyber-glass">
                                     @if (isUserPost(post.user_id)) {
-                                        <button class="dropdown-item" type="button">
-                                            <i class="bi bi-pencil"></i>
-                                            <span>Chỉnh sửa bài viết</span>
-                                        </button>
-                                        <div class="dropdown-divider"></div>
-                                        <button class="dropdown-item danger" type="button" (click)="onDeletePost(post.id)">
-                                            <i class="bi bi-trash3"></i>
-                                            <span>Xóa bài viết</span>
-                                        </button>
+                                    <button class="dropdown-item" type="button" (click)="openEditPost(post)">
+                                        <i class="bi bi-pencil"></i>
+                                        <span>Chỉnh sửa bài viết</span>
+                                    </button>
+                                    <div class="dropdown-divider"></div>
+                                    <button class="dropdown-item danger" type="button" (click)="onDeletePost(post.id)">
+                                        <i class="bi bi-trash3"></i>
+                                        <span>Xóa bài viết</span>
+                                    </button>
                                     }
                                     @else {
-                                        <button class="dropdown-item danger" type="button" (click)="$event.stopPropagation()">
-                                            <i class="bi bi-flag"></i>
-                                            <span>Báo cáo</span>
-                                        </button>
+                                    <button class="dropdown-item danger" type="button"
+                                        (click)="$event.stopPropagation()">
+                                        <i class="bi bi-flag"></i>
+                                        <span>Báo cáo</span>
+                                    </button>
                                     }
                                 </div>
                                 }
                             </div>
                         </div>
 
-                        <p class="post-text">
-                            @for (word of parseContent(post.content); track $index) {
-                            @if (word.startsWith('#')) {
-                            <span class="text-primary">{{ word }} </span>
-                            } @else {
-                            {{ word }}
-                            }
-                            }
-                        </p>
+                        <p class="post-text">{{ post.content || '' }}</p>
 
                         @if (post.feeling || post.location) {
                         <p class="post-extra-meta">
@@ -264,7 +257,8 @@
                                     <img [src]="media.media_url" alt="Post media" class="media-content"
                                         referrerPolicy="no-referrer">
                                     } @else if (media.media_type === 'video') {
-                                    <video [src]="media.media_url" class="media-content" muted preload="metadata"></video>
+                                    <video [src]="media.media_url" class="media-content" muted
+                                        preload="metadata"></video>
                                     }
 
                                     @if (getMediaItems(post).length > 4 && $index === 3) {
@@ -288,7 +282,7 @@
                                         <i class="bi bi-folder2-open"></i>
                                     </div>
                                     <div>
-                                            <div class="attachment-title">{{ attachment.file_name ||
+                                        <div class="attachment-title">{{ attachment.file_name ||
                                             getFileName(attachment.media_url) }}
                                         </div>
                                         <div class="attachment-meta">
@@ -516,6 +510,177 @@
 
         <div class="lightbox-info">
             <span>{{ currentMediaIndex + 1 }} / {{ selectedMediaPost.post_media.length }}</span>
+        </div>
+    </div>
+</div>
+}
+
+@if (isEditModalOpen() && editingPost()) {
+<div class="edit-modal-overlay" (click)="closeEditPostModal()">
+    <div class="edit-modal cyber-glass" (click)="$event.stopPropagation()">
+        <div class="edit-modal-head">
+            <div>
+                <h3>Chỉnh sửa bài viết</h3>
+                <p>Cập nhật nội dung hiển thị ngay trên bảng tin</p>
+            </div>
+            <button class="edit-modal-close" type="button" (click)="closeEditPostModal()" aria-label="Đóng">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <div class="edit-modal-author">
+            <img [src]="getPostAuthorAvatar(editingPost())" [alt]="getPostAuthorName(editingPost())" class="avatar-s"
+                referrerPolicy="no-referrer">
+            <div class="edit-modal-author-meta">
+                <span class="edit-author-name">{{ getPostAuthorName(editingPost()) }}</span>
+                <span class="edit-author-time">{{ formatPostTime(editingPost()?.created_at) }}</span>
+            </div>
+        </div>
+
+        <div class="edit-modal-body">
+            <textarea class="edit-textarea" [(ngModel)]="editPostContent" placeholder="Bạn muốn chỉnh sửa gì?"></textarea>
+
+            <div class="edit-control-grid">
+                <select class="cyber-select-small" [(ngModel)]="editPostPrivacy">
+                    <option value="public">🌐 Công khai</option>
+                    <option value="friends">👥 Bạn bè</option>
+                    <option value="only_me">🔒 Chỉ mình tôi</option>
+                </select>
+
+                <select class="cyber-select-subtle" [(ngModel)]="editPostLocation">
+                    <option value="">📍 Location...</option>
+                    @for (p of provinces(); track p.code) {
+                    <option [value]="p.name">📍 {{ p.name }}</option>
+                    }
+                </select>
+
+                <select class="cyber-select-subtle" [(ngModel)]="editPostFeeling">
+                    <option value="">😊 Feeling...</option>
+                    @for (e of emojis(); track e.id) {
+                    <option [value]="e.unicode_char + ' ' + e.name">{{ e.unicode_char }} {{ e.name }}</option>
+                    }
+                </select>
+            </div>
+
+            <div class="edit-file-actions">
+                <button class="icon-btn subtle" type="button" title="Thêm ảnh/video"
+                    (click)="triggerEditMediaPicker(editMediaInput)">
+                    <i class="bi bi-image"></i>
+                </button>
+                <button class="icon-btn subtle" type="button" title="Thêm file"
+                    (click)="triggerEditAttachmentPicker(editAttachmentInput)">
+                    <i class="bi bi-paperclip"></i>
+                </button>
+                <input id="edit-post-media-input" #editMediaInput type="file" accept="image/*,video/*" multiple
+                    class="hidden-file-input" (change)="onEditMediaSelected($event)">
+                <input id="edit-post-attachment-input" #editAttachmentInput type="file" multiple
+                    class="hidden-file-input" (change)="onEditAttachmentSelected($event)">
+            </div>
+
+            @if (getEditExistingMediaItems().length > 0) {
+            <div class="edit-modal-preview">
+                <div class="media-grid" [ngClass]="getMediaLayoutClass({ post_media: getEditExistingMediaItems() })">
+                    @for (media of getEditExistingMediaItems().slice(0, 4); track media.id) {
+                    <div class="media-item">
+                        @if (media.media_type === 'image') {
+                        <img [src]="media.media_url" alt="Post media" class="media-content" referrerPolicy="no-referrer">
+                        } @else if (media.media_type === 'video') {
+                        <video [src]="media.media_url" class="media-content" muted preload="metadata"></video>
+                        }
+
+                        @if (getEditExistingMediaItems().length > 4 && $index === 3) {
+                        <div class="overlay-count">
+                            <span>+{{ getEditExistingMediaItems().length - 3 }}</span>
+                        </div>
+                        }
+
+                        <button class="preview-remove-btn preview-remove-btn-float" type="button"
+                            (click)="removeEditExistingMedia(media.id)" aria-label="Remove existing media">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                    }
+                </div>
+            </div>
+            }
+
+            @if (getEditExistingAttachmentItems().length > 0) {
+            <div class="attachments-section edit-modal-attachments">
+                @for (attachment of getEditExistingAttachmentItems(); track attachment.id) {
+                <div class="attachment-card" (click)="viewAttachmentInGoogle(attachment)">
+                    <div class="attachment-left">
+                        <div class="attachment-icon">
+                            <i class="bi bi-folder2-open"></i>
+                        </div>
+                        <div>
+                            <div class="attachment-title">{{ getAttachmentDisplayName(attachment) }}</div>
+                            <div class="attachment-meta">
+                                {{ formatFileSize(attachment.file_size || 0) }} • {{ getFileExtension(getAttachmentDisplayName(attachment)) }}
+                            </div>
+                        </div>
+                    </div>
+                    <button class="preview-remove-btn" type="button" (click)="removeEditExistingMedia(attachment.id)"
+                        aria-label="Remove existing file">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                }
+            </div>
+            }
+
+            @if (getEditPreviewMediaItems().length > 0) {
+            <div class="edit-modal-preview new-media-preview">
+                <p class="edit-preview-title">File mới sẽ được thêm</p>
+                <div class="media-grid" [ngClass]="getMediaLayoutClass({ post_media: getEditPreviewMediaItems() })">
+                    @for (media of getEditPreviewMediaItems().slice(0, 4); track media.id) {
+                    <div class="media-item">
+                        @if (media.media_type === 'image') {
+                        <img [src]="media.media_url" alt="New media" class="media-content" referrerPolicy="no-referrer">
+                        } @else if (media.media_type === 'video') {
+                        <video [src]="media.media_url" class="media-content" muted preload="metadata"></video>
+                        }
+
+                        <button class="preview-remove-btn preview-remove-btn-float" type="button"
+                            (click)="removeEditNewMedia(media.id)" aria-label="Remove new media">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                    }
+                </div>
+            </div>
+            }
+
+            @if (getEditPreviewAttachmentItems().length > 0) {
+            <div class="attachments-section edit-modal-attachments new-media-preview">
+                <p class="edit-preview-title">File đính kèm mới</p>
+                @for (attachment of getEditPreviewAttachmentItems(); track attachment.id) {
+                <div class="attachment-card">
+                    <div class="attachment-left">
+                        <div class="attachment-icon">
+                            <i class="bi" [class]="'bi ' + getAttachmentIconClassByMimeType(attachment.mime_type)"></i>
+                        </div>
+                        <div>
+                            <div class="attachment-title">{{ attachment.file_name }}</div>
+                            <div class="attachment-meta">
+                                {{ formatFileSize(attachment.file_size || 0) }} • {{ getFileExtension(attachment.file_name) }}
+                            </div>
+                        </div>
+                    </div>
+                    <button class="preview-remove-btn" type="button" (click)="removeEditNewMedia(attachment.id)"
+                        aria-label="Remove new file">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                }
+            </div>
+            }
+        </div>
+
+        <div class="edit-modal-actions">
+            <button class="btn-secondary" type="button" (click)="closeEditPostModal()">Hủy</button>
+            <button class="btn-primary" type="button" (click)="saveEditedPostLocal()" [disabled]="isUpdatingPost()">
+                {{ isUpdatingPost() ? 'Đang lưu...' : 'Lưu thay đổi' }}
+            </button>
         </div>
     </div>
 </div>

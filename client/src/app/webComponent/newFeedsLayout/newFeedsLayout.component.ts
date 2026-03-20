@@ -47,6 +47,7 @@ export class NewFeedsLayoutComponent implements OnDestroy {
     emojis = signal<any[]>([]);
     loading = signal(false);
     isPosting = signal(false);
+    isUpdatingPost = signal(false);
     uploadProgress = signal(0);
     uploadStage = signal<'creating' | 'uploading' | 'saving'>('creating');
     activeMenuPostId = signal<string | null>(null);
@@ -97,7 +98,7 @@ export class NewFeedsLayoutComponent implements OnDestroy {
     newCommentContent = '';
     replyToCommentId: string | null = null;
     newReplyContent = '';
-    
+
     // Edit Post State
     editPostContent = '';
     editPostPrivacy = 'public';
@@ -122,6 +123,7 @@ export class NewFeedsLayoutComponent implements OnDestroy {
 
     ngOnDestroy() {
         this.clearSelectedMedia(false);
+        this.clearEditNewMedia(false);
     }
 
     triggerImagePicker(input: HTMLInputElement) {
@@ -129,6 +131,14 @@ export class NewFeedsLayoutComponent implements OnDestroy {
     }
 
     triggerAttachmentPicker(input: HTMLInputElement) {
+        input.click();
+    }
+
+    triggerEditMediaPicker(input: HTMLInputElement) {
+        input.click();
+    }
+
+    triggerEditAttachmentPicker(input: HTMLInputElement) {
         input.click();
     }
 
@@ -208,6 +218,78 @@ export class NewFeedsLayoutComponent implements OnDestroy {
         input.value = '';
     }
 
+    onEditMediaSelected(event: Event) {
+        const input = event.target as HTMLInputElement;
+        const files = Array.from(input.files || []);
+        if (!files.length) return;
+
+        const mediaFiles = files.filter(file => file.type.startsWith('image/') || file.type.startsWith('video/'));
+        for (const file of mediaFiles) {
+            this.appendEditFilePreview(file);
+        }
+
+        input.value = '';
+    }
+
+    onEditAttachmentSelected(event: Event) {
+        const input = event.target as HTMLInputElement;
+        const files = Array.from(input.files || []);
+        if (!files.length) return;
+
+        const attachmentFiles = files.filter(file => !(file.type.startsWith('image/') || file.type.startsWith('video/')));
+        for (const file of attachmentFiles) {
+            this.appendEditFilePreview(file);
+        }
+
+        input.value = '';
+    }
+
+    appendEditFilePreview(file: File) {
+        const previewId = `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`;
+        const mediaType = file.type.startsWith('video/') ? 'video' : file.type.startsWith('image/') ? 'image' : 'file';
+        const objectUrl = mediaType === 'file' ? '' : URL.createObjectURL(file);
+
+        const previewItem: any = {
+            id: previewId,
+            is_new: true,
+            media_type: mediaType,
+            media_url: objectUrl,
+            width: 1,
+            height: 1,
+            file_name: file.name,
+            file_size: file.size,
+            mime_type: file.type
+        };
+
+        this.editPostNewMediaFiles.push(file);
+        this.editPostNewMediaPreviews.push(previewItem);
+
+        if (mediaType === 'image') {
+            const img = new Image();
+            img.onload = () => {
+                const target = this.editPostNewMediaPreviews.find(item => item.id === previewId);
+                if (target) {
+                    target.width = img.naturalWidth || 1;
+                    target.height = img.naturalHeight || 1;
+                }
+            };
+            img.src = objectUrl;
+        }
+
+        if (mediaType === 'video') {
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            video.onloadedmetadata = () => {
+                const target = this.editPostNewMediaPreviews.find(item => item.id === previewId);
+                if (target) {
+                    target.width = video.videoWidth || 1;
+                    target.height = video.videoHeight || 1;
+                }
+            };
+            video.src = objectUrl;
+        }
+    }
+
     removeSelectedMedia(previewId: string) {
         const index = this.selectedMediaPreviews.findIndex(item => item.id === previewId);
         if (index === -1) return;
@@ -239,6 +321,68 @@ export class NewFeedsLayoutComponent implements OnDestroy {
         this.selectedAttachmentFiles = [];
         const attachmentInput = document.getElementById('create-post-attachment-input') as HTMLInputElement | null;
         if (attachmentInput) attachmentInput.value = '';
+    }
+
+    removeEditExistingMedia(mediaId: string) {
+        this.editPostExistingMedia = this.editPostExistingMedia.filter(item => item.id !== mediaId);
+    }
+
+    removeEditNewMedia(previewId: string) {
+        const index = this.editPostNewMediaPreviews.findIndex(item => item.id === previewId);
+        if (index === -1) return;
+
+        const target = this.editPostNewMediaPreviews[index];
+        if (target?.media_url) {
+            URL.revokeObjectURL(target.media_url);
+        }
+
+        this.editPostNewMediaPreviews.splice(index, 1);
+        this.editPostNewMediaFiles.splice(index, 1);
+    }
+
+    clearEditNewMedia(resetInput = true) {
+        for (const preview of this.editPostNewMediaPreviews) {
+            if (preview?.media_url) {
+                URL.revokeObjectURL(preview.media_url);
+            }
+        }
+
+        this.editPostNewMediaFiles = [];
+        this.editPostNewMediaPreviews = [];
+
+        if (resetInput) {
+            const mediaInput = document.getElementById('edit-post-media-input') as HTMLInputElement | null;
+            const attachmentInput = document.getElementById('edit-post-attachment-input') as HTMLInputElement | null;
+            if (mediaInput) mediaInput.value = '';
+            if (attachmentInput) attachmentInput.value = '';
+        }
+    }
+
+    getEditPreviewMediaItems(): any[] {
+        return this.editPostNewMediaPreviews.filter(item => item.media_type === 'image' || item.media_type === 'video');
+    }
+
+    getEditPreviewAttachmentItems(): any[] {
+        return this.editPostNewMediaPreviews.filter(item => item.media_type === 'file');
+    }
+
+    getEditExistingMediaItems(): any[] {
+        return this.editPostExistingMedia.filter(item => item.media_type === 'image' || item.media_type === 'video');
+    }
+
+    getEditExistingAttachmentItems(): any[] {
+        return this.editPostExistingMedia.filter(item => item.media_type === 'file');
+    }
+
+    getAttachmentIconClassByMimeType(type: string): string {
+        const mime = type || '';
+        if (mime.startsWith('image/')) return 'bi-file-earmark-image';
+        if (mime.startsWith('video/')) return 'bi-file-earmark-play';
+        if (mime.includes('pdf')) return 'bi-file-earmark-pdf';
+        if (mime.includes('zip') || mime.includes('rar') || mime.includes('compressed')) return 'bi-file-earmark-zip';
+        if (mime.includes('word') || mime.includes('document')) return 'bi-file-earmark-word';
+        if (mime.includes('sheet') || mime.includes('excel') || mime.includes('spreadsheet')) return 'bi-file-earmark-spreadsheet';
+        return 'bi-file-earmark';
     }
 
     formatFileSize(bytes: number): string {
@@ -454,7 +598,7 @@ export class NewFeedsLayoutComponent implements OnDestroy {
         }
     }
 
-    isUserPost(post_user: string) : boolean {
+    isUserPost(post_user: string): boolean {
         return post_user === this._userInfor?.id;
     }
 
@@ -468,9 +612,142 @@ export class NewFeedsLayoutComponent implements OnDestroy {
         }
     }
 
+    openEditPost(post: any) {
+        if (!post) return;
+
+        this.activeMenuPostId.set(null);
+        this.editingPost.set(post);
+        this.editPostContent = post.content || '';
+        this.editPostPrivacy = post.privacy || 'public';
+        this.editPostFeeling = post.feeling || '';
+        this.editPostLocation = post.location || '';
+        this.editPostExistingMedia = Array.isArray(post.post_media) ? [...post.post_media] : [];
+        this.editPostNewMediaFiles = [];
+        this.editPostNewMediaPreviews = [];
+        this.isEditModalOpen.set(true);
+    }
+
+    closeEditPostModal() {
+        this.isEditModalOpen.set(false);
+        this.editingPost.set(null);
+        this.editPostContent = '';
+        this.editPostPrivacy = 'public';
+        this.editPostFeeling = '';
+        this.editPostLocation = '';
+        this.editPostExistingMedia = [];
+        this.clearEditNewMedia();
+        this.isUpdatingPost.set(false);
+    }
+
+    normalizeUploadedMediaItem(media: any): any {
+        const mediaType = media?.resource_type === 'raw' ? 'file' : media?.resource_type;
+        return {
+            id: media?.id || `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            media_type: mediaType,
+            media_url: mediaType === 'file' ? (media?.download_url || media?.url) : media?.url,
+            thumbnail_url: media?.thumbnail_url,
+            duration: media?.duration || 0,
+            file_name: media?.file_name,
+            file_size: media?.file_size,
+            width: media?.width || 1,
+            height: media?.height || 1
+        };
+    }
+
+    mapExistingMediaToUpdatePayload(media: any): any {
+        const isFile = media?.media_type === 'file';
+        return {
+            resource_type: isFile ? 'raw' : media?.media_type,
+            url: media?.media_url,
+            download_url: isFile ? media?.media_url : undefined,
+            thumbnail_url: media?.thumbnail_url,
+            duration: media?.duration || 0,
+            file_name: media?.file_name,
+            file_size: media?.file_size
+        };
+    }
+
+    saveEditedPostLocal() {
+        const current = this.editingPost();
+        if (!current || this.isUpdatingPost()) return;
+
+        const previousPost = {
+            ...current,
+            post_media: Array.isArray(current.post_media) ? [...current.post_media] : []
+        };
+
+        const updatedPost = {
+            ...current,
+            content: this.editPostContent.trim(),
+            privacy: this.editPostPrivacy,
+            feeling: this.editPostFeeling,
+            location: this.editPostLocation,
+            updated_at: new Date().toISOString()
+        };
+
+        const postData = {
+            content: updatedPost.content,
+            privacy: updatedPost.privacy,
+            feeling: updatedPost.feeling,
+            location: updatedPost.location
+        };
+
+        const existingPayload = this.editPostExistingMedia.map(media => this.mapExistingMediaToUpdatePayload(media));
+        const savePostUpdate = (mediaPayload: any[], finalPostMedia: any[]) => {
+            const optimisticPost = {
+                ...updatedPost,
+                post_media: finalPostMedia
+            };
+
+            this.posts.update(prev => prev.map(post => post.id === current.id ? optimisticPost : post));
+            this.isUpdatingPost.set(true);
+
+            this.feedsService.updatePost(current.id, { postData, mediaData: mediaPayload }).subscribe({
+                next: () => {
+                    this.closeEditPostModal();
+                },
+                error: (err) => {
+                    this.posts.update(prev => prev.map(post => post.id === current.id ? previousPost : post));
+                    this.isUpdatingPost.set(false);
+                    console.error('Error updating post:', err);
+                    this.error.set('Cập nhật bài viết thất bại. Vui lòng thử lại.');
+                }
+            });
+        };
+
+        if (this.editPostNewMediaFiles.length === 0) {
+            savePostUpdate(existingPayload, [...this.editPostExistingMedia]);
+            return;
+        }
+
+        const formData = new FormData();
+        for (const file of this.editPostNewMediaFiles) {
+            formData.append('files', file);
+        }
+
+        this.isUpdatingPost.set(true);
+        this.uploadService.uploadFileFeedsWithProgress(current.id, formData).subscribe({
+            next: (event) => {
+                if (event.type !== HttpEventType.Response) return;
+
+                const uploadedFiles = event.body?.metadata?.files || [];
+                const uploadedPostMedia = uploadedFiles.map((item: any) => this.normalizeUploadedMediaItem(item));
+                const combinedMedia = [...this.editPostExistingMedia, ...uploadedPostMedia];
+                const mediaPayload = [...existingPayload, ...uploadedFiles];
+
+                savePostUpdate(mediaPayload, combinedMedia);
+            },
+            error: (err) => {
+                this.isUpdatingPost.set(false);
+                console.error('Error uploading files for post update:', err);
+                this.error.set('Upload file khi chỉnh sửa thất bại. Vui lòng thử lại.');
+            }
+        });
+    }
+
     onDeletePost(postId: string) {
         if (!confirm('Bạn có chắc chắn muốn xóa bài viết này không?')) return;
-        
+
         this.feedsService.deletePost(postId).subscribe({
             next: () => {
                 this.posts.update(prev => prev.filter(p => p.id !== postId));
@@ -546,7 +823,7 @@ export class NewFeedsLayoutComponent implements OnDestroy {
                         }
                     });
                 };
-                
+
                 if (!hasFiles) {
                     newPost.post_media = [];
                     this.posts.update(prev => [newPost, ...prev]);

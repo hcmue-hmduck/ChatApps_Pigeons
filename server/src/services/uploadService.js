@@ -43,7 +43,7 @@ class UploadService {
 
         let folderPath = 'chatPigeons';
         if (options.convID) {
-            folderPath += `/${options.convID}`;
+            folderPath += `/conversations/${options.convID}`;
         } else if (options.feedID) {
             folderPath += `/feeds/${options.feedID}`;
         }
