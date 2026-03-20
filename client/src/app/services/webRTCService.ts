@@ -147,7 +147,9 @@ export class WebRtcService {
         this.socketService.emit('call:missed', this.callState.conversationId);
 
         const callId = this.callState.callId;
-        this.callService.updateStatus(callId, 'missed');
+        this.callService.updateStatus(callId, 'missed', {
+            conversationId: this.callState.conversationId,
+        });
 
         // cleanup tab cha
         this.socketService.emit('call:cleanUp', {

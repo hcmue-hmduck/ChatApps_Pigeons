@@ -98,9 +98,15 @@ export class P2PCallService {
         const callStatus = this.callState.callStatus();
         const callId = this.callState.callId;
 
-        if (callStatus === 'ringing') this.callService.updateStatus(callId, 'cancelled');
+        if (callStatus === 'ringing') {
+            this.callService.updateStatus(callId, 'cancelled', {
+                conversationId: this.callState.conversationId,
+            });
+        }
         else if (callStatus === 'connected') {
-            this.callService.updateStatus(callId, 'completed');
+            this.callService.updateStatus(callId, 'completed', {
+                conversationId: this.callState.conversationId,
+            });
             // phát tín hiệu gác máy
             this.socketService.emit('call:hangUp', this.callState.conversationId);
         }

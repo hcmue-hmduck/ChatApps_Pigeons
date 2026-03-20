@@ -62,8 +62,15 @@ export class LivekitCallService {
         const countParticipant = this.room?.remoteParticipants.size;
 
         if (countParticipant === 0) {
-            if (callStatus === 'ringing') this.callService.updateStatus(callId, 'cancelled');
-            else if (callStatus === 'connected') this.callService.updateStatus(callId, 'completed');
+            if (callStatus === 'ringing') {
+                this.callService.updateStatus(callId, 'cancelled', {
+                    conversationId: this.callState.conversationId,
+                });
+            } else if (callStatus === 'connected') {
+                this.callService.updateStatus(callId, 'completed', {
+                    conversationId: this.callState.conversationId,
+                });
+            }
         }
 
         this.cleanUp();
@@ -223,8 +230,12 @@ export class LivekitCallService {
         });
 
         this.room?.on('disconnected', () => {
-            this.callState.callStatus.set('ended');
-            this.callState.syncCallStateToParent();
+            // Don't override 'missed' or 'declined' status, only set 'ended' for normal disconnect
+            const currentStatus = this.callState.callStatus();
+            if (currentStatus !== 'missed' && currentStatus !== 'declined') {
+                this.callState.callStatus.set('ended');
+                this.callState.syncCallStateToParent();
+            }
             this.callState.cleanUp({ resetCallStatus: false });
         });
 

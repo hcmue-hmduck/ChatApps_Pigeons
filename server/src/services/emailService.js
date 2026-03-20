@@ -34,7 +34,7 @@ class EmailService {
                     </p>
                     <p style="margin-top: 20px; font-size: 16px;">
                         Trân trọng,<br>
-                        <strong>Cyber Chat</strong>
+                        <strong>Pigeons</strong>
                     </p>
                 </div>
             </div>

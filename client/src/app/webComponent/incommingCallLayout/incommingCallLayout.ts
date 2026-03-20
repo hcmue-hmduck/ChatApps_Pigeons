@@ -4,6 +4,7 @@ import { CallSessionData, DIRECT_CALL, GROUP_CALL } from '../../models/callData'
 import { AuthService } from '../../services/authService';
 import { CallService } from '../../services/callService';
 import { CallStateService } from '../../services/callStateService';
+import { SocketService } from '../../services/socket';
 import { WebRtcService } from '../../services/webRTCService';
 import { lastValueFrom } from 'rxjs';
 import { error } from 'console';
@@ -18,6 +19,7 @@ export class IncommingCallLayout {
     webRTCService = inject(WebRtcService);
     callService = inject(CallService);
     callState = inject(CallStateService);
+    socketService = inject(SocketService);
     authService = inject(AuthService);
     callSessionData = signal<CallSessionData | null>(null);
     userId = '';
@@ -133,7 +135,9 @@ export class IncommingCallLayout {
 
             // set status call = decliend nếu là cuộc gọi 2 người
             if (conversationType === this.directCallType) {
-                this.callService.updateStatus(callId, 'declined');
+                this.callService.updateStatus(callId, 'declined', {
+                    conversationId,
+                });
             }
 
             this.webRTCService.declineIncomingCall(conversationId, conversationType);

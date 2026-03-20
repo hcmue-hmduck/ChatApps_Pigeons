@@ -1,14 +1,17 @@
-import { Component, computed, HostListener, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, HostListener, inject, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
+import { AvatarWrap, GROUP_CALL } from '../../models/callData';
 import { AuthService } from '../../services/authService';
-import { SocketService } from '../../services/socket';
-import { CallStateService } from '../../services/callStateService';
-import { WebRtcService } from '../../services/webRTCService';
 import { CallBroadcastService } from '../../services/callBroadcastService';
+import { CallStateService } from '../../services/callStateService';
+import { SocketService } from '../../services/socket';
+import { WebRtcService } from '../../services/webRTCService';
+import { GroupAvatarLayoutComponent } from '../groupAvatarLayout/groupAvatarLayout.component';
 
 @Component({
     selector: 'app-call-layout',
-    imports: [],
+    standalone: true,
+    imports: [GroupAvatarLayoutComponent],
     templateUrl: './callLayout.html',
     styleUrl: './callLayout.css',
 })
@@ -19,11 +22,24 @@ export class CallLayoutComponent implements OnInit {
     activatedRoute = inject(ActivatedRoute);
     callState = inject(CallStateService);
     callBroadcastService = inject(CallBroadcastService);
+    avatarWrap: AvatarWrap | null = null;
 
     readonly avatarUrlDefault = '/assets/AvatarDefault.jpg';
 
     userAvatarUrl = computed<string>(() => {
-        return this.authService.getUserInfor().avatarUrl;
+        return this.authService.getUserInfor()?.avatarUrl || this.avatarUrlDefault;
+    });
+
+    waitingAvatarUrl = computed<string>(() => {
+        return this.avatarWrap?.avatarUrl || this.avatarUrlDefault;
+    });
+
+    waitingIsGroup = computed<boolean>(() => {
+        return !!this.avatarWrap?.isGroup;
+    });
+
+    waitingMembers = computed<any[]>(() => {
+        return this.avatarWrap?.members || [];
     });
 
     remoteCount = computed<number>(() => {
@@ -31,11 +47,16 @@ export class CallLayoutComponent implements OnInit {
     });
 
     totalCount = computed<number>(() => {
-        return this.remoteCount() + (this.callState.localStream() ? 1 : 0);
+        return this.remoteCount() + (this.callStreamExists() ? 1 : 0);
+    });
+
+    callStreamExists = computed(() => {
+        return !!this.callState.localStream();
     });
 
     isWaiting = computed(() => {
-        return this.totalCount() === 1;
+        // Đang chờ nếu trạng thái là ringing và chưa có người tham gia khác (remoteCount == 0)
+        return this.callState.callStatus() === 'ringing' && this.remoteCount() === 0;
     });
 
     isTwoPeople = computed(() => {
@@ -44,6 +65,15 @@ export class CallLayoutComponent implements OnInit {
 
     isGroupCall = computed(() => {
         return this.totalCount() > 2;
+    });
+
+    isGroupConversation = computed(() => {
+        return this.callState.conversationType === GROUP_CALL;
+    });
+
+    // callState.cleanUp() reset conversationType, so keep group context from initial avatar payload.
+    isGroupContext = computed(() => {
+        return this.isGroupConversation() || this.waitingIsGroup();
     });
 
     isDeclined = computed(() => {
@@ -80,7 +110,11 @@ export class CallLayoutComponent implements OnInit {
                 inviterId,
                 inviterAvatarUrl,
                 callId,
+                avatarWrap,
             } = event.data;
+
+            this.avatarWrap = avatarWrap || null;
+
             await this.authService.setUserInfo(userId);
             this.socketService.emit('joinConversation', conversationId);
 
@@ -123,6 +157,11 @@ export class CallLayoutComponent implements OnInit {
 
     toggleMicrophone() {
         this.webRTCService.toggleMicrophone();
+    }
+
+    closeCallWindow() {
+        this.endCall();
+        window.close();
     }
 
     // Ngăn người dùng lỡ tay đóng tab/trình duyệt

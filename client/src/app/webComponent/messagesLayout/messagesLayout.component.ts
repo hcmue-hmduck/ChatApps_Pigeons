@@ -22,7 +22,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { PickerModule } from '@ctrl/ngx-emoji-mart';
 import { forkJoin } from 'rxjs';
-import { GROUP_CALL } from '../../models/callData';
+import { GROUP_CALL, SendCallPayload } from '../../models/callData';
 import { AuthService } from '../../services/authService';
 import { CallService } from '../../services/callService';
 import { Conversation } from '../../services/conversation';
@@ -556,7 +556,10 @@ export class MessagesLayoutComponent
         effect(() => {
             if (this.callService.logJoinGroupCall()) {
                 const { content, conversationId } = this.callService.logJoinGroupCall()!;
-                if (content && conversationId) this.updateUIWithNewMessage(content, conversationId);
+                if (content && conversationId) {
+                    this.updateUIWithNewMessage(content, conversationId);
+                    this.broadcastMessage(content)
+                }
 
                 untracked(() => {
                     this.callService.logJoinGroupCall.set(null);
@@ -660,6 +663,7 @@ export class MessagesLayoutComponent
         // Cleanup listener cũ trước khi setup mới
         this.socketService.off('newMessage');
         this.socketService.off('updateMessage');
+        this.socketService.off('updateConversation');
         this.socketService.off('deleteMessage');
         this.socketService.off('pinMessage');
         this.socketService.off('unpinMessage');
@@ -745,6 +749,47 @@ export class MessagesLayoutComponent
                     )
                 );
             }
+        });
+
+        // Đồng bộ thay đổi trạng thái call vào message list (pending/ongoing/completed/missed...)
+        this.socketService.on('updateConversation', (data: any) => {
+            if (data?.conversation_id !== conversationId) return;
+            if (!(data?.message_type === 'call' || data?.call || data?.call_id)) return;
+
+            const targetMessageId = data.id || data.message_id || data.last_message_id;
+            const targetCallId = data.call?.id || data.call_id;
+
+            this.getMessagesData.update((old) => ({
+                ...old,
+                homeMessagesData: {
+                    ...old.homeMessagesData,
+                    messages: old.homeMessagesData.messages.map((msg: any) => {
+                        if (msg.message_type !== 'call') return msg;
+
+                        const sameMessage =
+                            targetMessageId !== undefined &&
+                            targetMessageId !== null &&
+                            String(msg.id) === String(targetMessageId);
+                        const sameCall =
+                            targetCallId !== undefined &&
+                            targetCallId !== null &&
+                            (String(msg.call?.id) === String(targetCallId) ||
+                                String(msg.call_id) === String(targetCallId));
+
+                        if (!sameMessage && !sameCall) return msg;
+
+                        return {
+                            ...msg,
+                            ...data,
+                            call: {
+                                ...(msg.call || {}),
+                                ...(data.call || {}),
+                                ...(data.status ? { status: data.status } : {}),
+                            },
+                        };
+                    }),
+                },
+            }));
         });
 
         // Setup listener cho pin tin nhắn
@@ -859,6 +904,7 @@ export class MessagesLayoutComponent
     }
 
     ngOnChanges(changes: SimpleChanges) {
+        console.log(`getMessageInfor:::`,this.getMessageInfor);
         if (changes['conversationId']) {
             const newConversationId = changes['conversationId'].currentValue;
             const oldConversationId = changes['conversationId'].previousValue;
@@ -901,6 +947,7 @@ export class MessagesLayoutComponent
         // Cleanup socket listener để tránh memory leak
         this.socketService.off('newMessage');
         this.socketService.off('updateMessage');
+        this.socketService.off('updateConversation');
         this.socketService.off('deleteMessage');
         this.socketService.off('pinMessage');
         this.socketService.off('unpinMessage');
@@ -985,6 +1032,11 @@ export class MessagesLayoutComponent
     getLastMessageSenderName(sender_id: string, sender_name: string): string {
         if (sender_id === this.currentUserId) return 'Bạn ';
         return sender_name ? sender_name : 'Ai đó';
+    }
+
+    private broadcastMessage(message: any) {
+        this.socketService.emit('sendMessage', message);
+        this.socketService.emit('updateConversation', message);
     }
 
     /**
@@ -1078,8 +1130,7 @@ export class MessagesLayoutComponent
                         error: (err) => console.error('Error updating conversation:', err),
                     });
 
-                    this.socketService.emit('sendMessage', realMessage);
-                    this.socketService.emit('updateConversation', realMessage);
+                    this.broadcastMessage(realMessage);
 
                     // Chỉ notify khi conversation chưa có trong danh sách local (thường là cuộc trò chuyện mới tạo)
                     const isKnownConversation = (this.joinedConversations || [])
@@ -1638,8 +1689,7 @@ export class MessagesLayoutComponent
                             sender_avatar: savedMessage.sender_avatar || parentUserInfo.avatar_url || null,
                         };
 
-                        this.socketService.emit('sendMessage', messageWithSender);
-                        this.socketService.emit('updateConversation', messageWithSender);
+                        this.broadcastMessage(messageWithSender);
                     }
                 });
             },
@@ -1909,7 +1959,8 @@ export class MessagesLayoutComponent
             if (event.origin !== window.location.origin) return;
 
             if (event.data.type === 'getCallData') {
-                const payload = {
+                
+                let payload: SendCallPayload = {
                     type: 'sendCallData',
                     conversationType: this.conversationType,
                     conversationId: this.conversationId,
@@ -1917,6 +1968,21 @@ export class MessagesLayoutComponent
                     callId,
                     initializeVideo,
                 };
+
+                if(this.conversationType === GROUP_CALL) {
+                    payload.avatarWrap = {
+                        isGroup: true,
+                        avatarUrl: this.getMessageInfor.avatar_url 
+                        && this.getMessageInfor.avatar_url.trim() 
+                        ? this.getMessageInfor.avatar_url : null,
+                        members: this.getMessageInfor.participants ?? [],
+                    }
+                } else {
+                    payload.avatarWrap = {
+                        isGroup: false,
+                        avatarUrl: this.getMessageInfor.other_participant.avatar_url
+                    }
+                }
 
                 (event.source as Window)?.postMessage(payload, window.location.origin);
 
@@ -1968,6 +2034,9 @@ export class MessagesLayoutComponent
                     return;
                 }
 
+                this.updateUIWithNewMessage(message);
+                this.broadcastMessage(message);
+
                 if (message.call.call_type && message.call.call_type === GROUP_CALL) {
                     this.callService.createLogJoinGroupCall(this.conversationId).subscribe({
                         next: (res) => {
@@ -1977,8 +2046,8 @@ export class MessagesLayoutComponent
                                 sender_avatar: avatarUrl,
                             };
 
-                            this.updateUIWithNewMessage(message)
-                            this.updateUIWithNewMessage(systemMessage)
+                            this.updateUIWithNewMessage(systemMessage);
+                            this.broadcastMessage(systemMessage);
                         },
                         error: (error) => console.error(error)
                     })
@@ -2047,17 +2116,16 @@ export class MessagesLayoutComponent
     getCallDescription(callInfo: any): string {
         if (!callInfo) return '';
 
+        if (callInfo.status === 'pending' || callInfo.status === 'ongoing') {
+            return 'Cuộc gọi đang diễn ra';
+        }
+
         // Nếu có thời lượng cuộc gọi
         if (callInfo.duration_seconds && callInfo.duration_seconds > 0) {
             return this.formatCallDuration(callInfo.duration_seconds);
         }
 
-        // Nếu không có thời lượng, hiển thị thời gian tạo
-        if (callInfo.started_at) {
-            return this.formatTime(callInfo.started_at);
-        }
-
-        return '';
+        return 'Cuộc gọi đã kết thúc';
     }
 
     // Format call duration (seconds to mm:ss or HH:mm:ss)

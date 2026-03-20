@@ -3,6 +3,7 @@ import { inject, Injectable, signal } from '@angular/core';
 import { Observable, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { AuthService } from './authService';
+import { SocketService } from './socket';
 
 interface LogJoinGroupCall {
     content: string;
@@ -16,6 +17,7 @@ export class CallService {
     private apiUrl = `${environment.apiUrl}/home/call`;
     private httpClient = inject(HttpClient);
     private authService = inject(AuthService);
+    private socketService = inject(SocketService);
     private CALL_TYPE = ['group', 'direct'];
 
     logJoinGroupCall = signal<LogJoinGroupCall | null>(null);
@@ -58,6 +60,10 @@ export class CallService {
     updateStatus(
         call_id: string,
         status: 'cancelled' | 'completed' | 'declined' | 'missed' | 'ended',
+        options?: {
+            conversationId?: string;
+            messageId?: string;
+        },
     ): void {
         if (!call_id) return;
 
@@ -68,5 +74,19 @@ export class CallService {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({}),
         });
+
+        if (options?.conversationId) {
+            this.socketService.emit('updateConversation', {
+                conversation_id: options.conversationId,
+                message_id: options.messageId,
+                message_type: 'call',
+                call_id,
+                status,
+                call: {
+                    id: call_id,
+                    status,
+                },
+            });
+        }
     }
 }
