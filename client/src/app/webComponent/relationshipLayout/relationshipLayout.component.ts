@@ -101,7 +101,9 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
 
     ngOnDestroy() {
         // Gỡ bỏ tất cả socket listeners để tránh memory leak và lag máy
-        this.socketService.off('updateProfile');
+        if (this.updateProfileListener) {
+            this.socketService.off('updateProfile', this.updateProfileListener);
+        }
         this.socketService.off('updateFriend');
         this.socketService.off('sendFriendRequest');
         this.socketService.off('cancelSentRequest');
@@ -169,7 +171,9 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
         };
 
         // Cleanup trước khi đăng ký để tránh trùng lặp
-        this.socketService.off('updateProfile');
+        if (this.updateProfileListener) {
+            this.socketService.off('updateProfile', this.updateProfileListener);
+        }
         this.socketService.off('updateFriend');
         this.socketService.off('sendFriendRequest');
         this.socketService.off('cancelSentRequest');

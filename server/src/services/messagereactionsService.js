@@ -11,10 +11,10 @@ class MessageReactionService {
         });
     }
 
-    async removeMessageReaction(id) {
+    async removeMessageReaction(reactionID) {
         return await messageReactionModel.destroy({
             where: {
-                id: id,
+                id: reactionID,
             },
         });
     }

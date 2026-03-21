@@ -45,6 +45,7 @@ export class UserInforModel {
     uploadingAvatar = signal(false);
     editForm: any = {};
     changePassForm = { oldPass: '', newPass: '', confirmPass: '' };
+    private onUpdateProfileSocket?: (data: any) => void;
 
     constructor(
         private userService: User,
@@ -81,8 +82,13 @@ export class UserInforModel {
     }
 
     setupSocketListeners() {
-        this.socketService.on('updateProfile', (data: any) => {
-            if (data.user_id === this.currentUserId) {
+        if (this.onUpdateProfileSocket) {
+            this.socketService.off('updateProfile', this.onUpdateProfileSocket);
+        }
+
+        this.onUpdateProfileSocket = (data: any) => {
+            const updatedUserId = data?.id || data?.user_id;
+            if (updatedUserId === this.currentUserId) {
                 this.userInfo.update((old: any) => ({
                     ...old,
                     full_name: data.full_name,
@@ -91,11 +97,16 @@ export class UserInforModel {
                 }));
                 this.cdr.markForCheck();
             }
-        });
+        };
+
+        this.socketService.on('updateProfile', this.onUpdateProfileSocket);
     }
 
     ngOnDestroy() {
-        this.socketService.off('updateProfile');
+        if (this.onUpdateProfileSocket) {
+            this.socketService.off('updateProfile', this.onUpdateProfileSocket);
+            this.onUpdateProfileSocket = undefined;
+        }
     }
 
     openProfileModal() {

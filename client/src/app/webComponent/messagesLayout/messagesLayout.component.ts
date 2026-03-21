@@ -22,7 +22,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PickerModule } from '@ctrl/ngx-emoji-mart';
-import { forkJoin } from 'rxjs';
+import { finalize, forkJoin } from 'rxjs';
 import { GROUP_CALL, SendCallPayload } from '../../models/callData';
 import { AuthService } from '../../services/authService';
 import { CallService } from '../../services/callService';
@@ -33,6 +33,7 @@ import { UploadService } from '../../services/uploadService';
 import { Participant } from '../../services/participant';
 import { environment } from '../../../environments/environment';
 import { GroupAvatarLayoutComponent } from '../groupAvatarLayout/groupAvatarLayout.component';
+import { MessageReactions } from '../../services/messagereactions';
 
 export interface UserPresence {
     status: string;
@@ -48,12 +49,6 @@ export interface StagedFile {
     size: number;
 }
 
-interface MessageReactionView {
-    emoji: string;
-    count: number;
-    reactedByCurrentUser: boolean;
-}
-
 @Component({
     selector: 'messages-layout',
     standalone: true,
@@ -64,7 +59,7 @@ interface MessageReactionView {
 })
 export class MessagesLayoutComponent
     implements OnInit, OnChanges, AfterViewInit, AfterViewChecked, OnDestroy {
-    protected readonly title = signal('client');
+
     callService = inject(CallService);
     authService = inject(AuthService);
     private cdr = inject(ChangeDetectorRef);
@@ -188,7 +183,7 @@ export class MessagesLayoutComponent
 
         return trimmed;
     }
-    
+
     openFileInNewTab(rawUrl: string | null | undefined, event?: MouseEvent) {
         event?.preventDefault();
         event?.stopPropagation();
@@ -317,8 +312,13 @@ export class MessagesLayoutComponent
     // Menu state
     showMenuId: string | number | null = null;
     reactionPickerMessageId: string | number | null = null;
+    reactionPickerDropUpId: string | number | null = null;
+    showReactionModal = signal(false);
+    reactionDetails = signal<any[]>([]);
     readonly quickReactionEmojis: string[] = ['👍', '❤️', '😂', '😮', '😢', '😡'];
-    private messageReactions = new Map<string, MessageReactionView[]>();
+    private messageReactions = signal(new Map<string, any[]>());
+    private countReactionMap = signal(new Map<string, Record<string, number>>());
+    private isSyncingReaction = signal(false);
 
     // Highlight state for reply navigation
     highlightedMessageId: string | null = null;
@@ -566,6 +566,7 @@ export class MessagesLayoutComponent
         private conversationService: Conversation,
         private participantService: Participant,
         private uploadService: UploadService,
+        private messageReactionsService: MessageReactions,
         private socketService: SocketService,
     ) {
         this.initEffect();
@@ -934,6 +935,21 @@ export class MessagesLayoutComponent
             }
         };
         this.socketService.on('deleteMessage', this.onDeleteMessageSocket);
+
+        this.socketService.on('reactionMessage', (data: any) => {
+            console.log('Received reactionMessage event:', data);
+            this.messageReactions.update(map => {
+                const newMap = new Map(map);
+                newMap.set(data.message_id, data.reactions);
+                return newMap;
+            })
+            this.countReactionMap.update(map => {
+                const newMap = new Map(map);
+                newMap.set(data.message_id, data.counts);
+                return newMap;
+            })
+            this.cdr.markForCheck();
+        });
     }
 
     ngOnInit() {
@@ -945,7 +961,7 @@ export class MessagesLayoutComponent
     }
 
     ngOnChanges(changes: SimpleChanges) {
-        console.log(`getMessageInfor:::`,this.getMessageInfor);
+        console.log(`getMessageInfor:::`, this.getMessageInfor);
         if (changes['conversationId']) {
             const newConversationId = changes['conversationId'].currentValue;
             const oldConversationId = changes['conversationId'].previousValue;
@@ -987,7 +1003,7 @@ export class MessagesLayoutComponent
         }
         // Cleanup listeners của component này, không chạm listener ở component khác
         this.detachMessageSocketListeners();
-        
+
         if (this.highlightTimeout) {
             clearTimeout(this.highlightTimeout);
         }
@@ -998,7 +1014,7 @@ export class MessagesLayoutComponent
         this.isLoaded = false;
         this.loading = true;
         this.reactionPickerMessageId = null;
-        this.messageReactions.clear();
+        this.messageReactions.set(new Map<string, any[]>());
         this.messagesService.getMessages(conversationId).subscribe({
             next: (response) => {
                 this.lastMessageId = response.metadata?.homeMessagesData?.last_message_id || '';
@@ -1006,6 +1022,20 @@ export class MessagesLayoutComponent
                 this.pinnedMessages.set(response.metadata?.homeMessagesData?.pinnedMessages || []);
                 this.loading = false;
                 this.isLoaded = true;
+
+                const reactionsMap = new Map<string, any[]>();
+                const countReactionMap = new Map<string, Record<string, number>>();
+                for (const reaction of response.metadata?.homeMessagesData?.messages || []) {
+                    if (reaction.reactions.length > 0) {
+                        reactionsMap.set(reaction.id, reaction.reactions);
+                        countReactionMap.set(reaction.id, reaction.countReactionMap);
+                    }
+                }
+                this.messageReactions.set(reactionsMap);
+                this.countReactionMap.set(countReactionMap);
+
+                console.log('messageReactions: ', this.messageReactions());
+                console.log('countReactionMap: ', this.countReactionMap());
 
                 // Clear cache khi load conversation mới
                 this.dateCache.clear();
@@ -1454,104 +1484,211 @@ export class MessagesLayoutComponent
         return String(messageId);
     }
 
-    private toComparableUserId(userId: any): string {
-        return String(userId || '');
-    }
+    getMessageReactions(message: any): any {
+        if (!message?.id) return { emoji_char: '', count: 0 };
+        const key = this.messageKey(message.id);
+        const counts = (this.countReactionMap().get(key) || {}) as Record<string, number>;
 
-    private normalizeMessageReactions(message: any): MessageReactionView[] {
-        if (!message) return [];
+        let allEmoji = '';
+        let allCount = 0;
 
-        const source =
-            message?.message_reactions ||
-            message?.reactions ||
-            message?.MessageReactions ||
-            [];
+        for (const [emoji, count] of Object.entries(counts)) {
+            allEmoji += emoji;
+            allCount += count;
+        }
 
-        if (!Array.isArray(source)) return [];
-
-        const reactionMap = new Map<string, MessageReactionView>();
-        const currentUser = this.toComparableUserId(this.currentUserId);
-
-        source.forEach((reaction: any) => {
-            const emoji =
-                reaction?.emoji_char ||
-                reaction?.emoji?.unicode_char ||
-                reaction?.unicode_char ||
-                reaction?.emoji ||
-                '';
-
-            if (!emoji) return;
-
-            const existing = reactionMap.get(emoji) || {
-                emoji,
-                count: 0,
-                reactedByCurrentUser: false,
-            };
-
-            existing.count += 1;
-
-            if (this.toComparableUserId(reaction?.user_id) === currentUser) {
-                existing.reactedByCurrentUser = true;
-            }
-
-            reactionMap.set(emoji, existing);
-        });
-
-        return Array.from(reactionMap.values()).sort((a, b) => b.count - a.count);
-    }
-
-    getMessageReactions(message: any): MessageReactionView[] {
-        if (!message?.id) return [];
-
-        const messageId = this.messageKey(message.id);
-        const localReactions = this.messageReactions.get(messageId);
-        if (localReactions) return localReactions;
-
-        return this.normalizeMessageReactions(message);
+        return {
+            emoji_char: allEmoji,
+            count: allCount
+        };
     }
 
     toggleReactionPicker(messageId: string | number, event: Event) {
         event.stopPropagation();
         this.showMenuId = null;
-        this.reactionPickerMessageId =
-            this.reactionPickerMessageId === messageId ? null : messageId;
-    }
-
-    addReaction(message: any, emoji: string, event?: Event) {
-        event?.stopPropagation();
-        if (!message?.id || !emoji) return;
-
-        const messageId = this.messageKey(message.id);
-        const currentReactions = this.getMessageReactions(message).map((item) => ({ ...item }));
-        const existingIndex = currentReactions.findIndex((item) => item.emoji === emoji);
-
-        if (existingIndex >= 0) {
-            const existing = currentReactions[existingIndex];
-            if (existing.reactedByCurrentUser) {
-                existing.count = Math.max(0, existing.count - 1);
-                existing.reactedByCurrentUser = false;
-                if (existing.count === 0) {
-                    currentReactions.splice(existingIndex, 1);
-                }
-            } else {
-                existing.count += 1;
-                existing.reactedByCurrentUser = true;
-            }
-        } else {
-            currentReactions.push({
-                emoji,
-                count: 1,
-                reactedByCurrentUser: true,
-            });
+        if (this.reactionPickerMessageId === messageId) {
+            this.reactionPickerMessageId = null;
+            this.reactionPickerDropUpId = null;
+            return;
         }
 
-        this.messageReactions.set(messageId, currentReactions);
-        this.reactionPickerMessageId = null;
+        this.reactionPickerMessageId = messageId;
+        // Default direction: render upward.
+        this.reactionPickerDropUpId = messageId;
+
+        const target = event.currentTarget as HTMLElement | null;
+        const chatArea = target?.closest('.chat-area') as HTMLElement | null;
+        const areaRect = chatArea?.getBoundingClientRect();
+        const targetRect = target?.getBoundingClientRect();
+
+        if (!chatArea || !areaRect || !targetRect) {
+            return;
+        }
+
+        const headerEl = chatArea.querySelector('.chat-header') as HTMLElement | null;
+        const pinnedEl = chatArea.querySelector('.pinned-bar-wrap') as HTMLElement | null;
+
+        let topBlockedUntil = areaRect.top;
+        if (headerEl) {
+            topBlockedUntil = Math.max(topBlockedUntil, headerEl.getBoundingClientRect().bottom);
+        }
+
+        if (pinnedEl && pinnedEl.offsetHeight > 0) {
+            topBlockedUntil = Math.max(topBlockedUntil, pinnedEl.getBoundingClientRect().bottom);
+        }
+
+        const gap = 8;
+        const pickerHeightEstimate = 42;
+        const spaceAbove = targetRect.top - topBlockedUntil - gap;
+
+        const shouldDropDown = spaceAbove < pickerHeightEstimate;
+        this.reactionPickerDropUpId = shouldDropDown ? null : messageId;
     }
 
-    trackByReactionEmoji(index: number, reaction: MessageReactionView): string {
-        return reaction.emoji;
+    isReactionPickerDropUp(messageId: string | number): boolean {
+        return this.reactionPickerMessageId === messageId && this.reactionPickerDropUpId === messageId;
     }
+
+    openReactionModal(message: any, event: Event) {
+        event.stopPropagation();
+        if (!message?.id) return;
+        const key = this.messageKey(message.id);
+        const details = this.messageReactions().get(key) || [];
+        const participants = this.joinedConversations.find((conv: any) => conv.conversation_id === this.conversationId)?.participants || [];
+        console.log('User Data', participants);
+        console.log('Details', details);
+        details.forEach((reaction: any) => {
+            const user = participants.find((p: any) => p.user_id === reaction.user_id);
+            reaction.user = user;
+        });
+        this.reactionDetails.set(details);
+        this.showReactionModal.set(true);
+        this.cdr.markForCheck();
+    }
+
+    closeReactionModal() {
+        this.showReactionModal.set(false);
+        this.reactionDetails.set([]);
+        this.cdr.markForCheck();
+    }
+
+    toggleReaction(message: any, emoji: string, event?: Event) {
+        event?.stopPropagation();
+        if (!message?.id || !emoji || this.isSyncingReaction()) return;
+
+        this.isSyncingReaction.set(true);
+        const messageId = this.messageKey(message.id);
+        const userId = this.currentUserId;
+
+        // 1. Get raw reactions for toggle logic
+        const rawReactions = (this.messageReactions().get(messageId) || []).map(r => ({ ...r }));
+        const counts = { ...(this.countReactionMap().get(messageId) || {}) } as Record<string, number>;
+
+        const existingIdx = rawReactions.findIndex(r => r.user_id === userId);
+
+        const isRemoving = existingIdx >= 0;
+        const reactIndex = rawReactions[existingIdx];
+
+        if (!isRemoving) {
+            rawReactions.push({ emoji_char: emoji, user_id: userId, message_id: messageId });
+            counts[emoji] = (counts[emoji] || 0) + 1;
+        }
+        else {
+            rawReactions.splice(existingIdx, 1);
+            counts[reactIndex.emoji_char] = Math.max(0, (counts[reactIndex.emoji_char] || 0) - 1);
+            if (counts[reactIndex.emoji_char] === 0) delete counts[reactIndex.emoji_char];
+
+            if (reactIndex.emoji_char !== emoji) {
+                rawReactions.push({ emoji_char: emoji, user_id: userId, message_id: messageId });
+                counts[emoji] = (counts[emoji] || 0) + 1;
+            }
+        }
+
+        // 3. Update Signals
+        this.messageReactions.update(map => {
+            const newMap = new Map(map);
+            newMap.set(messageId, rawReactions);
+            return newMap;
+        });
+
+        this.countReactionMap.update(map => {
+            const newMap = new Map(map);
+            newMap.set(messageId, counts);
+            return newMap;
+        });
+
+        this.reactionPickerMessageId = null;
+        this.reactionPickerDropUpId = null;
+        this.cdr.markForCheck();
+
+        // 4. Persistence call
+        if (!isRemoving) {
+            this.messageReactionsService.addMessageReaction(this.conversationId, messageId, userId, emoji)
+                .pipe(finalize(() => this.isSyncingReaction.set(false)))
+                .subscribe({
+                    next: (res) => {
+                        console.log('Toggle synced:', res);
+                        this.messageReactions.update(map => {
+                            const reactions = map.get(messageId);
+                            if (reactions) {
+                                const updateID = reactions.find((r: any) => r.user_id === userId && r.emoji_char === emoji && !r.id);
+                                if (updateID) {
+                                    updateID.id = res.metadata.newReaction.id;
+                                }
+                            }
+                            return map;
+                        });
+                    },
+                    error: (err) => console.error('Sync error:', err)
+                });
+        }
+        else {
+            if (reactIndex?.id) {
+                this.messageReactionsService.removeMessageReaction(reactIndex.id)
+                    .pipe(finalize(() => {
+                        if (reactIndex.emoji_char === emoji) {
+                            this.isSyncingReaction.set(false);
+                        }
+                    }))
+                    .subscribe({
+                        next: (res) => console.log('Toggle synced:', res),
+                        error: (err) => console.error('Sync error:', err)
+                    });
+            } else {
+                this.isSyncingReaction.set(false);
+            }
+
+            if (reactIndex.emoji_char !== emoji) {
+                this.messageReactionsService.addMessageReaction(this.conversationId, messageId, userId, emoji)
+                    .pipe(finalize(() => this.isSyncingReaction.set(false)))
+                    .subscribe({
+                        next: (res) => {
+                            console.log('Toggle synced:', res);
+                            this.messageReactions.update(map => {
+                                const reactions = map.get(messageId);
+                                if (reactions) {
+                                    const updateID = reactions.find((r: any) => r.user_id === userId && r.emoji_char === emoji && !r.id);
+                                    if (updateID) {
+                                        updateID.id = res.metadata.newReaction.id;
+                                    }
+                                }
+                                return map;
+                            });
+                        },
+                        error: (err) => console.error('Sync error:', err)
+                    });
+            }
+        }
+
+        this.socketService.emit('reactionMessage', {
+            reactions: rawReactions,
+            counts: counts,
+            conversation_id: this.conversationId,
+            message_id: messageId
+        });
+    }
+
+
 
     @HostListener('document:click', ['$event'])
     onDocumentClick(event: MouseEvent) {
@@ -1569,6 +1706,7 @@ export class MessagesLayoutComponent
             !target.closest('.reaction-btn')
         ) {
             this.reactionPickerMessageId = null;
+            this.reactionPickerDropUpId = null;
         }
 
         // Đóng emoji picker chỉ khi click thực sự bên ngoài picker và nút toggle
@@ -2099,7 +2237,7 @@ export class MessagesLayoutComponent
             if (event.origin !== window.location.origin) return;
 
             if (event.data.type === 'getCallData') {
-                
+
                 let payload: SendCallPayload = {
                     type: 'sendCallData',
                     conversationType: this.conversationType,
@@ -2109,12 +2247,12 @@ export class MessagesLayoutComponent
                     initializeVideo,
                 };
 
-                if(this.conversationType === GROUP_CALL) {
+                if (this.conversationType === GROUP_CALL) {
                     payload.avatarWrap = {
                         isGroup: true,
-                        avatarUrl: this.getMessageInfor.avatar_url 
-                        && this.getMessageInfor.avatar_url.trim() 
-                        ? this.getMessageInfor.avatar_url : null,
+                        avatarUrl: this.getMessageInfor.avatar_url
+                            && this.getMessageInfor.avatar_url.trim()
+                            ? this.getMessageInfor.avatar_url : null,
                         members: this.getMessageInfor.participants ?? [],
                     }
                 } else {

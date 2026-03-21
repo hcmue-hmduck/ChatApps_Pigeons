@@ -72,6 +72,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     private interval1s: any;
     private interval60s: any;
     private interval3600s: any;
+    private onUpdateProfileSocket?: (data: any) => void;
     private readUpdateInFlightByConversation = new Map<string, boolean>();
     private pendingReadMessageIdByConversation = new Map<string, string>();
     private hasInitWelcomeResetEffect = false;
@@ -104,7 +105,10 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     }
 
     ngOnDestroy() {
-        this.socketService.off('updateProfile');
+        if (this.onUpdateProfileSocket) {
+            this.socketService.off('updateProfile', this.onUpdateProfileSocket);
+            this.onUpdateProfileSocket = undefined;
+        }
         this.socketService.off('updateConversation');
         this.socketService.off('userStatusChanged');
         this.socketService.off('onlineUsersList');
@@ -271,7 +275,8 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
             }
         });
 
-        this.socketService.on('updateProfile', (data: any) => {
+        this.onUpdateProfileSocket = (data: any) => {
+            console.log('Received updateProfile event in Conversation:', data);
             const curConversations = this.conversations;
             let updatedUserInfo = curConversations?.homeConversationData?.userInfo;
 
@@ -280,6 +285,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
             }
 
             const convList = curConversations?.homeConversationData?.joinedConversations;
+            console.log('UpdateProfile in Messages:', convList);
             if (!convList?.length) {
                 if (data.id === this.currentUserId && curConversations?.homeConversationData) {
                     this.conversations = {
@@ -331,7 +337,8 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                 }
             };
             this.cdr.markForCheck();
-        });
+        };
+        this.socketService.on('updateProfile', this.onUpdateProfileSocket);
 
         this.socketService.on('updateParticipant', (data: any) => {
             const cur = this.conversations;

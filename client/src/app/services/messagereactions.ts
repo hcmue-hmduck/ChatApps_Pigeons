@@ -14,7 +14,11 @@ export class MessageReactions {
         return this.http.get(`${this.apiUrl}/${convID}`);
     }
 
-    addMessageReaction(convID: string, messageID: string, reaction: any): Observable<any> {
-        return this.http.post(`${this.apiUrl}/${convID}/${messageID}`, reaction);
+    addMessageReaction(convID: string, message_id: string, user_id: string, emoji_char: string): Observable<any> {
+        return this.http.post(`${this.apiUrl}/${convID}`, { message_id, user_id, emoji_char });
+    }
+
+    removeMessageReaction(reactionID: string): Observable<any> {
+        return this.http.delete(`${this.apiUrl}/${reactionID}`);
     }
 }

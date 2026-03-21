@@ -493,6 +493,17 @@ class HomeController {
         }).send(res);
     }
 
+    async removeMessageReaction(req, res) {
+        const reactionID = req.params.reactionID;
+        const deleteResult = await homeService.removeMessageReaction(reactionID);
+        new SuccessResponse({
+            message: 'Remove message reaction successfully',
+            metadata: {
+                deleteResult: deleteResult,
+            },
+        }).send(res);
+    }
+
     async getAllEmojis(req, res) {
         try {
             const emojis = await homeService.getAllEmojis();

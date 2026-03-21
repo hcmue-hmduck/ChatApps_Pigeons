@@ -229,6 +229,11 @@ io.on('connection', (socket) => {
         io.emit('unblockUser', data);
     })
 
+    socket.on('reactionMessage', (data) => {
+        console.log('Received reactionMessage event on server:', data);
+        socket.to(data.conversation_id).emit('reactionMessage', data);
+    })
+
     socket.on('disconnect', async () => {
         console.log('User disconnected:', socket.id);
 

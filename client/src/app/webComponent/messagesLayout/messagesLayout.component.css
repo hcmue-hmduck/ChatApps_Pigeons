@@ -15,7 +15,8 @@
     overflow: hidden;
 
     /* Self-contained glass panel styling */
-    background: rgba(15, 23, 42, 0.40); /* Match --glass-strong */
+    background: rgba(15, 23, 42, 0.40);
+    /* Match --glass-strong */
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
     border: 1px solid var(--glass-border);
@@ -1492,17 +1493,25 @@
 
 .reaction-picker {
     position: absolute;
-    bottom: calc(100% + 8px);
     left: 0;
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px;
+    padding: 3px;
     border-radius: 999px;
     background: rgba(8, 16, 36, 0.97);
     border: 1px solid rgba(126, 207, 255, 0.28);
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
     z-index: 20;
+}
+
+.reaction-picker.drop-up {
+    bottom: calc(100% + 8px);
+    top: auto;
+}
+
+.reaction-picker.drop-down {
+    top: calc(100% + 8px);
+    bottom: auto;
 }
 
 .me-row .reaction-picker {
@@ -1548,45 +1557,145 @@
     margin: 0;
 }
 
-/* .message-reactions.me {
-    left: 10px;
-}
-
-.message-reactions.other {
-    right: 10px;
-} */
 
 .reaction-chip {
     display: inline-flex;
     align-items: center;
     margin: 0;
-    padding: 0;
     border: none;
     outline: none;
-    -webkit-appearance: none;
-    appearance: none;
-    background: transparent;
+    background: var(--glass-light);
     color: #e8f7ff;
-    border-radius: 8px;
+    border-radius: 20px;
     font-size: 11px;
     line-height: 1;
     cursor: pointer;
-    transition: background 0.15s ease, transform 0.15s ease;
+    transition: all 0.2s ease;
+}
+
+
+/* Reaction Modal Styles */
+/* Better Reaction Modal */
+.reaction-modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    animation: modalFade 0.2s ease-out;
+}
+
+.reaction-modal-content {
+    background: rgba(26, 30, 48, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 20px;
+    width: 320px;
+    max-height: 60vh;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+}
+
+.reaction-modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.reaction-modal-header h3 {
+    font-size: 16px;
+    margin: 0;
+    color: #f1f5f9;
+}
+
+.close-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: #94a3b8;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.close-btn:hover {
+    background: rgba(255, 0, 0, 0.2);
+    color: #ff5f5f;
+}
+
+.reaction-modal-body {
+    padding: 10px 0;
+    overflow-y: auto;
+}
+
+.reaction-detail-item {
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background 0.2s;
+}
+
+.reaction-detail-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.user-info-flex {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.user-avatar-small {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #334155;
+    border: none;
+}
+
+.user-name-text {
+    font-size: 14px;
+    color: #e2e8f0;
+}
+
+.emoji-badge {
+    font-size: 18px;
+}
+
+@keyframes modalFade {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
 }
 
 
 .reaction-emoji {
     display: inline-block;
-    font-size: 15px;
+    font-size: 12px;
     line-height: 1;
     padding: 0;
 }
 
 .reaction-count {
-    font-size: 10px;
-    font-weight: 600;
-    color: #b0b3b8;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
     line-height: 1;
+}
+
+.reaction-chip.active .reaction-count {
+    color: #fff;
 }
 
 /* Dropdown menu · Dark glass */

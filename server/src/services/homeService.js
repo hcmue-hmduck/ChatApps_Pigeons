@@ -185,7 +185,7 @@ class HomeService {
 
         // 5. Batch count unread messages
         const unreadCountsMap = await messagesService.countUnreadMessages(convReadTimestamps);
-        
+
         // Log results for verification
         if (convReadTimestamps.length > 0) {
             console.log('--- Unread Messages Count ---');
@@ -301,12 +301,19 @@ class HomeService {
         const refMessagesMap = new Map(refMessages.map((m) => [m.id, m]));
 
         // Group reactions by message_id
+        console.log('--- messageReactions raw metadata ---', (messageReactions || []).length);
         const reactionsMap = {};
+        const countReactionMap = {};
         (messageReactions || []).forEach((r) => {
             const mId = r.message_id;
+            console.log('Grouping reaction for message:', mId);
             if (!reactionsMap[mId]) reactionsMap[mId] = [];
-            reactionsMap[mId].push(r.dataValues || r);
+            reactionsMap[mId].push(r.dataValues);
+            if (!countReactionMap[mId]) countReactionMap[mId] = {};
+            countReactionMap[mId][r.emoji_char] = (countReactionMap[mId][r.emoji_char] || 0) + 1;
         });
+        console.log('ReactionsMap final keys:', reactionsMap);
+        console.log('CountReactionMap final keys:', countReactionMap);
 
         // 6. Map Pinned Messages → plain objects
         const mappedPinnedMessages = safePinned.map((pin) => {
@@ -333,6 +340,7 @@ class HomeService {
                 sender_status: sender ? sender.status : '',
                 parent_message_info: null,
                 reactions: reactionsMap[m.id] || [],
+                countReactionMap: countReactionMap[m.id] || {},
             };
 
             if (m.parent_message_id) {
@@ -541,7 +549,7 @@ class HomeService {
         return await callService.updateStatusCall({ call_id, status: 'missed' });
     }
 
-     async endCall(call_id) {
+    async endCall(call_id) {
         const status = await callService.getStatusById(call_id);
         let newStatus = '';
         if (status === 'pending') newStatus = 'cancelled';
@@ -649,7 +657,7 @@ class HomeService {
         if (posts.length === 0) return [];
 
         const postIds = posts.map(post => post.id);
-        
+
         // 1. Fetch comments first to collect all necessary user IDs
         const allComments = await commentsService.getCommentsByPostIds(postIds);
         const allPostMedias = await postmediaService.getPostMediaByPostId(postIds);
@@ -670,13 +678,13 @@ class HomeService {
             if (!commentsMap.has(comment.post_id)) {
                 commentsMap.set(comment.post_id, []);
             }
-            
+
             // Đính kèm user_infor vào comment (thay vì chỉ để user_id)
             const commentWithUser = {
                 ...comment.dataValues || comment,
                 user_infor: userMap.get(comment.user_id) || null
             };
-            
+
             commentsMap.get(comment.post_id).push(commentWithUser);
         });
 
@@ -711,14 +719,14 @@ class HomeService {
         const transaction = await sequelize.transaction();
         try {
             await postsService.updatePost(postId, postData, { transaction });
-            
+
             if (mediaData && Array.isArray(mediaData)) {
                 await postmediaService.deletePostMedia(postId, { transaction });
                 if (mediaData.length > 0) {
                     await postmediaService.createPostMedia(postId, mediaData, { transaction });
                 }
             }
-            
+
             await transaction.commit();
             return true;
         } catch (error) {
@@ -766,6 +774,10 @@ class HomeService {
 
     async addMessageReaction(message_id, user_id, conversation_id, emoji_char) {
         return await messageReactionService.addMessageReaction(message_id, user_id, conversation_id, emoji_char);
+    }
+
+    async removeMessageReaction(reactionID) {
+        return await messageReactionService.removeMessageReaction(reactionID);
     }
 
     async createComment(postID, commentData) {
