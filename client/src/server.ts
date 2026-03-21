@@ -10,7 +10,17 @@ import { join } from 'node:path';
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
 const app = express();
-const angularApp = new AngularNodeAppEngine();
+const angularApp = new AngularNodeAppEngine({
+  /**
+   * PIGEONS - Security Configuration
+   * Allow specific hostnames on Render to prevent "Bad Request" error.
+   */
+  allowedHosts: [
+    'localhost',
+    'chatappspigeons.onrender.com',
+    'chatapps-pigeons-backend.onrender.com'
+  ]
+});
 
 /**
  * Example Express Rest API endpoints can be defined here.
