@@ -35,7 +35,7 @@
               "src/styles.css"
             ],
             "server": "src/main.server.ts",
-            "outputMode": "server",
+            "outputMode": "static",
             "prerender": false
           },
           "configurations": {
