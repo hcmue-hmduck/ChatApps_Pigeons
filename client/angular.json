@@ -35,6 +35,9 @@
               "src/styles.css"
             ],
             "server": "src/main.server.ts",
+            "ssr": {
+              "entry": "src/server.ts"
+            },
             "outputMode": "server",
             "prerender": false
           },
