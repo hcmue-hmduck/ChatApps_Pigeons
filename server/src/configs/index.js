@@ -33,8 +33,8 @@ const prod = {
     },
     mail: {
         resendApiKey: process.env.RESEND_API_KEY,
-        name: process.env.MAIL_FROM_NAME,
-        address: process.env.MAIL_FROM_ADDRESS,
+        fromName: process.env.MAIL_FROM_NAME,
+        fromAddress: process.env.MAIL_FROM_ADDRESS,
     },
 };
 
