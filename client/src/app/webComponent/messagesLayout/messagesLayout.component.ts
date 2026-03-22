@@ -22,16 +22,17 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PickerModule } from '@ctrl/ngx-emoji-mart';
-import { finalize, forkJoin } from 'rxjs';
+import { finalize, forkJoin, Observable, from, concatMap, tap } from 'rxjs';
 import { GROUP_CALL, SendCallPayload } from '../../models/callData';
 import { AuthService } from '../../services/authService';
 import { CallService } from '../../services/callService';
 import { Conversation } from '../../services/conversation';
 import { Messages } from '../../services/messages';
 import { SocketService } from '../../services/socket';
+import Swal from 'sweetalert2';
 import { UploadService } from '../../services/uploadService';
 import { Participant } from '../../services/participant';
-import { environment } from '../../../environments/environment';
+import { FileUtils } from '../../utils/FileUtils/fileUltils';
 import { GroupAvatarLayoutComponent } from '../groupAvatarLayout/groupAvatarLayout.component';
 import { MessageReactions } from '../../services/messagereactions';
 
@@ -149,54 +150,7 @@ export class MessagesLayoutComponent
         }
         return `https://${trimmed}`;
     }
-    resolveMediaUrl(rawUrl: string | null | undefined): string {
-        if (!rawUrl) return '';
 
-        const trimmed = String(rawUrl).trim();
-        if (!trimmed) return '';
-
-        if (/^(blob:|data:)/i.test(trimmed)) {
-            return trimmed;
-        }
-
-        if (/^https?:\/\//i.test(trimmed)) {
-            return trimmed;
-        }
-
-        if (/^\/\//.test(trimmed)) {
-            return `https:${trimmed}`;
-        }
-
-        if (/^(\/)?uploads\//i.test(trimmed)) {
-            const normalizedPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-            try {
-                const backendOrigin = new URL(environment.apiUrl).origin;
-                return `${backendOrigin}${normalizedPath}`;
-            } catch {
-                return `${window.location.origin}${normalizedPath}`;
-            }
-        }
-
-        if (/^[\w.-]+\.[a-z]{2,}(?:[/:?#]|$)/i.test(trimmed)) {
-            return `https://${trimmed}`;
-        }
-
-        return trimmed;
-    }
-
-    openFileInNewTab(rawUrl: string | null | undefined, event?: MouseEvent) {
-        event?.preventDefault();
-        event?.stopPropagation();
-
-        const resolved = this.resolveMediaUrl(rawUrl);
-        if (!resolved) {
-            this.error = 'Liên kết tệp không hợp lệ.';
-            return;
-        }
-
-        const viewerUrl = `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(resolved)}`;
-        window.open(viewerUrl, '_blank', 'noopener,noreferrer');
-    }
 
     formatMessageText(content: string | null | undefined): string {
         if (!content) return '';
@@ -411,7 +365,7 @@ export class MessagesLayoutComponent
     }
 
     openImageViewer(url: string) {
-        const resolved = this.resolveMediaUrl(url);
+        const resolved = this.fileUtils.resolveMediaUrl(url);
         if (!resolved) return;
         this.viewerImageUrl = resolved;
         this.viewerZoom = 1;
@@ -567,6 +521,7 @@ export class MessagesLayoutComponent
         private participantService: Participant,
         private uploadService: UploadService,
         private messageReactionsService: MessageReactions,
+        public fileUtils: FileUtils,
         private socketService: SocketService,
     ) {
         this.initEffect();
@@ -1119,12 +1074,32 @@ export class MessagesLayoutComponent
         messageTransform?: (msg: any) => any,
         file_metadata?: any,
         replyToMessageObj?: any,
-        existingTempId?: string  // Nếu đã có temp message trong UI (ví dụ file upload), bỏ qua bước add UI
+        existingTempId?: string
     ) {
+        this.postMessage$(
+            content,
+            messageType,
+            replyTo,
+            messageTransform,
+            file_metadata,
+            replyToMessageObj,
+            existingTempId
+        ).subscribe();
+    }
+
+    private postMessage$(
+        content: string,
+        messageType: string,
+        replyTo?: string,
+        messageTransform?: (msg: any) => any,
+        file_metadata?: any,
+        replyToMessageObj?: any,
+        existingTempId?: string
+    ): Observable<any> {
         const tempId = 'temp-' + Date.now();
         const messageData = {
             id: tempId,
-            _trackId: tempId, // key ổn định cho trackBy — preserve qua cả real message
+            _trackId: tempId,
             sender_id: this.currentUserId,
             call_id: null,
             content: content,
@@ -1146,14 +1121,12 @@ export class MessagesLayoutComponent
                 parent_message_type: replyToMessageObj.message_type || null,
                 parent_message_thumbnail_url: replyToMessageObj.thumbnail_url || null,
             } : null,
-            // updated_at: new Date().toISOString()
         };
 
         const messageToAdd = messageTransform
             ? messageTransform(messageData)
             : { ...messageData };
 
-        // Thêm thông tin người gửi vào tin nhắn trước khi hiển thị lên UI
         const currentUser = this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId) || {};
         const newMessage = {
             ...messageToAdd,
@@ -1161,92 +1134,83 @@ export class MessagesLayoutComponent
             sender_avatar: currentUser.avatar_url,
         };
 
-        console.log('NewMessage', newMessage);
-
-
         this.messageStatus.set('Đang gửi');
 
-        // Chỉ thêm vào UI nếu chưa có từ trước (file upload đã thêm rồi)
         const effectiveTempId = existingTempId ?? tempId;
         if (!existingTempId) {
             this.updateUIWithNewMessage(newMessage, this.conversationId);
         }
 
-        this.messagesService
+        return this.messagesService
             .postMessage(this.conversationId, this.currentUserId, content, replyTo, messageType, file_metadata)
-            .subscribe({
-                next: (response) => {
-                    this.loading = false;
-                    const savedMessage = response.metadata?.newMessage;
-                    const realId = savedMessage?.id;
+            .pipe(
+                tap({
+                    next: (response) => {
+                        this.loading = false;
+                        const savedMessage = response.metadata?.newMessage;
+                        const realId = savedMessage?.id;
 
-                    this.lastMessageId = realId;
-                    this.messageStatus.set('Đã gửi');
+                        this.lastMessageId = realId;
+                        this.messageStatus.set('Đã gửi');
 
-                    const realMessage = {
-                        ...savedMessage,
-                        sender_name: currentUser.full_name,
-                        sender_avatar: currentUser.avatar_url,
-                    };
+                        const realMessage = {
+                            ...savedMessage,
+                            sender_name: currentUser.full_name,
+                            sender_avatar: currentUser.avatar_url,
+                        };
 
-                    console.log('realMessage', realMessage);
+                        this.conversationService.putConversation(this.conversationId, {
+                            last_message_id: realId
+                        }).subscribe();
 
-                    // Cập nhật conversation với real ID
-                    this.conversationService.putConversation(this.conversationId, {
-                        last_message_id: realId
-                    }).subscribe({
-                        next: () => { },
-                        error: (err) => console.error('Error updating conversation:', err),
-                    });
+                        this.broadcastMessage(realMessage);
 
-                    this.broadcastMessage(realMessage);
-
-                    // Chỉ notify khi conversation chưa có trong danh sách local (thường là cuộc trò chuyện mới tạo)
-                    const isKnownConversation = (this.joinedConversations || [])
-                        .some((conv: any) => conv.conversation_id === this.conversationId);
-                    if (!isKnownConversation) {
-                        const receiverIds = (this.getMessageInfor?.participants || [])
-                            .map((p: any) => p.user_id)
-                            .filter((id: string) => id !== this.currentUserId);
-                        if (receiverIds.length > 0) {
-                            this.socketService.emit('notifyNewConversation', { receiverIds, conversationId: this.conversationId });
+                        // Chỉ notify khi conversation chưa có trong danh sách local (thường là cuộc trò chuyện mới tạo)
+                        const isKnownConversation = (this.joinedConversations || [])
+                            .some((conv: any) => conv.conversation_id === this.conversationId);
+                        if (!isKnownConversation) {
+                            const receiverIds = (this.getMessageInfor?.participants || [])
+                                .map((p: any) => p.user_id)
+                                .filter((id: string) => id !== this.currentUserId);
+                            if (receiverIds.length > 0) {
+                                this.socketService.emit('notifyNewConversation', { receiverIds, conversationId: this.conversationId });
+                            }
                         }
+
+                        // Replace temp message bằng real message
+                        this.getMessagesData.update((old) => ({
+                            ...old,
+                            homeMessagesData: {
+                                ...old.homeMessagesData,
+                                messages: old.homeMessagesData.messages.map((m: any) =>
+                                    m.id === effectiveTempId
+                                        ? { ...newMessage, id: realId, _trackId: effectiveTempId, _uploading: false, ...savedMessage }
+                                        : m
+                                ),
+                            },
+                        }));
+
+                        this.participantService.putParticipant({
+                            id: this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId)?.id,
+                            last_read_message_id: realId
+                        }).subscribe({
+                            next: () => {
+                                this.socketService.emit('updateParticipant', {
+                                    conversation_id: this.conversationId,
+                                    user_id: this.currentUserId,
+                                    last_read_message_id: realId
+                                });
+                            },
+                            error: (err) => console.error('Error updating participant:', err),
+                        });
+                    },
+                    error: (error) => {
+                        this.loading = false;
+                        console.error('Error posting message:', error);
+                        this.messageStatus.set('Lỗi');
                     }
-
-                    // Replace temp message bằng real message
-                    this.getMessagesData.update((old) => ({
-                        ...old,
-                        homeMessagesData: {
-                            ...old.homeMessagesData,
-                            messages: old.homeMessagesData.messages.map((m: any) =>
-                                m.id === effectiveTempId
-                                    ? { ...newMessage, id: realId, _trackId: effectiveTempId, _uploading: false, ...savedMessage }
-                                    : m
-                            ),
-                        },
-                    }));
-
-                    this.participantService.putParticipant({
-                        id: this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId)?.id,
-                        last_read_message_id: realId
-                    }).subscribe({
-                        next: () => {
-                            this.socketService.emit('updateParticipant', {
-                                conversation_id: this.conversationId,
-                                user_id: this.currentUserId,
-                                last_read_message_id: realId
-                            });
-                        },
-                        error: (err) => console.error('Error updating participant:', err),
-                    });
-                },
-                error: (error) => {
-                    this.loading = false;
-                    console.error('Error posting message:', error);
-                    this.error = error.message;
-                    this.messageStatus.set('Lỗi');
-                },
-            });
+                })
+            );
     }
 
     updateUIWithNewMessage(newMessage: any, conversationId?: string) {
@@ -1313,12 +1277,33 @@ export class MessagesLayoutComponent
     }
 
     uploadFileAttachment(files: File[]) {
+        // Validation: Filter out files that exceed Cloudinary limits
+        const validFiles: File[] = [];
+        for (const file of files) {
+            const validation = this.fileUtils.validateFileSize(file);
+            if (!validation.valid) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Tệp quá lớn',
+                    text: validation.message,
+                    confirmButtonColor: '#00f2ff',
+                    background: '#06131f',
+                    color: '#fff'
+                });
+                continue;
+            }
+            validFiles.push(file);
+        }
+
+        if (validFiles.length === 0) return;
+        const finalFiles = validFiles;
+
         const formData = new FormData();
         const currentUser = this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId) || {};
 
         // Bước 1: Tạo temp message ngay lập tức cho mỗi file
         const tempEntries: { tempId: string; file: File }[] = [];
-        files.forEach(file => {
+        finalFiles.forEach(file => {
             const encodedName = encodeURIComponent(file.name.normalize('NFC'));
             const blob = new Blob([file], { type: file.type });
             formData.append('files', blob, encodedName);
@@ -1363,64 +1348,84 @@ export class MessagesLayoutComponent
             next: (response) => {
                 const uploadedFiles = response.metadata.files;
 
-                uploadedFiles.forEach((file: any, index: number) => {
-                    const { tempId } = tempEntries[index] || {};
+                // Sử dụng from + concatMap để xử lý lưu từng file một theo đúng thứ tự
+                from(uploadedFiles).pipe(
+                    concatMap((file: any, index: number) => {
+                        const { tempId } = tempEntries[index] || {};
 
-                    let messageType = 'file';
-                    let content = '<i class="bi bi-file-earmark-arrow-down"></i> Tệp đính kèm';
-                    if (file.resource_type === 'image') {
-                        messageType = 'image';
-                        content = '<i class="bi bi-image"></i> Hình ảnh'
+                        let messageType = 'file';
+                        let content = '<i class="bi bi-file-earmark-arrow-down"></i> Tệp đính kèm';
+                        if (file.resource_type === 'image') {
+                            messageType = 'image';
+                            content = '<i class="bi bi-image"></i> Hình ảnh'
+                        }
+                        else if (file.resource_type === 'video') {
+                            messageType = 'video';
+                            content = '<i class="bi bi-camera-video"></i> Video'
+                        }
+                        else if (file.resource_type === 'audio') {
+                            messageType = 'audio';
+                            content = '<i class="bi bi-mic"></i> Tin nhắn thoại'
+                        }
+
+                        const fileMetadata = {
+                            file_url: file.url,
+                            file_name: file.file_name,
+                            file_size: file.file_size,
+                            thumbnail_url: file.thumbnail_url,
+                            duration: Math.round(file.duration || 0)
+                        };
+
+                        // Cập nhật trạng thái tải lên cho temp message (done upload, starting DB save)
+                        this.getMessagesData.update((old: any) => ({
+                            ...old,
+                            homeMessagesData: {
+                                ...old.homeMessagesData,
+                                messages: old.homeMessagesData.messages.map((m: any) =>
+                                    m.id === tempId ? { ...m, _uploading: false } : m
+                                ),
+                            },
+                        }));
+
+                        // Trả về Observable để concatMap chờ đợi xử lý xong mới qua file tiếp theo
+                        return this.postMessage$(
+                            content,
+                            messageType,
+                            undefined,
+                            undefined,
+                            fileMetadata,
+                            undefined,
+                            tempId
+                        );
+                    }),
+                    finalize(() => {
+                        this.loading = false;
+                        this.messageStatus.set('');
+                    })
+                ).subscribe({
+                    error: (err) => {
+                        console.error('Lỗi khi lưu chuỗi tin nhắn:', err);
+                        this.messageStatus.set('Lỗi khi gửi');
                     }
-                    else if (file.resource_type === 'video') {
-                        messageType = 'video';
-                        content = '<i class="bi bi-camera-video"></i> Video'
-                    }
-                    else if (file.resource_type === 'audio') {
-                        messageType = 'audio';
-                        content = '<i class="bi bi-mic"></i> Tin nhắn thoại'
-                    }
-
-                    const fileMetadata = {
-                        file_url: file.url,
-                        file_name: file.file_name,
-                        file_size: file.file_size,
-                        thumbnail_url: file.thumbnail_url,
-                        duration: Math.round(file.duration || 0)
-                    };
-
-                    this.getMessagesData.update((old: any) => ({
-                        ...old,
-                        homeMessagesData: {
-                            ...old.homeMessagesData,
-                            messages: old.homeMessagesData.messages.map((m: any) =>
-                                m.id === tempId ? { ...m, _uploading: false } : m
-                            ),
-                        },
-                    }));
-
-                    // Bước 3: Gửi HTTP POST để lưu DB, replace temp message bằng real
-                    this.postAndBroadcastMessage(
-                        content, messageType,
-                        undefined, undefined,
-                        fileMetadata, undefined,
-                        tempId  // existingTempId: bỏ qua add UI, chỉ replace
-                    );
                 });
             },
             error: (error) => {
                 console.error('Error uploading files:', error);
                 this.error = 'Không thể tải lên tệp tin. Vui lòng thử lại.';
-                // Xóa các temp message bị lỗi
+                // Đánh dấu lỗi cho các temp message thay vì xóa
                 tempEntries.forEach(({ tempId }) => {
                     this.getMessagesData.update((old) => ({
                         ...old,
                         homeMessagesData: {
                             ...old.homeMessagesData,
-                            messages: old.homeMessagesData.messages.filter((m: any) => m.id !== tempId),
+                            messages: old.homeMessagesData.messages.map((m: any) =>
+                                m.id === tempId ? { ...m, _uploading: false, _error: true } : m
+                            ),
                         },
                     }));
                 });
+                this.messageStatus.set('Lỗi');
+                this.loading = false;
             }
         });
     }

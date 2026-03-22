@@ -234,6 +234,21 @@ io.on('connection', (socket) => {
         socket.to(data.conversation_id).emit('reactionMessage', data);
     })
 
+    socket.on('newPost', (data) => {
+        console.log('Received newPost event on server:', data);
+        socket.broadcast.emit('newPost', data);
+    })
+
+    socket.on('updatePost', (data) => {
+        console.log('Received updatePost event on server:', data);
+        socket.broadcast.emit('updatePost', data);
+    })
+    
+    socket.on('deletePost', (data) => {
+        console.log('Received deletePost event on server:', data);
+        socket.broadcast.emit('deletePost', data);
+    })
+    
     socket.on('disconnect', async () => {
         console.log('User disconnected:', socket.id);
 

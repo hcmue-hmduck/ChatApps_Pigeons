@@ -6,6 +6,9 @@ import { Feeds } from "../../services/feeds";
 import { Emojis } from "../../services/emojis";
 import { Comment } from '../../services/comment';
 import { UploadService } from '../../services/uploadService';
+import { FileUtils } from '../../utils/FileUtils/fileUltils';
+import { SocketService } from '../../services/socket';
+import Swal from 'sweetalert2';
 
 @Component({
     selector: 'new-feeds-layout',
@@ -27,7 +30,9 @@ export class NewFeedsLayoutComponent implements OnDestroy {
         private feedsService: Feeds,
         private emojisService: Emojis,
         private commentService: Comment,
-        private uploadService: UploadService
+        private uploadService: UploadService,
+        public fileUtils: FileUtils,
+        private socketService: SocketService
     ) { }
 
     private _userInfor: any;
@@ -81,6 +86,7 @@ export class NewFeedsLayoutComponent implements OnDestroy {
         }
     ];
     expandedPosts = new Set<string>();
+    expandedContentIds = signal<Set<string>>(new Set());
 
     newPostContent = '';
     newPostPrivacy = 'public';
@@ -119,11 +125,13 @@ export class NewFeedsLayoutComponent implements OnDestroy {
     ngOnInit() {
         this.loadFeeds();
         this.loadMetadata();
+        this.setupSocketListener();
     }
 
     ngOnDestroy() {
         this.clearSelectedMedia(false);
         this.clearEditNewMedia(false);
+        this.socketService.off('newPost');
     }
 
     triggerImagePicker(input: HTMLInputElement) {
@@ -141,6 +149,64 @@ export class NewFeedsLayoutComponent implements OnDestroy {
     triggerEditAttachmentPicker(input: HTMLInputElement) {
         input.click();
     }
+    
+    setupSocketListener() {
+        this.socketService.on('updateProfile', (data: any) => {
+            // Update local user info if it's the current user
+            if (this._userInfor?.id === data.id) {
+                this.userInfor = data;
+            }
+
+            // Update all posts and comments metadata real-time
+            this.posts.update(posts => posts.map(post => {
+                let hasChanges = false;
+                let updatedPost = { ...post };
+
+                // 1. Update post author
+                if (post.user_id === data.id) {
+                    updatedPost.user_infor = { ...post.user_infor, ...data };
+                    hasChanges = true;
+                }
+
+                // 2. Update all comments by this user
+                if (Array.isArray(post.comments)) {
+                    const originalComments = post.comments;
+                    const updatedComments = originalComments.map((c: any) =>
+                        c.user_id === data.id
+                            ? { ...c, user_infor: { ...c.user_infor, ...data } }
+                            : c
+                    );
+
+                    if (updatedComments !== originalComments) {
+                        updatedPost.comments = updatedComments;
+                        hasChanges = true;
+                    }
+                }
+
+                return hasChanges ? updatedPost : post;
+            }));
+        });
+
+
+        this.socketService.on('newPost', (data: any) => {
+            this.posts.update(posts => {
+                if (posts.some(p => p.id === data.id)) return posts;
+                return [data, ...posts];
+            });
+        });
+
+        this.socketService.on('updatePost', (data: any) => {
+            this.posts.update(posts => {
+                return posts.map(post => post.id === data.id ? data : post);
+            });
+        });
+
+        this.socketService.on('deletePost', (data: any) => {
+            this.posts.update(posts => {
+                return posts.filter(post => post.id !== data.id);
+            });
+        });
+    }
 
     onMediaSelected(event: Event) {
         const input = event.target as HTMLInputElement;
@@ -154,6 +220,18 @@ export class NewFeedsLayoutComponent implements OnDestroy {
         }
 
         for (const file of mediaFiles) {
+            const validation = this.fileUtils.validateFileSize(file);
+            if (!validation.valid) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Tệp quá lớn',
+                    text: validation.message,
+                    confirmButtonColor: '#00f2ff',
+                    background: '#06131f',
+                    color: '#fff'
+                });
+                continue;
+            }
             const objectUrl = URL.createObjectURL(file);
             const previewId = `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`;
             const mediaType = file.type.startsWith('video/') ? 'video' : 'image';
@@ -207,6 +285,18 @@ export class NewFeedsLayoutComponent implements OnDestroy {
         }
 
         for (const file of nonMediaFiles) {
+            const validation = this.fileUtils.validateFileSize(file);
+            if (!validation.valid) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Tệp quá lớn',
+                    text: validation.message,
+                    confirmButtonColor: '#00f2ff',
+                    background: '#06131f',
+                    color: '#fff'
+                });
+                continue;
+            }
             const existed = this.selectedAttachmentFiles.some(
                 item => item.name === file.name && item.size === file.size && item.lastModified === file.lastModified
             );
@@ -245,6 +335,18 @@ export class NewFeedsLayoutComponent implements OnDestroy {
     }
 
     appendEditFilePreview(file: File) {
+        const validation = this.fileUtils.validateFileSize(file);
+        if (!validation.valid) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Tệp quá lớn',
+                text: validation.message,
+                confirmButtonColor: '#00f2ff',
+                background: '#06131f',
+                color: '#fff'
+            });
+            return;
+        }
         const previewId = `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`;
         const mediaType = file.type.startsWith('video/') ? 'video' : file.type.startsWith('image/') ? 'image' : 'file';
         const objectUrl = mediaType === 'file' ? '' : URL.createObjectURL(file);
@@ -374,45 +476,6 @@ export class NewFeedsLayoutComponent implements OnDestroy {
         return this.editPostExistingMedia.filter(item => item.media_type === 'file');
     }
 
-    getAttachmentIconClassByMimeType(type: string): string {
-        const mime = type || '';
-        if (mime.startsWith('image/')) return 'bi-file-earmark-image';
-        if (mime.startsWith('video/')) return 'bi-file-earmark-play';
-        if (mime.includes('pdf')) return 'bi-file-earmark-pdf';
-        if (mime.includes('zip') || mime.includes('rar') || mime.includes('compressed')) return 'bi-file-earmark-zip';
-        if (mime.includes('word') || mime.includes('document')) return 'bi-file-earmark-word';
-        if (mime.includes('sheet') || mime.includes('excel') || mime.includes('spreadsheet')) return 'bi-file-earmark-spreadsheet';
-        return 'bi-file-earmark';
-    }
-
-    formatFileSize(bytes: number): string {
-        if (!bytes && bytes !== 0) return 'Unknown size';
-        if (bytes < 1024) return `${bytes} B`;
-        const kb = bytes / 1024;
-        if (kb < 1024) return `${kb.toFixed(1)} KB`;
-        const mb = kb / 1024;
-        if (mb < 1024) return `${mb.toFixed(1)} MB`;
-        const gb = mb / 1024;
-        return `${gb.toFixed(1)} GB`;
-    }
-
-    getFileExtension(filename: string): string {
-        const parts = filename.split('.');
-        if (parts.length < 2) return 'FILE';
-        return parts[parts.length - 1].toUpperCase();
-    }
-
-    getAttachmentIconClass(file: File): string {
-        const type = file.type || '';
-        if (type.startsWith('image/')) return 'bi-file-earmark-image';
-        if (type.startsWith('video/')) return 'bi-file-earmark-play';
-        if (type.includes('pdf')) return 'bi-file-earmark-pdf';
-        if (type.includes('zip') || type.includes('rar') || type.includes('compressed')) return 'bi-file-earmark-zip';
-        if (type.includes('word') || type.includes('document')) return 'bi-file-earmark-word';
-        if (type.includes('sheet') || type.includes('excel') || type.includes('spreadsheet')) return 'bi-file-earmark-spreadsheet';
-        return 'bi-file-earmark';
-    }
-
     getCreatorMediaLayoutClass(): string {
         return this.getMediaLayoutClass({ post_media: this.selectedMediaPreviews });
     }
@@ -453,6 +516,27 @@ export class NewFeedsLayoutComponent implements OnDestroy {
 
     isCommentsExpanded(postId: string): boolean {
         return this.expandedPosts.has(postId);
+    }
+
+    toggleContent(postId: string) {
+        this.expandedContentIds.update(ids => {
+            const newIds = new Set(ids);
+            if (newIds.has(postId)) {
+                newIds.delete(postId);
+            } else {
+                newIds.add(postId);
+            }
+            return newIds;
+        });
+    }
+
+    isContentExpanded(postId: string): boolean {
+        return this.expandedContentIds().has(postId);
+    }
+
+    shouldShowSeeMore(content: string | null | undefined): boolean {
+        if (!content) return false;
+        return content.length > 300;
     }
 
     loadFeeds() {
@@ -705,6 +789,7 @@ export class NewFeedsLayoutComponent implements OnDestroy {
             this.feedsService.updatePost(current.id, { postData, mediaData: mediaPayload }).subscribe({
                 next: () => {
                     this.closeEditPostModal();
+                    this.socketService.emit('updatePost', optimisticPost);
                 },
                 error: (err) => {
                     this.posts.update(prev => prev.map(post => post.id === current.id ? previousPost : post));
@@ -750,6 +835,7 @@ export class NewFeedsLayoutComponent implements OnDestroy {
 
         this.feedsService.deletePost(postId).subscribe({
             next: () => {
+                this.socketService.emit('deletePost', { id: postId });
                 this.posts.update(prev => prev.filter(p => p.id !== postId));
                 this.activeMenuPostId.set(null);
                 console.log('Post deleted successfully:', postId);
@@ -827,6 +913,7 @@ export class NewFeedsLayoutComponent implements OnDestroy {
                 if (!hasFiles) {
                     newPost.post_media = [];
                     this.posts.update(prev => [newPost, ...prev]);
+                    this.socketService.emit('newPost', newPost);
                     finishPosting(true);
                     return;
                 }
@@ -854,6 +941,7 @@ export class NewFeedsLayoutComponent implements OnDestroy {
                                     console.log('Media post created successfully:', mediaResponse);
                                     newPost.post_media = mediaResponse.metadata.newMediaPost;
                                     this.posts.update(prev => [newPost, ...prev]);
+                                    this.socketService.emit('newPost', newPost);
                                     this.uploadProgress.set(100);
                                     finishPosting(true);
                                 },

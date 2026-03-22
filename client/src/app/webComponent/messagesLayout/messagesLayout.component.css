@@ -898,6 +898,29 @@
     letter-spacing: 0.3px;
 }
 
+/* Upload error state */
+.upload-error {
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: rgba(255, 59, 48, 0.1);
+    border: 1px solid rgba(255, 59, 48, 0.2);
+    border-radius: 8px;
+}
+
+.upload-error i {
+    color: #ff3b30;
+    font-size: 14px;
+}
+
+.upload-error-text {
+    font-size: 11px;
+    color: #ff9f9a;
+    font-weight: 500;
+}
+
 .msg-file-link {
     display: flex;
     align-items: center;
@@ -916,12 +939,28 @@
     text-align: left;
 }
 
-.msg-file-link span {
-    flex: 1;
+.msg-file-details {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5px;
     min-width: 0;
+    flex: 1;
+}
+
+.msg-file-name {
+    font-weight: 500;
+    font-size: 13px;
+    color: #e2efff;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    display: block;
+}
+
+.msg-file-size {
+    font-size: 10px;
+    color: rgba(0, 242, 255, 0.65);
+    font-weight: 400;
 }
 
 .msg-file-link i {

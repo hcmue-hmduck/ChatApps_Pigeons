@@ -314,20 +314,28 @@
                                     } @else {
                                     @if (msg.message_type === 'image') {
                                     <div class="msg-image-wrap" (click)="openImageViewer(msg.file_url)">
-                                        <img [src]="resolveMediaUrl(msg.file_url)" class="msg-image" alt="Hình ảnh">
+                                        <img [src]="fileUtils.resolveMediaUrl(msg.file_url)" class="msg-image"
+                                            alt="Hình ảnh">
                                     </div>
                                     }
                                     @if (msg.message_type === 'video') {
                                     <div class="msg-video-wrap">
-                                        <video [src]="resolveMediaUrl(msg.file_url)" controls class="msg-video"></video>
+                                        <video [src]="fileUtils.resolveMediaUrl(msg.file_url)" controls
+                                            class="msg-video"></video>
                                     </div>
                                     }
                                     @if (msg.message_type === 'file') {
                                     <div class="msg-file-wrap">
                                         <button type="button" class="msg-file-link"
-                                            (click)="openFileInNewTab(msg.file_url, $event)">
-                                            <i class="bi bi-file-earmark-arrow-down"></i>
-                                            <span>{{ msg.file_name || 'Tệp đính kèm' }}</span>
+                                            (click)="fileUtils.openFileInNewTab(msg.file_url, $event)">
+                                            <i class="bi" [class]="fileUtils.getAttachmentIconClass(msg)"></i>
+                                            <div class="msg-file-details">
+                                                <span class="msg-file-name">{{ msg.file_name || 'Tệp đính kèm' }}</span>
+                                                @if (msg.file_size) {
+                                                <span class="msg-file-size">{{ fileUtils.formatFileSize(msg.file_size)
+                                                    }}</span>
+                                                }
+                                            </div>
                                         </button>
                                     </div>
                                     }
@@ -355,6 +363,13 @@
                                     <div class="upload-progress">
                                         <div class="upload-progress-bar"></div>
                                         <span class="upload-progress-text">Đang tải lên...</span>
+                                    </div>
+                                    }
+
+                                    @if (msg._error) {
+                                    <div class="upload-error">
+                                        <i class="bi bi-exclamation-circle-fill"></i>
+                                        <span class="upload-error-text">Tải lên thất bại</span>
                                     </div>
                                     }
                                     }
@@ -537,20 +552,28 @@
                                 <div class="bubble-other" [class.bubble-image]="msg.message_type === 'image'">
                                     @if (msg.message_type === 'image') {
                                     <div class="msg-image-wrap" (click)="openImageViewer(msg.file_url)">
-                                        <img [src]="resolveMediaUrl(msg.file_url)" class="msg-image" alt="Hình ảnh">
+                                        <img [src]="fileUtils.resolveMediaUrl(msg.file_url)" class="msg-image"
+                                            alt="Hình ảnh">
                                     </div>
                                     }
                                     @if (msg.message_type === 'video') {
                                     <div class="msg-video-wrap">
-                                        <video [src]="resolveMediaUrl(msg.file_url)" controls class="msg-video"></video>
+                                        <video [src]="fileUtils.resolveMediaUrl(msg.file_url)" controls
+                                            class="msg-video"></video>
                                     </div>
                                     }
                                     @if (msg.message_type === 'file') {
                                     <div class="msg-file-wrap">
                                         <button type="button" class="msg-file-link"
-                                            (click)="openFileInNewTab(msg.file_url, $event)">
-                                            <i class="bi bi-file-earmark-arrow-down"></i>
-                                            <span>{{ msg.file_name || 'Tệp đính kèm' }}</span>
+                                            (click)="fileUtils.openFileInNewTab(msg.file_url, $event)">
+                                            <i class="bi" [class]="fileUtils.getAttachmentIconClass(msg)"></i>
+                                            <div class="msg-file-details">
+                                                <span class="msg-file-name">{{ msg.file_name || 'Tệp đính kèm' }}</span>
+                                                @if (msg.file_size) {
+                                                <span class="msg-file-size">{{ fileUtils.formatFileSize(msg.file_size)
+                                                    }}</span>
+                                                }
+                                            </div>
                                         </button>
                                     </div>
                                     }

@@ -1,7 +1,7 @@
 const uploadService = require('../services/uploadService');
 const SuccessResponse = require('../core/successResponse');
 const cloudinary = require('../configs/cloudinaryConfig');
-
+const fs = require('fs');
 
 class CloudinaryController {
     extractFiles(req) {
@@ -87,22 +87,43 @@ class CloudinaryController {
     }
 
     async uploadFilesBatch(files, uploadOptions, logPrefix) {
-        const uploadPromises = files.map(file =>
-            uploadService
-                .uploadToCloudinary(file.path, {
+        const uploadPromises = files.map(async (file) => {
+            try {
+                // Cloudinary Free tier limits safeguard
+                const resourceType = uploadService.constructor.getResourceType(file.originalname);
+                const isRaw = resourceType === 'raw';
+                const maxSize = isRaw ? 10 * 1024 * 1024 : 100 * 1024 * 1024; // 10MB for raw, 100MB for others/video
+
+                if (file.size > maxSize) {
+                    const typeLabel = isRaw ? 'tài liệu/nén' : 'tệp tin';
+                    const limitLabel = isRaw ? '10MB' : '100MB';
+                    throw new Error(`Kích thước ${typeLabel} vượt quá giới hạn Cloudinary (${limitLabel}). Vui lòng nâng cấp gói hoặc giảm dung lượng.`);
+                }
+
+                const result = await uploadService.uploadToCloudinary(file.path, {
                     ...uploadOptions,
                     originalName: file.originalname
-                })
-                .catch((error) => {
-                    console.error(`${logPrefix} single-file error:`, {
-                        file: file.originalname,
-                        message: error?.message,
-                        http_code: error?.http_code,
-                        name: error?.name
-                    });
-                    throw error;
-                })
-        );
+                });
+                return result;
+            } catch (error) {
+                console.error(`${logPrefix} single-file error:`, {
+                    file: file.originalname,
+                    message: error?.message,
+                    http_code: error?.http_code,
+                    name: error?.name
+                });
+                throw error;
+            } finally {
+                // Dọn dẹp file tạm trên server ngay khi xử lý xong (thành công hoặc thất bại)
+                if (file.path && fs.existsSync(file.path)) {
+                    try {
+                        fs.unlinkSync(file.path);
+                    } catch (err) {
+                        console.error(`${logPrefix} unlink error:`, err.message);
+                    }
+                }
+            }
+        });
 
         const uploadResults = await Promise.all(uploadPromises);
         return uploadResults.map((result, i) => this.buildFileResponse(result, files[i]));
@@ -129,6 +150,7 @@ class CloudinaryController {
             }
 
             const uploadedFiles = await this.uploadFilesBatch(files, uploadOptions, logPrefix);
+            console.log('uploadedFiles', uploadedFiles);
 
             new SuccessResponse({
                 message: `${uploadedFiles.length} file(s) uploaded successfully`,

@@ -741,6 +741,40 @@
     word-break: break-word;
 }
 
+.post-content-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.post-content-container.collapsed .post-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.see-more-btn {
+    background: transparent;
+    border: none;
+    color: var(--cyber-cyan);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    width: fit-content;
+    transition: 0.2s ease;
+    opacity: 0.8;
+}
+
+.see-more-btn:hover {
+    opacity: 1;
+    text-decoration: underline;
+}
+
 .post-extra-meta {
     margin: -8px 0 0;
     color: rgba(0, 242, 255, 0.55);

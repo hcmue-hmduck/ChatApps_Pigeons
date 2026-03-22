@@ -82,6 +82,7 @@ class UploadService {
         let lastError;
         for (const opts of attempts) {
             try {
+                console.log('opts', opts);
                 return await tryUpload(opts);
             } catch (error) {
                 lastError = error;

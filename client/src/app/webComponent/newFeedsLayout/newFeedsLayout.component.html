@@ -110,12 +110,12 @@
                                 = $index) {
                                 <div class="create-preview-card file-preview-card">
                                     <div class="preview-file-icon">
-                                        <i class="bi" [class]="'bi ' + getAttachmentIconClass(file)"></i>
+                                        <i class="bi" [class]="'bi ' + fileUtils.getAttachmentIconClass(file)"></i>
                                     </div>
                                     <div class="preview-meta">
                                         <p class="preview-title">{{ file.name }}</p>
-                                        <p class="preview-subtitle">{{ formatFileSize(file.size) }} • {{
-                                            getFileExtension(file.name) }}</p>
+                                        <p class="preview-subtitle">{{ fileUtils.formatFileSize(file.size) }} • {{
+                                            fileUtils.getFileExtension(file.name) }}</p>
                                     </div>
                                     <button class="preview-remove-btn" type="button"
                                         (click)="removeSelectedAttachment(i)" aria-label="Remove selected file">
@@ -231,7 +231,15 @@
                             </div>
                         </div>
 
-                        <p class="post-text">{{ post.content || '' }}</p>
+                        <div class="post-content-container"
+                            [class.collapsed]="!isContentExpanded(post.id) && shouldShowSeeMore(post.content)">
+                            <p class="post-text">{{ post.content || '' }}</p>
+                            @if (shouldShowSeeMore(post.content)) {
+                            <button class="see-more-btn" type="button" (click)="toggleContent(post.id)">
+                                {{ isContentExpanded(post.id) ? 'Thu gọn' : 'Xem thêm' }}
+                            </button>
+                            }
+                        </div>
 
                         @if (post.feeling || post.location) {
                         <p class="post-extra-meta">
@@ -276,18 +284,19 @@
                         @if (getAttachmentItems(post).length > 0) {
                         <div class="attachments-section">
                             @for (attachment of getAttachmentItems(post); track attachment.id) {
-                            <div class="attachment-card" (click)="viewAttachmentInGoogle(attachment)">
+                            <div class="attachment-card" (click)="fileUtils.openFileInNewTab(attachment.media_url)">
                                 <div class="attachment-left">
                                     <div class="attachment-icon">
-                                        <i class="bi bi-folder2-open"></i>
+                                        <i class="bi"
+                                            [class]="'bi ' + fileUtils.getAttachmentIconClass(attachment)"></i>
                                     </div>
                                     <div>
                                         <div class="attachment-title">{{ attachment.file_name ||
                                             getFileName(attachment.media_url) }}
                                         </div>
                                         <div class="attachment-meta">
-                                            {{ formatFileSize(attachment.file_size || 0) }} • {{
-                                            getFileExtension(attachment.file_name || attachment.media_url) }}
+                                            {{ fileUtils.formatFileSize(attachment.file_size || 0) }} • {{
+                                            fileUtils.getFileExtension(attachment.file_name || attachment.media_url) }}
                                         </div>
                                     </div>
                                 </div>
@@ -538,7 +547,8 @@
         </div>
 
         <div class="edit-modal-body">
-            <textarea class="edit-textarea" [(ngModel)]="editPostContent" placeholder="Bạn muốn chỉnh sửa gì?"></textarea>
+            <textarea class="edit-textarea" [(ngModel)]="editPostContent"
+                placeholder="Bạn muốn chỉnh sửa gì?"></textarea>
 
             <div class="edit-control-grid">
                 <select class="cyber-select-small" [(ngModel)]="editPostPrivacy">
@@ -583,7 +593,8 @@
                     @for (media of getEditExistingMediaItems().slice(0, 4); track media.id) {
                     <div class="media-item">
                         @if (media.media_type === 'image') {
-                        <img [src]="media.media_url" alt="Post media" class="media-content" referrerPolicy="no-referrer">
+                        <img [src]="media.media_url" alt="Post media" class="media-content"
+                            referrerPolicy="no-referrer">
                         } @else if (media.media_type === 'video') {
                         <video [src]="media.media_url" class="media-content" muted preload="metadata"></video>
                         }
@@ -607,15 +618,16 @@
             @if (getEditExistingAttachmentItems().length > 0) {
             <div class="attachments-section edit-modal-attachments">
                 @for (attachment of getEditExistingAttachmentItems(); track attachment.id) {
-                <div class="attachment-card" (click)="viewAttachmentInGoogle(attachment)">
+                <div class="attachment-card" (click)="fileUtils.openFileInNewTab(attachment.media_url)">
                     <div class="attachment-left">
                         <div class="attachment-icon">
-                            <i class="bi bi-folder2-open"></i>
+                            <i class="bi" [class]="'bi ' + fileUtils.getAttachmentIconClass(attachment)"></i>
                         </div>
                         <div>
                             <div class="attachment-title">{{ getAttachmentDisplayName(attachment) }}</div>
                             <div class="attachment-meta">
-                                {{ formatFileSize(attachment.file_size || 0) }} • {{ getFileExtension(getAttachmentDisplayName(attachment)) }}
+                                {{ fileUtils.formatFileSize(attachment.file_size || 0) }} • {{
+                                fileUtils.getFileExtension(getAttachmentDisplayName(attachment)) }}
                             </div>
                         </div>
                     </div>
@@ -657,12 +669,13 @@
                 <div class="attachment-card">
                     <div class="attachment-left">
                         <div class="attachment-icon">
-                            <i class="bi" [class]="'bi ' + getAttachmentIconClassByMimeType(attachment.mime_type)"></i>
+                            <i class="bi" [class]="'bi ' + fileUtils.getAttachmentIconClass(attachment)"></i>
                         </div>
                         <div>
                             <div class="attachment-title">{{ attachment.file_name }}</div>
                             <div class="attachment-meta">
-                                {{ formatFileSize(attachment.file_size || 0) }} • {{ getFileExtension(attachment.file_name) }}
+                                {{ fileUtils.formatFileSize(attachment.file_size || 0) }} • {{
+                                fileUtils.getFileExtension(attachment.file_name) }}
                             </div>
                         </div>
                     </div>
