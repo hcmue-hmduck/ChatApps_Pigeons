@@ -314,8 +314,21 @@
                             <!-- Recursive Shared Post -->
                             @if (post.shared_post) {
                             <div class="shared-post-nest">
+                                @if (post.shared_post.is_deleted) {
+                                <div class="deleted-post-placeholder">
+                                    <div class="deleted-icon">
+                                        <i class="bi bi-exclamation-triangle"></i>
+                                    </div>
+                                    <div class="deleted-content">
+                                        <p class="deleted-title">Nội dung này không còn hiển thị</p>
+                                        <p class="deleted-text">Người đăng đã thu hồi hoặc xoá nội dung này khỏi hệ thống.
+                                        </p>
+                                    </div>
+                                </div>
+                                } @else {
                                 <ng-container
                                     *ngTemplateOutlet="postCard; context: { post: post.shared_post, isNested: true }"></ng-container>
+                                }
                             </div>
                             }
 

@@ -31,7 +31,10 @@ export class Feeds {
       }
 
       deletePost(postId: string): Observable<any> {
-        return this.http.delete(`${this.apiUrl}/${postId}`);
+        return this.http.put(`${this.apiUrl}/${postId}`, {
+          postData: { is_deleted: true },
+          mediaData: null
+        });
       }
 
       getProvinces(): Observable<any> {

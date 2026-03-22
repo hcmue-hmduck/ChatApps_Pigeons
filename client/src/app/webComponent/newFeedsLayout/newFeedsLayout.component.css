@@ -2150,3 +2150,45 @@
         transform: rotate(360deg);
     }
 }
+
+.deleted-post-placeholder {
+    padding: 24px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px dashed rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 8px 0;
+}
+
+.deleted-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(255, 59, 48, 0.1);
+    color: #ff3b30;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.deleted-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.deleted-title {
+    font-weight: 600;
+    color: var(--text-title);
+    margin: 0;
+}
+
+.deleted-text {
+    font-size: 0.875rem;
+    color: var(--text-soft);
+    margin: 0;
+}

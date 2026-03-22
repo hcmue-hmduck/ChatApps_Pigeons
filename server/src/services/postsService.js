@@ -5,6 +5,7 @@ class PostsService {
         try {
             const posts = await postsModel.findAll({
                 order: [['created_at', 'DESC']],
+                where: { is_deleted: false },
                 limit,
                 offset
             });
@@ -19,7 +20,7 @@ class PostsService {
         try {
             if (!postIds || postIds.length === 0) return [];
             return await postsModel.findAll({
-                where: { id: postIds }
+                where: { id: postIds, is_deleted: false }
             });
         } catch (error) {
             console.error('Error fetching posts by ids:', error);

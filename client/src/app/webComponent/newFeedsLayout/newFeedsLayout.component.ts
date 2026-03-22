@@ -143,7 +143,7 @@ export class NewFeedsLayoutComponent implements OnDestroy {
         if (this.feedMain) {
             this.feedMain.nativeElement.addEventListener('scroll', () => {
                 const element = this.feedMain.nativeElement;
-                const threshold = 150; 
+                const threshold = 150;
                 if (element.scrollHeight - element.scrollTop <= element.clientHeight + threshold) {
                     this.loadFeeds(true);
                 }
@@ -234,13 +234,27 @@ export class NewFeedsLayoutComponent implements OnDestroy {
         this.socketService.on('updatePost', (data: any) => {
             console.log('Received updatePost event on server:', data);
             this.posts.update(posts => {
-                return posts.map(post => post.id === data.id ? data : post);
+                return posts.map(post => {
+                    if (post.id === data.id) return data;
+                    if (post.shared_post && post.shared_post.id === data.id) {
+                        return { ...post, shared_post: data };
+                    }
+                    return post;
+                });
             });
         });
 
         this.socketService.on('deletePost', (data: any) => {
             this.posts.update(posts => {
-                return posts.filter(post => post.id !== data.id);
+                return posts.filter(post => post.id !== data.id).map(post => {
+                    if (post.shared_post && post.shared_post.id === data.id) {
+                        return {
+                            ...post,
+                            shared_post: { ...post.shared_post, is_deleted: true }
+                        };
+                    }
+                    return post;
+                });
             });
         });
 
@@ -903,18 +917,36 @@ export class NewFeedsLayoutComponent implements OnDestroy {
     }
 
     onDeletePost(postId: string) {
-        if (!confirm('Bạn có chắc chắn muốn xóa bài viết này không?')) return;
-
-        this.feedsService.deletePost(postId).subscribe({
-            next: () => {
-                this.socketService.emit('deletePost', { id: postId });
-                this.posts.update(prev => prev.filter(p => p.id !== postId));
-                this.activeMenuPostId.set(null);
-                console.log('Post deleted successfully:', postId);
-            },
-            error: (err) => {
-                console.error('Error deleting post:', err);
-                this.error.set('Xóa bài viết thất bại. Vui lòng thử lại.');
+        Swal.fire({
+            title: 'Xóa bài viết?',
+            text: 'Bạn có chắc chắn muốn xóa bài viết này không?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#00f2ff',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Xóa',
+            cancelButtonText: 'Hủy',
+            background: '#06131f',
+            color: '#fff'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                this.feedsService.deletePost(postId).subscribe({
+                    next: () => {
+                        this.socketService.emit('deletePost', { id: postId });
+                        this.posts.update(prev => prev.filter(p => p.id !== postId).map(post => {
+                            if (post.shared_post && post.shared_post.id === postId) {
+                                return { ...post, shared_post: { ...post.shared_post, is_deleted: true } };
+                            }
+                            return post;
+                        }));
+                        this.activeMenuPostId.set(null);
+                        console.log('Post deleted successfully:', postId);
+                    },
+                    error: (err) => {
+                        console.error('Error deleting post:', err);
+                        this.error.set('Xóa bài viết thất bại. Vui lòng thử lại.');
+                    }
+                });
             }
         });
     }
