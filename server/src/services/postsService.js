@@ -15,6 +15,18 @@ class PostsService {
         }
     }
 
+    async getPostsByIds(postIds) {
+        try {
+            if (!postIds || postIds.length === 0) return [];
+            return await postsModel.findAll({
+                where: { id: postIds }
+            });
+        } catch (error) {
+            console.error('Error fetching posts by ids:', error);
+            throw error;
+        }
+    }
+
     async createPost(newPostData) {
         try {
             const newPost = await postsModel.create(newPostData);

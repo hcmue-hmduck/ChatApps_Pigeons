@@ -24,7 +24,7 @@ const Post = sequelize.define('Post', {
         defaultValue: 'text',
         field: 'post_type',
         validate: {
-            isIn: [['text', 'image', 'video', 'link', 'poll', 'share']]
+            isIn: [['text', 'link', 'share', 'media']]
         }
     },
     privacy: {

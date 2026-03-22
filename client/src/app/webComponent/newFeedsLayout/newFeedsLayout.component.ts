@@ -1,4 +1,4 @@
-import { Component, Input, signal, OnDestroy, HostListener } from '@angular/core';
+import { Component, Input, signal, OnDestroy, HostListener, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpEventType } from '@angular/common/http';
@@ -18,6 +18,7 @@ import Swal from 'sweetalert2';
     styleUrl: './newFeedsLayout.component.css'
 })
 export class NewFeedsLayoutComponent implements OnDestroy {
+    @ViewChild('feedMain') feedMain!: ElementRef;
     @HostListener('document:click', ['$event'])
     onDocumentClick(event: MouseEvent) {
         const target = event.target as HTMLElement;
@@ -57,8 +58,18 @@ export class NewFeedsLayoutComponent implements OnDestroy {
     uploadStage = signal<'creating' | 'uploading' | 'saving'>('creating');
     activeMenuPostId = signal<string | null>(null);
     isEditModalOpen = signal(false);
+    isShareModalOpen = signal(false);
     editingPost = signal<any>(null);
+    sharingPost = signal<any>(null);
+    shareContent = signal('');
+    sharePrivacy = signal('public');
+    shareLocation = signal('');
+    shareFeeling = signal('');
     error = signal<string | null>(null);
+    offset = signal(0);
+    limit = 10;
+    hasMore = signal(true);
+    loadingMore = signal(false);
     currentUser = {
         avatar: 'https://ui-avatars.com/api/?name=Chat+Pigeons&background=06131f&color=00f2ff'
     };
@@ -128,6 +139,18 @@ export class NewFeedsLayoutComponent implements OnDestroy {
         this.setupSocketListener();
     }
 
+    ngAfterViewInit() {
+        if (this.feedMain) {
+            this.feedMain.nativeElement.addEventListener('scroll', () => {
+                const element = this.feedMain.nativeElement;
+                const threshold = 150; 
+                if (element.scrollHeight - element.scrollTop <= element.clientHeight + threshold) {
+                    this.loadFeeds(true);
+                }
+            });
+        }
+    }
+
     ngOnDestroy() {
         this.clearSelectedMedia(false);
         this.clearEditNewMedia(false);
@@ -149,7 +172,7 @@ export class NewFeedsLayoutComponent implements OnDestroy {
     triggerEditAttachmentPicker(input: HTMLInputElement) {
         input.click();
     }
-    
+
     setupSocketListener() {
         this.socketService.on('updateProfile', (data: any) => {
             // Update local user info if it's the current user
@@ -189,13 +212,27 @@ export class NewFeedsLayoutComponent implements OnDestroy {
 
 
         this.socketService.on('newPost', (data: any) => {
+            console.log('Received newPost event on server:', data);
+            if (data.shared_post) {
+                this.posts.update(posts => posts.map(post => {
+                    if (post.id === data.shared_post.id) {
+                        console.log('update share count', post);
+                        return { ...post, shares_count: data.shared_post.shares_count };
+                    }
+                    return post;
+                }));
+            }
+
             this.posts.update(posts => {
-                if (posts.some(p => p.id === data.id)) return posts;
+                if (posts.some(p => p.id === data.id)) {
+                    return posts;
+                }
                 return [data, ...posts];
             });
         });
 
         this.socketService.on('updatePost', (data: any) => {
+            console.log('Received updatePost event on server:', data);
             this.posts.update(posts => {
                 return posts.map(post => post.id === data.id ? data : post);
             });
@@ -206,6 +243,17 @@ export class NewFeedsLayoutComponent implements OnDestroy {
                 return posts.filter(post => post.id !== data.id);
             });
         });
+
+        this.socketService.on('newComment', (data) => {
+            console.log('Received newComment event on server:', data);
+            this.posts.update(posts => posts.map(post => {
+                if (post.id === data.post_id) {
+                    post.comments_count++;
+                    return { ...post, comments: [...post.comments, data] };
+                }
+                return post;
+            }));
+        })
     }
 
     onMediaSelected(event: Event) {
@@ -539,20 +587,44 @@ export class NewFeedsLayoutComponent implements OnDestroy {
         return content.length > 300;
     }
 
-    loadFeeds() {
-        this.loading.set(true);
+    loadFeeds(isLoadMore: boolean = false) {
+        if (isLoadMore) {
+            if (!this.hasMore() || this.loadingMore() || this.loading()) return;
+            this.loadingMore.set(true);
+        } else {
+            this.loading.set(true);
+            this.offset.set(0);
+            this.hasMore.set(true);
+        }
         this.error.set(null);
 
-        this.feedsService.getFeeds().subscribe({
+        this.feedsService.getFeeds(this.limit, this.offset()).subscribe({
             next: (data) => {
-                this.posts.set(data.metadata.homePosts || []);
-                console.log('Feeds loaded successfully:', data.metadata.homePosts);
-                this.loading.set(false);
+                const homePosts = data.metadata.homePosts || [];
+                if (isLoadMore) {
+                    this.posts.update(prev => [...prev, ...homePosts]);
+                    this.loadingMore.set(false);
+                } else {
+                    this.posts.set(homePosts);
+                    this.loading.set(false);
+                    // Scroll to top only on initial load
+                    setTimeout(() => {
+                        if (this.feedMain) {
+                            this.feedMain.nativeElement.scrollTo({ top: 0, behavior: 'smooth' });
+                        }
+                    });
+                }
+
+                this.offset.update(old => old + homePosts.length);
+                if (homePosts.length < this.limit) {
+                    this.hasMore.set(false);
+                }
             },
             error: (err) => {
                 console.error('Error loading feeds:', err);
                 this.error.set('Failed to load feeds. Please try again later.');
                 this.loading.set(false);
+                this.loadingMore.set(false);
             }
         });
     }
@@ -864,7 +936,7 @@ export class NewFeedsLayoutComponent implements OnDestroy {
 
         const postData = {
             user_id: userId,
-            content: content,
+            content: content ? content : null,
             post_type: content ? 'text' : 'media',
             privacy: this.newPostPrivacy,
             feeling: this.newPostFeeling,
@@ -912,8 +984,18 @@ export class NewFeedsLayoutComponent implements OnDestroy {
 
                 if (!hasFiles) {
                     newPost.post_media = [];
-                    this.posts.update(prev => [newPost, ...prev]);
-                    this.socketService.emit('newPost', newPost);
+                    // Add user info and empty arrays for new post
+                    const newPostWithDetails = {
+                        ...newPost,
+                        user_infor: this._userInfor,
+                        comments: [],
+                        post_media: [],
+                        comments_count: 0,
+                        likes_count: 0,
+                        shares_count: 0
+                    };
+                    this.posts.update(prev => [newPostWithDetails, ...prev]);
+                    this.socketService.emit('newPost', newPostWithDetails);
                     finishPosting(true);
                     return;
                 }
@@ -939,9 +1021,17 @@ export class NewFeedsLayoutComponent implements OnDestroy {
                             this.feedsService.createNewMediaPost(newPost.id, uploaded.metadata.files).subscribe({
                                 next: (mediaResponse) => {
                                     console.log('Media post created successfully:', mediaResponse);
-                                    newPost.post_media = mediaResponse.metadata.newMediaPost;
-                                    this.posts.update(prev => [newPost, ...prev]);
-                                    this.socketService.emit('newPost', newPost);
+                                    const enrichedPost = {
+                                        ...newPost,
+                                        user_infor: this._userInfor,
+                                        comments: [],
+                                        post_media: mediaResponse.metadata.newMediaPost,
+                                        comments_count: 0,
+                                        likes_count: 0,
+                                        shares_count: 0
+                                    };
+                                    this.posts.update(prev => [enrichedPost, ...prev]);
+                                    this.socketService.emit('newPost', enrichedPost);
                                     this.uploadProgress.set(100);
                                     finishPosting(true);
                                 },
@@ -970,6 +1060,101 @@ export class NewFeedsLayoutComponent implements OnDestroy {
         });
     }
 
+    handleSharePost(post: any) {
+        if (post) {
+            this.sharingPost.set(post);
+            this.shareContent.set('');
+            this.sharePrivacy.set('public');
+            this.shareLocation.set('');
+            this.shareFeeling.set('');
+            this.isShareModalOpen.set(true);
+        }
+    }
+
+    closeShareModal() {
+        this.isShareModalOpen.set(false);
+        this.sharingPost.set(null);
+        this.shareContent.set('');
+    }
+
+    confirmSharePost() {
+        if (!this.sharingPost()) return;
+
+        const shareData = {
+            user_id: this._userInfor?.id,
+            content: this.shareContent() || null,
+            post_type: 'share',
+            privacy: this.sharePrivacy(),
+            location: this.shareLocation() || null,
+            feeling: this.shareFeeling() || null,
+            shared_post_id: this.sharingPost().id
+        };
+
+        this.feedsService.createNewPost(shareData).subscribe({
+            next: (response: any) => {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Đã chia sẻ',
+                    text: 'Bài viết đã được chia sẻ lên bảng tin của bạn.',
+                    timer: 1500,
+                    showConfirmButton: false,
+                    background: '#06131f',
+                    color: '#fff'
+                });
+
+                this.posts.update(prev => prev.map(post => {
+                    if (post.id === this.sharingPost().id) {
+                        return {
+                            ...post,
+                            shares_count: (post.shares_count || 0) + 1
+                        };
+                    }
+                    return post;
+                }));
+
+                this.feedsService.updatePost(this.sharingPost().id, {
+                    postData: { shares_count: (this.sharingPost().shares_count || 0) + 1 },
+                    mediaData: null
+                }).subscribe({
+                    next: (response: any) => {
+                        console.log('Post updated successfully:', response);
+                    },
+                    error: (err: any) => {
+                        console.error('Error updating post:', err);
+                    }
+                });
+
+                const originalPost = this.sharingPost();
+                originalPost.shares_count = (originalPost.shares_count || 0) + 1;
+                this.closeShareModal();
+
+                console.log('Original Post:', originalPost);
+                const sharedPostWithDetails = {
+                    ...response.metadata.newPost,
+                    user_infor: this._userInfor,
+                    comments: [],
+                    post_media: [],
+                    comments_count: 0,
+                    likes_count: 0,
+                    shares_count: 0,
+                    shared_post: originalPost // Attach the original post object for recursive display
+                };
+                this.posts.update(prev => [sharedPostWithDetails, ...prev]);
+                this.socketService.emit('newPost', sharedPostWithDetails);
+            },
+            error: (err: any) => {
+                console.error('Error sharing post:', err);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: 'Không thể chia sẻ bài viết. Vui lòng thử lại sau.',
+                    background: '#06131f',
+                    color: '#fff'
+                });
+            }
+        });
+    }
+
     sendComment(postId: string, parentCommentId: string | null = null) {
         const content = parentCommentId ? this.newReplyContent.trim() : this.newCommentContent.trim();
         if (!content) return;
@@ -990,10 +1175,13 @@ export class NewFeedsLayoutComponent implements OnDestroy {
 
                 this.posts.update(prev => prev.map(post => {
                     if (post.id === postId) {
-                        return { ...post, comments: [...post.comments, data.metadata.newComment] };
+                        post.comments_count++;
+                        return { ...post, comments: [...(post.comments || []), data.metadata.newComment] };
                     }
                     return post;
                 }));
+
+                this.socketService.emit('newComment', data.metadata.newComment);
 
                 if (parentCommentId) {
                     this.newReplyContent = '';
@@ -1015,15 +1203,6 @@ export class NewFeedsLayoutComponent implements OnDestroy {
             this.replyToCommentId = commentId;
             this.newReplyContent = '';
         }
-    }
-
-    viewAttachmentInGoogle(attachment: any) {
-        const mediaUrl = String(attachment?.media_url || '').trim();
-        if (!mediaUrl) return;
-
-        const normalizedUrl = /^https?:\/\//i.test(mediaUrl) ? mediaUrl : `https://${mediaUrl}`;
-        const viewerUrl = `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(normalizedUrl)}`;
-        window.open(viewerUrl, '_blank', 'noopener,noreferrer');
     }
 
     getFileName(url: string): string {

@@ -13,9 +13,9 @@ export class Feeds {
 
       constructor(private http: HttpClient) { }
 
-      // Lấy user theo ID
-      getFeeds(): Observable<any> {
-        return this.http.get(this.apiUrl);
+      // Lấy danh sách bài viết với phân trang
+      getFeeds(limit: number = 10, offset: number = 0): Observable<any> {
+        return this.http.get(`${this.apiUrl}?limit=${limit}&offset=${offset}`);
       }
 
       createNewPost(newPostData: any): Observable<any> {

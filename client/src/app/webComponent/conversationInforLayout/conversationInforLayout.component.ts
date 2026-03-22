@@ -5,6 +5,7 @@ import { Media } from '../../services/media';
 import { Friend } from '../../services/friend';
 import { Participant } from '../../services/participant';
 import { FormsModule } from '@angular/forms';
+import { SocketService } from '../../services/socket';
 
 @Component({
     selector: 'app-conversation-infor-layout',
@@ -60,11 +61,35 @@ export class ConversationInforLayoutComponent implements OnInit {
     constructor(
         private media: Media,
         private friendService: Friend,
-        private participantService: Participant
+        private participantService: Participant,
+        private socketService: SocketService
     ) { }
 
     ngOnInit(): void {
         this.loadMediaData();
+        this.socketEmitListener();
+    }
+
+    socketEmitListener() {
+        this.socketService.on('updateConversationInfo', (data: any) => {
+            console.log('Update Conversation Info: ', data);
+            
+            // Chỉ cập nhật nếu đúng conversation đang hiển thị và có tệp mới
+            if (data.conversation_id === this.conversationInfor?.conversation_id && data.upload_file) {
+                const newFiles = Array.isArray(data.upload_file) ? data.upload_file : [data.upload_file];
+                
+                newFiles.forEach((file: any) => {
+                    const mType = file.message_type || file.resource_type;
+                    if (mType === 'image') {
+                        this.imgData.update(prev => [file, ...prev]);
+                    } else if (mType === 'video') {
+                        this.vidData.update(prev => [file, ...prev]);
+                    } else if (mType === 'raw' || mType === 'file' || mType === 'audio') {
+                        this.fileData.update(prev => [file, ...prev]);
+                    }
+                });
+            }
+        });
     }
 
     loadMediaData() {

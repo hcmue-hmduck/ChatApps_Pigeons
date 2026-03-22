@@ -1165,6 +1165,14 @@ export class MessagesLayoutComponent
 
                         this.broadcastMessage(realMessage);
 
+                        // Cập nhật media sidebar (nếu là media message)
+                        if (realMessage.message_type !== 'text') {
+                            this.socketService.emit('updateConversationInfo', {
+                                conversation_id: this.conversationId,
+                                upload_file: realMessage // Emit nguyên object tin nhắn như yêu cầu của user
+                            });
+                        }
+
                         // Chỉ notify khi conversation chưa có trong danh sách local (thường là cuộc trò chuyện mới tạo)
                         const isKnownConversation = (this.joinedConversations || [])
                             .some((conv: any) => conv.conversation_id === this.conversationId);
