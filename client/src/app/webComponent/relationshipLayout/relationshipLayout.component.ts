@@ -11,6 +11,7 @@ import { UserBlock } from '../../services/userBlock';
 import { SocketService } from '../../services/socket';
 import { FriendsTab, NavigationService } from '../../services/navigation';
 import { UserInforModel } from '../userinforModel/userinforModel.component';
+import { FileUtils } from '../../utils/FileUtils/fileUltils';
 
 @Component({
     selector: 'relationship-layout',
@@ -92,6 +93,7 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
         private socketService: SocketService,
         private navService: NavigationService,
         private cdr: ChangeDetectorRef,
+        public fileUtils: FileUtils
     ) { }
 
     ngOnInit() {

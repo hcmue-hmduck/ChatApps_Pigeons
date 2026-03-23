@@ -21,6 +21,7 @@ import { ConversationLayoutComponent } from '../conversationLayout/conversationL
 import { RelationshipLayoutComponent } from '../relationshipLayout/relationshipLayout.component';
 import { UserInforModel } from '../userinforModel/userinforModel.component';
 import { NewFeedsLayoutComponent } from '../newFeedsLayout/newFeedsLayout.component';
+import { FileUtils } from '../../utils/FileUtils/fileUltils';
 import { error } from 'console';
 
 @Component({
@@ -53,6 +54,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
         private router: ActivatedRoute,
         private userService: User,
         private socketService: SocketService,
+        public fileUtils: FileUtils
     ) {}
 
     ngOnInit() {

@@ -8,7 +8,6 @@ import { environment } from '../../environments/environment';
 })
 export class Messages {
     private apiUrl = `${environment.apiUrl}/home/messages`;
-    private homeApiUrl = `${environment.apiUrl}/home`;
     constructor(private http: HttpClient) { }
 
     // Lấy tất cả messages của users này
@@ -30,6 +29,8 @@ export class Messages {
             file_size?: number;
             thumbnail_url?: string;
             duration?: number;
+            link_description?: string;
+            has_link?: boolean;
         }
     ): Observable<any> {
         const body: any = { senderId, content, message_type, ...file_metadata };
@@ -51,9 +52,5 @@ export class Messages {
 
     unpinMessage(pinMessageId: string): Observable<any> {
         return this.http.delete(`${this.apiUrl}/pinmessage/${pinMessageId}`);
-    }
-
-    getLinkPreview(url: string): Observable<any> {
-        return this.http.get(`${this.homeApiUrl}/link-preview?url=${encodeURIComponent(url)}`);
     }
 }

@@ -341,19 +341,19 @@
                                     }
                                     @if (msg.message_type === 'text') {
                                     <div [innerHTML]="formatMessageText(msg.content)"></div>
-                                    @if (getLinkPreviewForMessage(msg); as preview) {
-                                    <a class="link-preview-card" [href]="preview.url" target="_blank"
-                                        rel="noopener noreferrer" (click)="$event.stopPropagation()">
+                                    @let preview = getStoredLinkPreview(msg);
+                                    @if (preview) {
+                                    <a class="message-link-card" [href]="preview.url" target="_blank"
+                                        rel="noopener noreferrer">
                                         @if (preview.image) {
-                                        <img class="link-preview-image" [src]="preview.image"
-                                            [alt]="preview.title || preview.siteName">
+                                        <img class="message-link-image" [src]="preview.image"
+                                            [alt]="preview.title || preview.siteName" referrerPolicy="no-referrer">
                                         }
-                                        <div class="link-preview-body">
-                                            <div class="link-preview-site">{{ preview.siteName || preview.hostname }}
-                                            </div>
-                                            <div class="link-preview-title">{{ preview.title || preview.url }}</div>
+                                        <div class="message-link-body">
+                                            <div class="message-link-site">{{ preview.hostname || preview.siteName }}</div>
+                                            <div class="message-link-title">{{ preview.title }}</div>
                                             @if (preview.description) {
-                                            <div class="link-preview-desc">{{ preview.description }}</div>
+                                            <div class="message-link-desc">{{ preview.description }}</div>
                                             }
                                         </div>
                                     </a>
@@ -579,19 +579,19 @@
                                     }
                                     @if (msg.message_type === 'text') {
                                     <div [innerHTML]="formatMessageText(msg.content)"></div>
-                                    @if (getLinkPreviewForMessage(msg); as preview) {
-                                    <a class="link-preview-card" [href]="preview.url" target="_blank"
-                                        rel="noopener noreferrer" (click)="$event.stopPropagation()">
+                                    @let preview = getStoredLinkPreview(msg);
+                                    @if (preview) {
+                                    <a class="message-link-card" [href]="preview.url" target="_blank"
+                                        rel="noopener noreferrer">
                                         @if (preview.image) {
-                                        <img class="link-preview-image" [src]="preview.image"
-                                            [alt]="preview.title || preview.siteName">
+                                        <img class="message-link-image" [src]="preview.image"
+                                            [alt]="preview.title || preview.siteName" referrerPolicy="no-referrer">
                                         }
-                                        <div class="link-preview-body">
-                                            <div class="link-preview-site">{{ preview.siteName || preview.hostname }}
-                                            </div>
-                                            <div class="link-preview-title">{{ preview.title || preview.url }}</div>
+                                        <div class="message-link-body">
+                                            <div class="message-link-site">{{ preview.hostname || preview.siteName }}</div>
+                                            <div class="message-link-title">{{ preview.title }}</div>
                                             @if (preview.description) {
-                                            <div class="link-preview-desc">{{ preview.description }}</div>
+                                            <div class="message-link-desc">{{ preview.description }}</div>
                                             }
                                         </div>
                                     </a>
@@ -701,6 +701,39 @@
         <button class="cancel-reply-btn" (click)="cancelReply()" title="Hủy trả lời">
             <i class="bi bi-x-lg"></i>
         </button>
+    </div>
+    }
+
+    <!-- Link Preview -->
+    @let composerPreview = getLinkPreview(newMessage);
+    @if (composerPreview) {
+    <div class="composer-link-preview-container">
+        <div class="link-preview-card composer-preview" [class.is-loading]="composerPreview.loading">
+            @if (!composerPreview.loading) {
+            <button class="remove-preview-btn" type="button" (click)="clearLinkPreview()">
+                <i class="bi bi-x"></i>
+            </button>
+            @if (composerPreview.image) {
+            <div class="preview-image-wrap">
+                <img [src]="composerPreview.image" alt="Preview Image" referrerPolicy="no-referrer">
+            </div>
+            }
+            <div class="preview-content">
+                <div class="preview-title">{{ composerPreview.title }}</div>
+                @if (composerPreview.description) {
+                <div class="preview-description">{{ composerPreview.description }}</div>
+                }
+                <div class="preview-host">{{ composerPreview.hostname || composerPreview.siteName }}</div>
+            </div>
+            } @else {
+            <div class="preview-skeleton-image"></div>
+            <div class="preview-content">
+                <div class="skeleton-line skeleton-host"></div>
+                <div class="skeleton-line skeleton-title"></div>
+                <div class="skeleton-line skeleton-desc"></div>
+            </div>
+            }
+        </div>
     </div>
     }
 

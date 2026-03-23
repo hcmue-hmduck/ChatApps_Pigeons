@@ -32,11 +32,7 @@ class CloudinaryController {
     }
 
     buildDownloadUrl(result, originalName) {
-        if (!result?.secure_url) return '';
-
-        const encodedName = encodeURIComponent(originalName || 'file');
-        const separator = result.secure_url.includes('?') ? '&' : '?';
-        return `${result.secure_url}${separator}filename=${encodedName}`;
+        return result?.secure_url || '';
     }
 
     buildFileResponse(result, file) {

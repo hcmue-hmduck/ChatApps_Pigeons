@@ -33,6 +33,8 @@ import Swal from 'sweetalert2';
 import { UploadService } from '../../services/uploadService';
 import { Participant } from '../../services/participant';
 import { FileUtils } from '../../utils/FileUtils/fileUltils';
+import { LinkPreviewUtils } from '../../utils/LinkUtils/linkPreviewUtils';
+import { DateTimeUtils } from '../../utils/DateTimeUtils/datetimeUtils';
 import { GroupAvatarLayoutComponent } from '../groupAvatarLayout/groupAvatarLayout.component';
 import { MessageReactions } from '../../services/messagereactions';
 
@@ -53,7 +55,12 @@ export interface StagedFile {
 @Component({
     selector: 'messages-layout',
     standalone: true,
-    imports: [CommonModule, FormsModule, PickerModule, GroupAvatarLayoutComponent],
+    imports: [
+        CommonModule,
+        FormsModule,
+        PickerModule,
+        GroupAvatarLayoutComponent,
+    ],
     templateUrl: './messagesLayout.component.html',
     styleUrls: ['./messagesLayout.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -63,6 +70,8 @@ export class MessagesLayoutComponent
 
     callService = inject(CallService);
     authService = inject(AuthService);
+    linkPreviewUtils = inject(LinkPreviewUtils);
+    dateTimeUtils = inject(DateTimeUtils);
     private cdr = inject(ChangeDetectorRef);
 
     getMessagesData = signal<any>({
@@ -77,6 +86,7 @@ export class MessagesLayoutComponent
     error = '';
     newMessage: string = '';
     messageStatus = signal('Đã gửi');
+    activeMessageLinkPreview: any | null = null;
 
     @Input() conversationId: string = '';
     @Input() conversationType: string = '';
@@ -116,81 +126,16 @@ export class MessagesLayoutComponent
     }
 
     relativeTime(dateInput: string | Date, tick1s: number, tick60s: number, tick3600s: number): string {
-        if (!dateInput) return '';
-
-        // Đoạn này lấy timestamp kể cả khi đưa vào là String hay Date object
-        const timeToCompare = typeof dateInput === 'string'
-            ? new Date(dateInput.endsWith('Z') || dateInput.length !== 23 ? dateInput : dateInput.replace(' ', 'T') + 'Z').getTime()
-            : dateInput.getTime();
-
-        const diff = Math.floor((Date.now() - timeToCompare) / 1000);
-        if (diff <= 60) { const _ = tick1s; return 'vài giây'; }
-        if (diff < 3600) { const _ = tick60s; return `${Math.floor(diff / 60)} phút`; }
-        const _ = tick3600s;
-        if (diff < 86400) return `${Math.floor(diff / 3600)} giờ`;
-        if (diff < 604800) return `${Math.floor(diff / 86400)} ngày`;
-        if (diff < 2592000) return `${Math.floor(diff / 604800)} tuần`;
-        if (diff < 31536000) return `${Math.floor(diff / 2592000)} tháng`;
-        return `${Math.floor(diff / 31536000)} năm`;
+        return this.dateTimeUtils.relativeTime(dateInput, tick1s, tick60s, tick3600s);
     }
-
-    private escapeHtml(input: string): string {
-        return input
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
-
-    private normalizeUrl(rawUrl: string): string {
-        const trimmed = rawUrl.trim();
-        if (/^https?:\/\//i.test(trimmed)) {
-            return trimmed;
-        }
-        return `https://${trimmed}`;
-    }
-
 
     formatMessageText(content: string | null | undefined): string {
-        if (!content) return '';
-
-        const escaped = this.escapeHtml(content);
-        const urlPattern = /((?:https?:\/\/|www\.)[^\s<]+)/gi;
-
-        const linked = escaped.replace(urlPattern, (match: string) => {
-            const trailingPunctuationMatch = match.match(/[.,!?;:]+$/);
-            const trailingPunctuation = trailingPunctuationMatch ? trailingPunctuationMatch[0] : '';
-            const cleanUrl = trailingPunctuation
-                ? match.slice(0, match.length - trailingPunctuation.length)
-                : match;
-
-            const href = this.escapeHtml(this.normalizeUrl(cleanUrl));
-            return `<a href="${href}" target="_blank" rel="noopener noreferrer">${cleanUrl}</a>${trailingPunctuation}`;
-        });
-
-        return linked.replace(/\n/g, '<br>');
+        return this.linkPreviewUtils.formatMessageText(content);
     }
 
-    private extractFirstUrl(content: string | null | undefined): string | null {
-        if (!content) return null;
-
-        const matches = Array.from(content.matchAll(/((?:https?:\/\/|www\.)[^\s<]+)/gi));
-        if (matches.length !== 1) return null;
-
-        const rawUrl = (matches[0][1] || '').replace(/[.,!?;:]+$/, '');
-        if (!rawUrl) return null;
-
-        return /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
-    }
-
-    private buildStoredLinkPreview(message: any): any | null {
+    getStoredLinkPreview(message: any): any | null {
         if (!message || message.message_type !== 'text') return null;
-        if (!this.extractFirstUrl(message.content)) return null;
-        if (!message.file_url) return null;
-
-        const hasPreviewData = !!(message.thumbnail_url || message.file_name);
-        if (!hasPreviewData) return null;
+        if (!message.file_url || !message.thumbnail_url) return null;
 
         let hostname = '';
         try {
@@ -202,45 +147,52 @@ export class MessagesLayoutComponent
         return {
             url: message.file_url,
             title: message.file_name || message.file_url,
-            description: '',
+            description: message.link_description || '',
             image: message.thumbnail_url || null,
             siteName: hostname,
             hostname,
         };
     }
 
-    getLinkPreviewForMessage(message: any): any | null {
-        const storedPreview = this.buildStoredLinkPreview(message);
-        if (storedPreview) return storedPreview;
+    closedPreviewUrls = new Set<string>();
 
-        const url = this.extractFirstUrl(message?.content);
-        if (!url) return null;
-
-        if (this.linkPreviewCache.has(url)) {
-            return this.linkPreviewCache.get(url) || null;
+    getLinkPreview(content: string): any | null {
+        if (!content) {
+            this.activeMessageLinkPreview = null;
+            return null;
         }
 
-        this.fetchLinkPreview(url);
-        return null;
+        const url = this.linkPreviewUtils.extractFirstUrl(content);
+        let isHidden = false;
+        
+        if (url) {
+            for (const closedUrl of this.closedPreviewUrls) {
+                if (closedUrl.includes(url) || url.includes(closedUrl)) {
+                    isHidden = true;
+                    break;
+                }
+            }
+        }
+
+        const previewData = this.linkPreviewUtils.getLinkPreview(content, (preview) => {
+            if (content === this.newMessage) {
+                this.activeMessageLinkPreview = preview;
+            }
+            this.cdr.markForCheck();
+        });
+
+        // Hide UI by returning null if closed, but activeMessageLinkPreview is still saved via callback!
+        if (isHidden) return null;
+        
+        return previewData;
     }
 
-    private fetchLinkPreview(url: string) {
-        if (this.linkPreviewLoading.has(url)) return;
-        this.linkPreviewLoading.add(url);
-
-        this.messagesService.getLinkPreview(url).subscribe({
-            next: (response) => {
-                this.linkPreviewCache.set(url, response?.metadata?.linkPreview || null);
-                this.cdr.markForCheck();
-            },
-            error: () => {
-                this.linkPreviewCache.set(url, null);
-                this.cdr.markForCheck();
-            },
-            complete: () => {
-                this.linkPreviewLoading.delete(url);
-            },
-        });
+    clearLinkPreview() {
+        const url = this.linkPreviewUtils.extractFirstUrl(this.newMessage);
+        if (url) {
+            this.closedPreviewUrls.add(url);
+            this.cdr.markForCheck();
+        }
     }
 
     isLoaded = false;
@@ -258,10 +210,6 @@ export class MessagesLayoutComponent
     private needsFocus = true; // Flag to auto-focus input
 
     // Cache để tránh tính toán lặp lại
-    private dateCache = new Map<string, string>();
-    private timeCache = new Map<string, string>();
-    private linkPreviewCache = new Map<string, any | null>();
-    private linkPreviewLoading = new Set<string>();
 
     // Menu state
     showMenuId: string | number | null = null;
@@ -358,10 +306,7 @@ export class MessagesLayoutComponent
 
     // Helper method to check if should show date separator
     shouldShowDateSeparator(currentMsg: any, prevMsg: any): boolean {
-        if (!prevMsg) return true;
-        const currentDate = this.getMessageDate(currentMsg.created_at);
-        const prevDate = this.getMessageDate(prevMsg.created_at);
-        return currentDate !== prevDate;
+        return this.dateTimeUtils.shouldShowDateSeparator(currentMsg.created_at, prevMsg?.created_at);
     }
 
     openImageViewer(url: string) {
@@ -445,74 +390,17 @@ export class MessagesLayoutComponent
     // --- Media rendering helpers ---
     // Get date string from message timestamp
     getMessageDate(dateStr: string): string {
-        if (!dateStr) return '';
-        let isoStr = dateStr;
-        if (!isoStr.endsWith('Z') && isoStr.length === 23) {
-            isoStr = isoStr.replace(' ', 'T') + 'Z';
-        }
-        const date = new Date(isoStr);
-        return date.toDateString();
+        return this.dateTimeUtils.getMessageDate(dateStr);
     }
 
     // Format date label (Today, Yesterday, or specific date)
     formatDateLabel(dateStr: string): string {
-        if (!dateStr) return '';
-
-        // Check cache
-        if (this.dateCache.has(dateStr)) {
-            return this.dateCache.get(dateStr)!;
-        }
-
-        let isoStr = dateStr;
-        if (!isoStr.endsWith('Z') && isoStr.length === 23) {
-            isoStr = isoStr.replace(' ', 'T') + 'Z';
-        }
-        const msgDate = new Date(isoStr);
-        const today = new Date();
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-
-        let result: string;
-        if (msgDate.toDateString() === today.toDateString()) {
-            result = 'Hôm nay';
-        } else if (msgDate.toDateString() === yesterday.toDateString()) {
-            result = 'Hôm qua';
-        } else {
-            const options: Intl.DateTimeFormatOptions = {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-            };
-            result = msgDate.toLocaleDateString('vi-VN', options);
-        }
-
-        // Cache result
-        this.dateCache.set(dateStr, result);
-        return result;
+        return this.dateTimeUtils.formatDateLabel(dateStr);
     }
 
     // Format time as HH:mm
     formatTime(dateStr: string): string {
-        if (!dateStr) return '';
-
-        // Check cache
-        if (this.timeCache.has(dateStr)) {
-            return this.timeCache.get(dateStr)!;
-        }
-
-        let isoStr = dateStr;
-        if (!isoStr.endsWith('Z') && isoStr.length === 23) {
-            isoStr = isoStr.replace(' ', 'T') + 'Z';
-        }
-        const date = new Date(isoStr);
-        const hours = date.getHours().toString().padStart(2, '0');
-        const minutes = date.getMinutes().toString().padStart(2, '0');
-        const result = `${hours}:${minutes}`;
-
-        // Cache result
-        this.timeCache.set(dateStr, result);
-        return result;
+        return this.dateTimeUtils.formatTime(dateStr);
     }
 
     constructor(
@@ -992,10 +880,6 @@ export class MessagesLayoutComponent
                 console.log('messageReactions: ', this.messageReactions());
                 console.log('countReactionMap: ', this.countReactionMap());
 
-                // Clear cache khi load conversation mới
-                this.dateCache.clear();
-                this.timeCache.clear();
-
                 // Reset pagination state
                 this.currentOffset = response.metadata?.homeMessagesData?.messages?.length || 0;
                 this.hasMore = response.metadata?.homeMessagesData?.hasMore ?? true;
@@ -1247,29 +1131,40 @@ export class MessagesLayoutComponent
         // Nếu Shift+Enter thì cho phép xuống dòng (mặc định của textarea)
     }
 
-    handleSendBtn() {
+    async handleSendBtn() {
         if (!this.newMessage.trim() && this.preUploadFiles().length === 0) return;
 
         const messageContent = this.newMessage;
         const replyTo = this.replyToMessage ? this.replyToMessage.id : undefined;
-        const replyToMessageObj = this.replyToMessage; // Capture trước khi clear
+        const replyToMessageObj = this.replyToMessage;
         const stagedFiles = this.preUploadFiles().map(f => f.file);
 
-        console.log('Reply:', replyToMessageObj);
+        // Chờ lấy link preview mới nhất
+        const linkPreview = await this.linkPreviewUtils.getLinkPreviewAsync(messageContent);
 
         this.newMessage = '';
+        this.closedPreviewUrls.clear();
         this.replyToMessage = null;
+        this.activeMessageLinkPreview = null;
         this.loading = true;
         this.error = '';
 
         // 1. Nếu có text, gửi text trước
         if (messageContent.trim()) {
+            const linkMetadata = linkPreview ? {
+                file_url: linkPreview.url,
+                thumbnail_url: linkPreview.image,
+                file_name: linkPreview.title,
+                link_description: linkPreview.description,
+                has_link: true
+            } : undefined;
+
             this.postAndBroadcastMessage(
                 messageContent,
                 'text',
                 replyTo,
                 undefined,
-                undefined,
+                linkMetadata,
                 replyToMessageObj,
             );
         }
@@ -1312,9 +1207,9 @@ export class MessagesLayoutComponent
         // Bước 1: Tạo temp message ngay lập tức cho mỗi file
         const tempEntries: { tempId: string; file: File }[] = [];
         finalFiles.forEach(file => {
-            const encodedName = encodeURIComponent(file.name.normalize('NFC'));
+            const filename = file.name.normalize('NFC');
             const blob = new Blob([file], { type: file.type });
-            formData.append('files', blob, encodedName);
+            formData.append('files', blob, filename);
 
             const tempId = 'temp-' + Date.now() + '-' + Math.random().toString(36).slice(2);
             let messageType = 'file';

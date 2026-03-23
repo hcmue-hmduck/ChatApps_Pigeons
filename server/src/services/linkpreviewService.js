@@ -24,23 +24,30 @@ class LinkPreviewService {
 
     extractMetaTag(html, attr, value) {
         if (!html) return null;
-        // Escape value for regex
         const escapedValue = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         
-        // This regex is more flexible with attribute order and spacing
-        // It looks for a <meta> tag that contains both the target attribute/value pair and a content attribute
-        const pattern = new RegExp(
-            `<meta[^>]+(?:${attr}=[\"']${escapedValue}[\"'][^>]+content=[\"']([^\"']+)[\"']|content=[\"']([^\"']+)[\"'][^>]+${attr}=[\"']${escapedValue}[\"'])`,
+        // 1. Try to find the tag first (attribute then content)
+        const tagPattern = new RegExp(`<meta[^>]+${attr}=[\\\"']${escapedValue}[\\\"'][^>]*>`, 'i');
+        const tagMatch = html.match(tagPattern);
+        
+        if (tagMatch) {
+            const tag = tagMatch[0];
+            const contentMatch = tag.match(/content=[\"']([^\"']+)[\"']/i);
+            if (contentMatch?.[1]) {
+                return this.decodeHtmlEntities(contentMatch[1]).trim();
+            }
+        }
+        
+        // 2. Fallback to reversed order (content then attribute)
+        const fallbackPattern = new RegExp(
+            `<meta[^>]+content=[\\\"']([^\\\"']+)[\\\"'][^>]+${attr}=[\\\"']${escapedValue}[\\\"']`,
             'i'
         );
-        
-        const match = html.match(pattern);
-        const result = match?.[1] || match?.[2] || null;
-        
-        if (result) {
-            // Decode HTML entities (e.g., &#xa0; or &amp;)
-            return this.decodeHtmlEntities(result).trim();
+        const fallbackMatch = html.match(fallbackPattern);
+        if (fallbackMatch?.[1]) {
+            return this.decodeHtmlEntities(fallbackMatch[1]).trim();
         }
+
         return null;
     }
 
@@ -63,7 +70,7 @@ class LinkPreviewService {
         return title ? this.decodeHtmlEntities(title) : null;
     }
 
-    
+
 }
 
 module.exports = new LinkPreviewService();

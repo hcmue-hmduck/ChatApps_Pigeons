@@ -113,8 +113,7 @@
     @if (showConversationInfor() && hasConversations() && selectedConversationId) {
     <app-conversation-infor-layout (closePanel)="toggleConversationInfor()"
         [userInfor]="conversations.homeConversationData?.userInfo" [currentUserId]="currentUserId"
-        [userPresence]="UserPresence()" [conversationAvatar]="getMessageInfor?.avatar_url" [tick1s]="tick1s()"
-        [tick60s]="tick60s()" [tick3600s]="tick3600s()"
+        [userPresence]="UserPresence()" [conversationAvatar]="getMessageInfor?.avatar_url"
         [conversationInfor]="conversations.homeConversationData?.joinedConversations?.find(conv => conv.conversation_id === selectedConversationId)">
     </app-conversation-infor-layout>
     }

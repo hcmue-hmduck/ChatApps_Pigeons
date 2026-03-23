@@ -52,6 +52,11 @@ const Message = sequelize.define('Message', {
         allowNull: true,
         field: 'thumbnail_url'
     },
+    link_description: {
+        type: DataTypes.STRING(500),
+        allowNull: true,
+        field: 'link_description'
+    },
     duration: {
         type: DataTypes.INTEGER,
         allowNull: true,

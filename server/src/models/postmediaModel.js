@@ -18,7 +18,7 @@ const PostMedia = sequelize.define('PostMedia', {
         allowNull: false,
         field: 'media_type',
         validate: {
-            isIn: [['image', 'video', 'file']]
+            isIn: [['image', 'video', 'file', 'link']]
         }
     },
     media_url: {
@@ -31,15 +31,15 @@ const PostMedia = sequelize.define('PostMedia', {
         allowNull: true,
         field: 'thumbnail_url'
     },
-    width: {
-        type: DataTypes.INTEGER,
+    link_description: {
+        type: DataTypes.STRING(500),
         allowNull: true,
-        field: 'width'
+        field: 'link_description'
     },
-    height: {
-        type: DataTypes.INTEGER,
+    link_site_name: {
+        type: DataTypes.STRING(255),
         allowNull: true,
-        field: 'height'
+        field: 'link_site_name'
     },
     duration: {
         type: DataTypes.INTEGER,

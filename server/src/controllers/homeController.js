@@ -65,7 +65,7 @@ class HomeController {
 
     async postHomeMessages(req, res) {
         const conversationId = req.params.convID;
-        const { senderId, content, parent_message_id, message_type, file_url, file_name, file_size, thumbnail_url, duration } = req.body;
+        const { senderId, content, parent_message_id, message_type, file_url, file_name, file_size, thumbnail_url, duration, link_description, has_link } = req.body;
 
         const newMessage = await homeService.postMessageToConversation(
             conversationId,
@@ -77,7 +77,9 @@ class HomeController {
             file_name,
             file_size,
             thumbnail_url,
-            duration
+            duration,
+            link_description,
+            has_link
         );
         new SuccessResponse({
             message: 'Post home message successfully',

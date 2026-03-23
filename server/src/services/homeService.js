@@ -65,6 +65,7 @@ class HomeService {
             const ogSiteName = linkpreviewService.extractMetaTag(html, 'property', 'og:site_name');
             const twitterSite = linkpreviewService.extractMetaTag(html, 'name', 'twitter:site');
             const metaDescription = linkpreviewService.extractMetaTag(html, 'name', 'description');
+            const metaOgSiteName = linkpreviewService.extractMetaTag(html, 'name', 'og:site_name');
             const titleTag = linkpreviewService.extractTitleTag(html);
 
             let imageUrl = ogImage || twitterImage || null;
@@ -76,12 +77,23 @@ class HomeService {
                 }
             }
 
+            const title = (ogTitle || twitterTitle || titleTag || parsedUrl.hostname || '').trim();
+            const description = (ogDescription || twitterDescription || metaDescription || '').trim();
+            const siteName = (ogSiteName || metaOgSiteName || twitterSite || parsedUrl.hostname || '').trim();
+
+            console.log('--- Link Preview Metadata Extracted ---', {
+                url: parsedUrl.toString(),
+                title,
+                description: description.substring(0, 50) + '...',
+                siteName
+            });
+
             return {
                 url: parsedUrl.toString(),
-                title: (ogTitle || twitterTitle || titleTag || parsedUrl.hostname || '').trim(),
-                description: (ogDescription || twitterDescription || metaDescription || '').trim(),
+                title,
+                description,
                 image: imageUrl,
-                siteName: (ogSiteName || twitterSite || parsedUrl.hostname || '').trim(),
+                siteName,
                 hostname: parsedUrl.hostname,
             };
         } catch {
@@ -380,14 +392,17 @@ class HomeService {
         file_name = null,
         file_size = null,
         thumbnail_url = null,
-        duration = null
+        duration = null,
+        link_description = null,
+        has_link = false
     ) {
         let resolvedFileUrl = file_url;
         let resolvedFileName = file_name;
         let resolvedFileSize = file_size;
         let resolvedThumbnailUrl = thumbnail_url;
         let resolvedDuration = duration;
-        let has_link = false;
+        let resolvedLinkDescription = link_description;
+        let resolvedHasLink = has_link;
 
         // Tận dụng các cột media hiện có để lưu link preview cho message text
         if (message_type === 'text' && content) {
@@ -395,14 +410,15 @@ class HomeService {
             if (detectedUrl) {
                 resolvedFileUrl = resolvedFileUrl || detectedUrl;
 
-                const needFetchPreview = !resolvedFileName || !resolvedThumbnailUrl;
+                const needFetchPreview = !resolvedFileName || !resolvedThumbnailUrl || !resolvedLinkDescription;
                 if (needFetchPreview) {
                     const preview = await this.getLinkPreview(detectedUrl);
-                    has_link = true;
+                    resolvedHasLink = true;
                     if (preview) {
                         resolvedFileUrl = resolvedFileUrl || preview.url || detectedUrl;
                         resolvedFileName = resolvedFileName || preview.title || preview.siteName || null;
                         resolvedThumbnailUrl = resolvedThumbnailUrl || preview.image || null;
+                        resolvedLinkDescription = resolvedLinkDescription || preview.description || null;
                     }
                 }
             }
@@ -416,11 +432,12 @@ class HomeService {
                 content,
                 parent_message_id,
                 message_type,
-                has_link: has_link,
+                has_link: resolvedHasLink,
                 file_url: resolvedFileUrl,
                 file_name: resolvedFileName,
                 file_size: resolvedFileSize,
                 thumbnail_url: resolvedThumbnailUrl,
+                link_description: resolvedLinkDescription,
                 duration: resolvedDuration,
                 time_sent: new Date(),
             }),

@@ -18,7 +18,22 @@ export class FileUtils {
         return `${gb.toFixed(1)} GB`;
     }
 
-    getFileExtension(filename: string): string {
+    getFileExtension(input: any): string {
+        if (!input) return 'UNKNOWN_FILE';
+
+        let filename = '';
+        if (typeof input === 'string') {
+            filename = input;
+        } else {
+            filename = input.file_name || input.name || '';
+            if (!filename) {
+                const url = input.media_url || input.url || input.file_url;
+                if (url) {
+                    filename = this.getFileName(url);
+                }
+            }
+        }
+
         const lastDot = filename.lastIndexOf('.');
         if (lastDot === -1 || lastDot === filename.length - 1) return 'UNKNOWN_FILE';
         return filename.slice(lastDot + 1).toUpperCase();
@@ -184,4 +199,32 @@ export class FileUtils {
         window.open(resolved, '_blank', 'noopener,noreferrer');
     }
 
+    getFileName(url: string | undefined | null): string {
+        if (!url) return 'file';
+        const decoded = decodeURIComponent(url);
+        const parts = decoded.split('/');
+        const lastPart = parts[parts.length - 1];
+        return lastPart.split('?')[0] || 'file';
+    }
+
+    getAttachmentDisplayName(attachment: any): string {
+        if (!attachment) return 'file';
+        // Support both DB model (file_name) and browser File object (name)
+        let name = attachment.file_name || attachment.name || '';
+        const url = attachment.media_url || attachment.url || attachment.file_url;
+
+        if (!name && url) {
+            return this.getFileName(url);
+        }
+
+        if (name) {
+            try {
+                return decodeURIComponent(name);
+            } catch {
+                return name;
+            }
+        }
+
+        return 'file';
+    }
 }

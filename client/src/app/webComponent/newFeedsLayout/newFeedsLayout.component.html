@@ -66,82 +66,147 @@
                                 </div>
                             </div>
 
-                            <textarea class="creator-textarea" placeholder="Bạn đang nghĩ gì ?"
-                                [(ngModel)]="newPostContent"></textarea>
+                            <textarea class="create-textarea" [(ngModel)]="newPostContent"
+                                placeholder="Có gì mới không?"></textarea>
 
-                            @if (selectedMediaPreviews.length > 0 || selectedAttachmentFiles.length > 0) {
-                            <div class="create-preview-list">
-                                @if (selectedMediaPreviews.length > 0) {
-                                <div class="create-preview-card image-preview-card">
-                                    <div class="media-grid creator-media-preview"
-                                        [ngClass]="getCreatorMediaLayoutClass()">
-                                        @for (media of selectedMediaPreviews.slice(0, 4); track media.id) {
-                                        <div class="media-item" (click)="openCreatorMediaPreview($index)">
-                                            @if (media.media_type === 'image') {
-                                            <img [src]="media.media_url" alt="Selected image preview"
-                                                class="media-content" referrerPolicy="no-referrer">
-                                            } @else if (media.media_type === 'video') {
-                                            <video [src]="media.media_url" class="media-content" muted
-                                                preload="metadata"></video>
-                                            }
+                            <div class="preview-container">
+                                @if (selectedMediaPreviews.length > 0 || selectedAttachmentFiles.length > 0) {
+                                <div class="create-preview-list">
+                                    @if (selectedMediaPreviews.length > 0) {
+                                    <div class="create-preview-card image-preview-card">
+                                        <div class="media-grid creator-media-preview"
+                                            [ngClass]="getCreatorMediaLayoutClass()">
+                                            @for (media of selectedMediaPreviews.slice(0, 4); track media.id) {
+                                            <div class="media-item" (click)="openCreatorMediaPreview($index)">
+                                                @if (media.media_type === 'image') {
+                                                <img [src]="media.media_url" alt="Selected image preview"
+                                                    class="media-content" referrerPolicy="no-referrer">
+                                                } @else if (media.media_type === 'video') {
+                                                <video [src]="media.media_url" class="media-content" muted
+                                                    preload="metadata"></video>
+                                                }
 
-                                            <button class="preview-remove-btn preview-remove-btn-float" type="button"
-                                                (click)="removeSelectedMedia(media.id)"
-                                                aria-label="Remove selected media">
-                                                <i class="bi bi-x-lg"></i>
-                                            </button>
+                                                <button class="preview-remove-btn preview-remove-btn-float"
+                                                    type="button" (click)="removeSelectedMedia(media.id)"
+                                                    aria-label="Remove selected media">
+                                                    <i class="bi bi-x-lg"></i>
+                                                </button>
 
-                                            @if (selectedMediaPreviews.length > 4 && $index === 3) {
-                                            <div class="overlay-count">
-                                                <span>+{{ selectedMediaPreviews.length - 3 }}</span>
+                                                @if (selectedMediaPreviews.length > 4 && $index === 3) {
+                                                <div class="overlay-count">
+                                                    <span>+{{ selectedMediaPreviews.length - 3 }}</span>
+                                                </div>
+                                                }
                                             </div>
                                             }
                                         </div>
-                                        }
+
+                                        <button class="preview-clear-all-btn" type="button"
+                                            (click)="clearSelectedMedia()">Xóa tất cả ảnh/video</button>
                                     </div>
+                                    }
+
+                                    @if (selectedAttachmentFiles.length > 0) {
+                                    @for (file of selectedAttachmentFiles; track file.name + '-' + file.lastModified;
+                                    let i = $index) {
+                                    <div class="create-preview-card file-preview-card">
+                                        <div class="preview-file-icon">
+                                            <i class="bi" [class]="'bi ' + fileUtils.getAttachmentIconClass(file)"></i>
+                                        </div>
+                                        <div class="preview-meta">
+                                            <p class="preview-title">{{ fileUtils.getAttachmentDisplayName(file) }}</p>
+                                            <p class="preview-subtitle">{{ fileUtils.formatFileSize(file.size) }} • {{
+                                                fileUtils.getFileExtension(file) }}</p>
+                                        </div>
+                                        <button class="preview-remove-btn" type="button"
+                                            (click)="removeSelectedAttachment(i)" aria-label="Remove selected file">
+                                            <i class="bi bi-x-lg"></i>
+                                        </button>
+                                    </div>
+                                    }
 
                                     <button class="preview-clear-all-btn" type="button"
-                                        (click)="clearSelectedMedia()">Xóa tất cả ảnh/video</button>
+                                        (click)="clearSelectedAttachments()">Xóa tất cả tệp</button>
+                                    }
                                 </div>
                                 }
 
-                                @if (selectedAttachmentFiles.length > 0) {
-                                @for (file of selectedAttachmentFiles; track file.name + '-' + file.lastModified; let i
-                                = $index) {
-                                <div class="create-preview-card file-preview-card">
-                                    <div class="preview-file-icon">
-                                        <i class="bi" [class]="'bi ' + fileUtils.getAttachmentIconClass(file)"></i>
-                                    </div>
-                                    <div class="preview-meta">
-                                        <p class="preview-title">{{ file.name }}</p>
-                                        <p class="preview-subtitle">{{ fileUtils.formatFileSize(file.size) }} • {{
-                                            fileUtils.getFileExtension(file.name) }}</p>
-                                    </div>
-                                    <button class="preview-remove-btn" type="button"
-                                        (click)="removeSelectedAttachment(i)" aria-label="Remove selected file">
-                                        <i class="bi bi-x-lg"></i>
+                                <!-- Link Previews should be independent of media -->
+                                @let editPreview = getLinkPreview(editPostContent, 'edit');
+                                @if (editPreview) {
+                                <div class="link-preview-card composer-preview"
+                                    [class.is-loading]="editPreview.loading">
+                                    @if (!editPreview.loading) {
+                                    <button class="remove-preview-btn" type="button"
+                                        (click)="clearEditLinkPreview()">
+                                        <i class="bi bi-x"></i>
                                     </button>
+                                    @if (editPreview.image) {
+                                    <div class="preview-image-wrap">
+                                        <img [src]="editPreview.image" alt="Preview Image"
+                                            referrerPolicy="no-referrer">
+                                    </div>
+                                    }
+                                    <div class="preview-content">
+                                        <div class="preview-host">{{ editPreview.hostname || editPreview.siteName }}
+                                        </div>
+                                        <div class="preview-title">{{ editPreview.title }}</div>
+                                        @if (editPreview.description) {
+                                        <div class="preview-description">{{ editPreview.description }}</div>
+                                        }
+                                    </div>
+                                    } @else {
+                                    <div class="preview-skeleton-image"></div>
+                                    <div class="preview-content">
+                                        <div class="skeleton-line skeleton-host"></div>
+                                        <div class="skeleton-line skeleton-title"></div>
+                                        <div class="skeleton-line skeleton-desc"></div>
+                                    </div>
+                                    }
                                 </div>
                                 }
 
-                                <button class="preview-clear-all-btn" type="button"
-                                    (click)="clearSelectedAttachments()">Xóa tất cả tệp</button>
+                                @let newPreview = getLinkPreview(newPostContent, 'new');
+                                @if (newPreview) {
+                                <div class="link-preview-card composer-preview"
+                                    [class.is-loading]="newPreview.loading">
+                                    @if (!newPreview.loading) {
+                                    <button class="remove-preview-btn" type="button" (click)="clearLinkPreview()">
+                                        <i class="bi bi-x"></i>
+                                    </button>
+                                    @if (newPreview.image) {
+                                    <div class="preview-image-wrap">
+                                        <img [src]="newPreview.image" alt="Preview Image"
+                                            referrerPolicy="no-referrer">
+                                    </div>
+                                    }
+                                    <div class="preview-content">
+                                        <div class="preview-host">{{ newPreview.hostname || newPreview.siteName }}
+                                        </div>
+                                        <div class="preview-title">{{ newPreview.title }}</div>
+                                        @if (newPreview.description) {
+                                        <div class="preview-description">{{ newPreview.description }}</div>
+                                        }
+                                    </div>
+                                    } @else {
+                                    <div class="preview-skeleton-image"></div>
+                                    <div class="preview-content">
+                                        <div class="skeleton-line skeleton-host"></div>
+                                        <div class="skeleton-line skeleton-title"></div>
+                                        <div class="skeleton-line skeleton-desc"></div>
+                                    </div>
+                                    }
+                                </div>
                                 }
                             </div>
-                            }
+                            </div>
 
                             <div class="create-footer">
                                 <div class="create-actions">
-                                    <button class="icon-btn subtle" type="button" title="Add image"
-                                        (click)="triggerImagePicker(imageInput)">
-                                        <i class="bi bi-image"></i>
-                                    </button>
                                     <button class="icon-btn subtle" type="button" title="Attach file"
                                         (click)="triggerAttachmentPicker(attachmentInput)">
                                         <i class="bi bi-paperclip"></i>
                                     </button>
-                                    <input id="create-post-image-input" #imageInput type="file" accept="image/*,video/*"
-                                        multiple class="hidden-file-input" (change)="onMediaSelected($event)">
                                     <input id="create-post-attachment-input" #attachmentInput type="file" multiple
                                         class="hidden-file-input" (change)="onAttachmentSelected($event)">
                                 </div>
@@ -152,7 +217,6 @@
                                 </button>
                             </div>
                         </div>
-                    </div>
 
                     @if (isPosting()) {
                     <div class="create-upload-overlay" aria-live="polite">
@@ -244,6 +308,25 @@
                                     {{ isContentExpanded(post.id) ? 'Thu gọn' : 'Xem thêm' }}
                                 </button>
                                 }
+
+                                @let preview = getStoredLinkPreview(post);
+                                @if (preview) {
+                                <a class="link-preview-card" [href]="preview.url" target="_blank"
+                                    rel="noopener noreferrer">
+                                    @if (preview.image) {
+                                    <div class="preview-image-wrap">
+                                        <img [src]="preview.image" alt="Preview Image" referrerPolicy="no-referrer">
+                                    </div>
+                                    }
+                                    <div class="preview-content">
+                                        <div class="preview-host">{{ preview.hostname || preview.siteName }}</div>
+                                        <div class="preview-title">{{ preview.title }}</div>
+                                        @if (preview.description) {
+                                        <div class="preview-description">{{ preview.description }}</div>
+                                        }
+                                    </div>
+                                </a>
+                                }
                             </div>
 
                             @if (post.feeling || post.location) {
@@ -267,8 +350,7 @@
                                     @for (media of getMediaItems(post).slice(0, 4); track media.id) {
                                     <div class="media-item" (click)="openLightbox(post, $index)">
                                         @if (media.media_type === 'image') {
-                                        <img [src]="media.media_url" alt="Post media" class="media-content"
-                                            referrerPolicy="no-referrer">
+                                        <img [src]="media.media_url" class="media-content" referrerPolicy="no-referrer">
                                         } @else if (media.media_type === 'video') {
                                         <video [src]="media.media_url" class="media-content" muted
                                             preload="metadata"></video>
@@ -289,24 +371,23 @@
                             @if (getAttachmentItems(post).length > 0) {
                             <div class="attachments-section">
                                 @for (attachment of getAttachmentItems(post); track attachment.id) {
-                                <div class="attachment-card" (click)="fileUtils.openFileInNewTab(attachment.media_url)">
+                                <a [href]="fileUtils.resolveMediaUrl(attachment.media_url)" target="_blank"
+                                    rel="noopener noreferrer" class="attachment-card">
                                     <div class="attachment-left">
                                         <div class="attachment-icon">
                                             <i class="bi"
                                                 [class]="'bi ' + fileUtils.getAttachmentIconClass(attachment)"></i>
                                         </div>
                                         <div>
-                                            <div class="attachment-title">{{ attachment.file_name ||
-                                                getFileName(attachment.media_url) }}
-                                            </div>
+                                            <div class="attachment-title">{{
+                                                fileUtils.getAttachmentDisplayName(attachment) }}</div>
                                             <div class="attachment-meta">
                                                 {{ fileUtils.formatFileSize(attachment.file_size || 0) }} • {{
-                                                fileUtils.getFileExtension(attachment.file_name ||
-                                                attachment.media_url) }}
+                                                fileUtils.getFileExtension(attachment) }}
                                             </div>
                                         </div>
                                     </div>
-                                </div>
+                                </a>
                                 }
                             </div>
                             }
@@ -321,7 +402,8 @@
                                     </div>
                                     <div class="deleted-content">
                                         <p class="deleted-title">Nội dung này không còn hiển thị</p>
-                                        <p class="deleted-text">Người đăng đã thu hồi hoặc xoá nội dung này khỏi hệ thống.
+                                        <p class="deleted-text">Người đăng đã thu hồi hoặc xoá nội dung này khỏi hệ
+                                            thống.
                                         </p>
                                     </div>
                                 </div>
@@ -464,7 +546,7 @@
                             }
                         </article>
                     </ng-template>
-                    
+
                     @if (loadingMore()) {
                     <div class="loading-more-spinner">
                         <div class="cyber-spinner"></div>
@@ -477,7 +559,7 @@
                         <p class="post-text">Chưa có bài viết nào để hiển thị.</p>
                     </article>
                     }
-                    
+
                     <div #scrollSentinel class="scroll-sentinel" style="height: 1px;"></div>
                 </div>
             </main>
@@ -587,7 +669,7 @@
 
         <div class="edit-modal-body">
             <textarea class="edit-textarea" [(ngModel)]="editPostContent"
-                placeholder="Bạn muốn chỉnh sửa gì?"></textarea>
+                placeholder="Chỉnh sửa nội dung bài viết..."></textarea>
 
             <div class="edit-control-grid">
                 <select class="cyber-select-small" [(ngModel)]="editPostPrivacy">
@@ -612,16 +694,10 @@
             </div>
 
             <div class="edit-file-actions">
-                <button class="icon-btn subtle" type="button" title="Thêm ảnh/video"
-                    (click)="triggerEditMediaPicker(editMediaInput)">
-                    <i class="bi bi-image"></i>
-                </button>
-                <button class="icon-btn subtle" type="button" title="Thêm file"
+                <button class="icon-btn subtle" type="button" title="Thêm file/ảnh"
                     (click)="triggerEditAttachmentPicker(editAttachmentInput)">
                     <i class="bi bi-paperclip"></i>
                 </button>
-                <input id="edit-post-media-input" #editMediaInput type="file" accept="image/*,video/*" multiple
-                    class="hidden-file-input" (change)="onEditMediaSelected($event)">
                 <input id="edit-post-attachment-input" #editAttachmentInput type="file" multiple
                     class="hidden-file-input" (change)="onEditAttachmentSelected($event)">
             </div>
@@ -663,10 +739,10 @@
                             <i class="bi" [class]="'bi ' + fileUtils.getAttachmentIconClass(attachment)"></i>
                         </div>
                         <div>
-                            <div class="attachment-title">{{ getAttachmentDisplayName(attachment) }}</div>
+                            <div class="attachment-title">{{ fileUtils.getAttachmentDisplayName(attachment) }}</div>
                             <div class="attachment-meta">
                                 {{ fileUtils.formatFileSize(attachment.file_size || 0) }} • {{
-                                fileUtils.getFileExtension(getAttachmentDisplayName(attachment)) }}
+                                fileUtils.getFileExtension(fileUtils.getAttachmentDisplayName(attachment)) }}
                             </div>
                         </div>
                     </div>
@@ -679,27 +755,56 @@
             </div>
             }
 
-            @if (getEditPreviewMediaItems().length > 0) {
-            <div class="edit-modal-preview new-media-preview">
-                <p class="edit-preview-title">File mới sẽ được thêm</p>
-                <div class="media-grid" [ngClass]="getMediaLayoutClass({ post_media: getEditPreviewMediaItems() })">
-                    @for (media of getEditPreviewMediaItems().slice(0, 4); track media.id) {
-                    <div class="media-item">
-                        @if (media.media_type === 'image') {
-                        <img [src]="media.media_url" alt="New media" class="media-content" referrerPolicy="no-referrer">
-                        } @else if (media.media_type === 'video') {
-                        <video [src]="media.media_url" class="media-content" muted preload="metadata"></video>
-                        }
-
-                        <button class="preview-remove-btn preview-remove-btn-float" type="button"
-                            (click)="removeEditNewMedia(media.id)" aria-label="Remove new media">
-                            <i class="bi bi-x-lg"></i>
-                        </button>
+            <div class="edit-media-preview-scroll">
+                @if (editLinkPreview) {
+                <div class="link-preview-card composer-preview">
+                    <button class="remove-preview-btn" type="button" (click)="clearEditLinkPreview()">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                    @if (editLinkPreview.image) {
+                    <div class="preview-image-wrap">
+                        <img [src]="editLinkPreview.image" alt="Preview Image" referrerPolicy="no-referrer">
                     </div>
                     }
+                    <div class="preview-content">
+                        <div class="preview-host">{{ editLinkPreview.hostname || editLinkPreview.siteName }}</div>
+                        <div class="preview-title">{{ editLinkPreview.title }}</div>
+                        @if (editLinkPreview.description) {
+                        <div class="preview-description">{{ editLinkPreview.description }}</div>
+                        }
+                    </div>
                 </div>
+                }
+
+                @if (getEditPreviewMediaItems().length > 0) {
+                <div class="edit-modal-preview new-media-preview">
+                    <p class="edit-preview-title">File mới sẽ được thêm</p>
+                    <div class="media-grid" [ngClass]="getMediaLayoutClass({ post_media: getEditPreviewMediaItems() })">
+                        @for (media of getEditPreviewMediaItems().slice(0, 4); track media.id) {
+                        <div class="media-item">
+                            @if (media.media_type === 'image') {
+                            <img [src]="media.media_url" alt="New media" class="media-content"
+                                referrerPolicy="no-referrer">
+                            } @else if (media.media_type === 'video') {
+                            <video [src]="media.media_url" class="media-content" muted preload="metadata"></video>
+                            }
+
+                            <button class="preview-remove-btn preview-remove-btn-float" type="button"
+                                (click)="removeEditNewMedia(media.id)" aria-label="Remove new media">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+
+                            @if (getEditPreviewMediaItems().length > 4 && $index === 3) {
+                            <div class="overlay-count">
+                                <span>+{{ getEditPreviewMediaItems().length - 3 }}</span>
+                            </div>
+                            }
+                        </div>
+                        }
+                    </div>
+                </div>
+                }
             </div>
-            }
 
             @if (getEditPreviewAttachmentItems().length > 0) {
             <div class="attachments-section edit-modal-attachments new-media-preview">
@@ -711,10 +816,10 @@
                             <i class="bi" [class]="'bi ' + fileUtils.getAttachmentIconClass(attachment)"></i>
                         </div>
                         <div>
-                            <div class="attachment-title">{{ attachment.file_name }}</div>
+                            <div class="attachment-title">{{ fileUtils.getAttachmentDisplayName(attachment) }}</div>
                             <div class="attachment-meta">
                                 {{ fileUtils.formatFileSize(attachment.file_size || 0) }} • {{
-                                fileUtils.getFileExtension(attachment.file_name) }}
+                                fileUtils.getFileExtension(attachment) }}
                             </div>
                         </div>
                     </div>
@@ -757,7 +862,8 @@
                         @if (shareFeeling()) {
                         <div class="share-feeling-container">
                             <span class="share-feeling-label">đang cảm thấy</span>
-                            <select class="share-feeling-inline-select" [ngModel]="shareFeeling()" (ngModelChange)="shareFeeling.set($event)">
+                            <select class="share-feeling-inline-select" [ngModel]="shareFeeling()"
+                                (ngModelChange)="shareFeeling.set($event)">
                                 <option value="">+ Cảm xúc</option>
                                 @for (e of emojis(); track e.id) {
                                 <option [value]="e.unicode_char + ' ' + e.name">{{ e.unicode_char }} {{ e.name }}
@@ -766,7 +872,8 @@
                             </select>
                         </div>
                         } @else {
-                        <select class="share-feeling-inline-select" [ngModel]="shareFeeling()" (ngModelChange)="shareFeeling.set($event)">
+                        <select class="share-feeling-inline-select" [ngModel]="shareFeeling()"
+                            (ngModelChange)="shareFeeling.set($event)">
                             <option value="">+ Cảm xúc</option>
                             @for (e of emojis(); track e.id) {
                             <option [value]="e.unicode_char + ' ' + e.name">{{ e.unicode_char }} {{ e.name }}</option>
@@ -776,7 +883,8 @@
                     </div>
                     <div class="share-meta-row">
                         <div class="share-meta-item">
-                            <select class="share-meta-select" [ngModel]="shareLocation()" (ngModelChange)="shareLocation.set($event)">
+                            <select class="share-meta-select" [ngModel]="shareLocation()"
+                                (ngModelChange)="shareLocation.set($event)">
                                 <option value="">📍 Phân vùng...</option>
                                 @for (p of provinces(); track p.code) {
                                 <option [value]="p.name">📍 {{ p.name }}</option>
@@ -784,7 +892,8 @@
                             </select>
                         </div>
                         <div class="share-meta-item">
-                            <select [ngModel]="sharePrivacy()" (ngModelChange)="sharePrivacy.set($event)" class="share-meta-select share-privacy-select">
+                            <select [ngModel]="sharePrivacy()" (ngModelChange)="sharePrivacy.set($event)"
+                                class="share-meta-select share-privacy-select">
                                 <option value="public">🌐 Công khai</option>
                                 <option value="friends">👥 Bạn bè</option>
                                 <option value="only_me">🔒 Chỉ mình tôi</option>
@@ -797,6 +906,38 @@
             <div class="share-input-section">
                 <textarea class="share-textarea" placeholder="Hãy nói gì đó về nội dung này..."
                     [ngModel]="shareContent()" (ngModelChange)="shareContent.set($event)" autoFocus></textarea>
+
+                <!-- Shared Link Preview inside Share Modal -->
+                @let sharePreview = getLinkPreview(shareContent() || '', 'share');
+                @if (sharePreview) {
+                <div class="link-preview-card composer-preview" [class.is-loading]="sharePreview.loading">
+                    @if (!sharePreview.loading) {
+                    <button class="remove-preview-btn" type="button" (click)="clearShareLinkPreview()">
+                        <i class="bi bi-x"></i>
+                    </button>
+                    @if (sharePreview.image) {
+                    <div class="preview-image-wrap">
+                        <img [src]="sharePreview.image" alt="Preview Image" referrerPolicy="no-referrer">
+                    </div>
+                    }
+                    <div class="preview-content">
+                        <div class="preview-host">{{ sharePreview.hostname || sharePreview.siteName }}
+                        </div>
+                        <div class="preview-title">{{ sharePreview.title }}</div>
+                        @if (sharePreview.description) {
+                        <div class="preview-description">{{ sharePreview.description }}</div>
+                        }
+                    </div>
+                    } @else {
+                    <div class="preview-skeleton-image"></div>
+                    <div class="preview-content">
+                        <div class="skeleton-line skeleton-host"></div>
+                        <div class="skeleton-line skeleton-title"></div>
+                        <div class="skeleton-line skeleton-desc"></div>
+                    </div>
+                    }
+                </div>
+                }
             </div>
         </div>
 

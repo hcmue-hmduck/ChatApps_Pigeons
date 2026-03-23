@@ -19,6 +19,8 @@ import { GroupAvatarLayoutComponent } from '../groupAvatarLayout/groupAvatarLayo
 import { IntroLayoutComponent } from '../introLayout/introLayout.component';
 import { Participant } from '../../services/participant';
 import { UserBlock } from '../../services/userBlock';
+import { DateTimeUtils } from '../../utils/DateTimeUtils/datetimeUtils';
+import { FileUtils } from '../../utils/FileUtils/fileUltils';
 
 export interface UserPresence {
     status: string;
@@ -77,7 +79,11 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     private pendingReadMessageIdByConversation = new Map<string, string>();
     private hasInitWelcomeResetEffect = false;
 
-    constructor(private socketService: SocketService) {
+    constructor(
+        private socketService: SocketService,
+        public dateTimeUtils: DateTimeUtils,
+        public fileUtils: FileUtils
+    ) {
         effect(() => {
             const pendingId = this.navService.pendingConversationId();
             if (!pendingId) return;
@@ -559,21 +565,6 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     }
 
     relativeTime(dateInput: string | Date, tick1s: number, tick60s: number, tick3600s: number): string {
-        if (!dateInput) return '';
-
-        // Đoạn này lấy timestamp kể cả khi đưa vào là String hay Date object
-        const timeToCompare = typeof dateInput === 'string'
-            ? new Date(dateInput.endsWith('Z') || dateInput.length !== 23 ? dateInput : dateInput.replace(' ', 'T') + 'Z').getTime()
-            : dateInput.getTime();
-
-        const diff = Math.floor((Date.now() - timeToCompare) / 1000);
-        if (diff <= 60) { const _ = tick1s; return 'Vừa xong'; }
-        if (diff < 3600) { const _ = tick60s; return `${Math.floor(diff / 60)} phút`; }
-        const _ = tick3600s;
-        if (diff < 86400) return `${Math.floor(diff / 3600)} giờ`;
-        if (diff < 604800) return `${Math.floor(diff / 86400)} ngày`;
-        if (diff < 2592000) return `${Math.floor(diff / 604800)} tuần`;
-        if (diff < 31536000) return `${Math.floor(diff / 2592000)} tháng`;
-        return `${Math.floor(diff / 31536000)} năm`;
+        return this.dateTimeUtils.relativeTime(dateInput, tick1s, tick60s, tick3600s);
     }
 }

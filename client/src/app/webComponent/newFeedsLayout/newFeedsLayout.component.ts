@@ -1,4 +1,4 @@
-import { Component, Input, signal, OnDestroy, HostListener, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, Input, signal, OnDestroy, HostListener, ViewChild, ElementRef, AfterViewInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpEventType } from '@angular/common/http';
@@ -7,13 +7,18 @@ import { Emojis } from "../../services/emojis";
 import { Comment } from '../../services/comment';
 import { UploadService } from '../../services/uploadService';
 import { FileUtils } from '../../utils/FileUtils/fileUltils';
+import { DateTimeUtils } from '../../utils/DateTimeUtils/datetimeUtils';
 import { SocketService } from '../../services/socket';
+import { LinkPreviewUtils } from '../../utils/LinkUtils/linkPreviewUtils';
 import Swal from 'sweetalert2';
 
 @Component({
     selector: 'new-feeds-layout',
     standalone: true,
-    imports: [CommonModule, FormsModule],
+    imports: [
+        CommonModule,
+        FormsModule,
+    ],
     templateUrl: './newFeedsLayout.component.html',
     styleUrl: './newFeedsLayout.component.css'
 })
@@ -34,7 +39,10 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         private commentService: Comment,
         private uploadService: UploadService,
         public fileUtils: FileUtils,
-        private socketService: SocketService
+        public dateTimeUtils: DateTimeUtils,
+        private socketService: SocketService,
+        private linkPreviewUtils: LinkPreviewUtils,
+        private cdr: ChangeDetectorRef
     ) { }
 
     private _userInfor: any;
@@ -57,6 +65,9 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
     isUpdatingPost = signal(false);
     uploadProgress = signal(0);
     uploadStage = signal<'creating' | 'uploading' | 'saving'>('creating');
+    activeLinkPreview: any | null = null;
+    editLinkPreview: any | null = null;
+    shareLinkPreview: any | null = null;
     activeMenuPostId = signal<string | null>(null);
     isEditModalOpen = signal(false);
     isShareModalOpen = signal(false);
@@ -170,15 +181,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         this.socketService.off('newPost');
     }
 
-    triggerImagePicker(input: HTMLInputElement) {
-        input.click();
-    }
-
     triggerAttachmentPicker(input: HTMLInputElement) {
-        input.click();
-    }
-
-    triggerEditMediaPicker(input: HTMLInputElement) {
         input.click();
     }
 
@@ -283,83 +286,12 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         })
     }
 
-    onMediaSelected(event: Event) {
-        const input = event.target as HTMLInputElement;
-        const files = Array.from(input.files || []);
-        if (!files.length) return;
-
-        const mediaFiles = files.filter(file => file.type.startsWith('image/') || file.type.startsWith('video/'));
-        if (!mediaFiles.length) {
-            input.value = '';
-            return;
-        }
-
-        for (const file of mediaFiles) {
-            const validation = this.fileUtils.validateFileSize(file);
-            if (!validation.valid) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Tệp quá lớn',
-                    text: validation.message,
-                    confirmButtonColor: '#00f2ff',
-                    background: '#06131f',
-                    color: '#fff'
-                });
-                continue;
-            }
-            const objectUrl = URL.createObjectURL(file);
-            const previewId = `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`;
-            const mediaType = file.type.startsWith('video/') ? 'video' : 'image';
-            const previewItem = {
-                id: previewId,
-                media_type: mediaType as 'image' | 'video',
-                media_url: objectUrl,
-                width: 1,
-                height: 1
-            };
-
-            this.selectedMediaFiles.push(file);
-            this.selectedMediaPreviews.push(previewItem);
-
-            if (mediaType === 'image') {
-                const img = new Image();
-                img.onload = () => {
-                    const target = this.selectedMediaPreviews.find(item => item.id === previewId);
-                    if (target) {
-                        target.width = img.naturalWidth || 1;
-                        target.height = img.naturalHeight || 1;
-                    }
-                };
-                img.src = objectUrl;
-            } else {
-                const video = document.createElement('video');
-                video.preload = 'metadata';
-                video.onloadedmetadata = () => {
-                    const target = this.selectedMediaPreviews.find(item => item.id === previewId);
-                    if (target) {
-                        target.width = video.videoWidth || 1;
-                        target.height = video.videoHeight || 1;
-                    }
-                };
-                video.src = objectUrl;
-            }
-        }
-
-        input.value = '';
-    }
-
     onAttachmentSelected(event: Event) {
         const input = event.target as HTMLInputElement;
         const files = Array.from(input.files || []);
         if (!files.length) return;
 
-        const nonMediaFiles = files.filter(file => !(file.type.startsWith('image/') || file.type.startsWith('video/')));
-        if (!nonMediaFiles.length) {
-            input.value = '';
-            return;
-        }
-
-        for (const file of nonMediaFiles) {
+        for (const file of files) {
             const validation = this.fileUtils.validateFileSize(file);
             if (!validation.valid) {
                 Swal.fire({
@@ -372,25 +304,54 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                 });
                 continue;
             }
-            const existed = this.selectedAttachmentFiles.some(
-                item => item.name === file.name && item.size === file.size && item.lastModified === file.lastModified
-            );
-            if (!existed) {
-                this.selectedAttachmentFiles.push(file);
+
+            if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+                // Handle as Media
+                const objectUrl = URL.createObjectURL(file);
+                const previewId = `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`;
+                const mediaType = file.type.startsWith('video/') ? 'video' : 'image';
+                const previewItem = {
+                    id: previewId,
+                    media_type: mediaType as 'image' | 'video',
+                    media_url: objectUrl,
+                    width: 1,
+                    height: 1
+                };
+
+                this.selectedMediaFiles.push(file);
+                this.selectedMediaPreviews.push(previewItem);
+
+                if (mediaType === 'image') {
+                    const img = new Image();
+                    img.onload = () => {
+                        const target = this.selectedMediaPreviews.find(item => item.id === previewId);
+                        if (target) {
+                            target.width = img.naturalWidth || 1;
+                            target.height = img.naturalHeight || 1;
+                        }
+                    };
+                    img.src = objectUrl;
+                } else {
+                    const video = document.createElement('video');
+                    video.preload = 'metadata';
+                    video.onloadedmetadata = () => {
+                        const target = this.selectedMediaPreviews.find(item => item.id === previewId);
+                        if (target) {
+                            target.width = video.videoWidth || 1;
+                            target.height = video.videoHeight || 1;
+                        }
+                    };
+                    video.src = objectUrl;
+                }
+            } else {
+                // Handle as Attachment
+                const existed = this.selectedAttachmentFiles.some(
+                    item => item.name === file.name && item.size === file.size && item.lastModified === file.lastModified
+                );
+                if (!existed) {
+                    this.selectedAttachmentFiles.push(file);
+                }
             }
-        }
-
-        input.value = '';
-    }
-
-    onEditMediaSelected(event: Event) {
-        const input = event.target as HTMLInputElement;
-        const files = Array.from(input.files || []);
-        if (!files.length) return;
-
-        const mediaFiles = files.filter(file => file.type.startsWith('image/') || file.type.startsWith('video/'));
-        for (const file of mediaFiles) {
-            this.appendEditFilePreview(file);
         }
 
         input.value = '';
@@ -401,8 +362,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         const files = Array.from(input.files || []);
         if (!files.length) return;
 
-        const attachmentFiles = files.filter(file => !(file.type.startsWith('image/') || file.type.startsWith('video/')));
-        for (const file of attachmentFiles) {
+        for (const file of files) {
             this.appendEditFilePreview(file);
         }
 
@@ -484,8 +444,8 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         this.selectedMediaPreviews = [];
 
         if (resetInput) {
-            const imageInput = document.getElementById('create-post-image-input') as HTMLInputElement | null;
-            if (imageInput) imageInput.value = '';
+            const attachmentInput = document.getElementById('create-post-attachment-input') as HTMLInputElement | null;
+            if (attachmentInput) attachmentInput.value = '';
         }
     }
 
@@ -528,9 +488,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         this.editPostNewMediaPreviews = [];
 
         if (resetInput) {
-            const mediaInput = document.getElementById('edit-post-media-input') as HTMLInputElement | null;
             const attachmentInput = document.getElementById('edit-post-attachment-input') as HTMLInputElement | null;
-            if (mediaInput) mediaInput.value = '';
             if (attachmentInput) attachmentInput.value = '';
         }
     }
@@ -693,25 +651,89 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         return `media-grid-${countClass} hero-${orientation}`;
     }
 
+    getStoredLinkPreview(post: any): any | null {
+        if (!post) return null;
+
+        // 1. Check if there's a stored link preview in post_media
+        if (post.post_media && Array.isArray(post.post_media)) {
+            const linkMedia = post.post_media.find((m: any) => m.media_type === 'link');
+            if (linkMedia) {
+                return {
+                    url: linkMedia.media_url,
+                    title: linkMedia.file_name,
+                    image: linkMedia.thumbnail_url,
+                    description: linkMedia.link_description,
+                    siteName: linkMedia.link_site_name,
+                    hostname: ''
+                };
+            }
+        }
+
+        return null;
+    }
+
+    closedNewPreviewUrls = new Set<string>();
+    closedEditPreviewUrls = new Set<string>();
+
+    getLinkPreview(content: string, type: 'new' | 'edit' | 'share' = 'new'): any | null {
+        if (!content) {
+            if (type === 'new') this.activeLinkPreview = null;
+            else if (type === 'edit') this.editLinkPreview = null;
+            else if (type === 'share') this.shareLinkPreview = null;
+            return null;
+        }
+
+        const url = this.linkPreviewUtils.extractFirstUrl(content);
+        let isHidden = false;
+        
+        if (url) {
+            const targetSet = type === 'new' ? this.closedNewPreviewUrls : 
+                              type === 'edit' ? this.closedEditPreviewUrls : null;
+            
+            if (targetSet) {
+                for (const closedUrl of targetSet) {
+                    if (closedUrl.includes(url) || url.includes(closedUrl)) {
+                        isHidden = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        const previewData = this.linkPreviewUtils.getLinkPreview(content, (preview) => {
+            if (type === 'new') this.activeLinkPreview = preview;
+            else if (type === 'edit') this.editLinkPreview = preview;
+            else if (type === 'share') this.shareLinkPreview = preview;
+            this.cdr.markForCheck();
+        });
+
+        if (isHidden) return null;
+        
+        return previewData;
+    }
+
+    clearLinkPreview() {
+        const url = this.linkPreviewUtils.extractFirstUrl(this.newPostContent);
+        if (url) {
+            this.closedNewPreviewUrls.add(url);
+            this.cdr.markForCheck();
+        }
+    }
+
+    clearEditLinkPreview() {
+        const url = this.linkPreviewUtils.extractFirstUrl(this.editPostContent);
+        if (url) {
+            this.closedEditPreviewUrls.add(url);
+            this.cdr.markForCheck();
+        }
+    }
+
+    clearShareLinkPreview() {
+        this.shareLinkPreview = null;
+    }
+
     formatPostTime(dateValue: string | null | undefined): string {
-        if (!dateValue) return 'Vừa xong';
-
-        const date = new Date(dateValue);
-        if (Number.isNaN(date.getTime())) return 'Vừa xong';
-
-        const diffSeconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
-        if (diffSeconds < 60) return 'Vừa xong';
-        if (diffSeconds < 3600) return `${Math.floor(diffSeconds / 60)} phút trước`;
-        if (diffSeconds < 86400) return `${Math.floor(diffSeconds / 3600)} giờ trước`;
-        if (diffSeconds < 604800) return `${Math.floor(diffSeconds / 86400)} ngày trước`;
-
-        return new Intl.DateTimeFormat('vi-VN', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        }).format(date);
+        return this.dateTimeUtils.formatPostTime(dateValue);
     }
 
     formatPrivacy(privacy: string | null | undefined): string {
@@ -807,6 +829,8 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         this.editPostExistingMedia = Array.isArray(post.post_media) ? [...post.post_media] : [];
         this.editPostNewMediaFiles = [];
         this.editPostNewMediaPreviews = [];
+        const preview = this.getStoredLinkPreview(post);
+        this.editLinkPreview = preview;
         this.isEditModalOpen.set(true);
     }
 
@@ -820,6 +844,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         this.editPostExistingMedia = [];
         this.clearEditNewMedia();
         this.isUpdatingPost.set(false);
+        this.closedEditPreviewUrls.clear();
     }
 
     normalizeUploadedMediaItem(media: any): any {
@@ -846,7 +871,9 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
             thumbnail_url: media?.thumbnail_url,
             duration: media?.duration || 0,
             file_name: media?.file_name,
-            file_size: media?.file_size
+            file_size: media?.file_size,
+            link_description: media?.link_description,
+            link_site_name: media?.link_site_name
         };
     }
 
@@ -872,10 +899,24 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
             content: updatedPost.content,
             privacy: updatedPost.privacy,
             feeling: updatedPost.feeling,
-            location: updatedPost.location
+            location: updatedPost.location,
+            post_type: (this.editLinkPreview) ? 'link' : (updatedPost.content ? 'text' : 'media')
         };
 
-        const existingPayload = this.editPostExistingMedia.map(media => this.mapExistingMediaToUpdatePayload(media));
+        const existingPayload = this.editPostExistingMedia
+            .filter(media => media.media_type !== 'link') // Remove old link preview from existing media if present
+            .map(media => this.mapExistingMediaToUpdatePayload(media));
+
+        if (this.editLinkPreview) {
+            existingPayload.push({
+                resource_type: 'link',
+                url: this.editLinkPreview.url,
+                thumbnail_url: this.editLinkPreview.image,
+                file_name: this.editLinkPreview.title,
+                link_description: this.editLinkPreview.description,
+                link_site_name: this.editLinkPreview.siteName
+            });
+        }
         const savePostUpdate = (mediaPayload: any[], finalPostMedia: any[]) => {
             const optimisticPost = {
                 ...updatedPost,
@@ -900,7 +941,18 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         };
 
         if (this.editPostNewMediaFiles.length === 0) {
-            savePostUpdate(existingPayload, [...this.editPostExistingMedia]);
+            const finalPostMedia = [...this.editPostExistingMedia].filter(m => m.media_type !== 'link');
+            if (this.editLinkPreview) {
+                finalPostMedia.push({
+                    media_type: 'link',
+                    media_url: this.editLinkPreview.url,
+                    thumbnail_url: this.editLinkPreview.image,
+                    file_name: this.editLinkPreview.title,
+                    link_description: this.editLinkPreview.description,
+                    link_site_name: this.editLinkPreview.siteName
+                });
+            }
+            savePostUpdate(existingPayload, finalPostMedia);
             return;
         }
 
@@ -916,10 +968,24 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
 
                 const uploadedFiles = event.body?.metadata?.files || [];
                 const uploadedPostMedia = uploadedFiles.map((item: any) => this.normalizeUploadedMediaItem(item));
-                const combinedMedia = [...this.editPostExistingMedia, ...uploadedPostMedia];
-                const mediaPayload = [...existingPayload, ...uploadedFiles];
+                const finalMediaPayload = [...existingPayload, ...uploadedFiles];
+                const finalPostMedia = [
+                    ...this.editPostExistingMedia.filter(m => m.media_type !== 'link'),
+                    ...uploadedPostMedia
+                ];
 
-                savePostUpdate(mediaPayload, combinedMedia);
+                if (this.editLinkPreview) {
+                    finalPostMedia.push({
+                        media_type: 'link',
+                        media_url: this.editLinkPreview.url,
+                        thumbnail_url: this.editLinkPreview.image,
+                        file_name: this.editLinkPreview.title,
+                        link_description: this.editLinkPreview.description,
+                        link_site_name: this.editLinkPreview.siteName
+                    });
+                }
+
+                savePostUpdate(finalMediaPayload, finalPostMedia);
             },
             error: (err) => {
                 this.isUpdatingPost.set(false);
@@ -964,34 +1030,31 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         });
     }
 
-    handlePostFeed() {
+    async handlePostFeed() {
         const content = this.newPostContent.trim();
-        if (!content && this.selectedMediaFiles.length === 0 && this.selectedAttachmentFiles.length === 0) return;
+        const hasFiles = this.selectedMediaFiles.length > 0 || this.selectedAttachmentFiles.length > 0;
+
+        if (!content && !hasFiles) return;
         if (this.isPosting()) return;
 
         const userId = this._userInfor?.id;
-        if (!userId) {
-            console.error('User information not available');
-            return;
-        }
+        if (!userId) return;
 
-        const formData = new FormData();
-        for (const file of this.selectedMediaFiles) formData.append('files', file);
-        for (const file of this.selectedAttachmentFiles) formData.append('files', file);
+        this.isPosting.set(true);
+        this.uploadProgress.set(0);
+        this.uploadStage.set('creating');
+
+        // 1. Chờ lấy Preview trước để xác định chính xác post_type
+        const linkPreview = await this.linkPreviewUtils.getLinkPreviewAsync(content);
 
         const postData = {
             user_id: userId,
-            content: content ? content : null,
-            post_type: content ? 'text' : 'media',
+            content: content || null,
+            post_type: linkPreview ? 'link' : (hasFiles ? 'media' : 'text'),
             privacy: this.newPostPrivacy,
             feeling: this.newPostFeeling,
             location: this.newPostLocation
         };
-
-        const hasFiles = this.selectedMediaFiles.length > 0 || this.selectedAttachmentFiles.length > 0;
-        this.isPosting.set(true);
-        this.uploadProgress.set(0);
-        this.uploadStage.set('creating');
 
         const resetComposer = () => {
             this.newPostContent = '';
@@ -1000,6 +1063,8 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
             this.newPostLocation = '';
             this.clearSelectedMedia();
             this.clearSelectedAttachments();
+            this.activeLinkPreview = null;
+            this.closedNewPreviewUrls.clear();
         };
 
         const finishPosting = (shouldReset: boolean) => {
@@ -1011,94 +1076,86 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
 
         this.feedsService.createNewPost(postData).subscribe({
             next: (data) => {
-                data.metadata.newPost.user_infor = this._userInfor;
                 const newPost = data.metadata.newPost;
-                console.log('Post created successfully:', newPost);
+                newPost.user_infor = this._userInfor;
 
                 const rollbackCreatedPost = () => {
                     this.feedsService.deletePost(newPost.id).subscribe({
-                        next: () => {
-                            console.log('Rollback post success:', newPost.id);
-                        },
-                        error: (rollbackErr) => {
-                            console.error('Rollback post failed:', rollbackErr);
-                            this.error.set('Đăng bài thất bại và rollback không thành công. Vui lòng kiểm tra dữ liệu.');
-                        }
+                        next: () => console.log('Rollback success:', newPost.id),
+                        error: (err) => console.error('Rollback failed:', err)
                     });
                 };
 
-                if (!hasFiles) {
-                    newPost.post_media = [];
-                    // Add user info and empty arrays for new post
-                    const newPostWithDetails = {
+                const finalizePost = (media: any[] = []) => {
+                    const enrichedPost = {
                         ...newPost,
-                        user_infor: this._userInfor,
                         comments: [],
-                        post_media: [],
+                        post_media: media,
                         comments_count: 0,
                         likes_count: 0,
                         shares_count: 0
                     };
-                    this.posts.update(prev => [newPostWithDetails, ...prev]);
-                    this.socketService.emit('newPost', newPostWithDetails);
+                    this.posts.update(prev => [enrichedPost, ...prev]);
+                    this.socketService.emit('newPost', enrichedPost);
+                    this.uploadProgress.set(100);
                     finishPosting(true);
-                    return;
-                }
+                };
 
-                this.uploadStage.set('uploading');
-                this.uploadService.uploadFileFeedsWithProgress(newPost.id, formData).subscribe({
-                    next: (event) => {
-                        if (event.type === HttpEventType.UploadProgress) {
-                            const total = event.total || 0;
-                            if (total > 0) {
-                                const progress = Math.round((event.loaded / total) * 100);
-                                this.uploadProgress.set(Math.min(progress, 97));
-                            }
-                            return;
-                        }
-
-                        if (event.type === HttpEventType.Response) {
-                            this.uploadProgress.set(98);
-                            this.uploadStage.set('saving');
-
-                            const uploaded = event.body;
-                            console.log('Files uploaded successfully:', uploaded);
-                            this.feedsService.createNewMediaPost(newPost.id, uploaded.metadata.files).subscribe({
-                                next: (mediaResponse) => {
-                                    console.log('Media post created successfully:', mediaResponse);
-                                    const enrichedPost = {
-                                        ...newPost,
-                                        user_infor: this._userInfor,
-                                        comments: [],
-                                        post_media: mediaResponse.metadata.newMediaPost,
-                                        comments_count: 0,
-                                        likes_count: 0,
-                                        shares_count: 0
-                                    };
-                                    this.posts.update(prev => [enrichedPost, ...prev]);
-                                    this.socketService.emit('newPost', enrichedPost);
-                                    this.uploadProgress.set(100);
-                                    finishPosting(true);
-                                },
-                                error: (err) => {
-                                    console.error('Error creating media post:', err);
-                                    this.error.set('Tạo media bài viết thất bại. Vui lòng thử lại.');
-                                    rollbackCreatedPost();
-                                    finishPosting(false);
-                                }
-                            });
-                        }
-                    },
-                    error: (err) => {
-                        console.error('Error uploading files:', err);
-                        this.error.set('Upload file thất bại. Vui lòng thử lại.');
-                        rollbackCreatedPost();
-                        finishPosting(false);
+                const saveMediaAndFinish = (mediaToSave: any[]) => {
+                    if (linkPreview) {
+                        mediaToSave.push({
+                            media_type: 'link',
+                            media_url: linkPreview.url,
+                            thumbnail_url: linkPreview.image,
+                            file_name: linkPreview.title,
+                            link_description: linkPreview.description,
+                            link_site_name: linkPreview.siteName
+                        });
                     }
-                });
+
+                    if (mediaToSave.length > 0) {
+                        this.feedsService.createNewMediaPost(newPost.id, mediaToSave).subscribe({
+                            next: (res) => finalizePost(res.metadata.newMediaPost),
+                            error: (err) => {
+                                console.error('Media error:', err);
+                                rollbackCreatedPost();
+                                finishPosting(false);
+                            }
+                        });
+                    } else {
+                        finalizePost();
+                    }
+                };
+
+                if (hasFiles) {
+                    const formData = new FormData();
+                    for (const file of this.selectedMediaFiles) formData.append('files', file);
+                    for (const file of this.selectedAttachmentFiles) formData.append('files', file);
+
+                    this.uploadStage.set('uploading');
+                    this.uploadService.uploadFileFeedsWithProgress(newPost.id, formData).subscribe({
+                        next: (event) => {
+                            if (event.type === HttpEventType.UploadProgress) {
+                                const progress = Math.round(((event.loaded || 0) / (event.total || 1)) * 100);
+                                this.uploadProgress.set(Math.min(progress, 97));
+                            } else if (event.type === HttpEventType.Response) {
+                                this.uploadProgress.set(98);
+                                this.uploadStage.set('saving');
+                                saveMediaAndFinish([...event.body.metadata.files]);
+                            }
+                        },
+                        error: (err) => {
+                            console.error('Upload error:', err);
+                            rollbackCreatedPost();
+                            finishPosting(false);
+                        }
+                    });
+                } else {
+                    saveMediaAndFinish([]);
+                }
             },
             error: (err) => {
-                console.error('Error creating post:', err);
+                console.error('Post error:', err);
                 this.error.set('Tạo bài viết thất bại. Vui lòng thử lại.');
                 finishPosting(false);
             }
@@ -1112,6 +1169,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
             this.sharePrivacy.set('public');
             this.shareLocation.set('');
             this.shareFeeling.set('');
+            this.shareLinkPreview = null;
             this.isShareModalOpen.set(true);
         }
     }
@@ -1137,55 +1195,69 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
 
         this.feedsService.createNewPost(shareData).subscribe({
             next: (response: any) => {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Đã chia sẻ',
-                    text: 'Bài viết đã được chia sẻ lên bảng tin của bạn.',
-                    timer: 1500,
-                    showConfirmButton: false,
-                    background: '#06131f',
-                    color: '#fff'
-                });
+                const newPostId = response.metadata.newPost.id;
 
-                this.posts.update(prev => prev.map(post => {
-                    if (post.id === this.sharingPost().id) {
-                        return {
-                            ...post,
-                            shares_count: (post.shares_count || 0) + 1
-                        };
-                    }
-                    return post;
-                }));
+                const completeShare = (mediaData: any[] = []) => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Đã chia sẻ',
+                        text: 'Bài viết đã được chia sẻ lên bảng tin của bạn.',
+                        timer: 1500,
+                        showConfirmButton: false,
+                        background: '#06131f',
+                        color: '#fff'
+                    });
 
-                this.feedsService.updatePost(this.sharingPost().id, {
-                    postData: { shares_count: (this.sharingPost().shares_count || 0) + 1 },
-                    mediaData: null
-                }).subscribe({
-                    next: (response: any) => {
-                        console.log('Post updated successfully:', response);
-                    },
-                    error: (err: any) => {
-                        console.error('Error updating post:', err);
-                    }
-                });
+                    this.posts.update(prev => prev.map(post => {
+                        if (post.id === this.sharingPost().id) {
+                            return {
+                                ...post,
+                                shares_count: (post.shares_count || 0) + 1
+                            };
+                        }
+                        return post;
+                    }));
 
-                const originalPost = this.sharingPost();
-                originalPost.shares_count = (originalPost.shares_count || 0) + 1;
-                this.closeShareModal();
+                    this.feedsService.updatePost(this.sharingPost().id, {
+                        postData: { shares_count: (this.sharingPost().shares_count || 0) + 1 },
+                        mediaData: null
+                    }).subscribe();
 
-                console.log('Original Post:', originalPost);
-                const sharedPostWithDetails = {
-                    ...response.metadata.newPost,
-                    user_infor: this._userInfor,
-                    comments: [],
-                    post_media: [],
-                    comments_count: 0,
-                    likes_count: 0,
-                    shares_count: 0,
-                    shared_post: originalPost // Attach the original post object for recursive display
+                    const originalPost = this.sharingPost();
+                    originalPost.shares_count = (originalPost.shares_count || 0) + 1;
+                    this.closeShareModal();
+
+                    const sharedPostWithDetails = {
+                        ...response.metadata.newPost,
+                        user_infor: this._userInfor,
+                        comments: [],
+                        post_media: mediaData,
+                        comments_count: 0,
+                        likes_count: 0,
+                        shares_count: 0,
+                        shared_post: originalPost
+                    };
+                    this.posts.update(prev => [sharedPostWithDetails, ...prev]);
+                    this.socketService.emit('newPost', sharedPostWithDetails);
+                    this.shareLinkPreview = null;
                 };
-                this.posts.update(prev => [sharedPostWithDetails, ...prev]);
-                this.socketService.emit('newPost', sharedPostWithDetails);
+
+                if (this.shareLinkPreview) {
+                    const linkMedia = [{
+                        media_type: 'link',
+                        media_url: this.shareLinkPreview.url,
+                        thumbnail_url: this.shareLinkPreview.image,
+                        file_name: this.shareLinkPreview.title,
+                        link_description: this.shareLinkPreview.description,
+                        link_site_name: this.shareLinkPreview.siteName
+                    }];
+                    this.feedsService.createNewMediaPost(newPostId, linkMedia).subscribe({
+                        next: (mediaResponse) => completeShare(mediaResponse.metadata.newMediaPost),
+                        error: () => completeShare([])
+                    });
+                } else {
+                    completeShare([]);
+                }
             },
             error: (err: any) => {
                 console.error('Error sharing post:', err);
@@ -1250,20 +1322,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         }
     }
 
-    getFileName(url: string): string {
-        if (!url) return 'download';
-        // Extract filename from URL
-        const parts = url.split('/');
-        const lastPart = parts[parts.length - 1];
-        // Remove query parameters if any
-        return lastPart.split('?')[0] || 'download';
-    }
 
-    getAttachmentDisplayName(attachment: any): string {
-        const dbName = String(attachment?.file_name || '').trim();
-        if (dbName) return dbName;
-        return this.getFileName(String(attachment?.media_url || ''));
-    }
 
     // Filter media items (images and videos only)
     getMediaItems(post: any): any[] {

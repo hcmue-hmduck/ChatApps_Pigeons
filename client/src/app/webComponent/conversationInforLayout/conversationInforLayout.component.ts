@@ -6,6 +6,7 @@ import { Friend } from '../../services/friend';
 import { Participant } from '../../services/participant';
 import { FormsModule } from '@angular/forms';
 import { SocketService } from '../../services/socket';
+import { FileUtils } from '../../utils/FileUtils/fileUltils';
 
 @Component({
     selector: 'app-conversation-infor-layout',
@@ -22,9 +23,6 @@ export class ConversationInforLayoutComponent implements OnInit {
     @Input() currentUserId = '';
     @Input() userPresence: Map<string, { status: string; last_online_at: string | Date }> = new Map();
     @Input() conversationAvatar: string | null = null;
-    @Input() tick1s = 0;
-    @Input() tick60s = 0;
-    @Input() tick3600s = 0;
 
     imgData = signal<any[]>([]);
     vidData = signal<any[]>([]);
@@ -62,7 +60,8 @@ export class ConversationInforLayoutComponent implements OnInit {
         private media: Media,
         private friendService: Friend,
         private participantService: Participant,
-        private socketService: SocketService
+        private socketService: SocketService,
+        public fileUtils: FileUtils
     ) { }
 
     ngOnInit(): void {
@@ -193,7 +192,8 @@ export class ConversationInforLayoutComponent implements OnInit {
     }
 
     get viewerImageUrl(): string {
-        return this.imgData()[this.currentViewerIndex]?.file_url || '';
+        const url = this.imgData()[this.currentViewerIndex]?.file_url;
+        return this.fileUtils.resolveMediaUrl(url);
     }
 
     nextImage(event?: Event) {
@@ -280,7 +280,8 @@ export class ConversationInforLayoutComponent implements OnInit {
     }
 
     get viewerVideoUrl(): string {
-        return this.vidData()[this.currentVideoIndex]?.file_url || '';
+        const url = this.vidData()[this.currentVideoIndex]?.file_url;
+        return this.fileUtils.resolveMediaUrl(url);
     }
 
     nextVideo(event?: Event) {
