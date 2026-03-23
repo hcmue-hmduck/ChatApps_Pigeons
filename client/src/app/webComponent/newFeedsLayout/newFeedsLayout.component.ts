@@ -17,8 +17,9 @@ import Swal from 'sweetalert2';
     templateUrl: './newFeedsLayout.component.html',
     styleUrl: './newFeedsLayout.component.css'
 })
-export class NewFeedsLayoutComponent implements OnDestroy {
+export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
     @ViewChild('feedMain') feedMain!: ElementRef;
+    @ViewChild('scrollSentinel') scrollSentinel!: ElementRef;
     @HostListener('document:click', ['$event'])
     onDocumentClick(event: MouseEvent) {
         const target = event.target as HTMLElement;
@@ -98,6 +99,7 @@ export class NewFeedsLayoutComponent implements OnDestroy {
     ];
     expandedPosts = new Set<string>();
     expandedContentIds = signal<Set<string>>(new Set());
+    private observer: IntersectionObserver | null = null;
 
     newPostContent = '';
     newPostPrivacy = 'public';
@@ -140,18 +142,29 @@ export class NewFeedsLayoutComponent implements OnDestroy {
     }
 
     ngAfterViewInit() {
-        if (this.feedMain) {
-            this.feedMain.nativeElement.addEventListener('scroll', () => {
-                const element = this.feedMain.nativeElement;
-                const threshold = 150;
-                if (element.scrollHeight - element.scrollTop <= element.clientHeight + threshold) {
-                    this.loadFeeds(true);
-                }
-            });
-        }
+        this.initIntersectionObserver();
+    }
+
+    private initIntersectionObserver() {
+        if (!this.scrollSentinel) return;
+
+        this.observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) {
+                this.loadFeeds(true);
+            }
+        }, {
+            root: this.feedMain.nativeElement,
+            rootMargin: '150px',
+            threshold: 0.1
+        });
+
+        this.observer.observe(this.scrollSentinel.nativeElement);
     }
 
     ngOnDestroy() {
+        if (this.observer) {
+            this.observer.disconnect();
+        }
         this.clearSelectedMedia(false);
         this.clearEditNewMedia(false);
         this.socketService.off('newPost');

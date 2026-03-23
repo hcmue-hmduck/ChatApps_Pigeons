@@ -34,30 +34,6 @@ class CloudinaryController {
     buildDownloadUrl(result, originalName) {
         if (!result?.secure_url) return '';
 
-        if (result.resource_type === 'raw' && result.public_id) {
-            try {
-                const format = this.getFormatFromNameOrUrl(originalName, result.secure_url);
-                return cloudinary.utils.private_download_url(
-                    result.public_id,
-                    format,
-                    {
-                        resource_type: 'raw',
-                        type: result.type || 'upload',
-                        attachment: originalName || 'file',
-                        expires_at: Math.floor(Date.now() / 1000) + 86400
-                    }
-                );
-            } catch (error) {
-                console.error('buildDownloadUrl raw-sign error:', {
-                    message: error?.message,
-                    public_id: result.public_id,
-                    resource_type: result.resource_type,
-                    type: result.type,
-                    format: result.format
-                });
-            }
-        }
-
         const encodedName = encodeURIComponent(originalName || 'file');
         const separator = result.secure_url.includes('?') ? '&' : '?';
         return `${result.secure_url}${separator}filename=${encodedName}`;

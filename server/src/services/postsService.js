@@ -20,7 +20,7 @@ class PostsService {
         try {
             if (!postIds || postIds.length === 0) return [];
             return await postsModel.findAll({
-                where: { id: postIds, is_deleted: false }
+                where: { id: postIds }
             });
         } catch (error) {
             console.error('Error fetching posts by ids:', error);
@@ -49,7 +49,7 @@ class PostsService {
 
     async deletePost(postId) {
         try {
-            return await postsModel.destroy({ where: { id: postId } });
+            return await postsModel.update({ is_deleted: true }, { where: { id: postId } });
         } catch (error) {
             console.error('Error deleting post:', error);
             throw error;
