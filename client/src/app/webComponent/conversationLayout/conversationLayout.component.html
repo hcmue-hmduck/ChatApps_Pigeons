@@ -34,15 +34,7 @@
                             @if (isUserOnline(other.user_id)) {
                                 <span class="status-dot online"></span>
                             } @else {
-                                @if (getUserLastOnlineAt(other) && relativeTime(getUserLastOnlineAt(other), tick1s(), tick60s(), tick3600s()); as rTime) {
-                                <span class="status-text">
-                                    {{ rTime.replace(' phút', 'p').replace(' giờ', 'g').replace(' ngày',
-                                    'd').replace(' tuần', 'w').replace(' tháng', 'm').replace(' năm',
-                                    'y').replace('Vừa xong', '1p') }}
-                                </span>
-                                } @else {
                                 <span class="status-dot offline"></span>
-                                }
                             }
                         </div>
                         }
@@ -52,7 +44,7 @@
                             <span class="conv-name">{{ conv.title }}</span>
                             @if (conv.lastMessage) {
                             <span class="conv-time">
-                                {{ relativeTime(conv.lastMessage.created_at, tick1s(), tick60s(), tick3600s()) }}
+                                {{ relativeTime(conv.lastMessage.created_at) }}
                             </span>
                             }
                         </div>
@@ -93,8 +85,7 @@
         @if (selectedConversationId && isFirstConversationReady()) {
         <messages-layout [conversationId]="selectedConversationId" [currentUserId]="currentUserId"
             [getMessageInfor]="getMessageInfor" [onlineUsers]="onlineUsers()"
-            [conversationType]="selectedConversationType" [UserPresence]="UserPresence()" [tick1s]="tick1s()"
-            [tick60s]="tick60s()" [tick3600s]="tick3600s()"
+            [conversationType]="selectedConversationType" [UserPresence]="UserPresence()"
             [joinedConversations]="conversations?.homeConversationData?.joinedConversations || []"
             [userBlock]="userBlock()"
             (toggleDetails)="toggleConversationInfor()">

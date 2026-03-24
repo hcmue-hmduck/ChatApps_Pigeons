@@ -1,8 +1,9 @@
-import { Component, Input, signal, OnDestroy, HostListener, ViewChild, ElementRef, AfterViewInit, ChangeDetectorRef } from '@angular/core';
+import { Component, Input, signal, OnDestroy, HostListener, ViewChild, ElementRef, AfterViewInit, ChangeDetectorRef, inject, CUSTOM_ELEMENTS_SCHEMA, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpEventType } from '@angular/common/http';
 import { Feeds } from "../../services/feeds";
+import { FeedReactions } from '../../services/feedreactions';
 import { Emojis } from "../../services/emojis";
 import { Comment } from '../../services/comment';
 import { UploadService } from '../../services/uploadService';
@@ -19,6 +20,7 @@ import Swal from 'sweetalert2';
         CommonModule,
         FormsModule,
     ],
+    schemas: [CUSTOM_ELEMENTS_SCHEMA],
     templateUrl: './newFeedsLayout.component.html',
     styleUrl: './newFeedsLayout.component.css'
 })
@@ -37,6 +39,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         private feedsService: Feeds,
         private emojisService: Emojis,
         private commentService: Comment,
+        private feedReaction: FeedReactions,
         private uploadService: UploadService,
         public fileUtils: FileUtils,
         public dateTimeUtils: DateTimeUtils,
@@ -82,6 +85,33 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
     limit = 10;
     hasMore = signal(true);
     loadingMore = signal(false);
+    private ngZone = inject(NgZone);
+    private timeUpdateInterval: any;
+
+    // Reaction system
+    reactions = [
+        { id: 'like', icon: '👍', label: 'Thích', color: '#00f2ff', lottieUrl: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f44d/lottie.json' },
+        { id: 'love', icon: '❤️', label: 'Yêu thích', color: '#ff3d71', lottieUrl: 'https://fonts.gstatic.com/s/e/notoemoji/latest/2764_fe0f/lottie.json' },
+        { id: 'care', icon: '🥰', label: 'Thương thương', color: '#f7b125', lottieUrl: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f917/lottie.json' },
+        { id: 'haha', icon: '😂', label: 'Haha', color: '#ffaa00', lottieUrl: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f602/lottie.json' },
+        { id: 'wow', icon: '😮', label: 'Wow', color: '#00d68f', lottieUrl: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f62e/lottie.json' },
+        { id: 'sad', icon: '😢', label: 'Buồn', color: '#3366ff', lottieUrl: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f622/lottie.json' },
+        { id: 'angry', icon: '😡', label: 'Phẫn nộ', color: '#ff3d71', lottieUrl: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f621/lottie.json' }
+    ];
+    reactionPosition = signal<'top' | 'bottom'>('top');
+
+    checkReactionPosition(event: MouseEvent) {
+        const threshold = 120; // Required space in pixels
+        const target = event.currentTarget as HTMLElement;
+        const rect = target.getBoundingClientRect();
+
+        if (rect.top < threshold) {
+            this.reactionPosition.set('bottom');
+        } else {
+            this.reactionPosition.set('top');
+        }
+    }
+
     currentUser = {
         avatar: 'https://ui-avatars.com/api/?name=Chat+Pigeons&background=06131f&color=00f2ff'
     };
@@ -150,6 +180,13 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         this.loadFeeds();
         this.loadMetadata();
         this.setupSocketListener();
+
+        // Local realtime updates tick every 60s
+        this.ngZone.runOutsideAngular(() => {
+            this.timeUpdateInterval = setInterval(() => {
+                this.cdr.detectChanges();
+            }, 60000);
+        });
     }
 
     ngAfterViewInit() {
@@ -173,6 +210,9 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
     }
 
     ngOnDestroy() {
+        if (this.timeUpdateInterval) {
+            clearInterval(this.timeUpdateInterval);
+        }
         if (this.observer) {
             this.observer.disconnect();
         }
@@ -283,7 +323,33 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                 }
                 return post;
             }));
-        })
+        });
+
+        this.socketService.on('PostReact', (data: any) => {
+            console.log('Received PostReact event from socket:', data);
+            const { type, postId, userId, reaction, reactionId } = data;
+
+            this.posts.update(prev => prev.map(p => {
+                if (p.id !== postId) return p;
+
+                if (type === 'add') {
+                    // Prevent duplicate if already added via local optimistic update
+                    if (p.reactions?.some((r: any) => r.id === reaction.id)) return p;
+                    return {
+                        ...p,
+                        reactions: [...(p.reactions || []), reaction],
+                        likes_count: (p.likes_count || 0) + 1
+                    };
+                } else if (type === 'remove') {
+                    return {
+                        ...p,
+                        reactions: p.reactions.filter((r: any) => r.id !== reactionId && r.user_id !== userId),
+                        likes_count: Math.max(0, (p.likes_count || 0) - 1)
+                    };
+                }
+                return p;
+            }));
+        });
     }
 
     onAttachmentSelected(event: Event) {
@@ -685,11 +751,11 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
 
         const url = this.linkPreviewUtils.extractFirstUrl(content);
         let isHidden = false;
-        
+
         if (url) {
-            const targetSet = type === 'new' ? this.closedNewPreviewUrls : 
-                              type === 'edit' ? this.closedEditPreviewUrls : null;
-            
+            const targetSet = type === 'new' ? this.closedNewPreviewUrls :
+                type === 'edit' ? this.closedEditPreviewUrls : null;
+
             if (targetSet) {
                 for (const closedUrl of targetSet) {
                     if (closedUrl.includes(url) || url.includes(closedUrl)) {
@@ -708,7 +774,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         });
 
         if (isHidden) return null;
-        
+
         return previewData;
     }
 
@@ -1181,7 +1247,11 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
     }
 
     confirmSharePost() {
-        if (!this.sharingPost()) return;
+        const postToShare = this.sharingPost();
+        if (!postToShare) return;
+
+        // If the post being shared is itself a share, point to the original root post
+        const sharedPostId = postToShare.shared_post_id || postToShare.id;
 
         const shareData = {
             user_id: this._userInfor?.id,
@@ -1190,7 +1260,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
             privacy: this.sharePrivacy(),
             location: this.shareLocation() || null,
             feeling: this.shareFeeling() || null,
-            shared_post_id: this.sharingPost().id
+            shared_post_id: sharedPostId
         };
 
         this.feedsService.createNewPost(shareData).subscribe({
@@ -1208,8 +1278,13 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                         color: '#fff'
                     });
 
+                    const originalPost = this.sharingPost();
+                    if (!originalPost) return;
+
+                    const targetPostId = originalPost.shared_post_id || originalPost.id;
+
                     this.posts.update(prev => prev.map(post => {
-                        if (post.id === this.sharingPost().id) {
+                        if (post.id === originalPost.id || post.id === targetPostId) {
                             return {
                                 ...post,
                                 shares_count: (post.shares_count || 0) + 1
@@ -1218,12 +1293,11 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                         return post;
                     }));
 
-                    this.feedsService.updatePost(this.sharingPost().id, {
-                        postData: { shares_count: (this.sharingPost().shares_count || 0) + 1 },
+                    this.feedsService.updatePost(targetPostId, {
+                        postData: { shares_count: (targetPostId === originalPost.id ? originalPost.shares_count : (originalPost.shared_post?.shares_count || 0)) + 1 },
                         mediaData: null
                     }).subscribe();
 
-                    const originalPost = this.sharingPost();
                     originalPost.shares_count = (originalPost.shares_count || 0) + 1;
                     this.closeShareModal();
 
@@ -1235,7 +1309,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                         comments_count: 0,
                         likes_count: 0,
                         shares_count: 0,
-                        shared_post: originalPost
+                        shared_post: originalPost.shared_post || originalPost
                     };
                     this.posts.update(prev => [sharedPostWithDetails, ...prev]);
                     this.socketService.emit('newPost', sharedPostWithDetails);
@@ -1313,6 +1387,119 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         });
     }
 
+
+    handleReaction(reaction: any, post: any) {
+        const userId = this._userInfor?.id;
+        if (!userId) return;
+
+        const currentPosts = this.posts();
+        const targetPost = currentPosts.find(p => p.id === post.id);
+        if (!targetPost) return;
+
+        const userReaction = targetPost.reactions?.find((r: any) => r.user_id === userId);
+        const isSwitching = userReaction && userReaction.reaction_type !== reaction.id;
+
+        if (userReaction) {
+            // Case: Already reacted
+            // 1. Remove UI first (Optimistic)
+            this.posts.update(prev => prev.map(p => {
+                if (p.id !== post.id) return p;
+                return {
+                    ...p,
+                    reactions: p.reactions.filter((r: any) => r.user_id !== userId),
+                    likes_count: Math.max(0, (p.likes_count || 0) - 1)
+                };
+            }));
+
+            // Emit socket before DB removal if we want real-time removal for others too
+            this.socketService.emit('PostReact', {
+                type: 'remove',
+                postId: post.id,
+                userId: userId,
+                reactionId: userReaction.id
+            });
+
+            // 2. Remove from DB
+            this.feedReaction.removePostReaction(userReaction.id).subscribe({
+                next: () => {
+                    console.log('Reaction removed successfully from DB');
+                    // 3. If switching to a new reaction, add it after removal
+                    if (isSwitching) {
+                        this.addReactionOptimistically(post.id, userId, reaction);
+                    }
+                },
+                error: (err: any) => {
+                    console.error('Error removing reaction:', err);
+                }
+            });
+        } else {
+            // Case: Not reacted yet
+            this.addReactionOptimistically(post.id, userId, reaction);
+        }
+    }
+
+    private addReactionOptimistically(postId: string, userId: string, reaction: any) {
+        const tempID = `temp-${Math.random().toString(36).substring(2, 15)}`;
+        const reactData = {
+            id: tempID,
+            post_id: postId,
+            user_id: userId,
+            emoji_char: reaction.icon,
+            reaction_type: reaction.id,
+            created_at: new Date().toISOString(),
+            user_infor: this._userInfor
+        };
+
+        // 1. Update UI (Optimistic add)
+        this.posts.update(prev => prev.map(p => {
+            if (p.id !== postId) return p;
+            return {
+                ...p,
+                reactions: [...(p.reactions || []), reactData],
+                likes_count: (p.likes_count || 0) + 1
+            };
+        }));
+
+        // 2. Add to DB
+        this.feedReaction.addPostReaction(postId, userId, reaction.id, reaction.icon).subscribe({
+            next: (data: any) => {
+                const realReaction = data.metadata.newReaction;
+                console.log('Reaction added successfully:', realReaction);
+
+                // Emit socket with real data
+                this.socketService.emit('PostReact', {
+                    type: 'add',
+                    postId: postId,
+                    userId: userId,
+                    reaction: { ...realReaction, user_infor: this._userInfor }
+                });
+
+                // 3. Update temp ID with real ID from server
+                this.posts.update(prev => prev.map(p => {
+                    if (p.id !== postId) return p;
+                    return {
+                        ...p,
+                        reactions: p.reactions.map((r: any) =>
+                            r.id === tempID ? { ...r, id: realReaction.id } : r
+                        )
+                    };
+                }));
+            },
+            error: (err: any) => {
+                console.error('Error adding reaction:', err);
+                // Rollback UI update
+                this.posts.update(prev => prev.map(p => {
+                    if (p.id !== postId) return p;
+                    return {
+                        ...p,
+                        reactions: p.reactions.filter((r: any) => r.id !== tempID),
+                        likes_count: Math.max(0, (p.likes_count || 0) - 1)
+                    };
+                }));
+            }
+        });
+    }
+
     toggleReply(commentId: string) {
         if (this.replyToCommentId === commentId) {
             this.replyToCommentId = null;
@@ -1322,9 +1509,6 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         }
     }
 
-
-
-    // Filter media items (images and videos only)
     getMediaItems(post: any): any[] {
         if (!post.post_media || !Array.isArray(post.post_media)) return [];
         return post.post_media.filter((media: any) =>
@@ -1332,9 +1516,54 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         );
     }
 
-    // Filter attachment items (files only)
     getAttachmentItems(post: any): any[] {
         if (!post.post_media || !Array.isArray(post.post_media)) return [];
         return post.post_media.filter((media: any) => media.media_type === 'file');
+    }
+
+    getUniqueReactionEmojis(post: any): string[] {
+        if (!post.reactions || !post.reactions.length) return [];
+        const uniqueEmojis = new Set<string>();
+        post.reactions.forEach((r: any) => {
+            if (r.emoji_char) {
+                uniqueEmojis.add(r.emoji_char);
+            } else {
+                const found = this.reactions.find(react => react.id === r.reaction_type);
+                if (found) {
+                    uniqueEmojis.add(found.icon);
+                } else if (r.reaction_type === 'like') {
+                    uniqueEmojis.add('👍');
+                }
+            }
+        });
+        return Array.from(uniqueEmojis).slice(0, 3);
+    }
+
+    getTotalReactions(post: any): number {
+        return post.reactions ? post.reactions.length : 0;
+    }
+
+    isReactionModalOpen = signal(false);
+    modalReactions = signal<any[]>([]);
+
+    openReactionModal(post: any) {
+        if (!post.reactions || post.reactions.length === 0) return;
+        this.modalReactions.set(post.reactions);
+        this.isReactionModalOpen.set(true);
+        document.body.style.overflow = 'hidden';
+    }
+
+    closeReactionModal() {
+        this.isReactionModalOpen.set(false);
+        this.modalReactions.set([]);
+        document.body.style.overflow = 'auto';
+    }
+
+    getReactionIcon(type: string): string {
+        return this.reactions.find(r => r.id === type)?.icon || '👍';
+    }
+
+    getReactionLottieUrl(type: string): string {
+        return this.reactions.find(r => r.id === type)?.lottieUrl || 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f44d/lottie.json';
     }
 }

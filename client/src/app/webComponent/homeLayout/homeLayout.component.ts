@@ -79,7 +79,7 @@ export class HomeLayoutComponent implements OnInit {
         return password === confirmPassword ? null : { passwordMismatch: true };
     }
 
-    ngOnInit() {}
+    ngOnInit() { }
 
     ngOnDestroy() {
         this.clearCountdown();
@@ -157,9 +157,9 @@ export class HomeLayoutComponent implements OnInit {
 
         // Countdown = 0, gửi OTP mới
         this.isAuthenticating.set(true);
-        this.authService.requestSignupOTP({ 
-            email: payload.email!, 
-            name: payload.full_name! 
+        this.authService.requestSignupOTP({
+            email: payload.email!,
+            name: payload.full_name!
         }).subscribe({
             next: () => {
                 this.isAuthenticating.set(false);

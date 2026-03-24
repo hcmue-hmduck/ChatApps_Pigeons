@@ -1,4 +1,4 @@
-import { Injectable } from "@angular/core";
+import { Injectable } from '@angular/core';
 
 @Injectable({
     providedIn: 'root',
@@ -8,15 +8,14 @@ export class DateTimeUtils {
     private timeCache = new Map<string, string>();
     private postTimeCache = new Map<string, string>();
 
-    relativeTime(dateInput: string | Date | null | undefined, tick1s?: number, tick60s?: number, tick3600s?: number): string {
+    relativeTime(dateInput: string | Date | null | undefined): string {
         if (!dateInput) return '';
 
         const timeToCompare = this.getTimestamp(dateInput);
         const diff = Math.floor((Date.now() - timeToCompare) / 1000);
 
-        if (diff <= 60) { const _ = tick1s; return 'Vừa xong'; }
-        if (diff < 3600) { const _ = tick60s; return `${Math.floor(diff / 60)} phút`; }
-        const _ = tick3600s;
+        if (diff <= 60) { return 'vài giây'; }
+        if (diff < 3600) { return `${Math.floor(diff / 60)} phút`; }
         if (diff < 86400) return `${Math.floor(diff / 3600)} giờ`;
         if (diff < 604800) return `${Math.floor(diff / 86400)} ngày`;
         if (diff < 2592000) return `${Math.floor(diff / 604800)} tuần`;
@@ -77,13 +76,14 @@ export class DateTimeUtils {
 
     formatPostTime(dateValue: string | null | undefined): string {
         if (!dateValue) return 'Vừa xong';
-        if (this.postTimeCache.has(dateValue)) return this.postTimeCache.get(dateValue)!;
-
+        
         const date = new Date(dateValue);
         if (Number.isNaN(date.getTime())) return 'Vừa xong';
 
-        const diffSeconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+        const now = Date.now();
+        const diffSeconds = Math.max(0, Math.floor((now - date.getTime()) / 1000));
         let result: string;
+        let isRelative = true;
 
         if (diffSeconds < 60) {
             result = 'Vừa xong';
@@ -94,6 +94,7 @@ export class DateTimeUtils {
         } else if (diffSeconds < 604800) {
             result = `${Math.floor(diffSeconds / 86400)} ngày trước`;
         } else {
+            isRelative = false;
             result = new Intl.DateTimeFormat('vi-VN', {
                 day: '2-digit',
                 month: '2-digit',
@@ -103,7 +104,11 @@ export class DateTimeUtils {
             }).format(date);
         }
 
-        this.postTimeCache.set(dateValue, result);
+        // Cache absolute dates
+        if (!isRelative) {
+            this.postTimeCache.set(dateValue, result);
+        }
+        
         return result;
     }
 

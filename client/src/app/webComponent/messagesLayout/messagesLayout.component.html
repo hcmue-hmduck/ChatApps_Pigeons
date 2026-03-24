@@ -40,8 +40,7 @@
                 Đang hoạt động
                 } @else {
                 @if (getUserLastOnlineAt(getMessageInfor.other_participant)) {
-                Hoạt động {{ relativeTime(getUserLastOnlineAt(getMessageInfor.other_participant), tick1s, tick60s,
-                tick3600s) }} trước
+                Hoạt động {{ relativeTime(getUserLastOnlineAt(getMessageInfor.other_participant)) }} trước
                 } @else {
                 Ngoại tuyến
                 }
@@ -237,17 +236,7 @@
                             <img [src]="msg.parent_message_info.parent_message_thumbnail_url"
                                 class="reply-preview-img-bubble">
                             }
-                            <div class="reply-preview-text-flex">
-                                @if (msg.parent_message_info.parent_message_type === 'image') {
-                                <i class="bi bi-image me-1"></i> (Hình ảnh)
-                                } @else if (msg.parent_message_info.parent_message_type === 'video') {
-                                <i class="bi bi-camera-video me-1"></i> (Video)
-                                } @else if (msg.parent_message_info.parent_message_type === 'file') {
-                                <i class="bi bi-file-earmark-arrow-down me-1"></i> (Tệp đính kèm)
-                                } @else {
-                                (Chi tiết tin nhắn)
-                                }
-                            </div>
+
                             }
                             } @else {
                             <span class="deleted-msg">Tin nhắn đã được gỡ</span>
@@ -350,7 +339,8 @@
                                             [alt]="preview.title || preview.siteName" referrerPolicy="no-referrer">
                                         }
                                         <div class="message-link-body">
-                                            <div class="message-link-site">{{ preview.hostname || preview.siteName }}</div>
+                                            <div class="message-link-site">{{ preview.hostname || preview.siteName }}
+                                            </div>
                                             <div class="message-link-title">{{ preview.title }}</div>
                                             @if (preview.description) {
                                             <div class="message-link-desc">{{ preview.description }}</div>
@@ -484,17 +474,7 @@
                             <img [src]="msg.parent_message_info.parent_message_thumbnail_url"
                                 class="reply-preview-img-bubble">
                             }
-                            <div class="reply-preview-text-flex">
-                                @if (msg.parent_message_info.parent_message_type === 'image') {
-                                <i class="bi bi-image me-1"></i> (Hình ảnh)
-                                } @else if (msg.parent_message_info.parent_message_type === 'video') {
-                                <i class="bi bi-camera-video me-1"></i> (Video)
-                                } @else if (msg.parent_message_info.parent_message_type === 'file') {
-                                <i class="bi bi-file-earmark-arrow-down me-1"></i> (Tệp đính kèm)
-                                } @else {
-                                (Chi tiết tin nhắn)
-                                }
-                            </div>
+
                             }
                             } @else {
                             <span class="deleted-msg">Tin nhắn đã được gỡ</span>
@@ -588,7 +568,8 @@
                                             [alt]="preview.title || preview.siteName" referrerPolicy="no-referrer">
                                         }
                                         <div class="message-link-body">
-                                            <div class="message-link-site">{{ preview.hostname || preview.siteName }}</div>
+                                            <div class="message-link-site">{{ preview.hostname || preview.siteName }}
+                                            </div>
                                             <div class="message-link-title">{{ preview.title }}</div>
                                             @if (preview.description) {
                                             <div class="message-link-desc">{{ preview.description }}</div>

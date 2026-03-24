@@ -35,31 +35,30 @@
                                 <div class="create-header-meta">
                                     <div class="create-meta-top-row">
                                         <span class="user-name">{{ userInfor?.full_name || 'User' }}</span>
-                                        <div class="privacy-selector">
-                                            <select class="cyber-select-small" [(ngModel)]="newPostPrivacy">
-                                                <option value="public">🌐 Công khai</option>
-                                                <option value="friends">👥 Bạn bè</option>
-                                                <option value="only_me">🔒 Chỉ mình tôi</option>
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    <div class="create-meta-bottom-row">
-                                        <div class="location-selector-wrap">
-                                            <select class="cyber-select-subtle" [(ngModel)]="newPostLocation">
-                                                <option value="">📍 Location...</option>
-                                                @for (p of provinces(); track p.code) {
-                                                <option [value]="p.name">📍 {{ p.name }}</option>
-                                                }
-                                            </select>
-                                        </div>
-                                        <div class="feeling-selector-wrap">
+                                        <span class="activity-label">đang cảm thấy</span>
+                                        <div class="feeling-selector-wrap inline-selector">
                                             <select class="cyber-select-subtle" [(ngModel)]="newPostFeeling">
                                                 <option value="">😊 Feeling...</option>
                                                 @for (e of emojis(); track e.id) {
                                                 <option [value]="e.unicode_char + ' ' + e.name">{{ e.unicode_char }} {{
                                                     e.name }}</option>
                                                 }
+                                            </select>
+                                        </div>
+                                        <span class="activity-label">ở</span>
+                                        <div class="location-selector-wrap inline-selector">
+                                            <select class="cyber-select-subtle" [(ngModel)]="newPostLocation">
+                                                <option value="">📍 Location...</option>
+                                                @for (p of provinces(); track p.code) {
+                                                <option [value]="p.name">{{ p.name }}</option>
+                                                }
+                                            </select>
+                                        </div>
+                                        <div class="privacy-selector">
+                                            <select class="cyber-select-small" [(ngModel)]="newPostPrivacy">
+                                                <option value="public">🌐 Công khai</option>
+                                                <option value="friends">👥 Bạn bè</option>
+                                                <option value="only_me">🔒 Chỉ mình tôi</option>
                                             </select>
                                         </div>
                                     </div>
@@ -70,7 +69,10 @@
                                 placeholder="Có gì mới không?"></textarea>
 
                             <div class="preview-container">
-                                @if (selectedMediaPreviews.length > 0 || selectedAttachmentFiles.length > 0) {
+                                @let editPrev = getLinkPreview(editPostContent, 'edit');
+                                @let newPrev = getLinkPreview(newPostContent, 'new');
+
+                                @if (selectedMediaPreviews.length > 0 || selectedAttachmentFiles.length > 0 || editPrev || newPrev) {
                                 <div class="create-preview-list">
                                     @if (selectedMediaPreviews.length > 0) {
                                     <div class="create-preview-card image-preview-card">
@@ -128,95 +130,93 @@
                                     <button class="preview-clear-all-btn" type="button"
                                         (click)="clearSelectedAttachments()">Xóa tất cả tệp</button>
                                     }
-                                </div>
-                                }
 
-                                <!-- Link Previews should be independent of media -->
-                                @let editPreview = getLinkPreview(editPostContent, 'edit');
-                                @if (editPreview) {
-                                <div class="link-preview-card composer-preview"
-                                    [class.is-loading]="editPreview.loading">
-                                    @if (!editPreview.loading) {
-                                    <button class="remove-preview-btn" type="button"
-                                        (click)="clearEditLinkPreview()">
-                                        <i class="bi bi-x"></i>
-                                    </button>
-                                    @if (editPreview.image) {
-                                    <div class="preview-image-wrap">
-                                        <img [src]="editPreview.image" alt="Preview Image"
-                                            referrerPolicy="no-referrer">
-                                    </div>
-                                    }
-                                    <div class="preview-content">
-                                        <div class="preview-host">{{ editPreview.hostname || editPreview.siteName }}
+                                    <!-- Link Previews should be independent of media but part of the same list -->
+                                    @if (editPrev) {
+                                    <div class="link-preview-card composer-preview"
+                                        [class.is-loading]="editPrev.loading">
+                                        @if (!editPrev.loading) {
+                                        <button class="remove-preview-btn" type="button"
+                                            (click)="clearEditLinkPreview()">
+                                            <i class="bi bi-x"></i>
+                                        </button>
+                                        @if (editPrev.image) {
+                                        <div class="preview-image-wrap">
+                                            <img [src]="editPrev.image" alt="Preview Image"
+                                                referrerPolicy="no-referrer">
                                         </div>
-                                        <div class="preview-title">{{ editPreview.title }}</div>
-                                        @if (editPreview.description) {
-                                        <div class="preview-description">{{ editPreview.description }}</div>
+                                        }
+                                        <div class="preview-content">
+                                            <div class="preview-title">{{ editPrev.title }}</div>
+                                            @if (editPrev.description) {
+                                            <div class="preview-description">{{ editPrev.description }}</div>
+                                            }
+                                            <div class="preview-host">{{ editPrev.hostname || editPrev.siteName }}
+                                            </div>
+                                        </div>
+                                        } @else {
+                                        <div class="preview-skeleton-image"></div>
+                                        <div class="preview-content">
+                                            <div class="skeleton-line skeleton-host"></div>
+                                            <div class="skeleton-line skeleton-title"></div>
+                                            <div class="skeleton-line skeleton-desc"></div>
+                                        </div>
                                         }
                                     </div>
-                                    } @else {
-                                    <div class="preview-skeleton-image"></div>
-                                    <div class="preview-content">
-                                        <div class="skeleton-line skeleton-host"></div>
-                                        <div class="skeleton-line skeleton-title"></div>
-                                        <div class="skeleton-line skeleton-desc"></div>
-                                    </div>
                                     }
-                                </div>
-                                }
 
-                                @let newPreview = getLinkPreview(newPostContent, 'new');
-                                @if (newPreview) {
-                                <div class="link-preview-card composer-preview"
-                                    [class.is-loading]="newPreview.loading">
-                                    @if (!newPreview.loading) {
-                                    <button class="remove-preview-btn" type="button" (click)="clearLinkPreview()">
-                                        <i class="bi bi-x"></i>
-                                    </button>
-                                    @if (newPreview.image) {
-                                    <div class="preview-image-wrap">
-                                        <img [src]="newPreview.image" alt="Preview Image"
-                                            referrerPolicy="no-referrer">
-                                    </div>
-                                    }
-                                    <div class="preview-content">
-                                        <div class="preview-host">{{ newPreview.hostname || newPreview.siteName }}
+                                    @if (newPrev) {
+                                    <div class="link-preview-card composer-preview"
+                                        [class.is-loading]="newPrev.loading">
+                                        @if (!newPrev.loading) {
+                                        <button class="remove-preview-btn" type="button" (click)="clearLinkPreview()">
+                                            <i class="bi bi-x"></i>
+                                        </button>
+                                        @if (newPrev.image) {
+                                        <div class="preview-image-wrap">
+                                            <img [src]="newPrev.image" alt="Preview Image"
+                                                referrerPolicy="no-referrer">
                                         </div>
-                                        <div class="preview-title">{{ newPreview.title }}</div>
-                                        @if (newPreview.description) {
-                                        <div class="preview-description">{{ newPreview.description }}</div>
+                                        }
+                                        <div class="preview-content">
+                                            <div class="preview-title">{{ newPrev.title }}</div>
+                                            @if (newPrev.description) {
+                                            <div class="preview-description">{{ newPrev.description }}</div>
+                                            }
+                                            <div class="preview-host">{{ newPrev.hostname || newPrev.siteName }}
+                                            </div>
+                                        </div>
+                                        } @else {
+                                        <div class="preview-skeleton-image"></div>
+                                        <div class="preview-content">
+                                            <div class="skeleton-line skeleton-host"></div>
+                                            <div class="skeleton-line skeleton-title"></div>
+                                            <div class="skeleton-line skeleton-desc"></div>
+                                        </div>
                                         }
                                     </div>
-                                    } @else {
-                                    <div class="preview-skeleton-image"></div>
-                                    <div class="preview-content">
-                                        <div class="skeleton-line skeleton-host"></div>
-                                        <div class="skeleton-line skeleton-title"></div>
-                                        <div class="skeleton-line skeleton-desc"></div>
-                                    </div>
                                     }
                                 </div>
                                 }
-                            </div>
-                            </div>
-
-                            <div class="create-footer">
-                                <div class="create-actions">
-                                    <button class="icon-btn subtle" type="button" title="Attach file"
-                                        (click)="triggerAttachmentPicker(attachmentInput)">
-                                        <i class="bi bi-paperclip"></i>
-                                    </button>
-                                    <input id="create-post-attachment-input" #attachmentInput type="file" multiple
-                                        class="hidden-file-input" (change)="onAttachmentSelected($event)">
-                                </div>
-
-                                <button class="btn-primary" type="button" (click)="handlePostFeed()"
-                                    [disabled]="(!newPostContent.trim() && selectedMediaPreviews.length === 0 && selectedAttachmentFiles.length === 0) || isPosting()">
-                                    {{ isPosting() ? 'Đang đăng...' : 'Post' }}
-                                </button>
                             </div>
                         </div>
+
+                        <div class="create-footer">
+                            <div class="create-actions">
+                                <button class="icon-btn subtle" type="button" title="Attach file"
+                                    (click)="triggerAttachmentPicker(attachmentInput)">
+                                    <i class="bi bi-paperclip"></i>
+                                </button>
+                                <input id="create-post-attachment-input" #attachmentInput type="file" multiple
+                                    class="hidden-file-input" (change)="onAttachmentSelected($event)">
+                            </div>
+
+                            <button class="btn-primary" type="button" (click)="handlePostFeed()"
+                                [disabled]="(!newPostContent.trim() && selectedMediaPreviews.length === 0 && selectedAttachmentFiles.length === 0) || isPosting()">
+                                {{ isPosting() ? 'Đang đăng...' : 'Post' }}
+                            </button>
+                        </div>
+                    </div>
 
                     @if (isPosting()) {
                     <div class="create-upload-overlay" aria-live="polite">
@@ -260,10 +260,29 @@
                                     </div>
 
                                     <div class="author-meta">
-                                        <h3 class="author-name">{{ getPostAuthorName(post) }}</h3>
-                                        <p class="author-subtitle">{{ formatPostTime(post.created_at) }}</p>
-                                        <p class="post-meta-text">
-                                            {{ formatPrivacy(post.privacy) }} • {{ formatPostType(post.post_type) }}
+                                        <h3 class="author-name">
+                                            {{ getPostAuthorName(post) }}
+                                            @if (post.feeling || post.location) {
+                                            <span class="author-activity-line">
+                                                @if (post.feeling) {
+                                                <span class="activity-label">đang cảm thấy</span>
+                                                <span class="feeling-text">{{ post.feeling }}</span>
+                                                }
+                                                @if (post.location) {
+                                                <span>
+                                                    @if (post.feeling) { <span class="activity-label"> ở </span> }
+                                                    @else { <span class="activity-label">ở </span> }
+                                                    <span class="location-text">{{ post.location }}</span>
+                                                </span>
+                                                }
+                                            </span>
+                                            }
+                                        </h3>
+                                        <p class="author-subtitle">
+                                            {{ formatPostTime(post.created_at) }}
+                                            <span class="post-meta-text">
+                                                {{ formatPrivacy(post.privacy) }} • {{ formatPostType(post.post_type) }}
+                                            </span>
                                         </p>
                                     </div>
                                 </div>
@@ -328,20 +347,6 @@
                                 </a>
                                 }
                             </div>
-
-                            @if (post.feeling || post.location) {
-                            <p class="post-extra-meta">
-                                @if (post.feeling) {
-                                <span>{{ post.feeling }}</span>
-                                }
-                                @if (post.feeling && post.location) {
-                                <span> • </span>
-                                }
-                                @if (post.location) {
-                                <span>{{ post.location }}</span>
-                                }
-                            </p>
-                            }
 
                             <!-- Media Section (Images & Videos) -->
                             @if (getMediaItems(post).length > 0) {
@@ -415,10 +420,36 @@
                             }
 
                             <div class="post-actions">
-                                <button class="action-btn" type="button">
-                                    <i class="bi bi-heart"></i>
-                                    <span>{{ post.likes_count || 0 }}</span>
-                                </button>
+                                <div class="reaction-wrapper" (mouseenter)="checkReactionPosition($event)">
+                                    <button class="action-btn" type="button" [class.has-reactions]="getTotalReactions(post) > 0"
+                                        (click)="openReactionModal(post)">
+                                        @if (getTotalReactions(post) > 0) {
+                                        <div class="reaction-emojis">
+                                            @for (emoji of getUniqueReactionEmojis(post); track emoji) {
+                                            <span class="summary-emoji">{{ emoji }}</span>
+                                            }
+                                        </div>
+                                        <span>{{ getTotalReactions(post) }}</span>
+                                        } @else {
+                                        <i class="bi bi-heart"></i>
+                                        <span>0</span>
+                                        }
+                                    </button>
+
+                                    
+                                    <!-- Reaction Menu -->
+                                    <div class="reactions-menu cyber-glass" [class.bottom-pos]="reactionPosition() === 'bottom'">
+                                        @for (reaction of reactions; track reaction.id) {
+                                        <div [class]="'reaction-item ' + reaction.id" [style.--reaction-color]="reaction.color" (click)="handleReaction(reaction, post)">
+                                            <lottie-player [src]="reaction.lottieUrl" background="transparent" speed="1" 
+                                                class="reaction-lottie" loop autoplay>
+                                            </lottie-player>
+                                            <span class="reaction-label">{{ reaction.label }}</span>
+                                        </div>
+                                        }
+                                    </div>
+                                </div>
+
                                 <button class="action-btn" type="button" (click)="toggleComments(post.id)"
                                     [class.active]="isCommentsExpanded(post.id)">
                                     <i class="bi bi-chat-square"></i>
@@ -496,10 +527,20 @@
                                                                 <input type="text" placeholder="Replying..."
                                                                     class="comment-input" [(ngModel)]="newReplyContent"
                                                                     (keyup.enter)="sendComment(post.id, reply.id)">
-                                                                <button class="send-btn" type="button"
-                                                                    (click)="sendComment(post.id, reply.id)">
-                                                                    <i class="bi bi-send"></i>
-                                                                </button>
+                                                                <div class="input-pill-actions">
+                                                                    <button class="input-pill-btn" type="button"
+                                                                        title="Đính kèm">
+                                                                        <i class="bi bi-paperclip"></i>
+                                                                    </button>
+                                                                    <button class="input-pill-btn" type="button"
+                                                                        title="Emoji">
+                                                                        <i class="bi bi-emoji-smile"></i>
+                                                                    </button>
+                                                                    <button class="send-btn" type="button"
+                                                                        (click)="sendComment(post.id, reply.id)">
+                                                                        <i class="bi bi-send"></i>
+                                                                    </button>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                         }
@@ -517,10 +558,19 @@
                                                         <input type="text" placeholder="Replying..."
                                                             class="comment-input" [(ngModel)]="newReplyContent"
                                                             (keyup.enter)="sendComment(post.id, comment.id)">
-                                                        <button class="send-btn" type="button"
-                                                            (click)="sendComment(post.id, comment.id)">
-                                                            <i class="bi bi-send"></i>
-                                                        </button>
+                                                        <div class="input-pill-actions">
+                                                            <button class="input-pill-btn" type="button"
+                                                                title="Đính kèm">
+                                                                <i class="bi bi-paperclip"></i>
+                                                            </button>
+                                                            <button class="input-pill-btn" type="button" title="Emoji">
+                                                                <i class="bi bi-emoji-smile"></i>
+                                                            </button>
+                                                            <button class="send-btn" type="button"
+                                                                (click)="sendComment(post.id, comment.id)">
+                                                                <i class="bi bi-send"></i>
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -536,10 +586,18 @@
                                         referrerPolicy="no-referrer">
                                     <div class="input-pill">
                                         <input type="text" placeholder="Transmit a thought..." class="comment-input"
-                                            [(ngModel)]="newCommentContent">
-                                        <button class="send-btn" type="button" (click)="sendComment(post.id)">
-                                            <i class="bi bi-send"></i>
-                                        </button>
+                                            [(ngModel)]="newCommentContent" (keyup.enter)="sendComment(post.id)">
+                                        <div class="input-pill-actions">
+                                            <button class="input-pill-btn" type="button" title="Đính kèm">
+                                                <i class="bi bi-paperclip"></i>
+                                            </button>
+                                            <button class="input-pill-btn" type="button" title="Emoji">
+                                                <i class="bi bi-emoji-smile"></i>
+                                            </button>
+                                            <button class="send-btn" type="button" (click)="sendComment(post.id)">
+                                                <i class="bi bi-send"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -746,7 +804,7 @@
                             </div>
                         </div>
                     </div>
-                    <button class="preview-remove-btn" type="button" (click)="removeEditExistingMedia(attachment.id)"
+                    <button class="preview-remove-btn" type="button" (click)="$event.stopPropagation(); removeEditExistingMedia(attachment.id)"
                         aria-label="Remove existing file">
                         <i class="bi bi-x-lg"></i>
                     </button>
@@ -945,6 +1003,36 @@
             <button class="btn-primary share-now-btn" type="button" (click)="confirmSharePost()">
                 Chia sẻ ngay
             </button>
+        </div>
+    </div>
+</div>
+}
+
+@if (isReactionModalOpen()) {
+<div class="cyber-modal-overlay reaction-modal-overlay" (click)="closeReactionModal()">
+    <div class="cyber-modal reaction-modal expanded" (click)="$event.stopPropagation()">
+        <header class="modal-header">
+            <h2 class="modal-title">Người đã bày tỏ cảm xúc</h2>
+            <button class="modal-close-btn" type="button" (click)="closeReactionModal()" aria-label="Đóng">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </header>
+
+        <div class="modal-body reaction-modal-body">
+            <div class="reaction-users-list">
+                @for (reaction of modalReactions(); track $index) {
+                <div class="reaction-user-item">
+                    <div class="user-info-wrap">
+                        <img [src]="reaction.user_infor?.avatar_url" [alt]="reaction.user_infor?.full_name" class="avatar-s" referrerPolicy="no-referrer">
+                        <span class="user-fullname">{{ reaction.user_infor?.full_name }}</span>
+                        <lottie-player [src]="getReactionLottieUrl(reaction.reaction_type)" 
+                            background="transparent" speed="1" class="reaction-modal-lottie" 
+                            loop autoplay>
+                        </lottie-player>
+                    </div>
+                </div>
+                }
+            </div>
         </div>
     </div>
 </div>

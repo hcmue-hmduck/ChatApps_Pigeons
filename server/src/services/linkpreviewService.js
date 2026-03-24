@@ -24,28 +24,20 @@ class LinkPreviewService {
 
     extractMetaTag(html, attr, value) {
         if (!html) return null;
-        const escapedValue = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+        // 1. Find all meta tags
+        const metaTags = html.match(/<meta\s+[^>]+>/gi) || [];
         
-        // 1. Try to find the tag first (attribute then content)
-        const tagPattern = new RegExp(`<meta[^>]+${attr}=[\\\"']${escapedValue}[\\\"'][^>]*>`, 'i');
-        const tagMatch = html.match(tagPattern);
-        
-        if (tagMatch) {
-            const tag = tagMatch[0];
-            const contentMatch = tag.match(/content=[\"']([^\"']+)[\"']/i);
-            if (contentMatch?.[1]) {
-                return this.decodeHtmlEntities(contentMatch[1]).trim();
+        for (const tag of metaTags) {
+            // 2. Check if this tag has the matching attribute (property or name) and value
+            const attrPattern = new RegExp(`${attr}\\s*=\\s*[\\\"']${value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\\"']`, 'i');
+            if (attrPattern.test(tag)) {
+                // 3. Extract the content attribute value
+                const contentMatch = tag.match(/content\s*=\s*[\\\"']([^\\\"']*)[\\\"']/i);
+                if (contentMatch) {
+                    return this.decodeHtmlEntities(contentMatch[1]).trim();
+                }
             }
-        }
-        
-        // 2. Fallback to reversed order (content then attribute)
-        const fallbackPattern = new RegExp(
-            `<meta[^>]+content=[\\\"']([^\\\"']+)[\\\"'][^>]+${attr}=[\\\"']${escapedValue}[\\\"']`,
-            'i'
-        );
-        const fallbackMatch = html.match(fallbackPattern);
-        if (fallbackMatch?.[1]) {
-            return this.decodeHtmlEntities(fallbackMatch[1]).trim();
         }
 
         return null;

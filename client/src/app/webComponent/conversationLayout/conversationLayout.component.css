@@ -215,23 +215,6 @@
   background: #334155;
 }
 
-/* Badge hiển thị thời gian offline kế bên avatar */
-.status-text {
-  position: absolute;
-  bottom: -4px;
-  right: -10px;
-  background: rgba(12, 22, 52, 0.90);
-  border: 1px solid rgba(30, 144, 255, 0.30);
-  border-radius: 10px;
-  padding: 2px 6px;
-  font-size: 10px;
-  font-weight: 600;
-  color: #7aaed8;
-  white-space: nowrap;
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.40);
-  transform: scale(0.9);
-}
-
 /* Avatar group for groups */
 .avatar-group-modern {
   position: relative;

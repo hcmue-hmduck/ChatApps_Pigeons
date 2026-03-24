@@ -9,6 +9,7 @@ import {
     ChangeDetectionStrategy,
     ChangeDetectorRef,
     ViewEncapsulation,
+    NgZone
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MessagesLayoutComponent } from '../messagesLayout/messagesLayout.component';
@@ -50,6 +51,8 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     conversationService = inject(Conversation);
     participantService = inject(Participant);
     userBlockService = inject(UserBlock);
+    private ngZone = inject(NgZone);
+    private timeUpdateInterval: any;
 
     // Sidebar toggle state
     showConversationInfor = signal(false);
@@ -66,14 +69,6 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     getMessageInfor: any = {};
     isFirstConversationReady = signal(false);
 
-    // Tick signals for relative time display
-    tick1s = signal(0);
-    tick60s = signal(0);
-    tick3600s = signal(0);
-
-    private interval1s: any;
-    private interval60s: any;
-    private interval3600s: any;
     private onUpdateProfileSocket?: (data: any) => void;
     private readUpdateInFlightByConversation = new Map<string, boolean>();
     private pendingReadMessageIdByConversation = new Map<string, string>();
@@ -105,12 +100,21 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         if (this.currentUserId) {
             this.setupSocketListeners();
             this.loadConversations();
-            this.startTimerIntervals();
             this.socketService.emit('userOnline', this.currentUserId);
         }
+
+        // Đảm bảo tick luôn cập nhật đúng mỗi phút
+        this.timeUpdateInterval = setInterval(() => {
+            this.ngZone.run(() => {
+                this.cdr.markForCheck();
+            });
+        }, 60000); // 60s cập nhật tick
     }
 
     ngOnDestroy() {
+        if (this.timeUpdateInterval) {
+            clearInterval(this.timeUpdateInterval);
+        }
         if (this.onUpdateProfileSocket) {
             this.socketService.off('updateProfile', this.onUpdateProfileSocket);
             this.onUpdateProfileSocket = undefined;
@@ -119,9 +123,6 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         this.socketService.off('userStatusChanged');
         this.socketService.off('onlineUsersList');
         this.socketService.off('newConversation');
-        clearInterval(this.interval1s);
-        clearInterval(this.interval60s);
-        clearInterval(this.interval3600s);
     }
 
     // ── Load Data ─────────────────────────────────────────
@@ -381,12 +382,6 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         });
     }
 
-    private startTimerIntervals() {
-        this.interval1s = setInterval(() => { this.tick1s.update(v => v + 1); this.cdr.markForCheck(); }, 30000);
-        this.interval60s = setInterval(() => { this.tick60s.update(v => v + 1); this.cdr.markForCheck(); }, 300000);
-        this.interval3600s = setInterval(() => { this.tick3600s.update(v => v + 1); this.cdr.markForCheck(); }, 3600000);
-    }
-
     // ── Conversation Selection ──────────────────────────────
     handleConversationID(conv: any) {
         // this.socketService.off('newMessage');
@@ -532,15 +527,6 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         return this.UserPresence().get(userId)?.status === 'online';
     }
 
-    getUserLastOnlineAt(participant: any): string | Date {
-        // Lấy dữ liệu realtime từ UserPresence trước
-        const presence = this.UserPresence().get(participant.user_id);
-        if (presence && presence.last_online_at) {
-            return presence.last_online_at;
-        }
-        // Nếu không có realtime, lấy DB data khởi tạo ban đầu
-        return participant.last_online_at;
-    }
 
     hasOnlineUser(conv: any): boolean {
         if (!conv.participants) return false;
@@ -564,7 +550,24 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         return isSystem ? name : `${name}:`;
     }
 
-    relativeTime(dateInput: string | Date, tick1s: number, tick60s: number, tick3600s: number): string {
-        return this.dateTimeUtils.relativeTime(dateInput, tick1s, tick60s, tick3600s);
+    relativeTime(dateInput: string | Date): string {
+        // Luôn tính từ thời điểm hiện tại, không cache
+        const now = new Date();
+        const date = new Date(dateInput);
+        const diffMs = now.getTime() - date.getTime();
+        const diffSec = Math.floor(diffMs / 1000);
+        if (diffSec < 60) return 'vừa xong';
+        const diffMin = Math.floor(diffSec / 60);
+        if (diffMin < 60) return `${diffMin} phút`;
+        const diffHour = Math.floor(diffMin / 60);
+        if (diffHour < 24) return `${diffHour} giờ`;
+        const diffDay = Math.floor(diffHour / 24);
+        if (diffDay < 7) return `${diffDay} ngày`;
+        const diffWeek = Math.floor(diffDay / 7);
+        if (diffWeek < 52) return `${diffWeek} tuần`;
+        const diffYear = now.getFullYear() - date.getFullYear();
+        if (diffYear < 10) return `${diffYear} năm`;
+        // Nếu quá 10 năm, hiển thị đầy đủ ngày/tháng/năm
+        return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
     }
 }

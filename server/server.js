@@ -274,10 +274,19 @@ io.on('connection', (socket) => {
         socket.broadcast.emit('deleteReaction', data);
     })
 
+    socket.on('PostReact', (data) => {
+        console.log('Received PostReact event on server:', data);
+        socket.broadcast.emit('PostReact', data);
+    })
+
     socket.on('updateConversationInfo', (data) => {
         console.log('Received updateConversationInfo event on server:', data);
         io.to(data.conversation_id).emit('updateConversationInfo', data);
     })
+
+    socket.on('getServerTime', () => {
+        socket.emit('serverTime', { time: Date.now() });
+    });
     
     socket.on('disconnect', async () => {
         console.log('User disconnected:', socket.id);

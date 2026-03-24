@@ -681,9 +681,11 @@
     z-index: 50;
 }
 
-.message-row:has(.msg-dropdown) {
-    z-index: 100 !important;
+.message-row:has(.msg-dropdown),
+.message-row:has(.reaction-picker) {
+    z-index: 9999 !important;
 }
+
 
 @keyframes msgAppear {
     from {
@@ -1093,13 +1095,7 @@
     flex-shrink: 0;
 }
 
-.reply-preview-text-flex {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 12px;
-    color: rgba(122, 174, 216, 0.85);
-}
+
 
 .deleted-msg {
     font-style: italic;

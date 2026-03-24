@@ -53,7 +53,7 @@ export class LinkPreviewUtils {
         if (!content) return null;
 
         const matches = Array.from(content.matchAll(/((?:https?:\/\/|www\.)[^\s<]+)/gi));
-        
+
         // Return null if there are no URLs, or if there are 2 or more URLs to save space
         if (!matches || matches.length !== 1) return null;
 

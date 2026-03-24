@@ -18,7 +18,8 @@ import {
     ChangeDetectorRef,
     Output,
     EventEmitter,
-    ChangeDetectionStrategy
+    ChangeDetectionStrategy,
+    NgZone
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PickerModule } from '@ctrl/ngx-emoji-mart';
@@ -73,6 +74,8 @@ export class MessagesLayoutComponent
     linkPreviewUtils = inject(LinkPreviewUtils);
     dateTimeUtils = inject(DateTimeUtils);
     private cdr = inject(ChangeDetectorRef);
+    private ngZone = inject(NgZone);
+    private timeUpdateInterval: any;
 
     getMessagesData = signal<any>({
         homeMessagesData: {
@@ -96,9 +99,7 @@ export class MessagesLayoutComponent
     @Input() userBlock: any[] = [];
     @Input() onlineUsers: Set<string> = new Set();
     @Input() UserPresence: Map<string, UserPresence> = new Map();
-    @Input() tick1s: number = 0;
-    @Input() tick60s: number = 0;
-    @Input() tick3600s: number = 0;
+
     @Output() toggleDetails = new EventEmitter<void>();
 
     @ViewChild('messagesContent') messagesContent!: ElementRef<HTMLDivElement>;
@@ -125,8 +126,8 @@ export class MessagesLayoutComponent
         return participant?.last_online_at;
     }
 
-    relativeTime(dateInput: string | Date, tick1s: number, tick60s: number, tick3600s: number): string {
-        return this.dateTimeUtils.relativeTime(dateInput, tick1s, tick60s, tick3600s);
+    relativeTime(dateInput: string | Date): string {
+        return this.dateTimeUtils.relativeTime(dateInput);
     }
 
     formatMessageText(content: string | null | undefined): string {
@@ -801,6 +802,12 @@ export class MessagesLayoutComponent
             this.loadMessages(this.conversationId);
             this.setupSocketListener(this.conversationId);
         }
+
+        this.ngZone.runOutsideAngular(() => {
+            this.timeUpdateInterval = setInterval(() => {
+                this.cdr.detectChanges();
+            }, 60000);
+        });
     }
 
     ngOnChanges(changes: SimpleChanges) {
@@ -841,6 +848,9 @@ export class MessagesLayoutComponent
     }
 
     ngOnDestroy() {
+        if (this.timeUpdateInterval) {
+            clearInterval(this.timeUpdateInterval);
+        }
         if (this.scrollTimeout) {
             clearTimeout(this.scrollTimeout);
         }

@@ -1,9 +1,7 @@
 import { inject, Injectable, NgZone, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { io, Socket } from 'socket.io-client';
-import { environment } from '../../environments/environment';
-
-@Injectable({
+import { environment } from '../../environments/environment'; @Injectable({
     providedIn: 'root',
 })
 export class SocketService {
@@ -27,7 +25,7 @@ export class SocketService {
     emit(event: string, data: any) {
         this.socket?.emit(event, data);
     }
-    
+
     on(event: string, callback: (data: any) => void) {
         const wrappedCallback = (data: any) => {
             this.ngZone.run(() => callback(data));

@@ -18,12 +18,17 @@ const PostReaction = sequelize.define('PostReaction', {
         allowNull: false,
         field: 'user_id'
     },
+    emoji_char: {
+        type: DataTypes.STRING(10),
+        allowNull: false,
+        field: 'emoji_char'
+    },
     reaction_type: {
         type: DataTypes.STRING(10),
         allowNull: false,
         field: 'reaction_type',
         validate: {
-            isIn: [['like', 'love', 'haha', 'wow', 'sad', 'angry']]
+            isIn: [['like', 'love', 'care', 'haha', 'wow', 'sad', 'angry']]
         }
     },
     created_at: {

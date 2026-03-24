@@ -13,11 +13,11 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 export class UserAdminLayoutComponent implements OnInit {
     protected readonly title = signal('User Administration');
-    users: any[] = [];
+    users = signal<any[]>([]);
     loading = false;
     error = '';
 
-    constructor(private userService: User, private router: ActivatedRoute) {}
+    constructor(private userService: User, private router: ActivatedRoute) { }
 
     ngOnInit() {
         this.loadUsers();
@@ -27,30 +27,14 @@ export class UserAdminLayoutComponent implements OnInit {
         this.loading = true;
         this.userService.getAllUsers().subscribe({
             next: (response) => {
-                this.users = response.metadata || [];
+                console.log(response.metadata);
+                this.users.set(response.metadata || []);
                 this.loading = false;
             },
-            error: (error) => { 
-                console.error('Error:', error);
+            error: (error) => {
                 this.error = error.message;
                 this.loading = false;
             }
         });
     }
-
-//     loadUsers() {
-//     this.loading = true;
-//     this.userService.getAllUsers().subscribe({
-//       next: (response) => {
-//         // console.log('Response:', response);
-//         this.users = response.metadata || [];  // Sửa từ data thành metadata
-//         this.loading = false;
-//       },
-//       error: (error) => {
-//         console.error('Error:', error);
-//         this.error = error.message;
-//         this.loading = false;
-//       }
-//     });
-//   }
 }

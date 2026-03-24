@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { SidebarComponent } from './webComponent/sidebarComponent/sidebarComponent.component';
-import { UserAdminLayoutComponent } from './webComponent/userAdminLayout/userAdminLayout.component';
+import { AdminLayoutComponent } from './webComponent/adminLayout/adminLayout.component';
 import { HomeLayoutComponent } from './webComponent/homeLayout/homeLayout.component';
 import { MessagesLayoutComponent } from './webComponent/messagesLayout/messagesLayout.component';
 import { CallLayoutComponent } from './webComponent/callLayout/callLayout';
@@ -15,8 +15,8 @@ export const routes: Routes = [
         component: SidebarComponent,
     },
     {
-        path: 'admin/users',
-        component: UserAdminLayoutComponent,
+        path: 'admin',
+        component: AdminLayoutComponent,
     },
     {
         path: 'messages/:id',
