@@ -15,8 +15,7 @@ const linkPreviewRouter = require('./link_previewRouter');
 const participantsRouter = require('./participantsRouter');
 const friendRouter = require('./friendRouter');
 const searchRouter = require('./searchRouter');
-
-const homeController = require('../controllers/homeController');
+const callRouter = require('./callRouter');
 
 router.use('/userinfor', usersRouter);
 router.use('/post-reactions', postReactionsRouter);
@@ -33,23 +32,7 @@ router.use('/link-preview', linkPreviewRouter);
 router.use('/participants', participantsRouter);
 router.use('/friends', friendRouter);
 router.use('/search', searchRouter);
-
-
-// router.get('/friendrequests/:receiverId', homeController.getFriendRequests);
-// router.get('/friendrequests/sent/:senderId', homeController.getSentFriendRequests);
-// router.post('/friendrequests', homeController.createFriendRequest);
-// router.put('/friendrequests/:id', homeController.updateFriendRequestStatus);
-
-
-
-router.post('/call/:convID', homeController.startHomeCall);
-router.post('/call/logs-group-call/:convID', homeController.createLogJoinGroupCall);
-router.patch('/call/ongoing/:callID', homeController.setCallOngoing);
-router.patch('/call/completed/:callID', homeController.setCallCompleted);
-router.patch('/call/declined/:callID', homeController.setCallDecliend);
-router.patch('/call/cancelled/:callID', homeController.setCallCancelled);
-router.patch('/call/missed/:callID', homeController.setCallMissed);
-router.patch('/call/ended/:callID', homeController.setCallEnded);
+router.use('/call', callRouter);
 
 
 
