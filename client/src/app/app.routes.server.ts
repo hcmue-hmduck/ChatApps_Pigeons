@@ -14,10 +14,6 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Prerender,
   },
   {
-    path: 'messages/:id',
-    renderMode: RenderMode.Client,
-  },
-  {
     path: 'call-display',
     renderMode: RenderMode.Client,
   },
