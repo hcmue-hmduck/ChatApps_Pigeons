@@ -26,7 +26,6 @@ export class CallService {
         conversation_id: string,
         call_type: string,
         media_type: 'video' | 'audio',
-
     ): Observable<any> {
         if (!this.CALL_TYPE.includes(call_type))
             return throwError(() => new Error('Cannot start call'));
@@ -67,26 +66,30 @@ export class CallService {
     ): void {
         if (!call_id) return;
 
-        fetch(`${this.apiUrl}/${status}/${call_id}`, {
-            method: 'PATCH',
-            keepalive: true, // không hủy request nếu trình duyệt bị đóng
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({}),
-        });
-
-        if (options?.conversationId) {
-            this.socketService.emit('updateConversation', {
-                conversation_id: options.conversationId,
-                message_id: options.messageId,
-                message_type: 'call',
-                call_id,
-                status,
-                call: {
-                    id: call_id,
-                    status,
-                },
+        try {
+            fetch(`${this.apiUrl}/${status}/${call_id}`, {
+                method: 'PATCH',
+                keepalive: true, // không hủy request nếu trình duyệt bị đóng
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
             });
+
+            if (options?.conversationId) {
+                this.socketService.emit('updateMessage', {
+                    conversation_id: options.conversationId,
+                    message_id: options.messageId,
+                    message_type: 'call',
+                    call_id,
+                    status,
+                    call: {
+                        id: call_id,
+                        status,
+                    },
+                });
+            }
+        } catch (error) {
+            console.error(`updateStatus:::`, error);
         }
     }
 }

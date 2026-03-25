@@ -163,6 +163,71 @@
     transform: translateY(0) scale(0.95);
 }
 
+.ongoing-call-banner {
+    margin: 8px 16px 0;
+    height: 42px;
+    border-radius: 12px;
+    border: 1px solid rgba(34, 197, 94, 0.35);
+    background: linear-gradient(90deg, rgba(16, 185, 129, 0.22), rgba(20, 184, 166, 0.14));
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 12px;
+    cursor: pointer;
+    user-select: none;
+    box-shadow: 0 6px 18px rgba(16, 185, 129, 0.18);
+}
+
+.ongoing-call-banner:hover {
+    border-color: rgba(34, 197, 94, 0.55);
+    box-shadow: 0 8px 22px rgba(16, 185, 129, 0.24);
+}
+
+.ongoing-call-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+    animation: ongoingCallPulse 1.6s infinite;
+}
+
+@keyframes ongoingCallPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.65);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+    }
+}
+
+.ongoing-call-text {
+    color: #d9ffe8;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.ongoing-call-join-btn {
+    margin-left: auto;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.14);
+    color: #f0fff6;
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.ongoing-call-join-btn:hover {
+    background: rgba(255, 255, 255, 0.24);
+}
+
 /* ============================================================
    PINNED MESSAGE BAR · Dark Glass
    ============================================================ */
@@ -174,6 +239,10 @@
     z-index: 120;
     pointer-events: none;
     /* Let clicks pass through to empty space if any */
+}
+
+.ongoing-call-banner + .pinned-bar-wrap {
+    top: 142px;
 }
 
 .pinned-bar,
@@ -516,6 +585,10 @@
 
 .messages-scroll.has-pinned .messages-inner {
     padding-top: 70px;
+}
+
+.messages-scroll.has-pinned.has-ongoing-call .messages-inner {
+    padding-top: 118px;
 }
 
 .messages-scroll.is-loading {

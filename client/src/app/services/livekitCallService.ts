@@ -140,14 +140,17 @@ export class LivekitCallService {
     updateRemoteParticipants() {
         // Array.from(this.remoteStreamsMap.entries()) -> [[key, value], [key, value],...]
         const participants = Array.from(this.remoteParticipantsMap.entries()).map(
-            ([participantId, { participantName, participantAvatarUrl, stream }]) => ({
+            ([
+                participantId,
+                { participantName, participantAvatarUrl, stream, hasAudio, hasVideo },
+            ]) => ({
                 participantId,
                 participantName,
                 participantAvatarUrl,
                 audioStream: this.callState.extractAudioStream(stream),
                 videoStream: this.callState.extractVideoStream(stream),
-                hasAudio: stream.getAudioTracks().length > 0,
-                hasVideo: stream.getVideoTracks().length > 0,
+                hasAudio,
+                hasVideo,
             }),
         );
 
@@ -189,10 +192,13 @@ export class LivekitCallService {
                     participantName,
                     participantAvatarUrl,
                     stream: new MediaStream(),
+                    hasAudio: false,
+                    hasVideo: false,
                 });
             }
 
-            const stream = this.remoteParticipantsMap.get(participantId)?.stream;
+            const remoteParticipant = this.remoteParticipantsMap.get(participantId);
+            const stream = remoteParticipant?.stream;
             const mediaTrack = track.mediaStreamTrack;
 
             // kiểm tra tránh thêm trùng track
@@ -200,6 +206,12 @@ export class LivekitCallService {
                 !stream?.getTracks().some((track: MediaStreamTrack) => track.id === mediaTrack.id)
             ) {
                 stream?.addTrack(mediaTrack);
+
+                if (publication.source === Track.Source.Microphone)
+                    remoteParticipant.hasAudio = !publication.isMuted;
+                else if (publication.source === Track.Source.Camera)
+                    remoteParticipant.hasVideo = !publication.isMuted;
+
                 this.updateRemoteParticipants();
             }
         });
@@ -207,15 +219,48 @@ export class LivekitCallService {
         this.room?.on('trackUnsubscribed', (track, publication, participant) => {
             const participantId = participant.identity || participant.sid;
             const mediaTrack = track.mediaStreamTrack;
-            const stream = this.remoteParticipantsMap.get(participantId)?.stream;
+            const remoteParticipant = this.remoteParticipantsMap.get(participantId);
+            const stream = remoteParticipant?.stream;
 
             if (mediaTrack && stream) {
                 stream.removeTrack(mediaTrack);
+
+                if (publication.source === Track.Source.Microphone)
+                    remoteParticipant.hasAudio = false;
+                else if (publication.source === Track.Source.Camera)
+                    remoteParticipant.hasVideo = false;
+
                 if (stream.getTracks().length === 0)
                     // xóa stream nếu không còn track
                     this.remoteParticipantsMap.delete(participantId);
                 this.updateRemoteParticipants();
             }
+        });
+
+        this.room?.on('trackMuted', (publication, participant) => {
+            const participantId = participant.identity || participant.sid;
+            const remoteParticipant = this.remoteParticipantsMap.get(participantId);
+            if (!remoteParticipant) return;
+
+            if (publication.source === Track.Source.Microphone)
+                remoteParticipant.hasAudio = false;
+            else if (publication.source === Track.Source.Camera)
+                remoteParticipant.hasVideo = false;
+
+            this.updateRemoteParticipants();
+        });
+
+        this.room?.on('trackUnmuted', (publication, participant) => {
+            const participantId = participant.identity || participant.sid;
+            const remoteParticipant = this.remoteParticipantsMap.get(participantId);
+            if (!remoteParticipant) return;
+
+            if (publication.source === Track.Source.Microphone)
+                remoteParticipant.hasAudio = true;
+            else if (publication.source === Track.Source.Camera)
+                remoteParticipant.hasVideo = true;
+
+            this.updateRemoteParticipants();
         });
 
         this.room?.on('participantConnected', () => {

@@ -35,17 +35,24 @@
                     </div>
                     <div class="action-item">
                         <button class="action-button accept" type="button" (click)="handleAccept()">
+                            @if (callData.initializeVideo) {
                             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                                 <path
                                     d="M15 8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8zm2 2.5 4-2.5v8l-4-2.5v-3z"
                                 />
                             </svg>
+                            } @else {
+                            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                <path
+                                    d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.01-.24 11.3 11.3 0 0 0 3.57.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1C10.85 21 3 13.15 3 3a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1 11.3 11.3 0 0 0 .57 3.57 1 1 0 0 1-.24 1.01l-2.2 2.21z"
+                                />
+                            </svg>
+                            }
                         </button>
                         <span>Chấp nhận</span>
                     </div>
                 </div>
             } @else {
-                <button class="incoming-close" type="button" (click)="closeOverlay()">×</button>
                 <div class="incoming-badge missed">Cuộc gọi nhỡ</div>
                 <div class="incoming-subtitle missed-text">Người dùng đã gác máy</div>
                 <div class="incoming-actions">

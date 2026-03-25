@@ -62,7 +62,7 @@ class CallController {
         const call_id = req.params.callID;
         new SuccessResponse({
             message: 'Set call missed successfully',
-            metadata: await callService.setCallMissed(call_id),
+            metadata: await homeCallService.setCallMissed(call_id),
         }).send(res);
     }
 
@@ -71,7 +71,7 @@ class CallController {
         const call_id = req.params.callID;
         new SuccessResponse({
             message: 'Set call ended successfully',
-            metadata: await callService.endCall(call_id),
+            metadata: await homeCallService.endCall(call_id),
         }).send(res);
     }
 }

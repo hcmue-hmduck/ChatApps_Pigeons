@@ -24,6 +24,15 @@ export class P2PCallService {
     private friendName = '';
     private friendAvatarUrl = '';
 
+    private updateRemoteMediaState(kind: 'audio' | 'video', enabled: boolean) {
+        this.callState.remoteParticipants.update((participants) => {
+            return participants.map((p) => {
+                if (kind === 'audio') return { ...p, hasAudio: enabled };
+                return { ...p, hasVideo: enabled };
+            });
+        });
+    }
+
     constructor() {
         // Client 2 nhận offer từ Client 1
         this.socketService.on('directCall:offerAwaiting', (data) => {
@@ -241,6 +250,16 @@ export class P2PCallService {
                     .getVideoTracks()
                     .some((track) => console.log(`stream.getVideoTracks().some`, track.enabled));
 
+                if (event.track.kind === 'audio') {
+                    event.track.onmute = () => this.updateRemoteMediaState('audio', false);
+                    event.track.onunmute = () => this.updateRemoteMediaState('audio', true);
+                    event.track.onended = () => this.updateRemoteMediaState('audio', false);
+                } else if (event.track.kind === 'video') {
+                    event.track.onmute = () => this.updateRemoteMediaState('video', false);
+                    event.track.onunmute = () => this.updateRemoteMediaState('video', true);
+                    event.track.onended = () => this.updateRemoteMediaState('video', false);
+                }
+
                 const currentParticipants = this.callState.remoteParticipants();
                 const p2pUser = currentParticipants[0];
 
@@ -255,8 +274,8 @@ export class P2PCallService {
                             participantAvatarUrl: this.friendAvatarUrl,
                             audioStream,
                             videoStream,
-                            hasAudio: audioStream.getTracks().length > 0,
-                            hasVideo: videoStream.getTracks().length > 0,
+                            hasAudio: audioStream.getTracks().some((track) => !track.muted),
+                            hasVideo: videoStream.getTracks().some((track) => !track.muted),
                         },
                     ]);
                 } else {

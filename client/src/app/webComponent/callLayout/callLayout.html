@@ -94,6 +94,12 @@
                 <div class="remote-container">
                     <audio [srcObject]="participant.audioStream" autoplay></audio>
 
+                    @if (!participant.hasAudio) {
+                        <div class="remote-mic-off" title="Mic đang tắt" aria-label="Mic đang tắt">
+                            <i class="bi bi-mic-mute-fill"></i>
+                        </div>
+                    }
+
                     @if (participant.hasVideo) {
                         <video
                             class="remote-video"

@@ -64,6 +64,15 @@
     </div>
 </div>
 
+@if (hasJoinableGroupCall()) {
+<div class="ongoing-call-banner" (click)="joinOngoingGroupCall()" role="button" tabindex="0"
+    (keydown.enter)="joinOngoingGroupCall()" (keydown.space)="joinOngoingGroupCall()">
+    <div class="ongoing-call-indicator"></div>
+    <span class="ongoing-call-text">Cuộc gọi nhóm đang diễn ra</span>
+    <button class="ongoing-call-join-btn" type="button">Tham gia</button>
+</div>
+}
+
 <!-- ============================================================
         PINNED MESSAGE BAR
         ============================================================ -->
@@ -160,7 +169,8 @@
         MESSAGES SCROLL AREA
         ============================================================ -->
 <div class="messages-scroll" [class.is-loading]="!isLoaded || loading"
-    [class.has-pinned]="pinnedMessages() && pinnedMessages().length > 0" #messagesContent (scroll)="onMessagesScroll()">
+    [class.has-pinned]="pinnedMessages() && pinnedMessages().length > 0"
+    [class.has-ongoing-call]="hasJoinableGroupCall()" #messagesContent (scroll)="onMessagesScroll()">
     <div class="messages-inner">
 
         @if (!isLoaded || loading) {

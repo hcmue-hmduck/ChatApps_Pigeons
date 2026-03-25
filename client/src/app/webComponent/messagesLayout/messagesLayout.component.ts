@@ -595,11 +595,42 @@ export class MessagesLayoutComponent
         // Setup listener cho cập nhật tin nhắn
         this.onUpdateMessageSocket = (data: any) => {
             if (data.conversation_id === conversationId) {
+                const isCallStatusUpdate = data?.message_type === 'call' || data?.call || data?.call_id;
+                const targetMessageId = data.id || data.message_id;
+                const targetCallId = data.call?.id || data.call_id;
+
                 this.getMessagesData.update((old) => ({
                     ...old,
                     homeMessagesData: {
                         ...old.homeMessagesData,
                         messages: old.homeMessagesData.messages.map((msg: any) => {
+                            if (isCallStatusUpdate) {
+                                if (msg.message_type !== 'call') return msg;
+
+                                const sameMessage =
+                                    targetMessageId !== undefined &&
+                                    targetMessageId !== null &&
+                                    String(msg.id) === String(targetMessageId);
+                                const sameCall =
+                                    targetCallId !== undefined &&
+                                    targetCallId !== null &&
+                                    (String(msg.call?.id) === String(targetCallId) ||
+                                        String(msg.call_id) === String(targetCallId));
+
+                                if (!sameMessage && !sameCall) return msg;
+
+                                return {
+                                    ...msg,
+                                    ...data,
+                                    id: msg.id,
+                                    call: {
+                                        ...(msg.call || {}),
+                                        ...(data.call || {}),
+                                        ...(data.status ? { status: data.status } : {}),
+                                    },
+                                };
+                            }
+
                             if (msg.id === data.id) {
                                 return {
                                     ...msg,
@@ -1118,6 +1149,7 @@ export class MessagesLayoutComponent
     }
 
     updateUIWithNewMessage(newMessage: any, conversationId?: string) {
+        console.log(`updateUIWithNewMessage:::`, newMessage);
         // cập nhật lastMessage
         if (!conversationId) conversationId = this.conversationId;
 
@@ -2152,19 +2184,36 @@ export class MessagesLayoutComponent
         return this.userBlock.find((block: any) => block.blocked_id === parti.user_id);
     }
 
-    async openCallWindow({ initializeVideo, callId }: { initializeVideo: boolean, callId: string }) {
+    async openCallWindow({
+        initializeVideo,
+        callId,
+        mode = 'start',
+        inviterName,
+        inviterAvatarUrl,
+        inviterId,
+    }: {
+        initializeVideo: boolean,
+        callId: string,
+        mode?: 'start' | 'accept',
+        inviterName?: string,
+        inviterAvatarUrl?: string,
+        inviterId?: string,
+    }) {
         const listener = (event: MessageEvent) => {
             if (event.origin !== window.location.origin) return;
 
             if (event.data.type === 'getCallData') {
 
-                let payload: SendCallPayload = {
+                const payload: any = {
                     type: 'sendCallData',
                     conversationType: this.conversationType,
                     conversationId: this.conversationId,
                     userId: this.currentUserId,
                     callId,
                     initializeVideo,
+                    inviterName,
+                    inviterAvatarUrl,
+                    inviterId,
                 };
 
                 if (this.conversationType === GROUP_CALL) {
@@ -2197,7 +2246,7 @@ export class MessagesLayoutComponent
             features = `width=${width},height=${height},top=${top},left=${left},menubar=no,toolbar=no,location=no,status=no,resizable=yes`;
 
         window.open(
-            `/call-display`, // url
+            mode === 'accept' ? `/call-display?mode=accept` : `/call-display`, // url
             'CallWindow', // target
             features,
         );
@@ -2215,7 +2264,80 @@ export class MessagesLayoutComponent
         this.handleCall('video');
     }
 
+    getLatestJoinableGroupCallMessage(): any | null {
+        if (this.conversationType !== GROUP_CALL) return null;
+
+        const messages = this.getMessagesData().homeMessagesData?.messages || [];
+        for (let i = messages.length - 1; i >= 0; i--) {
+            const msg = messages[i];
+            const call = msg?.call;
+            if (!call || msg?.message_type !== 'call') continue;
+            if (call.call_type !== GROUP_CALL) continue;
+
+            const status = call.status;
+            return status === 'pending' || status === 'ongoing' ? msg : null;
+        }
+
+        return null;
+    }
+
+    hasJoinableGroupCall(): boolean {
+        return !!this.getLatestJoinableGroupCallMessage();
+    }
+
+    joinOngoingGroupCall() {
+        const callMessage = this.getLatestJoinableGroupCallMessage();
+        const callId = callMessage?.call?.id || callMessage?.call_id;
+        if (!callId) return;
+
+        const initializeVideo = callMessage?.call?.media_type === 'video';
+
+        this.callService.joinCall(callId).subscribe({
+            next: () => {
+                this.callService.createLogJoinGroupCall(this.conversationId).subscribe({
+                    next: (res) => {
+                        const { name, avatarUrl } = this.authService.getUserInfor();
+                        const callLogMessage = {
+                            ...res.metadata,
+                            sender_name: name,
+                            sender_avatar: avatarUrl,
+                        };
+                       
+                        this.updateUIWithNewMessage(callLogMessage);
+                        this.broadcastMessage(callLogMessage);
+                    },
+                    error: (error) => console.error(error),
+                });
+
+                this.openCallWindow({
+                    initializeVideo,
+                    callId,
+                    mode: 'accept',
+                    inviterName: callMessage?.sender_name,
+                    inviterAvatarUrl: callMessage?.sender_avatar,
+                    inviterId: callMessage?.sender_id,
+                });
+            },
+            error: () => {
+                // Nếu API từ chối do call đã ongoing thì vẫn cho phép user mở cửa sổ và join room.
+                this.openCallWindow({
+                    initializeVideo,
+                    callId,
+                    mode: 'accept',
+                    inviterName: callMessage?.sender_name,
+                    inviterAvatarUrl: callMessage?.sender_avatar,
+                    inviterId: callMessage?.sender_id,
+                });
+            },
+        });
+    }
+
     handleCall(media_type: 'video' | 'audio') {
+        if (this.hasJoinableGroupCall()) {
+            this.joinOngoingGroupCall();
+            return;
+        }
+
         this.callService.startCall(this.conversationId, this.conversationType, media_type).subscribe({
             next: async (res) => {
                 const { name, avatarUrl } = this.authService.getUserInfor();

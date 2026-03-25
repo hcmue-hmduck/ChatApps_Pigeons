@@ -342,6 +342,29 @@
     z-index: 2;
 }
 
+.remote-mic-off {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(6px);
+    color: rgba(255, 255, 255, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
+}
+
+.remote-mic-off i {
+    font-size: 0.95rem;
+    line-height: 1;
+}
+
 /* avatar */
 .avatar-container {
     height: 100%;

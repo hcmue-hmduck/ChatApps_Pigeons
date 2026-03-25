@@ -19,11 +19,12 @@ export class App implements OnInit {
 
     ngOnInit() {
         this.callBroadcastService.listenEvents((event) => {
+            console.log(`callBroadcastService.listenEvents:::`, event);
+
             if (event.type === 'call_close') {
                 const { call_id } = event.data;
                 if (!call_id) console.error('params invalid');
 
-                console.log(`callBroadcastService.listenEvents:::`, event);
                 this.callService.updateStatus(call_id, 'ended');
             }
         });
