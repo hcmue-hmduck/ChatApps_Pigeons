@@ -1,4 +1,4 @@
-import { Component, signal, Output, EventEmitter, Input, OnInit, OnChanges, SimpleChanges, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, signal, Output, EventEmitter, Input, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GroupAvatarLayoutComponent } from '../groupAvatarLayout/groupAvatarLayout.component';
 import { MediaService } from '../../services/media';
@@ -72,7 +72,6 @@ export class ConversationInfoLayoutComponent implements OnInit {
     ngOnInit(): void {
         this.loadMediaData();
         this.socketEmitListener();
-        // Pre-load friends so Add Member modal opens instantly
         if (this.currentUserId) {
             this.loadFriends();
         }
@@ -80,12 +79,8 @@ export class ConversationInfoLayoutComponent implements OnInit {
 
     socketEmitListener() {
         this.socketService.on('updateConversationInfo', (data: any) => {
-            console.log('Update Conversation Info: ', data);
-
-            // Chỉ cập nhật nếu đúng conversation đang hiển thị và có tệp mới
             if (data.conversation_id === this.conversationInfor?.conversation_id && data.upload_file) {
                 const newFiles = Array.isArray(data.upload_file) ? data.upload_file : [data.upload_file];
-
                 newFiles.forEach((file: any) => {
                     const mType = file.message_type || file.resource_type;
                     if (mType === 'image') {
@@ -112,10 +107,6 @@ export class ConversationInfoLayoutComponent implements OnInit {
                 this.fileData.set(data.file || []);
                 this.linkData.set(data.link || []);
             }
-            console.log('Image Data: ', this.imgData());
-            console.log('Video Data: ', this.vidData());
-            console.log('File Data: ', this.fileData());
-            console.log('Link Data: ', this.linkData());
         });
     }
 
@@ -143,23 +134,6 @@ export class ConversationInfoLayoutComponent implements OnInit {
         return this.otherParticipant?.avatar_url;
     }
 
-    // Backward-compatible getters for any stale template cache still referencing old names
-    get hasGroupAvatar(): boolean {
-        return !!(this.isGroupConversation && (this.conversationAvatar || this.conversationInfor?.avatar_url));
-    }
-
-    get groupAvatarMembers(): any[] {
-        if (!this.isGroupConversation) return [];
-        return (this.participants || []).filter((p: any) => !!p?.avatar_url).slice(0, 3);
-    }
-
-    get extraGroupAvatarCount(): number {
-        if (!this.isGroupConversation) return 0;
-        return Math.max(0, this.participants.length - 3);
-    }
-
-
-    // Accordion States
     sections = signal({
         chatInfo: false,
         customization: false,
@@ -178,8 +152,6 @@ export class ConversationInfoLayoutComponent implements OnInit {
             [sectionName]: !current[sectionName]
         });
     }
-
-    // --- Image Viewer Methods ---
 
     openGallery(index: number) {
         if (this.imgData().length === 0) return;
@@ -250,7 +222,6 @@ export class ConversationInfoLayoutComponent implements OnInit {
 
     onViewerPointerDown(event: PointerEvent) {
         if (this.viewerZoom <= 1) return;
-
         event.stopPropagation();
         event.preventDefault();
         this.isViewerDragging = true;
@@ -262,7 +233,6 @@ export class ConversationInfoLayoutComponent implements OnInit {
 
     onViewerPointerMove(event: PointerEvent) {
         if (!this.isViewerDragging || this.viewerZoom <= 1) return;
-
         event.stopPropagation();
         event.preventDefault();
         const deltaX = event.clientX - this.viewerDragStartX;
@@ -275,8 +245,6 @@ export class ConversationInfoLayoutComponent implements OnInit {
         event?.stopPropagation();
         this.isViewerDragging = false;
     }
-
-    // --- Video Viewer Methods ---
 
     openVideoGallery(index: number) {
         if (this.vidData().length === 0) return;
@@ -323,7 +291,6 @@ export class ConversationInfoLayoutComponent implements OnInit {
         this.friendService.getFriendByUserId(this.currentUserId).subscribe({
             next: (res: any) => {
                 const rawFriends = res?.metadata?.friends || [];
-                // Flatten nested friend object: { friend_id, friend: { full_name, avatar_url... } }
                 this.friends = rawFriends.map((f: any) => ({
                     ...f,
                     full_name: f.friend?.full_name || f.full_name || 'Người dùng',
@@ -334,7 +301,6 @@ export class ConversationInfoLayoutComponent implements OnInit {
                 this.isLoadingFriends = false;
             },
             error: (err) => {
-                console.error('Error fetching friends:', err);
                 this.isLoadingFriends = false;
             }
         });
@@ -345,7 +311,6 @@ export class ConversationInfoLayoutComponent implements OnInit {
         this.addMemberError = '';
         this.selectedFriendIds.clear();
         this.addMemberSearchQuery = '';
-        // Filter out current participants on open (in case participants changed)
         this.isAddMemberModalOpen = true;
     }
 
@@ -383,10 +348,8 @@ export class ConversationInfoLayoutComponent implements OnInit {
 
         this.isAddingMembers = true;
         this.addMemberError = '';
-
         const selectedIds = Array.from(this.selectedFriendIds);
 
-        // Batch add all selected users in parallel
         const addRequests = selectedIds.reduce((acc: any, userId) => {
             acc[userId] = this.participantService.postParticipant({
                 conversation_id: convID,
@@ -399,15 +362,13 @@ export class ConversationInfoLayoutComponent implements OnInit {
         forkJoin(addRequests).subscribe({
             next: async () => {
                 this.isAddingMembers = false;
-
                 const allParticipantIds = [
                     ...this.participants.map((p: any) => p.user_id),
                     ...selectedIds
                 ];
 
-                // 1. Tạo system message cho từng người và lưu vào DB trước
                 try {
-                    const systemMessageRequests = selectedIds.map(addedUserId => 
+                    const systemMessageRequests = selectedIds.map(addedUserId =>
                         lastValueFrom(this.messagesService.postMessage(
                             convID,
                             addedUserId,
@@ -419,7 +380,6 @@ export class ConversationInfoLayoutComponent implements OnInit {
 
                     const savedMessages = await Promise.all(systemMessageRequests);
 
-                    // 2. Sau khi đã lưu tin nhắn vào DB, emit addMember để mọi người (bao gồm mình) refresh sidebar
                     this.socketService.emit('addMember', {
                         conversation_id: convID,
                         added_user_ids: selectedIds,
@@ -427,7 +387,6 @@ export class ConversationInfoLayoutComponent implements OnInit {
                         all_participant_ids: allParticipantIds,
                     });
 
-                    // 3. Emit sendMessage để message list hiện tin nhắn ngay lập tức
                     savedMessages.forEach(response => {
                         const savedMsg = response.metadata?.newMessage;
                         if (savedMsg) {
@@ -440,19 +399,15 @@ export class ConversationInfoLayoutComponent implements OnInit {
                         }
                     });
 
-                    // 4. Notify người dùng mới được thêm về conversation
                     this.socketService.emit('notifyNewConversation', {
                         receiverIds: selectedIds,
                         conversationId: convID,
                     });
-                } catch (err) {
-                    console.error('Error in member addition flow:', err);
-                }
+                } catch (err) { }
 
                 this.closeAddMemberModal();
             },
             error: (err) => {
-                console.error('Error adding members:', err);
                 this.addMemberError = 'Gặp lỗi khi thêm thành viên. Vui lòng thử lại.';
                 this.isAddingMembers = false;
             }

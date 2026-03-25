@@ -471,7 +471,7 @@
 /* ============================================================
    PANEL 4 — CONVERSATION INFO SIDEBAR
    ============================================================ */
-app-conversation-infor-layout {
+app-conversation-info-layout {
   flex: 0 0 360px;
   width: 360px;
   min-width: 0;
@@ -614,7 +614,7 @@ app-conversation-infor-layout {
     display: none;
   }
 
-  app-conversation-infor-layout {
+  app-conversation-info-layout {
     flex: 1;
   }
 }
