@@ -21,19 +21,7 @@ export const routes: Routes = [
         component: AdminLayoutComponent,
     },
     {
-        path: 'messages/:id',
-        component: MessagesLayoutComponent,
-    },
-    {
         path: 'call-display',
         component: CallLayoutComponent,
-    },
-    {
-        path: 'relationship/:id',
-        component: RelationshipLayoutComponent,
-    },
-    {
-        path: 'feeds',
-        component: NewFeedsLayoutComponent,
     }
 ];
