@@ -313,7 +313,8 @@
 }
 
 .block-reason {
-    color: #f59e0b; /* Vibrant Amber/Yellow */
+    color: #f59e0b;
+    /* Vibrant Amber/Yellow */
     font-weight: 800;
     text-shadow: 0 0 8px rgba(245, 158, 11, 0.3);
 }
@@ -410,9 +411,20 @@
 }
 
 @keyframes pulse {
-    0% { transform: scale(0.95); opacity: 0.8; }
-    50% { transform: scale(1.1); opacity: 1; }
-    100% { transform: scale(0.95); opacity: 0.8; }
+    0% {
+        transform: scale(0.95);
+        opacity: 0.8;
+    }
+
+    50% {
+        transform: scale(1.1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(0.95);
+        opacity: 0.8;
+    }
 }
 
 .stat-label-online {
@@ -473,7 +485,9 @@
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* Main Panel Hover */
@@ -493,7 +507,7 @@
     .relations-main {
         padding: 16px;
     }
-    
+
     .main-header-row {
         flex-direction: column;
         align-items: stretch;
@@ -503,11 +517,11 @@
     .panel-header-row {
         padding: 16px 12px;
     }
-    
+
     .header-text h1 {
         font-size: 28px;
     }
-    
+
     .tabs-row {
         margin-left: 0;
         justify-content: flex-start;
@@ -524,13 +538,13 @@
         padding: 10px 13px;
         font-size: 11px;
     }
-    
+
     .friend-row {
         flex-direction: column;
         align-items: flex-start;
         gap: 16px;
     }
-    
+
     .actions-cell {
         width: 100%;
         justify-content: flex-end;
@@ -541,7 +555,7 @@
     .tab-btn {
         white-space: nowrap;
     }
-    
+
     .action-main-btn {
         padding: 8px 12px;
         font-size: 10px;
@@ -1131,6 +1145,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+
     .intro-section,
     .animate-card-up,
     .online-pulse-dot,

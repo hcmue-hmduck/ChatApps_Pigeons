@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpEventType } from '@angular/common/http';
 import { Feeds } from "../../services/feeds";
-import { FeedReactions } from '../../services/feedreactions';
+import { FeedReactions } from '../../services/feed_reactions';
 import { Emojis } from "../../services/emojis";
 import { Comment } from '../../services/comment';
 import { UploadService } from '../../services/uploadService';

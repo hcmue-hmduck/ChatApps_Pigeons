@@ -29,6 +29,7 @@ import { AuthService } from '../../services/authService';
 import { CallService } from '../../services/callService';
 import { Conversation } from '../../services/conversation';
 import { Messages } from '../../services/messages';
+import { PinMessages } from '../../services/pin_message';
 import { SocketService } from '../../services/socket';
 import Swal from 'sweetalert2';
 import { UploadService } from '../../services/uploadService';
@@ -290,7 +291,7 @@ export class MessagesLayoutComponent
     }
 
     unpinMessage(pm: any) {
-        this.messagesService.unpinMessage(pm.id).subscribe({
+        this.pinMessageService.unpinMessage(pm.id).subscribe({
             next: (response) => {
                 this.pinnedMessages.update(prev => prev.filter(p => p.id !== pm.id));
 
@@ -410,6 +411,7 @@ export class MessagesLayoutComponent
         private participantService: Participant,
         private uploadService: UploadService,
         private messageReactionsService: MessageReactions,
+        private pinMessageService: PinMessages,
         public fileUtils: FileUtils,
         private socketService: SocketService,
     ) {
@@ -1892,15 +1894,15 @@ export class MessagesLayoutComponent
     }
 
     pinMessage(msg: any) {
-        this.messagesService.pinMessage(msg.id, this.conversationId, this.currentUserId, msg.content, 1).subscribe({
+        this.pinMessageService.pinMessage(msg.id, this.conversationId, this.currentUserId, msg.content, 1).subscribe({
             next: (response) => {
                 const currentUser = this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId) || {};
                 const newPinMessage = {
                     ...response.metadata.newPinMessage,
                     pinned_by_name: currentUser.full_name,
-                    sender_name: currentUser.full_name,
-                    sender_id: currentUser.user_id,
-                    sender_avatar: currentUser.avatar_url,
+                    sender_name: msg.sender_name,
+                    sender_id: msg.sender_id,
+                    sender_avatar: msg.sender_avatar,
                     // Gắn thêm content của message gốc để hiển thị
                     content: msg.content,
                 };

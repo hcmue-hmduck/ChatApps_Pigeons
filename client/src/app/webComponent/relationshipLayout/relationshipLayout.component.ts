@@ -135,6 +135,20 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
         }, 150);
     }
 
+    private updateStatus(userId: string, status: string) {
+        // Update friends signal
+        this.friends.update(list => list.map(f =>
+            (f.friend_id === userId || f.id === userId) ? { ...f, status } : f
+        ));
+
+        // Update search results signal
+        this.searchResults.update(list => list.map(u =>
+            u.id === userId ? { ...u, status } : u
+        ));
+
+        this.cdr.markForCheck();
+    }
+
     private setupSocketListeners() {
         this.updateProfileListener = (data: any) => {
             let updated = false;
@@ -214,7 +228,10 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
         });
 
         this.socketService.on('rejectFriendRequest', (data: any) => {
-            this.sentRequests.update((requests: any) => requests.filter((request: any) => request.id !== data));
+            this.sentRequests.update((requests: any) => requests.filter((request: any) => request.id !== data.id));
+            console.log('rejectFriendRequestEmit', data);
+            console.log('SendingRequestsIds', this.sendingRequestsIds);
+            this.sendingRequestsIds.delete(data.receiver_id);
         });
 
         this.socketService.on('acceptFriendRequest', (data: any) => {
@@ -231,7 +248,6 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
             console.log('Received blockUser event:', data);
             if (data.blocked_id === this.currentUserId) {
                 this.searchResults.update((results: any) => results.filter((r: any) => r.id !== data.blocker_id));
-                this.friends.update((friends: any) => friends.filter((f: any) => f.friend_id !== data.blocker_id));
                 this.sentRequests.update((requests: any) => requests.filter((r: any) => r.id !== data.blocker_id));
                 this.friendRequests.update((requests: any) => requests.filter((r: any) => r.id !== data.blocker_id));
             }
@@ -243,8 +259,30 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
                 console.log('blockUser', this.blockedUser());
                 this.blockedUser.update((blocks: any) => blocks.filter((b: any) => b.id !== data.blocked_id));
                 this.searchResults.update((results: any) => [...results, data]);
-                this.friends.update((friends: any) => [...friends, data]);
             }
+        });
+
+        // User Presence Listeners
+        this.socketService.on('onlineUsersList', (userIds: string[]) => {
+            console.log('[Relationship] Received onlineUsersList:', userIds);
+            const onlineSet = new Set(userIds);
+
+            this.friends.update(list => list.map(f => ({
+                ...f,
+                status: onlineSet.has(f.friend_id || f.id) ? 'online' : 'offline'
+            })));
+
+            this.searchResults.update(list => list.map(u => ({
+                ...u,
+                status: onlineSet.has(u.id) ? 'online' : 'offline'
+            })));
+
+            this.cdr.markForCheck();
+        });
+
+        this.socketService.on('userStatusChanged', (data: { userId: string, status: string }) => {
+            console.log('[Relationship] userStatusChanged:', data);
+            this.updateStatus(data.userId, data.status);
         });
     }
 
@@ -261,61 +299,109 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
             users: this.userService.getAllUsers(),
         }).subscribe({
             next: (res: any) => {
-                const allFriends = res.friends.metadata.friends || [];
-                const receivedRequests = res.requests.metadata.friendRequests || [];
-                const userBlocksRaw = res.blocks.metadata.userBlocks || [];
-                const allUsers = res.users.metadata || [];
-                const sentRequests = res.sentRequests.metadata.sentFriendRequests || [];
+                const allFriendsArr = res.friends?.metadata?.friends || [];
+                const receivedRequestsArr = res.requests?.metadata || [];
+                const sentRequestsArr = res.sentRequests?.metadata?.sentFriendRequests || [];
+                const blocksArr = res.blocks?.metadata?.userBlocks || [];
+                const allUsersArr = res.users?.metadata || [];
+
+                console.log('[Relationship] Data loaded:', {
+                    friends: allFriendsArr.length,
+                    receivedRequests: receivedRequestsArr.length,
+                    sentRequests: sentRequestsArr.length,
+                    blocks: blocksArr.length,
+                    totalUsers: allUsersArr.length
+                });
 
                 this.isSearching.set(false);
 
-                // Identify IDs that indicate an existing relationship
-                const friendIds = new Set<string>(allFriends.map((f: any) => f.friend_id));
-                const receivedRequestSenderIds = new Set<string>(receivedRequests.map((r: any) => r.sender_id));
-                const sentRequestReceiverIds = new Set<string>(sentRequests.map((r: any) => r.receiver_id));
-                const blockedIds = new Set(userBlocksRaw.map((b: any) => b.blocked_id));
+                // Identify IDs for fast categorization
+                const friendIdsSet = new Set<string>(allFriendsArr.map((f: any) => f.friend_id));
+                const receivedRequestSenderIds = new Set<string>(receivedRequestsArr.map((r: any) => r.sender_id));
+                const sentRequestReceiverIds = new Set<string>(sentRequestsArr.map((r: any) => r.receiver_id));
+                const blockedIdsSet = new Set<string>(blocksArr.map((b: any) => b.blocked_id));
 
+                console.log('blockSet', blockedIdsSet);
+
+                this.friendIds = friendIdsSet;
+                this.friendRequestsIds = receivedRequestSenderIds;
                 this.sendingRequestsIds = sentRequestReceiverIds;
-                this.friendRequestsIds = receivedRequestSenderIds; // Lưu sender_id để check nhanh trong template
-                this.friendIds = friendIds;
 
-                const blockedList: any[] = [];
                 const suggestions: any[] = [];
-                let curUser: any = null;
+                const blockedListExtended: any[] = [];
+                let myProfile: any = null;
 
-                allUsers.forEach((u: any) => {
+                allUsersArr.forEach((u: any) => {
                     if (u.id === this.currentUserId) {
-                        curUser = u;
+                        myProfile = u;
                         return;
                     }
 
-                    // Map blocked users
-                    const blockData = userBlocksRaw.find((b: any) => b.blocked_id === u.id);
-                    if (blockData) {
-                        blockedList.push({
+                    // Categorize as blocked if in the blocked set
+                    if (blockedIdsSet.has(u.id)) {
+                        const blockData = blocksArr.find((b: any) => b.blocked_id === u.id);
+                        blockedListExtended.push({
                             ...u,
-                            block_id: blockData.id,
-                            reason: blockData.reason
+                            block_id: blockData?.id,
+                            reason: blockData?.reason
                         });
-                        console.log('Block', blockData);
-                        // this.socketService.emit('blockUser', blockData);
                         return;
                     }
 
-                    suggestions.push(u);
+                    // Suggestions: users who are NOT current user, NOT blocked, NOT friends, AND no pending requests
+                    const isFriend = friendIdsSet.has(u.id);
+                    const isRequestSent = sentRequestReceiverIds.has(u.id);
+                    const isRequestReceived = receivedRequestSenderIds.has(u.id);
+
+                    if (!isFriend && !isRequestSent && !isRequestReceived) {
+                        suggestions.push(u);
+                    }
                 });
 
+                // Update signals
+                const userProfileMap = new Map<string, any>(allUsersArr.map((u: any) => [u.id, u]));
+
+                // Enrich friend list with full profiles
+                const enrichedFriends = allFriendsArr.map((f: any) => {
+                    const profile = userProfileMap.get(f.friend_id);
+                    return {
+                        ...f,
+                        full_name: profile?.full_name || 'Người dùng Pigeons',
+                        avatar_url: profile?.avatar_url || 'assets/default-avatar.png',
+                        status: profile?.status || 'offline'
+                    };
+                });
+
+                // Enrich received requests with sender info
+                const enrichedReceivedRequests = receivedRequestsArr.map((req: any) => {
+                    const senderProfile = userProfileMap.get(req.sender_id);
+                    return {
+                        ...req,
+                        sender_name: senderProfile?.full_name || 'Người dùng Pigeons',
+                        sender_avatar: senderProfile?.avatar_url || 'assets/default-avatar.png',
+                        status: senderProfile?.status || 'offline'
+                    };
+                });
+
+                // Enrich sent requests with receiver info (status is missing from server's enrichment)
+                const enrichedSentRequests = sentRequestsArr.map((req: any) => {
+                    const receiverProfile = userProfileMap.get(req.receiver_id);
+                    return {
+                        ...req,
+                        receiver_name: receiverProfile?.full_name || req.receiver_name,
+                        receiver_avatar: receiverProfile?.avatar_url || req.receiver_avatar,
+                        status: receiverProfile?.status || 'offline'
+                    };
+                });
+
+                console.log('block', blockedListExtended);
+
+                this.currentUser.set(myProfile);
+                this.friends.set(enrichedFriends);
+                this.blockedUser.set(blockedListExtended);
+                this.friendRequests.set(enrichedReceivedRequests);
+                this.sentRequests.set(enrichedSentRequests);
                 this.searchResults.set(suggestions);
-                this.currentUser.set(curUser);
-
-                // Filter friends to exclude anyone who is now blocked (though normally they shouldn't be in both)
-                this.friends.set(allFriends.filter((f: any) => !blockedIds.has(f.friend_id)));
-                this.blockedUser.set(blockedList);
-                this.friendRequests.set(receivedRequests);
-                this.sentRequests.set(sentRequests);
-
-                console.log('sentRequests', this.sentRequests());
-                console.log('friendRequests', this.friendRequests());
 
                 this.loading = false;
                 this.cdr.detectChanges();
@@ -356,18 +442,18 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
                         });
                         const unblockedUser = this.blockedUser().find(u => u.block_id === block_id);
                         console.log('unblockedUser', unblockedUser);
-                        // CÒN BUG LOGIC
-                        // const userInfo = await this.userService.getUserById(unblockedUser.user_id);
                         if (unblockedUser) {
-                            this.friends.update(list => [...list, unblockedUser]);
-                            this.blockedUser.update(list => list.filter(u => u.block_id !== block_id));
                             const dataBlock = {
                                 ...unblockedUser,
-                                blocker_id: this.currentUser().id,
-                                blocked_id: unblockedUser.friend_id,
+                        
+                                blocker_id: this.currentUserId,
+                                blocked_id: unblockedUser.friend_id || unblockedUser.id,
                             }
-                            console.log(dataBlock);
+                            console.log('Emitting unblockUser:', dataBlock);
                             this.socketService.emit('unblockUser', dataBlock);
+
+                            // Refresh data to correctly re-categorize the unblocked user
+                            this.loadData();
                         }
                     },
                     error: (error) => {
@@ -424,7 +510,7 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
     }
 
     processFriendRequest(requestId: string, sender_id: string, action: 'accepted' | 'rejected', note: string) {
-        console.log('Data:', requestId, sender_id, action, note);
+        console.log('Data:', this.friendRequests());
         // Lấy thông tin người gửi từ request hiện tại để chút nữa gán vào list bạn bè
         const requestInfo = this.friendRequests().find(r => r.id === requestId);
 
@@ -444,7 +530,7 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
                         toast: true
                     });
                     this.friendRequests.update((requests: any) => requests.filter((r: any) => r.id !== requestId));
-                    this.socketService.emit('rejectFriendRequest', requestId);
+                    this.socketService.emit('rejectFriendRequest', requestInfo);
                 },
                 error: (error) => {
                     console.error('Error processing friend request:', error);
@@ -525,6 +611,7 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
         }).then((result) => {
             if (result.isConfirmed) {
                 const reason = result.value || '';
+                console.log(this.currentUserId, friend_id, reason);
                 this.userBlockService.createBlockedUser(this.currentUserId, friend_id, reason).subscribe({
                     next: (res) => {
                         console.log(res.metadata.newUserBlock);
@@ -544,7 +631,6 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
                             position: 'top-end'
                         });
                         this.searchResults.update((results: any) => results.filter((result: any) => (result.friend_id ? result.friend_id !== friend_id : result.id !== friend_id)));
-                        this.friends.update((friends: any) => friends.filter((friend: any) => (friend.friend_id ? friend.friend_id !== friend_id : friend.id !== friend_id)));
                         this.blockedUser.update((blockedUsers: any) => [...blockedUsers, blockedUser]);
                         const dataBlock = {
                             blocker_id: this.currentUser().id,
@@ -700,10 +786,9 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
                 const note = result.value || '';
                 this.friendRequestService.createFriendRequest(this.currentUserId, receiverId, note).subscribe({
                     next: (res) => {
-                        console.log('Data send friend request', res.metadata?.newFriendRequest);
-                        this.sendingRequestsIds.add(receiverId);
+                        console.log('Data send friend request', res.metadata);
                         const newFriendRequest = {
-                            id: res.metadata?.newFriendRequest?.id,
+                            id: res.metadata?.id,
                             sender_id: this.currentUserId,
                             receiver_id: receiverId,
                             note: note,

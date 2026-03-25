@@ -1,12 +1,12 @@
 const express = require('express');
 const router = express.Router();
 
-const homeController = require('../controllers/homeController');
+const homeConversationController = require('../controllers/homeConversationsController');
 
 // Conversation routes
-router.get('/:userID', homeController.getHomeConversation);
-router.put('/:convID', homeController.putHomeConversation);
-router.post('/', homeController.createConversation);
-router.get('/name/:convID', homeController.getConversationNameById);
+router.get('/:userID', homeConversationController.getHomeConversation);
+router.put('/:convID', homeConversationController.putHomeConversation);
+router.post('/', homeConversationController.createConversation);
+router.get('/name/:convID', homeConversationController.getConversationNameById);
 
 module.exports = router;

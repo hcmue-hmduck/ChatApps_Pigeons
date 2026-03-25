@@ -1,4 +1,5 @@
 const friendrequestsModel = require('../models/friendrequestsModel');
+const usersService = require('./usersService');
 
 class FriendRequestsService {
     async getFriendRequests(receiver_id) {
@@ -14,7 +15,7 @@ class FriendRequestsService {
         }
     }
 
-    async getSentFriendRequests(sender_id) {
+    async getSentFriendRequest(sender_id) {
         try {
             return await friendrequestsModel.findAll({
                 where: {
@@ -25,6 +26,25 @@ class FriendRequestsService {
         } catch (error) {
             throw error;
         }
+    }
+
+    async getSentFriendRequests(senderId) {
+        const friendRequests = await this.getSentFriendRequest(senderId);
+        if (friendRequests.length === 0) return [];
+
+        const receiverIds = friendRequests.map(req => req.receiver_id);
+        const receiverInfos = await usersService.getAllUsers({ id: receiverIds });
+
+        const receiverInfoMap = new Map(receiverInfos.map(user => [user.id, user]));
+
+        return friendRequests.map(req => {
+            const receiverInfo = receiverInfoMap.get(req.receiver_id) || {};
+            return {
+                ...req.dataValues,
+                receiver_name: receiverInfo.full_name,
+                receiver_avatar: receiverInfo.avatar_url,
+            };
+        });
     }
 
     async createFriendRequest(sender_id, receiver_id, note) {

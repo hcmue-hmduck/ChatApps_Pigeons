@@ -30,8 +30,6 @@
 
 .feed-shell {
     width: 100%;
-    max-width: 1100px;
-    margin: 0 auto;
     display: flex;
     flex-direction: column;
     gap: 20px;
@@ -181,10 +179,12 @@
     flex: 1;
     min-height: 0;
     width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
 }
 
 .feed-main {
-    flex: 0 1 680px;
+    flex: 0 1 900px;
     width: 100%;
     min-width: 0;
     display: flex;
@@ -1223,13 +1223,33 @@
 }
 
 /* Staggered entry delays - adds a fluid 'one-by-one' appearance */
-.reaction-item:nth-child(1) { animation-delay: 0.02s; }
-.reaction-item:nth-child(2) { animation-delay: 0.04s; }
-.reaction-item:nth-child(3) { animation-delay: 0.06s; }
-.reaction-item:nth-child(4) { animation-delay: 0.08s; }
-.reaction-item:nth-child(5) { animation-delay: 0.10s; }
-.reaction-item:nth-child(6) { animation-delay: 0.12s; }
-.reaction-item:nth-child(7) { animation-delay: 0.14s; }
+.reaction-item:nth-child(1) {
+    animation-delay: 0.02s;
+}
+
+.reaction-item:nth-child(2) {
+    animation-delay: 0.04s;
+}
+
+.reaction-item:nth-child(3) {
+    animation-delay: 0.06s;
+}
+
+.reaction-item:nth-child(4) {
+    animation-delay: 0.08s;
+}
+
+.reaction-item:nth-child(5) {
+    animation-delay: 0.10s;
+}
+
+.reaction-item:nth-child(6) {
+    animation-delay: 0.12s;
+}
+
+.reaction-item:nth-child(7) {
+    animation-delay: 0.14s;
+}
 
 .reaction-item {
     position: relative;
@@ -1279,9 +1299,19 @@
 }
 
 @keyframes reactionPopIn {
-    0% { opacity: 0; transform: scale(0.4) translateY(40px); }
-    70% { transform: scale(1.1) translateY(-5px); }
-    100% { opacity: 1; transform: scale(1) translateY(0); }
+    0% {
+        opacity: 0;
+        transform: scale(0.4) translateY(40px);
+    }
+
+    70% {
+        transform: scale(1.1) translateY(-5px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
 }
 
 /* Action buttons */
@@ -2787,7 +2817,7 @@
 .summary-emoji {
     font-size: 1rem;
     margin-right: -4px;
-    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
 }
 
 .summary-emoji:last-child {
@@ -2835,7 +2865,7 @@
     width: 36px;
     height: 36px;
     margin-left: auto;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
     flex-shrink: 0;
 }
 

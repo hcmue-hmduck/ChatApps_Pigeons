@@ -40,6 +40,15 @@ class HomeConversationController {
             },
         }).send(res);
     }
+
+    async getConversationNameById(req, res) {
+        const conversationId = req.params.convID;
+        const groupName = await homeConversationsService.getConversationNameById(conversationId);
+        new SuccessResponse({
+            message: 'Get conversation name successfully',
+            metadata: groupName,
+        }).send(res);
+    }
 }
 
 module.exports = new HomeConversationController();

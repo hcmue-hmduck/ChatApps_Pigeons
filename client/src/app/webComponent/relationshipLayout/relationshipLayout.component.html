@@ -212,15 +212,15 @@
           <div class="list-group-header">{{ group.letter }}</div>
 
           @for (friend of group.friends; track friend.friend_id) {
-          <div class="friend-row online">
+          <div class="friend-row" [class.online]="friend.status === 'online'" [class.offline]="friend.status !== 'online'">
             <div class="user-cell">
               <div class="avatar-wrapper">
                 <img [src]="friend.avatar_url" alt="Avatar" class="avatar-img" referrerPolicy="no-referrer">
-                <div class="status-indicator online"></div>
+                <div class="status-indicator" [class.online]="friend.status === 'online'" [class.offline]="friend.status !== 'online'"></div>
               </div>
               <div class="user-info">
                 <h3 (click)="viewProfile(friend.friend_id)" style="cursor: pointer;">{{ friend.full_name }}</h3>
-                <p class="activity-text">ĐANG HOẠT ĐỘNG</p>
+                <p class="activity-text">{{ friend.status === 'online' ? 'ĐANG HOẠT ĐỘNG' : 'KHÔNG HOẠT ĐỘNG' }}</p>
               </div>
             </div>
 
@@ -255,11 +255,11 @@
         @if (!loading && friendRequests().length > 0) {
         <div class="requests-list">
           @for (request of friendRequests(); track request.id) {
-          <div class="friend-row online">
+          <div class="friend-row" [class.online]="request.status === 'online'" [class.offline]="request.status !== 'online'">
             <div class="user-cell">
               <div class="avatar-wrapper">
                 <img [src]="request.sender_avatar" alt="Avatar" class="avatar-img" referrerPolicy="no-referrer">
-                <div class="status-indicator online"></div>
+                <div class="status-indicator" [class.online]="request.status === 'online'" [class.offline]="request.status !== 'online'"></div>
               </div>
               <div class="user-info">
                 <h3>{{ request.sender_name }}</h3>
@@ -295,11 +295,11 @@
         @if (!loading && sentRequests().length > 0) {
         <div class="requests-list">
           @for (request of sentRequests(); track request.id) {
-          <div class="friend-row online">
+          <div class="friend-row" [class.online]="request.status === 'online'" [class.offline]="request.status !== 'online'">
             <div class="user-cell">
               <div class="avatar-wrapper">
                 <img [src]="request.receiver_avatar" alt="Avatar" class="avatar-img" referrerPolicy="no-referrer">
-                <div class="status-indicator online"></div>
+                <div class="status-indicator" [class.online]="request.status === 'online'" [class.offline]="request.status !== 'online'"></div>
               </div>
               <div class="user-info">
                 <h3>{{ request.receiver_name }}</h3>
@@ -360,7 +360,7 @@
         <div class="footer-stats">
           <div class="stat-item">
             <span class="pulse-dot"></span>
-            <span class="stat-label-online">{{ friends().length }} ĐANG HOẠT ĐỘNG</span>
+            <span class="stat-label-online">{{ friends().filter(f => f.status === 'online').length }} ĐANG HOẠT ĐỘNG</span>
           </div>
           <div class="stat-item total">
             <span class="stat-dot-gray"></span>

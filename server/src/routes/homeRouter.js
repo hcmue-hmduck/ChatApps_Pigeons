@@ -1,59 +1,46 @@
 const express = require('express');
 const router = express.Router();
+const postReactionsRouter = require('./post_reactionsRouter');
+const homeConversationRouter = require('./homeConversationsRouter');
+const homeMessagesRouter = require('./homeMessagesRouter');
+const messageReactionsRouter = require('./message_reactionsRouter');
+const friendrequestsRouter = require('./friend_requestsRouter');
+const homePostRouter = require('./homePostRouter');
+const emojiRouter = require ('./emojiRouter');
+const commentRouter = require('./commentRouter');
+const userblocksRouter = require('./user_blocksRouter');
+const pinmessageRouter = require('./pin_messageRouter');
+const usersRouter = require('./usersRouter');
+const linkPreviewRouter = require('./link_previewRouter');
+const participantsRouter = require('./participantsRouter');
+const friendRouter = require('./friendRouter');
+const searchRouter = require('./searchRouter');
 
 const homeController = require('../controllers/homeController');
 
-router.post('/post-reactions', homeController.addPostReaction);
-router.delete('/post-reactions/:id', homeController.removePostReaction);
-router.get('/post-reactions/:postID', homeController.getPostReactions);
-
-router.post('/message-reactions/:convID', homeController.addMessageReaction);
-router.delete('/message-reactions/:reactionID', homeController.removeMessageReaction);
-router.get('/message-reactions/:convID', homeController.getMessageReactions);
-
-router.get('/emojis', homeController.getAllEmojis);
-
-router.post('/comments/:postID', homeController.createComment);
-
-router.post('/participants/:convID', homeController.createParticipant);
-router.put('/participants/:id', homeController.putParticipant);
-
-router.get('/feeds', homeController.getHomePosts);
-router.post('/feeds', homeController.createNewPost);
-router.post('/feeds/:postID', homeController.createNewMediaPost);
-router.put('/feeds/:postID', homeController.updatePost);
-router.delete('/feeds/:postID', homeController.deletePost);
-
-router.get('/users/search', homeController.searchUsers);
-
-router.get('/friendrequests/:receiverId', homeController.getFriendRequests);
-router.get('/friendrequests/sent/:senderId', homeController.getSentFriendRequests);
-router.post('/friendrequests', homeController.createFriendRequest);
-router.put('/friendrequests/:id', homeController.updateFriendRequestStatus);
-
-router.get('/userblocks/:blockerId', homeController.getUserBlocks);
-router.post('/userblocks', homeController.createUserBlock);
-router.delete('/userblocks/:id', homeController.deleteUserBlock);
-
-router.get('/userinfor/:userID', homeController.getUserInfor);
-router.put('/userinfor/:userID', homeController.putUserInfor);
-
-router.get('/friends/:userId', homeController.getFriendByUserId);
-router.post('/friends/:userId', homeController.createFriendByUserId);
-router.delete('/friends/:userId', homeController.deleteFriendByUserId);
+router.use('/userinfor', usersRouter);
+router.use('/post-reactions', postReactionsRouter);
+router.use('/conversation', homeConversationRouter);
+router.use('/message-reactions', messageReactionsRouter);
+router.use('/friendrequests', friendrequestsRouter);
+router.use('/feeds', homePostRouter);
+router.use('/emojis', emojiRouter);
+router.use('/comments', commentRouter);
+router.use('/userblocks', userblocksRouter);
+router.use('/pinmessage', pinmessageRouter);
+router.use('/messages', homeMessagesRouter);
+router.use('/link-preview', linkPreviewRouter);
+router.use('/participants', participantsRouter);
+router.use('/friends', friendRouter);
+router.use('/search', searchRouter);
 
 
-router.get('/link-preview', homeController.getLinkPreview);
+// router.get('/friendrequests/:receiverId', homeController.getFriendRequests);
+// router.get('/friendrequests/sent/:senderId', homeController.getSentFriendRequests);
+// router.post('/friendrequests', homeController.createFriendRequest);
+// router.put('/friendrequests/:id', homeController.updateFriendRequestStatus);
 
-router.post('/messages/pinmessage', homeController.postHomePinMessage);
-router.put('/messages/pinmessage/:pinMessID', homeController.putHomePinMessage);
-router.delete('/messages/pinmessage/:pinMessID', homeController.deleteHomePinMessage);
 
-router.get('/messages/:convID/media', homeController.getHomeMessagesMedia);
-router.delete('/messages/:messID', homeController.deleteHomeMessages);
-router.put('/messages/:messID', homeController.putHomeMessages);
-router.post('/messages/:convID', homeController.postHomeMessages);
-router.get('/messages/:convID', homeController.getHomeMessages);
 
 router.post('/call/:convID', homeController.startHomeCall);
 router.post('/call/logs-group-call/:convID', homeController.createLogJoinGroupCall);

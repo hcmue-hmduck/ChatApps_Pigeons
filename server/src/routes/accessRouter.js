@@ -1,5 +1,5 @@
 const express = require('express');
-const accessController = require('../controllers/accessController.js.js');
+const accessController = require('../controllers/accessController.js');
 const passport = require('../configs/passportConfig.js');
 const { authentication, refreshAuthentication } = require('../middlewares/authMiddleware.js');
 

@@ -62,6 +62,123 @@ class LinkPreviewService {
         return title ? this.decodeHtmlEntities(title) : null;
     }
 
+    async getLinkPreview(rawUrl) {
+        const parsedUrl = this.normalizePreviewUrl(rawUrl);
+        if (!parsedUrl) {
+            console.warn(`[LinkPreview] Invalid URL: ${rawUrl}`);
+            return null;
+        }
+
+        const hostname = parsedUrl.hostname.toLowerCase();
+        const isYouTube = hostname.includes('youtube.com') || hostname.includes('youtu.be');
+
+        const fallback = {
+            url: parsedUrl.toString(),
+            title: parsedUrl.hostname,
+            description: '',
+            image: null,
+            siteName: parsedUrl.hostname,
+            hostname: parsedUrl.hostname,
+        };
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+
+        try {
+            // Special Case: YouTube oEmbed (More reliable than scraping)
+            if (isYouTube) {
+                console.log(`[LinkPreview] Fetching YouTube oEmbed for: ${parsedUrl.hostname}`);
+                const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(parsedUrl.toString())}&format=json`;
+                const ytRes = await fetch(oembedUrl, { signal: controller.signal });
+
+                if (ytRes.ok) {
+                    const data = await ytRes.json();
+                    console.log(`[LinkPreview] YouTube oEmbed Success: ${data.title}`);
+                    return {
+                        url: parsedUrl.toString(),
+                        title: data.title || fallback.title,
+                        description: data.author_name ? `By ${data.author_name}` : '',
+                        image: data.thumbnail_url || null,
+                        siteName: 'YouTube',
+                        hostname: parsedUrl.hostname,
+                    };
+                } else {
+                    console.warn(`[LinkPreview] YouTube oEmbed failed: ${ytRes.status}. Falling back to scraping.`);
+                }
+            }
+
+            // General case: Metadata Scraping
+            console.log(`[LinkPreview] Scraping metadata for: ${parsedUrl.hostname}`);
+            const response = await fetch(parsedUrl.toString(), {
+                method: 'GET',
+                redirect: 'follow',
+                signal: controller.signal,
+                headers: {
+                    'User-Agent': 'Twitterbot/1.1',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.5',
+                },
+            });
+
+            if (!response.ok) {
+                console.warn(`[LinkPreview] Fetch failed for ${parsedUrl.hostname}: ${response.status}`);
+                return fallback;
+            }
+
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('text/html')) {
+                console.warn(`[LinkPreview] Non-HTML content from ${parsedUrl.hostname}: ${contentType}`);
+                return fallback;
+            }
+
+            const html = await response.text();
+
+            const ogTitle = linkpreviewService.extractMetaTag(html, 'property', 'og:title') || linkpreviewService.extractMetaTag(html, 'name', 'og:title');
+            const twitterTitle = linkpreviewService.extractMetaTag(html, 'name', 'twitter:title') || linkpreviewService.extractMetaTag(html, 'property', 'twitter:title');
+            const ogDescription = linkpreviewService.extractMetaTag(html, 'property', 'og:description') || linkpreviewService.extractMetaTag(html, 'name', 'og:description');
+            const twitterDescription = linkpreviewService.extractMetaTag(html, 'name', 'twitter:description') || linkpreviewService.extractMetaTag(html, 'property', 'twitter:description');
+            const ogImage = linkpreviewService.extractMetaTag(html, 'property', 'og:image') || linkpreviewService.extractMetaTag(html, 'name', 'og:image');
+            const twitterImage = linkpreviewService.extractMetaTag(html, 'name', 'twitter:image') || linkpreviewService.extractMetaTag(html, 'property', 'twitter:image');
+            const ogSiteName = linkpreviewService.extractMetaTag(html, 'property', 'og:site_name') || linkpreviewService.extractMetaTag(html, 'name', 'og:site_name');
+            const twitterSite = linkpreviewService.extractMetaTag(html, 'name', 'twitter:site') || linkpreviewService.extractMetaTag(html, 'property', 'twitter:site');
+            const metaDescription = linkpreviewService.extractMetaTag(html, 'name', 'description');
+            const titleTag = linkpreviewService.extractTitleTag(html);
+
+            let imageUrl = ogImage || twitterImage || null;
+            if (imageUrl) {
+                try {
+                    imageUrl = new URL(imageUrl, parsedUrl).toString();
+                } catch {
+                    imageUrl = null;
+                }
+            }
+
+            const title = (ogTitle || twitterTitle || titleTag || parsedUrl.hostname || '').trim();
+            const description = (ogDescription || twitterDescription || metaDescription || '').trim();
+            const siteName = (ogSiteName || twitterSite || parsedUrl.hostname || '').trim();
+
+            console.log('--- Link Preview Metadata Extracted ---', {
+                url: parsedUrl.toString(),
+                title: title.substring(0, 50),
+                hasImage: !!imageUrl,
+                hasDesc: !!description
+            });
+
+            return {
+                url: parsedUrl.toString(),
+                title,
+                description,
+                image: imageUrl,
+                siteName,
+                hostname: parsedUrl.hostname,
+            };
+        } catch (error) {
+            console.error(`[LinkPreview] Error processing ${parsedUrl.hostname}:`, error.message);
+            return fallback;
+        } finally {
+            clearTimeout(timeout);
+        }
+    }
 
 }
 

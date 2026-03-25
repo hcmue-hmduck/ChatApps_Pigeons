@@ -72,7 +72,8 @@
                                 @let editPrev = getLinkPreview(editPostContent, 'edit');
                                 @let newPrev = getLinkPreview(newPostContent, 'new');
 
-                                @if (selectedMediaPreviews.length > 0 || selectedAttachmentFiles.length > 0 || editPrev || newPrev) {
+                                @if (selectedMediaPreviews.length > 0 || selectedAttachmentFiles.length > 0 || editPrev
+                                || newPrev) {
                                 <div class="create-preview-list">
                                     @if (selectedMediaPreviews.length > 0) {
                                     <div class="create-preview-card image-preview-card">
@@ -174,8 +175,7 @@
                                         </button>
                                         @if (newPrev.image) {
                                         <div class="preview-image-wrap">
-                                            <img [src]="newPrev.image" alt="Preview Image"
-                                                referrerPolicy="no-referrer">
+                                            <img [src]="newPrev.image" alt="Preview Image" referrerPolicy="no-referrer">
                                         </div>
                                         }
                                         <div class="preview-content">
@@ -421,7 +421,8 @@
 
                             <div class="post-actions">
                                 <div class="reaction-wrapper" (mouseenter)="checkReactionPosition($event)">
-                                    <button class="action-btn" type="button" [class.has-reactions]="getTotalReactions(post) > 0"
+                                    <button class="action-btn" type="button"
+                                        [class.has-reactions]="getTotalReactions(post) > 0"
                                         (click)="openReactionModal(post)">
                                         @if (getTotalReactions(post) > 0) {
                                         <div class="reaction-emojis">
@@ -436,12 +437,15 @@
                                         }
                                     </button>
 
-                                    
+
                                     <!-- Reaction Menu -->
-                                    <div class="reactions-menu cyber-glass" [class.bottom-pos]="reactionPosition() === 'bottom'">
+                                    <div class="reactions-menu cyber-glass"
+                                        [class.bottom-pos]="reactionPosition() === 'bottom'">
                                         @for (reaction of reactions; track reaction.id) {
-                                        <div [class]="'reaction-item ' + reaction.id" [style.--reaction-color]="reaction.color" (click)="handleReaction(reaction, post)">
-                                            <lottie-player [src]="reaction.lottieUrl" background="transparent" speed="1" 
+                                        <div [class]="'reaction-item ' + reaction.id"
+                                            [style.--reaction-color]="reaction.color"
+                                            (click)="handleReaction(reaction, post)">
+                                            <lottie-player [src]="reaction.lottieUrl" background="transparent" speed="1"
                                                 class="reaction-lottie" loop autoplay>
                                             </lottie-player>
                                             <span class="reaction-label">{{ reaction.label }}</span>
@@ -804,7 +808,8 @@
                             </div>
                         </div>
                     </div>
-                    <button class="preview-remove-btn" type="button" (click)="$event.stopPropagation(); removeEditExistingMedia(attachment.id)"
+                    <button class="preview-remove-btn" type="button"
+                        (click)="$event.stopPropagation(); removeEditExistingMedia(attachment.id)"
                         aria-label="Remove existing file">
                         <i class="bi bi-x-lg"></i>
                     </button>
@@ -1023,11 +1028,11 @@
                 @for (reaction of modalReactions(); track $index) {
                 <div class="reaction-user-item">
                     <div class="user-info-wrap">
-                        <img [src]="reaction.user_infor?.avatar_url" [alt]="reaction.user_infor?.full_name" class="avatar-s" referrerPolicy="no-referrer">
+                        <img [src]="reaction.user_infor?.avatar_url" [alt]="reaction.user_infor?.full_name"
+                            class="avatar-s" referrerPolicy="no-referrer">
                         <span class="user-fullname">{{ reaction.user_infor?.full_name }}</span>
-                        <lottie-player [src]="getReactionLottieUrl(reaction.reaction_type)" 
-                            background="transparent" speed="1" class="reaction-modal-lottie" 
-                            loop autoplay>
+                        <lottie-player [src]="getReactionLottieUrl(reaction.reaction_type)" background="transparent"
+                            speed="1" class="reaction-modal-lottie" loop autoplay>
                         </lottie-player>
                     </div>
                 </div>

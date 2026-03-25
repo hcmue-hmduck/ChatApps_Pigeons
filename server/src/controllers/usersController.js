@@ -23,7 +23,10 @@ class UsersController {
         
         new SuccessResponse({
             message: 'Get user successfully',
-            metadata: user,
+            metadata: {
+                user,
+                userInfor: user,
+            },
         }).send(res)
     }
 
@@ -55,10 +58,13 @@ class UsersController {
             res.status(200).json({
                 success: true,
                 message: 'User updated successfully',
-                data: updatedUser
+                data: updatedUser,
+                metadata: {
+                    updatedUserInfor: updatedUser,
+                },
             });
         } catch (error) {
-            res.status(500).json({
+            res.status(500) .json({
                 success: false,
                 message: 'Error updating user',
                 error: error.message

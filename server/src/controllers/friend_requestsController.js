@@ -1,4 +1,4 @@
-const friendrequestsService = require('../services/friendrequestsService');
+const friendrequestsService = require('../services/friend_requestsService');
 const SuccessResponse = require('../core/successResponse');
 
 class FriendRequestsController {
@@ -42,22 +42,26 @@ class FriendRequestsController {
     }
 
     async updateFriendRequestStatus(req, res) {
-        try {
-            const friendRequest = await friendrequestsService.updateFriendRequestStatus(req.params.receiverId, req.body.status);
-            new SuccessResponse({
-                message: 'Update friend request status successfully',
-                metadata: friendRequest,
-                statusCode: 200,
-                status: 'success'
-            }).send(res);
-        } catch (error) {
-            new SuccessResponse({
-                message: 'Update friend request status failed',
-                metadata: null,
-                statuscode: 500,
-                status: 'failed'
-            }).send(res);
-        }
+        const id = req.params.id;
+        const { status } = req.body;
+        const updatedFriendRequest = await friendrequestsService.updateFriendRequestStatus(id, status);
+        new SuccessResponse({
+            message: 'Update friend request status successfully',
+            metadata: {
+                updatedFriendRequest: updatedFriendRequest,
+            },
+        }).send(res);
+    }
+
+    async getSentFriendRequests(req, res) {
+        const senderId = req.params.senderId;
+        const sentFriendRequests = await friendrequestsService.getSentFriendRequests(senderId);
+        new SuccessResponse({
+            message: 'Get sent friend requests successfully',
+            metadata: {
+                sentFriendRequests: sentFriendRequests,
+            },
+        }).send(res);
     }
 }
 
