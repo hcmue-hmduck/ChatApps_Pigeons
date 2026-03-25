@@ -159,7 +159,7 @@ class HomeMessagesService {
 
                 const needFetchPreview = !resolvedFileName || !resolvedThumbnailUrl || !resolvedLinkDescription;
                 if (needFetchPreview) {
-                    const preview = await this.getLinkPreview(detectedUrl);
+                    const preview = await linkpreviewService.getLinkPreview(detectedUrl);
                     resolvedHasLink = true;
                     if (preview) {
                         resolvedFileUrl = resolvedFileUrl || preview.url || detectedUrl;

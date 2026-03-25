@@ -133,16 +133,16 @@ class LinkPreviewService {
 
             const html = await response.text();
 
-            const ogTitle = linkpreviewService.extractMetaTag(html, 'property', 'og:title') || linkpreviewService.extractMetaTag(html, 'name', 'og:title');
-            const twitterTitle = linkpreviewService.extractMetaTag(html, 'name', 'twitter:title') || linkpreviewService.extractMetaTag(html, 'property', 'twitter:title');
-            const ogDescription = linkpreviewService.extractMetaTag(html, 'property', 'og:description') || linkpreviewService.extractMetaTag(html, 'name', 'og:description');
-            const twitterDescription = linkpreviewService.extractMetaTag(html, 'name', 'twitter:description') || linkpreviewService.extractMetaTag(html, 'property', 'twitter:description');
-            const ogImage = linkpreviewService.extractMetaTag(html, 'property', 'og:image') || linkpreviewService.extractMetaTag(html, 'name', 'og:image');
-            const twitterImage = linkpreviewService.extractMetaTag(html, 'name', 'twitter:image') || linkpreviewService.extractMetaTag(html, 'property', 'twitter:image');
-            const ogSiteName = linkpreviewService.extractMetaTag(html, 'property', 'og:site_name') || linkpreviewService.extractMetaTag(html, 'name', 'og:site_name');
-            const twitterSite = linkpreviewService.extractMetaTag(html, 'name', 'twitter:site') || linkpreviewService.extractMetaTag(html, 'property', 'twitter:site');
-            const metaDescription = linkpreviewService.extractMetaTag(html, 'name', 'description');
-            const titleTag = linkpreviewService.extractTitleTag(html);
+            const ogTitle = this.extractMetaTag(html, 'property', 'og:title') || this.extractMetaTag(html, 'name', 'og:title');
+            const twitterTitle = this.extractMetaTag(html, 'name', 'twitter:title') || this.extractMetaTag(html, 'property', 'twitter:title');
+            const ogDescription = this.extractMetaTag(html, 'property', 'og:description') || this.extractMetaTag(html, 'name', 'og:description');
+            const twitterDescription = this.extractMetaTag(html, 'name', 'twitter:description') || this.extractMetaTag(html, 'property', 'twitter:description');
+            const ogImage = this.extractMetaTag(html, 'property', 'og:image') || this.extractMetaTag(html, 'name', 'og:image');
+            const twitterImage = this.extractMetaTag(html, 'name', 'twitter:image') || this.extractMetaTag(html, 'property', 'twitter:image');
+            const ogSiteName = this.extractMetaTag(html, 'property', 'og:site_name') || this.extractMetaTag(html, 'name', 'og:site_name');
+            const twitterSite = this.extractMetaTag(html, 'name', 'twitter:site') || this.extractMetaTag(html, 'property', 'twitter:site');
+            const metaDescription = this.extractMetaTag(html, 'name', 'description');
+            const titleTag = this.extractTitleTag(html);
 
             let imageUrl = ogImage || twitterImage || null;
             if (imageUrl) {
