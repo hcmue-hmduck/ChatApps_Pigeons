@@ -166,7 +166,7 @@ export class MessagesLayoutComponent
 
         const url = this.linkPreviewUtils.extractFirstUrl(content);
         let isHidden = false;
-        
+
         if (url) {
             for (const closedUrl of this.closedPreviewUrls) {
                 if (closedUrl.includes(url) || url.includes(closedUrl)) {
@@ -185,7 +185,7 @@ export class MessagesLayoutComponent
 
         // Hide UI by returning null if closed, but activeMessageLinkPreview is still saved via callback!
         if (isHidden) return null;
-        
+
         return previewData;
     }
 
@@ -1378,6 +1378,7 @@ export class MessagesLayoutComponent
     }
 
     menuDropUpId: string | number | null = null;
+    menuFlipHorizontalId: string | number | null = null;
 
     // Menu methods
     toggleMenu(messageId: string | number, event: MouseEvent) {
@@ -1418,7 +1419,33 @@ export class MessagesLayoutComponent
 
             const shouldDropDown = spaceAbove < menuHeightEstimate && spaceBelow > spaceAbove;
             this.menuDropUpId = shouldDropDown ? null : messageId;
+
+            // Horizontal flip logic
+            const menuWidthEstimate = 160;
+            const isMeRow = target?.closest('.me-row') !== null;
+
+            if (isMeRow) {
+                // Me row: Default grows LEFT (needs space on left)
+                const spaceOnLeft = targetRect.left - areaRect.left - gap * 2;
+                if (spaceOnLeft < menuWidthEstimate && (areaRect.right - targetRect.left) > spaceOnLeft) {
+                    this.menuFlipHorizontalId = messageId;
+                } else {
+                    this.menuFlipHorizontalId = null;
+                }
+            } else {
+                // Other row: Default grows RIGHT (needs space on right)
+                const spaceOnRight = areaRect.right - targetRect.right - gap * 2;
+                if (spaceOnRight < menuWidthEstimate && (targetRect.right - areaRect.left) > spaceOnRight) {
+                    this.menuFlipHorizontalId = messageId;
+                } else {
+                    this.menuFlipHorizontalId = null;
+                }
+            }
         }
+    }
+
+    isMenuFlipHorizontal(messageId: string | number): boolean {
+        return this.showMenuId === messageId && this.menuFlipHorizontalId === messageId;
     }
 
     isMenuDropUp(messageId: string | number): boolean {
@@ -1426,10 +1453,9 @@ export class MessagesLayoutComponent
     }
 
     closeMenu() {
-        setTimeout(() => {
-            this.showMenuId = null;
-            this.menuDropUpId = null;
-        }, 250);
+        this.showMenuId = null;
+        this.menuDropUpId = null;
+        this.menuFlipHorizontalId = null;
     }
 
     private messageKey(messageId: string | number): string {

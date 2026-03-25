@@ -6,7 +6,7 @@ import { environment } from '../../environments/environment';
 @Injectable({
     providedIn: 'root',
 })
-export class Media {
+export class MediaService {
     private apiUrl = `${environment.apiUrl}/home/messages`;
     constructor(private http: HttpClient) { }
 

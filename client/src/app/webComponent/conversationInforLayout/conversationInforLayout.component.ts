@@ -1,21 +1,23 @@
-import { Component, signal, Output, EventEmitter, Input, OnInit, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, signal, Output, EventEmitter, Input, OnInit, OnChanges, SimpleChanges, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GroupAvatarLayoutComponent } from '../groupAvatarLayout/groupAvatarLayout.component';
-import { Media } from '../../services/media';
+import { MediaService } from '../../services/media';
 import { Friend } from '../../services/friend';
 import { Participant } from '../../services/participant';
 import { FormsModule } from '@angular/forms';
 import { SocketService } from '../../services/socket';
 import { FileUtils } from '../../utils/FileUtils/fileUltils';
+import { forkJoin, lastValueFrom } from 'rxjs';
+import { Messages } from '../../services/messages';
 
 @Component({
-    selector: 'app-conversation-infor-layout',
+    selector: 'app-conversation-info-layout',
     standalone: true,
     imports: [CommonModule, GroupAvatarLayoutComponent, FormsModule],
     templateUrl: './conversationInforLayout.component.html',
     styleUrls: ['./conversationInforLayout.component.css']
 })
-export class ConversationInforLayoutComponent implements OnInit {
+export class ConversationInfoLayoutComponent implements OnInit {
     @Output() closePanel = new EventEmitter<void>();
 
     @Input() userInfor: any;
@@ -50,33 +52,40 @@ export class ConversationInforLayoutComponent implements OnInit {
 
     // Add Member modal state
     isAddMemberModalOpen = false;
+    isLoadingFriends = false;
     friends: any[] = [];
     selectedFriendIds = new Set<string>();
     addMemberSearchQuery = '';
     isAddingMembers = false;
     addMemberError = '';
 
-    constructor(
-        private media: Media,
-        private friendService: Friend,
-        private participantService: Participant,
-        private socketService: SocketService,
-        public fileUtils: FileUtils
-    ) { }
+    mediaService = inject(MediaService);
+    friendService = inject(Friend);
+    participantService = inject(Participant);
+    socketService = inject(SocketService);
+    messagesService = inject(Messages);
+    fileUtils = inject(FileUtils);
+    private cdr = inject(ChangeDetectorRef);
+
+    constructor() { }
 
     ngOnInit(): void {
         this.loadMediaData();
         this.socketEmitListener();
+        // Pre-load friends so Add Member modal opens instantly
+        if (this.currentUserId) {
+            this.loadFriends();
+        }
     }
 
     socketEmitListener() {
         this.socketService.on('updateConversationInfo', (data: any) => {
             console.log('Update Conversation Info: ', data);
-            
+
             // Chỉ cập nhật nếu đúng conversation đang hiển thị và có tệp mới
             if (data.conversation_id === this.conversationInfor?.conversation_id && data.upload_file) {
                 const newFiles = Array.isArray(data.upload_file) ? data.upload_file : [data.upload_file];
-                
+
                 newFiles.forEach((file: any) => {
                     const mType = file.message_type || file.resource_type;
                     if (mType === 'image') {
@@ -95,7 +104,7 @@ export class ConversationInforLayoutComponent implements OnInit {
         const convID = this.conversationInfor?.conversation_id;
         if (!convID) return;
 
-        this.media.getMedia(convID).subscribe((res: any) => {
+        this.mediaService.getMedia(convID).subscribe((res: any) => {
             const data = res?.metadata?.mediaMesssage;
             if (data) {
                 this.imgData.set(data.image || []);
@@ -308,23 +317,36 @@ export class ConversationInforLayoutComponent implements OnInit {
         this.openAddMemberModal();
     }
 
-    openAddMemberModal() {
+    loadFriends() {
         if (!this.currentUserId) return;
-
-        this.addMemberError = '';
+        this.isLoadingFriends = true;
         this.friendService.getFriendByUserId(this.currentUserId).subscribe({
             next: (res: any) => {
-                // Filter out users who are already participants
-                const currentParticipantIds = new Set(this.participants.map(p => p.user_id));
-                this.friends = (res?.metadata?.friends || []).filter((f: any) => !currentParticipantIds.has(f.friend_id));
-                this.isAddMemberModalOpen = true;
+                const rawFriends = res?.metadata?.friends || [];
+                // Flatten nested friend object: { friend_id, friend: { full_name, avatar_url... } }
+                this.friends = rawFriends.map((f: any) => ({
+                    ...f,
+                    full_name: f.friend?.full_name || f.full_name || 'Người dùng',
+                    avatar_url: f.friend?.avatar_url || f.avatar_url || 'assets/default-avatar.png',
+                    email: f.friend?.email || f.email || '',
+                    status: f.friend?.status || f.status || 'offline',
+                }));
+                this.isLoadingFriends = false;
             },
             error: (err) => {
                 console.error('Error fetching friends:', err);
-                this.addMemberError = 'Không thể tải danh sách bạn bè.';
-                this.isAddMemberModalOpen = true;
+                this.isLoadingFriends = false;
             }
         });
+    }
+
+    openAddMemberModal() {
+        if (!this.currentUserId) return;
+        this.addMemberError = '';
+        this.selectedFriendIds.clear();
+        this.addMemberSearchQuery = '';
+        // Filter out current participants on open (in case participants changed)
+        this.isAddMemberModalOpen = true;
     }
 
     closeAddMemberModal() {
@@ -343,9 +365,11 @@ export class ConversationInforLayoutComponent implements OnInit {
     }
 
     get filteredFriends() {
-        if (!this.addMemberSearchQuery.trim()) return this.friends;
+        const currentParticipantIds = new Set(this.participants.map((p: any) => p.user_id));
+        const nonMembers = this.friends.filter(f => !currentParticipantIds.has(f.friend_id));
+        if (!this.addMemberSearchQuery.trim()) return nonMembers;
         const query = this.addMemberSearchQuery.toLowerCase();
-        return this.friends.filter(f =>
+        return nonMembers.filter(f =>
             f.full_name?.toLowerCase().includes(query) ||
             f.email?.toLowerCase().includes(query)
         );
@@ -360,28 +384,78 @@ export class ConversationInforLayoutComponent implements OnInit {
         this.isAddingMembers = true;
         this.addMemberError = '';
 
-        const promises = Array.from(this.selectedFriendIds).map(userId => {
-            return new Promise((resolve, reject) => {
-                this.participantService.postParticipant({
-                    conversation_id: convID,
-                    user_id: userId,
-                    role: 'member'
-                }).subscribe({
-                    next: resolve,
-                    error: reject
-                });
-            });
-        });
+        const selectedIds = Array.from(this.selectedFriendIds);
 
-        Promise.all(promises).then(() => {
-            this.isAddingMembers = false;
-            this.closeAddMemberModal();
-            // Optionally reload conversation info to show new members
-            // For now, assume parent handles or websocket updates
-        }).catch(err => {
-            console.error('Error adding members:', err);
-            this.addMemberError = 'Gặp lỗi khi thêm thành viên.';
-            this.isAddingMembers = false;
+        // Batch add all selected users in parallel
+        const addRequests = selectedIds.reduce((acc: any, userId) => {
+            acc[userId] = this.participantService.postParticipant({
+                conversation_id: convID,
+                user_id: userId,
+                role: 'member'
+            });
+            return acc;
+        }, {});
+
+        forkJoin(addRequests).subscribe({
+            next: async () => {
+                this.isAddingMembers = false;
+
+                const allParticipantIds = [
+                    ...this.participants.map((p: any) => p.user_id),
+                    ...selectedIds
+                ];
+
+                // 1. Tạo system message cho từng người và lưu vào DB trước
+                try {
+                    const systemMessageRequests = selectedIds.map(addedUserId => 
+                        lastValueFrom(this.messagesService.postMessage(
+                            convID,
+                            addedUserId,
+                            'đã được thêm vào nhóm',
+                            undefined,
+                            'system'
+                        ))
+                    );
+
+                    const savedMessages = await Promise.all(systemMessageRequests);
+
+                    // 2. Sau khi đã lưu tin nhắn vào DB, emit addMember để mọi người (bao gồm mình) refresh sidebar
+                    this.socketService.emit('addMember', {
+                        conversation_id: convID,
+                        added_user_ids: selectedIds,
+                        added_by: this.currentUserId,
+                        all_participant_ids: allParticipantIds,
+                    });
+
+                    // 3. Emit sendMessage để message list hiện tin nhắn ngay lập tức
+                    savedMessages.forEach(response => {
+                        const savedMsg = response.metadata?.newMessage;
+                        if (savedMsg) {
+                            const person = this.friends.find((f: any) => String(f.friend_id) === String(savedMsg.sender_id));
+                            if (person) {
+                                savedMsg.sender_name = person.full_name;
+                                savedMsg.sender_avatar = person.avatar_url;
+                            }
+                            this.socketService.emit('sendMessage', savedMsg);
+                        }
+                    });
+
+                    // 4. Notify người dùng mới được thêm về conversation
+                    this.socketService.emit('notifyNewConversation', {
+                        receiverIds: selectedIds,
+                        conversationId: convID,
+                    });
+                } catch (err) {
+                    console.error('Error in member addition flow:', err);
+                }
+
+                this.closeAddMemberModal();
+            },
+            error: (err) => {
+                console.error('Error adding members:', err);
+                this.addMemberError = 'Gặp lỗi khi thêm thành viên. Vui lòng thử lại.';
+                this.isAddingMembers = false;
+            }
         });
     }
 }

@@ -55,7 +55,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
         private userService: User,
         private socketService: SocketService,
         public fileUtils: FileUtils
-    ) {}
+    ) { }
 
     ngOnInit() {
         this.currentUserId = this.router.snapshot.paramMap.get('id') || '';

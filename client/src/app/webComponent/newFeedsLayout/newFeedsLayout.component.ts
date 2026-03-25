@@ -1,4 +1,4 @@
-import { Component, Input, signal, OnDestroy, HostListener, ViewChild, ElementRef, AfterViewInit, ChangeDetectorRef, inject, CUSTOM_ELEMENTS_SCHEMA, NgZone } from '@angular/core';
+import { Component, Input, signal, OnDestroy, HostListener, ViewChild, ElementRef, AfterViewInit, ChangeDetectorRef, inject, CUSTOM_ELEMENTS_SCHEMA, NgZone, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpEventType } from '@angular/common/http';
@@ -10,6 +10,7 @@ import { UploadService } from '../../services/uploadService';
 import { FileUtils } from '../../utils/FileUtils/fileUltils';
 import { DateTimeUtils } from '../../utils/DateTimeUtils/datetimeUtils';
 import { SocketService } from '../../services/socket';
+import { Friend } from '../../services/friend';
 import { LinkPreviewUtils } from '../../utils/LinkUtils/linkPreviewUtils';
 import Swal from 'sweetalert2';
 
@@ -22,11 +23,13 @@ import Swal from 'sweetalert2';
     ],
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
     templateUrl: './newFeedsLayout.component.html',
-    styleUrl: './newFeedsLayout.component.css'
+    styleUrl: './newFeedsLayout.component.css',
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
-    @ViewChild('feedMain') feedMain!: ElementRef;
-    @ViewChild('scrollSentinel') scrollSentinel!: ElementRef;
+    @ViewChild('feedMain', { static: true }) feedMain!: ElementRef;
+    @ViewChild('feedGrid', { static: true }) feedGrid!: ElementRef;
+    @ViewChild('scrollSentinel', { static: true }) scrollSentinel!: ElementRef;
     @HostListener('document:click', ['$event'])
     onDocumentClick(event: MouseEvent) {
         const target = event.target as HTMLElement;
@@ -45,6 +48,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         public dateTimeUtils: DateTimeUtils,
         private socketService: SocketService,
         private linkPreviewUtils: LinkPreviewUtils,
+        private friendService: Friend,
         private cdr: ChangeDetectorRef
     ) { }
 
@@ -55,6 +59,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
             this._userInfor = value;
             // Cập nhật avatar cho creator từ dữ liệu thật
             this.currentUser.avatar = value.avatar_url || this.currentUser.avatar;
+            this.loadOnlineFriends();
         }
     }
     get userInfor(): any {
@@ -72,6 +77,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
     editLinkPreview: any | null = null;
     shareLinkPreview: any | null = null;
     activeMenuPostId = signal<string | null>(null);
+    hoveredPostId = signal<string | null>(null);
     isEditModalOpen = signal(false);
     isShareModalOpen = signal(false);
     editingPost = signal<any>(null);
@@ -121,23 +127,25 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         { tag: '#NeonMesh', cat: 'Grid', count: '6.2k transmissions' },
         { tag: '#QuantumKeys', cat: 'Security', count: '4.1k transmissions' }
     ];
-    onlineNodes: Array<{ name: string; avatar: string; status: string }> = [
-        {
-            name: 'Aria Nova',
-            avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBuW4uOJnow85o2xP-U-CMEPcslX82Tii-UE4q2CB0VX-22kH16kuUUK1DfGw21zQ2h9z_HKh6s0Q5byP0G11DkLStgjFNccLavDxT4TF0sGj5La82iY3Rwg1l0uqewhvsKpxL4GfxCKl4-xCNGwRdnifygWqCwxsW4j0waifHWX435uMGIAuPAXbWtn5KtTuAJobOhuVQvf4Oo0vrGtjQOAOdUiogC_z4JXZlimcQrPJ7p2j1Vq9EjQqpikpU6WPfsJr-boh87qc4',
-            status: 'online'
-        },
-        {
-            name: 'K-Xero',
-            avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC90h8goqIc76g33FxjsWw1XkUtXtdlf5L6rxo4MyfQPMzC2lW1BeviDuSK3mh_pirj6mQ9Zgmp3ypqIbPn2D3aJUequ0teaRr34spBQ6BRCyWQsAFhHZaRaoKz3gNhIBuX4_UnH3JvL1iZlTOfqAZFyFB6D59zXe0d56yXW2mzNuWL-hpfaXGA675zKbY7D8-iNlXLvV1Ck0r2w_0LhHcAteglURRpxouo9YvoY5lkK3--6gY2vISDhg40yvrsBnF3n_s1360GPSs',
-            status: 'online'
-        },
-        {
-            name: 'Omni_Sys',
-            avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBhcGFNKqmwCg8XtLzxAt_JpJSsbvYY6oLZd8CXM7IeryCmBN-WAHWVezJJUtwgPzwceOxtZOxLvlrXBqF9U47VQ7f3Z1Fl7bY5h7cTLU628YfoJ5Nr6j5JiRawqclb4f73K0yucnsJLt8lyc5PKG-Eo3rNUMkE_qFTiP3fd1Ozlagl7pHADRtWt4zrKarOs8_LyCJe89lvAnMECCozSCjIaDCU2uwAuZfh4KGYV09PrKOzjbuNJB02B3frapXluyFkuVm7OWK_YRg',
-            status: 'offline'
-        }
-    ];
+    onlineNodes = signal<any[]>([]);
+
+    loadOnlineFriends() {
+        if (!this._userInfor?.id) return;
+
+        this.friendService.getFriendByUserId(this._userInfor.id).subscribe({
+            next: (data) => {
+                const friends = data.metadata.friends || [];
+                const mappedFriends = friends.map((f: any) => ({
+                    id: f.friend.id,
+                    name: f.friend.full_name,
+                    avatar: f.friend.avatar_url,
+                    status: f.friend.status
+                }));
+                this.onlineNodes.set(mappedFriends);
+            },
+            error: (err) => console.error('Error loading online friends:', err)
+        });
+    }
     expandedPosts = new Set<string>();
     expandedContentIds = signal<Set<string>>(new Set());
     private observer: IntersectionObserver | null = null;
@@ -198,10 +206,12 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
 
         this.observer = new IntersectionObserver((entries) => {
             if (entries[0].isIntersecting) {
-                this.loadFeeds(true);
+                this.ngZone.run(() => {
+                    this.loadFeeds(true);
+                });
             }
         }, {
-            root: this.feedMain.nativeElement,
+            root: this.feedGrid.nativeElement,
             rootMargin: '150px',
             threshold: 0.1
         });
@@ -349,6 +359,52 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                 }
                 return p;
             }));
+        });
+        this.socketService.on('userStatusChanged', (data: { userId: string, status: string }) => {
+            // 1. Update Sidebar
+            this.onlineNodes.update(nodes => nodes.map(node =>
+                node.id === data.userId ? { ...node, status: data.status } : node
+            ));
+
+            // 2. Update Feed Authors status
+            this.posts.update(posts => posts.map(post => {
+                let updatedPost = { ...post };
+                let hasChanges = false;
+
+                if (post.user_id === data.userId) {
+                    updatedPost.user_infor = { ...post.user_infor, status: data.status };
+                    hasChanges = true;
+                }
+
+                if (Array.isArray(post.comments)) {
+                    const updatedComments = post.comments.map((c: any) =>
+                        c.user_id === data.userId
+                            ? { ...c, user_infor: { ...c.user_infor, status: data.status } }
+                            : c
+                    );
+                    if (updatedComments !== post.comments) {
+                        updatedPost.comments = updatedComments;
+                        hasChanges = true;
+                    }
+                }
+
+                if (post.shared_post && post.shared_post.user_id === data.userId) {
+                    updatedPost.shared_post = {
+                        ...post.shared_post,
+                        user_infor: { ...post.shared_post.user_infor, status: data.status }
+                    };
+                    hasChanges = true;
+                }
+
+                return hasChanges ? updatedPost : post;
+            }));
+        });
+
+        this.socketService.on('onlineUsersList', (onlineIds: string[]) => {
+            this.onlineNodes.update(nodes => nodes.map(node => ({
+                ...node,
+                status: onlineIds.includes(node.id) ? 'online' : 'offline'
+            })));
         });
     }
 
@@ -660,8 +716,8 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                     this.loading.set(false);
                     // Scroll to top only on initial load
                     setTimeout(() => {
-                        if (this.feedMain) {
-                            this.feedMain.nativeElement.scrollTo({ top: 0, behavior: 'smooth' });
+                        if (this.feedGrid) {
+                            this.feedGrid.nativeElement.scrollTo({ top: 0, behavior: 'smooth' });
                         }
                     });
                 }
@@ -1565,5 +1621,11 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
 
     getReactionLottieUrl(type: string): string {
         return this.reactions.find(r => r.id === type)?.lottieUrl || 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f44d/lottie.json';
+    }
+
+    setHoveredPost(postId: string | null) {
+        if (this.hoveredPostId() !== postId) {
+            this.hoveredPostId.set(postId);
+        }
     }
 }

@@ -19,11 +19,9 @@
     font-family: Inter, system-ui, -apple-system, sans-serif;
     padding: 16px;
     box-sizing: border-box;
-    background: rgba(10, 20, 30, 0.85);
+    background: #0a141e;
     border: 1px solid rgba(0, 242, 255, 0.2);
     border-radius: 16px;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
     box-shadow: 0 0 20px rgba(0, 242, 255, 0.1);
     overflow: hidden;
 }
@@ -41,6 +39,10 @@
     display: flex;
     align-items: center;
     gap: 16px;
+    background: #0a141e;
+    padding: 0 0 16px 0;
+    border-bottom: 1px solid var(--cyber-border);
+    flex-shrink: 0;
 }
 
 .brand-wrap {
@@ -173,14 +175,23 @@
 }
 
 .feed-grid {
-    display: flex;
-    justify-content: center;
-    gap: 24px;
-    flex: 1;
-    min-height: 0;
+    display: block;
+    /* Change from flex to block to contain the full-width scroll */
     width: 100%;
-    max-width: 1100px;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-top: 0;
+}
+
+.feed-grid-content {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    max-width: 1400px;
     margin: 0 auto;
+    width: 100%;
+    padding: 20px 16px;
 }
 
 .feed-main {
@@ -191,30 +202,37 @@
     flex-direction: column;
     gap: 16px;
     padding-bottom: 24px;
-    overflow-y: auto;
-    overflow-anchor: none;
 }
 
 /* Custom Scrollbar for feed-main and friends-list */
-.feed-main::-webkit-scrollbar,
+.feed-grid::-webkit-scrollbar,
 .friends-list::-webkit-scrollbar {
-    width: 6px;
+    width: 8px;
+    /* Slightly wider */
 }
 
-.feed-main::-webkit-scrollbar-track,
+.feed-grid::-webkit-scrollbar-track,
 .friends-list::-webkit-scrollbar-track {
     background: transparent;
 }
 
-.feed-main::-webkit-scrollbar-thumb,
+.feed-grid::-webkit-scrollbar-thumb,
 .friends-list::-webkit-scrollbar-thumb {
-    background: rgba(0, 242, 255, 0.2);
+    background: rgba(255, 255, 255, 0.1);
+    /* Visible by default */
     border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
 }
 
-.feed-main::-webkit-scrollbar-thumb:hover,
+.feed-grid:hover::-webkit-scrollbar-thumb,
+.friends-list:hover::-webkit-scrollbar-thumb {
+    background: rgba(0, 242, 255, 0.2);
+}
+
+.feed-grid::-webkit-scrollbar-thumb:hover,
 .friends-list::-webkit-scrollbar-thumb:hover {
-    background: var(--cyber-cyan);
+    background: var(--cyber-cyan) !important;
 }
 
 .feed-sidebar {
@@ -226,6 +244,8 @@
     position: sticky;
     top: 0;
     height: fit-content;
+    align-self: flex-start;
+    /* Important for sticky to work if parent is flex */
 }
 
 @media (min-width: 1100px) {
@@ -235,11 +255,9 @@
 }
 
 .cyber-glass {
-    background: rgba(17, 24, 33, 0.7);
+    background: #111821;
     border: 1px solid var(--cyber-border);
     border-radius: 16px;
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
 }
 
 .create-post {
@@ -726,8 +744,10 @@
     gap: 12px;
     transition: all 0.2s ease;
     border: 1px solid rgba(255, 255, 255, 0.05);
-    background: rgba(17, 24, 33, 0.6);
+    background: #161d27;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    content-visibility: auto;
+    contain-intrinsic-size: auto 500px;
 }
 
 .post-card:hover {
@@ -1168,9 +1188,7 @@
     position: absolute;
     bottom: calc(100% + 12px);
     left: -10px;
-    background: rgba(13, 20, 31, 0.85);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: #0d141f;
     border: 1px solid rgba(0, 242, 255, 0.2);
     border-radius: 999px;
     padding: 6px 10px;
@@ -1540,8 +1558,7 @@
     position: fixed;
     inset: 0;
     z-index: 9999;
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(20px);
+    background: rgba(0, 0, 0, 0.95);
     display: flex;
     align-items: center;
     justify-content: center;

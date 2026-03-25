@@ -12,7 +12,7 @@ const sequelize = new Sequelize(
         timezone: 'Asia/Ho_Chi_Minh',
         logging: false,  // Bật log SQL queries để debug
         pool: {
-            max: 5,
+            max: 20,
             min: 0,
             acquire: 30000,
             idle: 10000

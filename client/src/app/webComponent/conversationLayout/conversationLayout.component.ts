@@ -28,12 +28,12 @@ export interface UserPresence {
     last_online_at: string | Date;
 }
 
-import { ConversationInforLayoutComponent } from '../conversationInforLayout/conversationInforLayout.component';
+import { ConversationInfoLayoutComponent } from '../conversationInforLayout/conversationInforLayout.component';
 
 @Component({
     selector: 'conversation-layout',
     standalone: true,
-    imports: [CommonModule, MessagesLayoutComponent, ConversationInforLayoutComponent, GroupAvatarLayoutComponent, IntroLayoutComponent],
+    imports: [CommonModule, MessagesLayoutComponent, ConversationInfoLayoutComponent, GroupAvatarLayoutComponent, IntroLayoutComponent],
     templateUrl: './conversationLayout.component.html',
     styleUrls: ['./conversationLayout.component.css'],
     encapsulation: ViewEncapsulation.None,
@@ -62,7 +62,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     }
 
     userBlock = signal<any[]>([]);
-    
+
     // Conversation selection state (local to this component)
     selectedConversationId: string = '';
     selectedConversationType = '';
@@ -379,6 +379,26 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                 homeConversationData: { ...cur.homeConversationData, joinedConversations: updated },
             };
             this.cdr.markForCheck();
+        });
+
+        this.socketService.on('addMember', (data: any) => {
+            console.log('Received addMember event in Conversation:', data);
+            // Tải lại danh sách cuộc trò chuyện để lấy list participants mới
+            this.conversationService.getConversations(this.currentUserId).subscribe({
+                next: (response) => {
+                    this.conversations = response.metadata || {};
+                    const joined = this.conversations?.homeConversationData?.joinedConversations || [];
+                    
+                    // Nếu đang mở đúng conversation đó, cập nhật getMessageInfor
+                    if (this.selectedConversationId === data.conversation_id) {
+                        const target = joined.find((c: any) => c.conversation_id === data.conversation_id);
+                        if (target) {
+                            this.handleConversationID(target);
+                        }
+                    }
+                    this.cdr.markForCheck();
+                }
+            });
         });
     }
 

@@ -397,7 +397,7 @@
             <div class="search-box-wrapper">
                 <i class="bi bi-search search-icon"></i>
                 <input class="add-member-search-input" type="text" [(ngModel)]="addMemberSearchQuery"
-                    placeholder="Tìm kiếm bạn bè...">
+                    placeholder="Tìm kiếm bạn bè..." [disabled]="isLoadingFriends">
             </div>
 
             @if (addMemberError) {
@@ -407,6 +407,15 @@
             }
 
             <div class="friends-selection-list">
+                @if (isLoadingFriends) {
+                <!-- Loading state -->
+                <div class="friends-loading-state">
+                    <div class="friends-spinner">
+                        <div class="spinner-ring"></div>
+                    </div>
+                    <p>Đang tải danh sách bạn bè...</p>
+                </div>
+                } @else {
                 @for (friend of filteredFriends; track friend.friend_id) {
                 <label class="friend-select-item" [class.selected]="selectedFriendIds.has(friend.friend_id)">
                     <div class="friend-select-info">
@@ -428,6 +437,7 @@
                     <i class="bi bi-people"></i>
                     <p>Không tìm thấy bạn bè nào có thể thêm.</p>
                 </div>
+                }
                 }
             </div>
         </div>

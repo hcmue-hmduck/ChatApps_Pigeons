@@ -286,7 +286,8 @@
                                     }
                                     @if (showMenuId === msg.id) {
                                     <div class="msg-dropdown" [class.drop-up]="isMenuDropUp(msg.id)"
-                                        [class.drop-down]="!isMenuDropUp(msg.id)">
+                                        [class.drop-down]="!isMenuDropUp(msg.id)"
+                                        [class.flip-h]="isMenuFlipHorizontal(msg.id)">
                                         @if (msg.message_type === 'text') {
                                         <button class="dropdown-item" (click)="openEditModal(msg)">
                                             <i class="bi bi-pencil me-2"></i>Sửa
@@ -528,7 +529,8 @@
                                     }
                                     @if (showMenuId === msg.id) {
                                     <div class="msg-dropdown" [class.drop-up]="isMenuDropUp(msg.id)"
-                                        [class.drop-down]="!isMenuDropUp(msg.id)">
+                                        [class.drop-down]="!isMenuDropUp(msg.id)"
+                                        [class.flip-h]="isMenuFlipHorizontal(msg.id)">
                                         <button class="dropdown-item" (click)="forwardMessage(msg)">
                                             <i class="bi bi-forward me-2"></i>Chuyển tiếp
                                         </button>

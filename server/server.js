@@ -147,8 +147,8 @@ io.on('connection', (socket) => {
 
     // Nhận tin nhắn từ client và broadcast cho người khác
     socket.on('sendMessage', (data) => {
-        // Broadcast tin nhắn tới tất cả clients trong conversation (trừ người gửi)
-        socket.to(data.conversation_id).emit('newMessage', data);
+        console.log('Received sendMessage event on server:', data);
+        io.to(data.conversation_id).emit('newMessage', data);
     });
 
     socket.on('updateConversation', (data) => {
@@ -192,6 +192,12 @@ io.on('connection', (socket) => {
         console.log('Received updateParticipant event on server:', data);
         // Broadcast tới tất cả thành viên trong conversation room
         socket.to(data.conversation_id).emit('updateParticipant', data);
+    });
+
+    socket.on('addMember', (data) => {
+        console.log('Received addMember event on server:', data);
+        // Broadcast tới tất cả trong phòng để cập nhật danh sách thành viên
+        io.to(data.conversation_id).emit('addMember', data);
     });
 
     socket.on('updateFriend', (data) => {
@@ -243,7 +249,7 @@ io.on('connection', (socket) => {
         console.log('Received updatePost event on server:', data);
         socket.broadcast.emit('updatePost', data);
     })
-    
+
     socket.on('deletePost', (data) => {
         console.log('Received deletePost event on server:', data);
         socket.broadcast.emit('deletePost', data);
@@ -287,7 +293,7 @@ io.on('connection', (socket) => {
     socket.on('getServerTime', () => {
         socket.emit('serverTime', { time: Date.now() });
     });
-    
+
     socket.on('disconnect', async () => {
         console.log('User disconnected:', socket.id);
 

@@ -445,7 +445,7 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
                         if (unblockedUser) {
                             const dataBlock = {
                                 ...unblockedUser,
-                        
+
                                 blocker_id: this.currentUserId,
                                 blocked_id: unblockedUser.friend_id || unblockedUser.id,
                             }

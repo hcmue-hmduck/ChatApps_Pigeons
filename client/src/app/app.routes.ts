@@ -4,6 +4,8 @@ import { AdminLayoutComponent } from './webComponent/adminLayout/adminLayout.com
 import { HomeLayoutComponent } from './webComponent/homeLayout/homeLayout.component';
 import { MessagesLayoutComponent } from './webComponent/messagesLayout/messagesLayout.component';
 import { CallLayoutComponent } from './webComponent/callLayout/callLayout';
+import { NewFeedsLayoutComponent } from './webComponent/newFeedsLayout/newFeedsLayout.component';
+import { RelationshipLayoutComponent } from './webComponent/relationshipLayout/relationshipLayout.component';
 
 export const routes: Routes = [
     {
@@ -26,4 +28,12 @@ export const routes: Routes = [
         path: 'call-display',
         component: CallLayoutComponent,
     },
+    {
+        path: 'relationship/:id',
+        component: RelationshipLayoutComponent,
+    },
+    {
+        path: 'feeds',
+        component: NewFeedsLayoutComponent,
+    }
 ];

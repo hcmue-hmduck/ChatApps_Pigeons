@@ -1,4 +1,5 @@
 const friendsModel = require('../models/friendsModel');
+const usersModel = require('../models/usersModel');
 
 class FriendsService {
     async getFriendByUserId(userId) {
@@ -6,7 +7,12 @@ class FriendsService {
             return await friendsModel.findAll({
                 where: {
                     user_id: userId
-                }
+                },
+                include: [{
+                    model: usersModel,
+                    as: 'friend',
+                    attributes: ['id', 'full_name', 'avatar_url', 'status']
+                }]
             })
         }
         catch (error) {

@@ -249,9 +249,7 @@
 .pinned-panel-list {
     pointer-events: auto;
     /* Enable clicks on the actual content */
-    background: rgba(15, 23, 42, 0.85);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background: #0f172a;
     border: 1px solid var(--glass-border);
     border-radius: 12px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
@@ -268,7 +266,7 @@
 }
 
 .pinned-bar:hover {
-    background: rgba(0, 242, 255, 0.08);
+    background: #1a253a;
 }
 
 .pinned-sender {
@@ -1453,6 +1451,7 @@
     transition: opacity 0.15s;
     flex-shrink: 0;
     position: relative;
+    z-index: 1;
 }
 
 .bubble-row:hover .message-actions,
@@ -1462,6 +1461,7 @@
 
 .message-actions.active {
     opacity: 1;
+    z-index: 10000;
 }
 
 .action-btn {
@@ -1714,64 +1714,181 @@
 /* Dropdown menu · Dark glass */
 .msg-dropdown {
     position: absolute;
-    top: calc(100% + 8px);
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%);
-    background: rgba(10, 20, 52, 0.96);
-    backdrop-filter: blur(18px);
-    border: 1px solid rgba(30, 144, 255, 0.22);
-    border-radius: 12px;
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65);
-    min-width: 140px;
-    overflow: hidden;
-    z-index: 9999;
-    transform-origin: top center;
-    animation: dropIn 0.15s ease-out;
+    background: #0a1434; /* Default solid dark */
+    border: 1px solid rgba(0, 242, 255, 0.25);
+    border-radius: 14px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+    min-width: 160px;
+    z-index: 10001;
+    overflow: visible;
+    animation: dropIn 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.msg-dropdown.drop-up {
-    top: auto;
-    bottom: calc(100% + 8px);
-}
-
-.msg-dropdown.drop-down {
-    top: calc(100% + 8px);
-    bottom: auto;
-}
-
+/* Positioning logic - Aligned edges with Dots button */
 .me-row .msg-dropdown {
-    transform-origin: top center;
+    top: calc(100% + 12px);
+    right: 64px;
+    /* Align with right edge of Dots button */
+    left: auto;
+    transform: none;
+    transform-origin: top right;
+    background: #001f2e; /* Solid dark cyan */
+    border: 1px solid rgba(0, 242, 255, 0.45);
+    border-radius: 14px 14px 5px 14px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7), 0 0 20px rgba(0, 242, 255, 0.1);
+}
+
+.me-row .msg-dropdown.drop-up {
+    top: auto;
+    bottom: calc(100% + 12px);
+    transform-origin: bottom right;
+}
+
+.other-row .msg-dropdown {
+    top: calc(100% + 12px);
+    left: 64px;
+    /* Align with left edge of Dots button */
+    right: auto;
+    transform: none;
+    transform-origin: top left;
+    background: #0c1938; /* Solid dark blue */
+    border: 1px solid rgba(30, 144, 255, 0.35);
+    border-radius: 14px 14px 14px 5px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+}
+
+.other-row .msg-dropdown.drop-up {
+    top: auto;
+    bottom: calc(100% + 12px);
+    transform-origin: bottom left;
+}
+
+/* Dynamic flipping for tight spaces (no media query needed) */
+.me-row .msg-dropdown.flip-h {
+    right: auto;
+    left: 0;
+    transform-origin: top left;
+}
+
+.me-row .msg-dropdown.flip-h.drop-up {
+    transform-origin: bottom left;
+}
+
+.me-row .msg-dropdown.flip-h::after {
+    right: auto;
+    left: 10px;
+}
+
+.other-row .msg-dropdown.flip-h {
+    left: auto;
+    right: 0;
+    transform-origin: top right;
+}
+
+.other-row .msg-dropdown.flip-h.drop-up {
+    transform-origin: bottom right;
+}
+
+.other-row .msg-dropdown.flip-h::after {
+    left: auto;
+    right: 10px;
+}
+
+/* Bubble Tail (Arrow) */
+.msg-dropdown::after {
+    content: "";
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border: inherit;
+    z-index: -1;
+    transform: rotate(45deg);
+}
+
+.me-row .msg-dropdown::after {
+    background: #001f2e;
+    /* Matching Me bubble dark base */
+    right: 10px;
+}
+
+.other-row .msg-dropdown::after {
+    background: #0c1938;
+    /* Matching Other bubble dark base */
+    left: 10px;
+}
+
+/* Arrow for Drop-down (top) */
+.msg-dropdown.drop-down::after {
+    top: -6px;
+    border-right: none;
+    border-bottom: none;
+}
+
+/* Arrow for Drop-up (bottom) */
+.msg-dropdown.drop-up::after {
+    bottom: -6px;
+    border-left: none;
+    border-top: none;
 }
 
 @keyframes dropIn {
     from {
         opacity: 0;
-        transform: translateX(-50%) scale(0.92);
+        transform: scale(0.95);
     }
 
     to {
         opacity: 1;
-        transform: translateX(-50%) scale(1);
+        transform: scale(1);
     }
 }
 
 .dropdown-item {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 10px;
     width: 100%;
-    padding: 10px 16px;
+    padding: 8px 14px;
     background: transparent;
     border: none;
     text-align: left;
-    font-size: 14px;
-    color: #a8cfff;
+    font-size: 13.5px;
+    color: #e2efff;
     cursor: pointer;
-    transition: background 0.12s;
+    transition: all 0.2s ease;
+}
+
+.dropdown-item i {
+    font-size: 15px;
+    width: 18px;
+    text-align: center;
 }
 
 .dropdown-item:hover {
-    background: rgba(30, 144, 255, 0.12);
-    color: #7ecfff;
+    background: rgba(0, 242, 255, 0.12);
+    color: #fff;
+    padding-left: 18px;
+}
+
+.dropdown-item:active {
+    background: rgba(0, 242, 255, 0.2);
+}
+
+/* Icon specific colors */
+.dropdown-item i.bi-pencil {
+    color: #00f2ff;
+}
+
+.dropdown-item i.bi-forward {
+    color: #8a7cff;
+}
+
+.dropdown-item i.bi-pin-angle {
+    color: #ffcc00;
+}
+
+.dropdown-item i.bi-trash {
+    color: #ff5f5f;
 }
 
 .dropdown-item.danger {
