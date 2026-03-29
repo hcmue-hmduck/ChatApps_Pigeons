@@ -372,7 +372,7 @@ export class ConversationInfoLayoutComponent implements OnInit {
                         lastValueFrom(this.messagesService.postMessage(
                             convID,
                             addedUserId,
-                            'đã được thêm vào nhóm',
+                            '<i class="bi bi-person-plus"></i> đã được thêm vào nhóm',
                             undefined,
                             'system'
                         ))

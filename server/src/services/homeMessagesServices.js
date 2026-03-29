@@ -86,6 +86,8 @@ class HomeMessagesService {
                 content: targetMsg ? targetMsg.content : 'Tin nhắn không tồn tại hoặc đã bị xóa',
                 sender_id: targetMsg ? targetMsg.sender_id : null,
                 sender_name: sender ? sender.full_name : 'Unknown',
+                message_type: targetMsg ? targetMsg.message_type : 'text',
+                file_name: targetMsg ? targetMsg.file_name : null,
             };
         });
 

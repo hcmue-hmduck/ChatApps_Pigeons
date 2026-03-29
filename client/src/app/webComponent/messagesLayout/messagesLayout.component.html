@@ -91,7 +91,8 @@
                 <span class="pinned-item-sender">{{ pinnedMessages()[pinnedMessages().length - 1].sender_name || 'Ai
                     đó'
                     }}: </span>
-                <span class="pinned-item-text">{{ pinnedMessages()[pinnedMessages().length - 1].content }}</span>
+                <span class="pinned-item-text"
+                    [innerHTML]="formatPinnedMessagePreview(pinnedMessages()[pinnedMessages().length - 1])"></span>
             </div>
         </div>
 
@@ -141,7 +142,7 @@
                 <div class="pinned-item-title">Tin nhắn</div>
                 <div class="pinned-item-preview">
                     <span class="pinned-item-sender">{{ pm.sender_name || 'Ai đó' }}: </span>
-                    <span class="pinned-item-text">{{ pm.content }}</span>
+                    <span class="pinned-item-text" [innerHTML]="formatPinnedMessagePreview(pm)"></span>
                 </div>
             </div>
             <!-- Three-dots menu từng item -->
@@ -214,8 +215,10 @@
         <!-- System message -->
         @if (msg.message_type === 'system') {
         <div class="message-system">
-            <span class="system-text">{{ getLastMessageSenderName(msg.sender_id, msg.sender_name) }} {{ msg.content
-                }}</span>
+            <span class="system-text">
+                {{ getLastMessageSenderName(msg.sender_id, msg.sender_name) }}
+                <span [innerHTML]="msg.content"></span>
+            </span>
         </div>
         } @else {
         <!-- ===== MY MESSAGES ===== -->
@@ -279,7 +282,13 @@
                                         @for (emoji of quickReactionEmojis; track emoji) {
                                         <button class="reaction-emoji-btn" type="button"
                                             (click)="toggleReaction(msg, emoji, $event)">
+                                            @if (reactionLottieUrls[emoji]) {
+                                            <lottie-player class="lottie-emoji" [src]="reactionLottieUrls[emoji]"
+                                                background="transparent" speed="1" direction="1" mode="normal" loop
+                                                autoplay></lottie-player>
+                                            } @else {
                                             {{ emoji }}
+                                            }
                                         </button>
                                         }
                                     </div>
@@ -296,9 +305,16 @@
                                         <button class="dropdown-item" (click)="forwardMessage(msg)">
                                             <i class="bi bi-forward me-2"></i>Chuyển tiếp
                                         </button>
+                                        @let currentPinned = getPinnedMessage(msg.id);
+                                        @if (currentPinned) {
+                                        <button class="dropdown-item" (click)="unpinMessage(currentPinned)">
+                                            <i class="bi bi-pin-angle me-2"></i>Bỏ ghim
+                                        </button>
+                                        } @else {
                                         <button class="dropdown-item" (click)="pinMessage(msg)">
                                             <i class="bi bi-pin-angle me-2"></i>Ghim
                                         </button>
+                                        }
                                         <button class="dropdown-item danger" (click)="deleteMessage(msg)">
                                             <i class="bi bi-trash me-2"></i>Gỡ
                                         </button>
@@ -522,7 +538,13 @@
                                         @for (emoji of quickReactionEmojis; track emoji) {
                                         <button class="reaction-emoji-btn" type="button"
                                             (click)="toggleReaction(msg, emoji, $event)">
+                                            @if (reactionLottieUrls[emoji]) {
+                                            <lottie-player class="lottie-emoji" [src]="reactionLottieUrls[emoji]"
+                                                background="transparent" speed="1" direction="1" mode="normal" loop
+                                                autoplay></lottie-player>
+                                            } @else {
                                             {{ emoji }}
+                                            }
                                         </button>
                                         }
                                     </div>
@@ -534,9 +556,16 @@
                                         <button class="dropdown-item" (click)="forwardMessage(msg)">
                                             <i class="bi bi-forward me-2"></i>Chuyển tiếp
                                         </button>
+                                        @let currentPinned = getPinnedMessage(msg.id);
+                                        @if (currentPinned) {
+                                        <button class="dropdown-item" (click)="unpinMessage(currentPinned)">
+                                            <i class="bi bi-pin-angle me-2"></i>Bỏ ghim
+                                        </button>
+                                        } @else {
                                         <button class="dropdown-item" (click)="pinMessage(msg)">
                                             <i class="bi bi-pin-angle me-2"></i>Ghim
                                         </button>
+                                        }
                                     </div>
                                     }
                                 </div>

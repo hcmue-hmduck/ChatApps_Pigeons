@@ -241,7 +241,7 @@
     /* Let clicks pass through to empty space if any */
 }
 
-.ongoing-call-banner + .pinned-bar-wrap {
+.ongoing-call-banner+.pinned-bar-wrap {
     top: 142px;
 }
 
@@ -1538,6 +1538,17 @@
     transform: translateY(-1px) scale(1.08);
 }
 
+.lottie-emoji {
+    width: 24px;
+    height: 24px;
+    display: inline-block;
+}
+
+.reaction-emoji-btn .lottie-emoji {
+    width: 28px;
+    height: 28px;
+}
+
 .message-reactions {
     display: flex;
     align-items: center;
@@ -1714,7 +1725,8 @@
 /* Dropdown menu · Dark glass */
 .msg-dropdown {
     position: absolute;
-    background: #0a1434; /* Default solid dark */
+    background: #0a1434;
+    /* Default solid dark */
     border: 1px solid rgba(0, 242, 255, 0.25);
     border-radius: 14px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
@@ -1732,7 +1744,8 @@
     left: auto;
     transform: none;
     transform-origin: top right;
-    background: #001f2e; /* Solid dark cyan */
+    background: #001f2e;
+    /* Solid dark cyan */
     border: 1px solid rgba(0, 242, 255, 0.45);
     border-radius: 14px 14px 5px 14px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7), 0 0 20px rgba(0, 242, 255, 0.1);
@@ -1751,7 +1764,8 @@
     right: auto;
     transform: none;
     transform-origin: top left;
-    background: #0c1938; /* Solid dark blue */
+    background: #0c1938;
+    /* Solid dark blue */
     border: 1px solid rgba(30, 144, 255, 0.35);
     border-radius: 14px 14px 14px 5px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);

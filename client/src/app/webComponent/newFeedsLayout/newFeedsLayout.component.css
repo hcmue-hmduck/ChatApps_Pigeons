@@ -35,6 +35,61 @@
     min-height: 0;
 }
 
+.attachments-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.create-preview-card.file-preview-slim {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(0, 242, 255, 0.1);
+    border-radius: 12px;
+    position: relative;
+    backdrop-filter: blur(10px);
+}
+
+.create-preview-card.file-preview-slim .preview-file-icon {
+    width: 36px;
+    height: 36px;
+    background: rgba(0, 242, 255, 0.1);
+    color: var(--cyber-cyan);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+}
+
+.create-preview-card.file-preview-slim .preview-meta {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.create-preview-card.file-preview-slim .preview-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-title);
+}
+
+.create-preview-card.file-preview-slim .preview-subtitle {
+    font-size: 0.7rem;
+    color: #94a3b8;
+}
+
+.create-preview-card.file-preview-slim .preview-remove-btn {
+    position: relative;
+    top: 0;
+    right: 0;
+}
+
 .feed-header {
     display: flex;
     align-items: center;
@@ -943,14 +998,34 @@
 
 /* Attachments Section - Files */
 .attachments-section {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 12px;
-    padding: 16px;
     margin-top: 12px;
-    border: 1px solid rgba(0, 242, 255, 0.15);
-    border-radius: 12px;
-    background: rgba(0, 242, 255, 0.05);
+    padding: 0;
+}
+
+.attachments-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    max-height: 240px; /* Further optimized height */
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.attachments-list .attachment-slim-card:only-child {
+    grid-column: span 2;
+}
+
+.attachments-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.attachments-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.attachments-list::-webkit-scrollbar-thumb {
+    background: rgba(0, 242, 255, 0.2);
+    border-radius: 10px;
 }
 
 .media-grid-two {
@@ -1087,89 +1162,97 @@
     backdrop-filter: blur(4px);
 }
 
-.attachment-card {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 12px;
-    min-height: 72px;
+.attachment-slim-card {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    transition: 0.2s ease;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     cursor: pointer;
     text-decoration: none;
     color: inherit;
 }
 
-.attachment-card * {
-    cursor: inherit;
+.attachment-slim-card:hover {
+    background: rgba(0, 242, 255, 0.06);
+    border-color: rgba(0, 242, 255, 0.3);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
-.attachment-card:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.attachment-left {
+.attachment-info-wrap {
     display: flex;
     align-items: center;
     gap: 12px;
     min-width: 0;
-}
-
-.attachment-left>div {
-    min-width: 0;
     flex: 1;
 }
 
-.attachment-icon {
-    width: 46px;
-    height: 46px;
-    border-radius: 10px;
-    background: rgba(0, 242, 255, 0.1);
-    color: var(--cyber-cyan);
+.attachment-icon-box {
+    width: 34px; /* Slightly smaller */
+    height: 34px;
+    min-width: 34px;
+    border-radius: 8px;
+    background: rgba(0, 242, 255, 0.08);
+    border: 1px solid rgba(0, 242, 255, 0.15);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.25rem;
+    color: var(--cyber-cyan);
+    font-size: 1.1rem;
+    position: relative;
+    overflow: hidden;
 }
 
-.attachment-title {
-    font-size: 0.875rem;
+.attachment-icon-box i {
+    transition: all 0.2s ease;
+}
+
+.attachment-slim-card:hover .attachment-icon-box i {
+    transform: scale(1.1);
+    color: var(--cyber-cyan);
+}
+
+.attachment-details {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.attachment-name {
+    font-size: 0.82rem; /* Slightly smaller */
     font-weight: 600;
-    color: var(--text-title);
+    color: #e2e8f0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    line-height: 1.2;
 }
 
-.attachment-meta {
-    font-size: 0.72rem;
-    color: #64748b;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
-}
-
-.download-btn {
-    width: 40px;
-    height: 40px;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: transparent;
+.attachment-sub {
+    font-size: 0.7rem;
     color: #94a3b8;
-    cursor: pointer;
-    transition: 0.2s ease;
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 6px;
+    margin-top: 1px;
 }
 
-.download-btn:hover {
-    border-color: var(--cyber-cyan);
-    background: var(--cyber-cyan);
-    color: #000;
+.attachment-sub .ext {
+    text-transform: uppercase;
+    font-weight: 700;
+    color: rgba(0, 242, 255, 0.6);
 }
+
+.attachment-sub .dot {
+    opacity: 0.5;
+}
+
+
 
 .post-actions {
     border-top: 1px solid rgba(255, 255, 255, 0.05);

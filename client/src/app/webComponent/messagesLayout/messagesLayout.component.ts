@@ -19,7 +19,8 @@ import {
     Output,
     EventEmitter,
     ChangeDetectionStrategy,
-    NgZone
+    NgZone,
+    CUSTOM_ELEMENTS_SCHEMA
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PickerModule } from '@ctrl/ngx-emoji-mart';
@@ -65,7 +66,8 @@ export interface StagedFile {
     ],
     templateUrl: './messagesLayout.component.html',
     styleUrls: ['./messagesLayout.component.css'],
-    changeDetection: ChangeDetectionStrategy.OnPush
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    schemas: [CUSTOM_ELEMENTS_SCHEMA]
 })
 export class MessagesLayoutComponent
     implements OnInit, OnChanges, AfterViewInit, AfterViewChecked, OnDestroy {
@@ -156,6 +158,34 @@ export class MessagesLayoutComponent
         };
     }
 
+    formatPinnedMessagePreview(pm: any): string {
+        if (!pm) return '';
+        const type = pm.message_type || 'text';
+        let iconHtml = '';
+        let text = pm.content || '';
+
+        if (type === 'image') {
+            iconHtml = '<i class="bi bi-image me-1"></i>';
+            if (!text || text === pm.file_url) text = 'Hình ảnh';
+        } else if (type === 'video') {
+            iconHtml = '<i class="bi bi-camera-video me-1"></i>';
+            if (!text || text === pm.file_url) text = 'Video';
+        } else if (type === 'file') {
+            const iconClass = this.fileUtils.getAttachmentIconClass({ message_type: 'file', file_name: pm.file_name });
+            iconHtml = `<i class="bi ${iconClass} me-1"></i> `;
+            text = pm.file_name || pm.content || 'Tệp đính kèm';
+        } else if (type === 'call') {
+            iconHtml = '<i class="bi bi-telephone me-1"></i>';
+            text = 'Cuộc gọi';
+        }
+
+        return `${iconHtml}<span>${text}</span>`;
+    }
+
+    getPinnedMessage(msgId: string): any | null {
+        return this.pinnedMessages().find(pm => pm.message_id === msgId) || null;
+    }
+
     closedPreviewUrls = new Set<string>();
 
     getLinkPreview(content: string): any | null {
@@ -219,7 +249,16 @@ export class MessagesLayoutComponent
     reactionPickerDropUpId: string | number | null = null;
     showReactionModal = signal(false);
     reactionDetails = signal<any[]>([]);
-    readonly quickReactionEmojis: string[] = ['👍', '❤️', '😂', '😮', '😢', '😡'];
+    readonly quickReactionEmojis: string[] = ['👍', '❤️', '🥰', '😂', '😮', '😢', '😡'];
+    readonly reactionLottieUrls: Record<string, string> = {
+        '👍': 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f44d/lottie.json' ,
+        '❤️': 'https://fonts.gstatic.com/s/e/notoemoji/latest/2764_fe0f/lottie.json' ,
+        '🥰': 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f917/lottie.json' ,
+        '😂': 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f602/lottie.json' ,
+        '😮': 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f62e/lottie.json' ,
+        '😢': 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f622/lottie.json' ,
+        '😡': 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f621/lottie.json' 
+    };
     private messageReactions = signal(new Map<string, any[]>());
     private countReactionMap = signal(new Map<string, Record<string, number>>());
     private isSyncingReaction = signal(false);
@@ -297,7 +336,8 @@ export class MessagesLayoutComponent
 
                 this.socketService.emit('unpinMessage', pm);
 
-                const messageContent = "đã bỏ ghim tin nhắn: " + pm.content;
+                const systemPreview = this.formatPinnedMessagePreview(pm);
+                const messageContent = `đã bỏ ghim tin nhắn: ${systemPreview}`;
                 this.postAndBroadcastMessage(messageContent, 'system');
             },
             error: (error) => {
@@ -1961,8 +2001,10 @@ export class MessagesLayoutComponent
                     sender_name: msg.sender_name,
                     sender_id: msg.sender_id,
                     sender_avatar: msg.sender_avatar,
-                    // Gắn thêm content của message gốc để hiển thị
+                    // Gắn thêm metadata của message gốc để hiển thị icon
                     content: msg.content,
+                    message_type: msg.message_type,
+                    file_name: msg.file_name,
                 };
 
                 // Cập nhật local state ngay lập tức
@@ -1971,7 +2013,8 @@ export class MessagesLayoutComponent
                 // Broadcast cho người khác trong conversation
                 this.socketService.emit('pinMessage', newPinMessage);
 
-                const messageContent = "đã ghim tin nhắn: " + newPinMessage.content;
+                const systemPreview = this.formatPinnedMessagePreview(newPinMessage);
+                const messageContent = `đã ghim tin nhắn: ${systemPreview}`;
                 const message_type = 'system';
 
                 this.postAndBroadcastMessage(messageContent, message_type);
@@ -2328,7 +2371,7 @@ export class MessagesLayoutComponent
                             sender_name: name,
                             sender_avatar: avatarUrl,
                         };
-                       
+
                         this.updateUIWithNewMessage(callLogMessage);
                         this.broadcastMessage(callLogMessage);
                     },

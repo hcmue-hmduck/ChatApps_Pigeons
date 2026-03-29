@@ -114,27 +114,25 @@
                                         }
 
                                         @if (selectedAttachmentFiles.length > 0) {
-                                        @for (file of selectedAttachmentFiles; track file.name + '-' +
-                                        file.lastModified;
-                                        let i = $index) {
-                                        <div class="create-preview-card file-preview-card">
-                                            <div class="preview-file-icon">
-                                                <i class="bi"
-                                                    [class]="'bi ' + fileUtils.getAttachmentIconClass(file)"></i>
+                                        <div class="attachments-grid">
+                                            @for (file of selectedAttachmentFiles; track file.name + '-' + file.lastModified; let i = $index) {
+                                            <div class="create-preview-card file-preview-slim">
+                                                <div class="preview-file-icon">
+                                                    <i class="bi" [class]="fileUtils.getAttachmentIconClass(file)"></i>
+                                                </div>
+                                                <div class="preview-meta">
+                                                    <p class="preview-title">{{ fileUtils.getAttachmentDisplayName(file) }}</p>
+                                                    <p class="preview-subtitle">
+                                                        {{ fileUtils.getFileExtension(file) }} • {{ fileUtils.formatFileSize(file.size) }}
+                                                    </p>
+                                                </div>
+                                                <button class="preview-remove-btn" type="button"
+                                                    (click)="removeSelectedAttachment(i)" aria-label="Remove selected file">
+                                                    <i class="bi bi-x-lg"></i>
+                                                </button>
                                             </div>
-                                            <div class="preview-meta">
-                                                <p class="preview-title">{{ fileUtils.getAttachmentDisplayName(file) }}
-                                                </p>
-                                                <p class="preview-subtitle">{{ fileUtils.formatFileSize(file.size) }} •
-                                                    {{
-                                                    fileUtils.getFileExtension(file) }}</p>
-                                            </div>
-                                            <button class="preview-remove-btn" type="button"
-                                                (click)="removeSelectedAttachment(i)" aria-label="Remove selected file">
-                                                <i class="bi bi-x-lg"></i>
-                                            </button>
+                                            }
                                         </div>
-                                        }
 
                                         <button class="preview-clear-all-btn" type="button"
                                             (click)="clearSelectedAttachments()">Xóa tất cả tệp</button>
@@ -388,25 +386,26 @@
                                 <!-- Attachments Section (Files) -->
                                 @if (getAttachmentItems(post).length > 0) {
                                 <div class="attachments-section">
+                                <div class="attachments-list">
                                     @for (attachment of getAttachmentItems(post); track attachment.id) {
                                     <a [href]="fileUtils.resolveMediaUrl(attachment.media_url)" target="_blank"
-                                        rel="noopener noreferrer" class="attachment-card">
-                                        <div class="attachment-left">
-                                            <div class="attachment-icon">
-                                                <i class="bi"
-                                                    [class]="'bi ' + fileUtils.getAttachmentIconClass(attachment)"></i>
+                                        rel="noopener noreferrer" class="attachment-slim-card">
+                                        <div class="attachment-info-wrap">
+                                            <div class="attachment-icon-box">
+                                                <i class="bi" [class]="fileUtils.getAttachmentIconClass(attachment)"></i>
                                             </div>
-                                            <div>
-                                                <div class="attachment-title">{{
-                                                    fileUtils.getAttachmentDisplayName(attachment) }}</div>
-                                                <div class="attachment-meta">
-                                                    {{ fileUtils.formatFileSize(attachment.file_size || 0) }} • {{
-                                                    fileUtils.getFileExtension(attachment) }}
+                                            <div class="attachment-details">
+                                                <div class="attachment-name">{{ fileUtils.getAttachmentDisplayName(attachment) }}</div>
+                                                <div class="attachment-sub">
+                                                    <span class="ext">{{ fileUtils.getFileExtension(attachment) }}</span>
+                                                    <span class="dot">·</span>
+                                                    <span class="size">{{ fileUtils.formatFileSize(attachment.file_size || 0) }}</span>
                                                 </div>
                                             </div>
                                         </div>
                                     </a>
                                     }
+                                </div>
                                 </div>
                                 }
 
