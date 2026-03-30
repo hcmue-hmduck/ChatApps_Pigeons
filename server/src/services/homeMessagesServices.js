@@ -4,6 +4,10 @@ const pinnedmessagesService = require('./pinnedmessagesService');
 const messageReactionService = require('./message_reactionsService');
 const usersService = require('./usersService');
 const linkpreviewService = require('./linkpreviewService');
+const participantsService = require('./participantsService.js')
+const { BadRequestError } = require('../core/errorResponse.js');
+const { ConflictError } = require('openai/error.js');
+const openAiService = require('../services/openAiService.js')
 
 class HomeMessagesService {
     async getMessagesByConversation(conversationId, limit = 100, offset = 0) {
@@ -129,6 +133,77 @@ class HomeMessagesService {
             pinnedMessages: mappedPinnedMessages,
             hasMore: messages.length === limit,
         };
+    }
+
+    
+    async getUnreadMessages({conversation_id, last_read_message_id}) {
+        if(!conversation_id) 
+            throw new BadRequestError('params invalid')
+
+        const unreadMessages = await messagesService.getUnreadMessages(
+            {conversation_id, last_read_message_id},
+            {
+                attributes: ['id', 'sender_id', 'message_type', 'content', 'parent_message_id', 'file_name', 'link_description'],
+                raw: true,
+                order: [['created_at', 'ASC']]
+            }
+        )
+
+        if(unreadMessages.length === 0) return null
+
+        const senderIds = Array.from(new Set(unreadMessages.map(m => m.sender_id)))
+
+        const participants = await participantsService.getParticipantByConversationsAndUserIds(
+            conversation_id,
+            senderIds,
+            {attributes: ['user_id', 'nick_name'], raw: true}
+        )
+
+        const participantsMap = participants.reduce((acc, p) =>  {
+            acc[p.user_id] = p.nick_name
+            return acc
+        }, [])
+
+        const messageIdsMap = {}
+        unreadMessages.forEach((msg, index) => {
+            messageIdsMap[msg.id] = index
+        })
+
+        const updateUnreadMessages = unreadMessages.map(m => {
+            const {id, sender_id, message_type, content, parent_message_id, file_name, link_description } = m
+            const result = {
+                msg_no: messageIdsMap[id],
+                sender: participantsMap[sender_id],
+                type: message_type,
+                content: content,
+                reply_to: messageIdsMap[parent_message_id],
+            }
+            if(file_name) result['file_name'] = file_name
+            if(link_description) result['file_desc'] = link_description
+
+            return result
+        })
+
+        return updateUnreadMessages
+    }   
+
+    async getSummaryMessages(conversation_id, user_id) {
+        if(!conversation_id || !user_id) throw new BadRequestError('params invalid')
+
+        const participant = await participantsService.getParticipant({
+            conversation_id,
+            user_id
+        })
+
+        if(!participant) throw new ConflictError('participant not found')
+
+        const { last_read_message_id } = participant
+
+        const unreadMessages = await this.getUnreadMessages({conversation_id, last_read_message_id})
+
+        console.log(`getSummaryMessages:::`, unreadMessages)
+
+        return await openAiService.summarizeMessages(unreadMessages)
     }
 
     async postMessageToConversation(

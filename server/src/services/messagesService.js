@@ -1,5 +1,6 @@
-const { Op } = require('sequelize');
+const { Op, literal } = require('sequelize');
 const messagesModel = require('../models/messagesModel');
+const { BadRequestError } = require('../core/errorResponse.js');
 
 
 class MessagesService {
@@ -17,7 +18,7 @@ class MessagesService {
     }
 
     // Lấy message theo ID
-    async getMessageById(messageId) {
+    async getMessageById(messageId, options = {}) {
         return await messagesModel.findByPk(messageId, {
             include: [
                 {
@@ -25,6 +26,7 @@ class MessagesService {
                     required: false,
                 },
             ],
+            ...options
         });
     }
 
@@ -56,6 +58,39 @@ class MessagesService {
         });
         // Đảo ngược lại để hiển thị theo thứ tự cũ nhất đến mới nhất
         return messages.reverse();
+    }
+
+    async getUnreadMessages({ conversation_id, last_read_message_id }, options = {}) {
+        if(!conversation_id) throw new BadRequestError('params invalid')
+
+        if (!last_read_message_id) {
+            return await messagesModel.findAll({
+                where: {
+                    conversation_id,
+                    is_deleted: false,
+                    message_type: {[Op.ne]: 'system'}
+                },
+                limit: 20,
+                ...options
+            });
+        }
+
+        const escapedLastReadMessageId = messagesModel.sequelize.escape(last_read_message_id);
+        const lastReadCreatedAtSubQuery = literal(
+            `COALESCE((SELECT "created_at" FROM "messages" WHERE "id" = ${escapedLastReadMessageId} LIMIT 1), TO_TIMESTAMP(0))`
+        );
+
+        const unreadMessages = await messagesModel.findAll({
+            where: {
+                conversation_id,
+                created_at: { [Op.gt]: lastReadCreatedAtSubQuery },
+                is_deleted: false,
+                message_type: {[Op.ne]: 'system'}
+            },
+            ...options
+        });
+
+        return unreadMessages;
     }
 
     // Tạo message mới

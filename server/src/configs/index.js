@@ -16,6 +16,10 @@ const dev = {
         fromName: process.env.MAIL_FROM_NAME,
         fromAddress: process.env.MAIL_FROM_ADDRESS,
     },
+    openAI: {
+        openRouterApiKey: process.env.OPENROUTER_API_KEY,
+        modelAI: process.env.MODEL_AI
+    }
 };
 
 const prod = {
@@ -36,6 +40,10 @@ const prod = {
         fromName: process.env.MAIL_FROM_NAME,
         fromAddress: process.env.MAIL_FROM_ADDRESS,
     },
+    openAI: {
+        openRouterApiKey: process.env.OPENROUTER_API_KEY,
+        modelAI: process.env.MODEL_AI
+    }
 };
 
 const config = { dev, prod };
