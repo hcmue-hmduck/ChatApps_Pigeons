@@ -174,7 +174,7 @@ export class UserInforModel {
         this.uploadingAvatar.set(true);
         this.cdr.markForCheck();
 
-        this.uploadService.uploadFile('avatars', formData).subscribe({
+        this.uploadService.uploadFile(`avatars:${this.currentUserId}`, formData).subscribe({
             next: (res: any) => {
                 const avatarUrl = res?.metadata?.files?.[0]?.url;
                 if (avatarUrl) {

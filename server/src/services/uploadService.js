@@ -40,10 +40,14 @@ class UploadService {
 
     async uploadToCloudinary(filePath, options = {}) {
         const path = require('path');
-
+        console.log('options', options);
         let folderPath = 'chatPigeons';
         if (options.convID) {
-            folderPath += `/conversations/${options.convID}`;
+            if (options.convID.startsWith('avatars')) {
+                folderPath += `/avatars/${options.convID.split(':')[1]}`;
+            } else {
+                folderPath += `/conversations/${options.convID}`;
+            }
         } else if (options.feedID) {
             folderPath += `/feeds/${options.feedID}`;
         }

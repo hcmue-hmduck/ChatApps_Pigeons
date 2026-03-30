@@ -3,11 +3,8 @@ require('dotenv').config();
 
 // Cấu hình Sequelize cho SQL Server
 const sequelize = new Sequelize(
-    process.env.DATABASE,      // Database name
-    process.env.UsernameDB,    // Username
-    process.env.PasswordDB,    // Password
+    process.env.POSTGRES_URL,
     {
-        host: process.env.SERVER_NAME,
         dialect: 'postgres',
         timezone: 'Asia/Ho_Chi_Minh',
         logging: false,  // Bật log SQL queries để debug
@@ -29,20 +26,4 @@ const sequelize = new Sequelize(
     }
 );
 
-// Test connection
-async function testConnection() {
-    try {
-        await sequelize.authenticate();
-        console.log('Sequelize connected to SQL Server successfully.');
-    } catch (error) {
-        console.error('Sequelize connection error:', error.message);
-    }
-}
-
-
-// Keep-alive: gửi truy vấn nhỏ định kỳ để giữ kết nối luôn sống
-setInterval(() => {
-    sequelize.query('SELECT 1');
-}, 5 * 60 * 1000); // 5 phút
-
-module.exports = { sequelize, testConnection };
+module.exports = { sequelize };

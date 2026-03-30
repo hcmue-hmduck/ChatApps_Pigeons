@@ -19,7 +19,6 @@ const https = require('https');
 dotenv.config();
 
 const routes = require('./src/routes/index');
-const { connectToDB } = require('./src/configs/dbConfig');
 
 const app = express();
 
@@ -404,11 +403,7 @@ app.use((error, req, res, next) => {
     });
 });
 
-async function startServer() {
-    await connectToDB();
-    server.listen(PORT, () => {
-        console.log(`Server is running on port ${PORT}`);
-    });
-}
 
-startServer();
+server.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
