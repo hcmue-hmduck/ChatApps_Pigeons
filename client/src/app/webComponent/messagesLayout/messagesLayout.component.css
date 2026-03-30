@@ -4137,3 +4137,56 @@
         font-size: 11.5px;
     }
 }
+
+/* ============================================================
+   TYPING INDICATOR
+   ============================================================ */
+.typing-indicator-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 2px 16px;
+    background: transparent;
+    border: none;
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    z-index: 10;
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.typing-dots {
+    display: flex;
+    gap: 3px;
+}
+
+.typing-dots span {
+    width: 3.5px;
+    height: 3.5px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: inline-block;
+    animation: typingDots 1.4s infinite ease-in-out both;
+    box-shadow: 0 0 6px var(--accent);
+}
+
+.typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+.typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes typingDots {
+    0%, 80%, 100% { transform: scale(0.7); opacity: 0.4; }
+    40% { transform: scale(1.1); opacity: 1; }
+}
+
+.typing-text {
+    font-size: 10.5px;
+    color: var(--accent);
+    font-weight: 500;
+    opacity: 0.85;
+    letter-spacing: 0.1px;
+}

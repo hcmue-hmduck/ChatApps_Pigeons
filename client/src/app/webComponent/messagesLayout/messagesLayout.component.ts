@@ -263,6 +263,11 @@ export class MessagesLayoutComponent
     private countReactionMap = signal(new Map<string, Record<string, number>>());
     private isSyncingReaction = signal(false);
 
+    // Typing state
+    typingUsers = signal<any[]>([]);
+    private isTyping = false;
+    private typingTimeout: any;
+
     // Highlight state for reply navigation
     highlightedMessageId: string | null = null;
     private highlightTimeout: any;
@@ -574,6 +579,8 @@ export class MessagesLayoutComponent
         if (this.onUnpinMessageSocket) this.socketService.off('unpinMessage', this.onUnpinMessageSocket);
         if (this.onUpdateProfileSocket) this.socketService.off('updateProfile', this.onUpdateProfileSocket);
         if (this.onDeleteMessageSocket) this.socketService.off('deleteMessage', this.onDeleteMessageSocket);
+        this.socketService.off('typing');
+        this.socketService.off('stopTyping');
 
         this.onNewMessageSocket = undefined;
         this.onUpdateMessageSocket = undefined;
@@ -819,6 +826,25 @@ export class MessagesLayoutComponent
             });
         };
         this.socketService.on('updateProfile', this.onUpdateProfileSocket);
+
+        this.socketService.on('typing', (data: any) => {
+            if (data.conversation_id === conversationId && data.user_id !== this.currentUserId) {
+                this.typingUsers.update(users => {
+                    if (!users.find(u => u.user_id === data.user_id)) {
+                        return [...users, data];
+                    }
+                    return users;
+                });
+                this.cdr.markForCheck();
+            }
+        });
+
+        this.socketService.on('stopTyping', (data: any) => {
+            if (data.conversation_id === conversationId) {
+                this.typingUsers.update(users => users.filter(u => u.user_id !== data.user_id));
+                this.cdr.markForCheck();
+            }
+        });
 
         // Setup listener cho xóa tin nhắn
         this.onDeleteMessageSocket = (data: any) => {
@@ -1211,11 +1237,14 @@ export class MessagesLayoutComponent
         if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
             this.handleSendBtn();
+        } else {
+            this.onTyping();
         }
         // Nếu Shift+Enter thì cho phép xuống dòng (mặc định của textarea)
     }
 
     async handleSendBtn() {
+        this.stopTyping();
         if (!this.newMessage.trim() && this.preUploadFiles().length === 0) return;
 
         const messageContent = this.newMessage;
@@ -2191,6 +2220,7 @@ export class MessagesLayoutComponent
 
     addEmoji(event: any) {
         this.newMessage += event.emoji.native;
+        this.onTyping();
         this.showEmojiPicker = false; // Đóng picker sau khi chọn emoji
         // Focus lại vào input sau khi chọn emoji
         setTimeout(() => {
@@ -2530,5 +2560,33 @@ export class MessagesLayoutComponent
         }
 
         return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    onTyping() {
+        if (!this.isTyping) {
+            this.isTyping = true;
+            this.socketService.emit('typing', {
+                conversation_id: this.conversationId,
+                user_id: this.currentUserId,
+                full_name: this.authService.getUserInfor().name
+            });
+        }
+
+        if (this.typingTimeout) clearTimeout(this.typingTimeout);
+
+        this.typingTimeout = setTimeout(() => {
+            this.stopTyping();
+        }, 600);
+    }
+
+    stopTyping() {
+        if (this.isTyping) {
+            this.isTyping = false;
+            this.socketService.emit('stopTyping', {
+                conversation_id: this.conversationId,
+                user_id: this.currentUserId
+            });
+            if (this.typingTimeout) clearTimeout(this.typingTimeout);
+        }
     }
 }

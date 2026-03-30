@@ -150,6 +150,16 @@ io.on('connection', (socket) => {
         io.to(data.conversation_id).emit('newMessage', data);
     });
 
+    socket.on('typing', (data) => {
+        console.log('Received typing event on server:', data);
+        socket.to(data.conversation_id).emit('typing', data);
+    });
+
+    socket.on('stopTyping', (data) => {
+        console.log('Received stopTyping event on server:', data);
+        socket.to(data.conversation_id).emit('stopTyping', data);
+    });
+
     socket.on('updateConversation', (data) => {
         console.log('Received updateConversation event on server:', data);
         io.to(data.conversation_id).emit('updateConversation', data);

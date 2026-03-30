@@ -686,6 +686,25 @@
         ============================================================ -->
 @if (!isBlocked()) {
 <div class="input-area">
+    <!-- Typing indicator -->
+    @if (typingUsers().length > 0) {
+    <div class="typing-indicator-wrap">
+        <div class="typing-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+        <span class="typing-text">
+            @if (typingUsers().length === 1) {
+            {{ typingUsers()[0].full_name }} đang soạn tin...
+            } @else if (typingUsers().length === 2) {
+            {{ typingUsers()[0].full_name }} và {{ typingUsers()[1].full_name }} đang soạn tin...
+            } @else {
+            Nhiều người đang soạn tin...
+            }
+        </span>
+    </div>
+    }
 
     <!-- Reply preview strip -->
     @if (replyToMessage) {
