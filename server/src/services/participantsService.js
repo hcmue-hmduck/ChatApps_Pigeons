@@ -1,3 +1,5 @@
+const { Op } = require('sequelize');
+const { BadRequestError } = require('../core/errorResponse.js');
 const participantsModel = require('../models/participantsModel');
 
 class ParticipantsService {
@@ -6,15 +8,30 @@ class ParticipantsService {
         return await participantsModel.findAll({ where });
     }
 
+    async getParticipant(where = {}) {
+        return await participantsModel.findOne({ where });
+    }
+
     // Lấy participant theo ID
     async getParticipantById(participantId) {
         return await participantsModel.findByPk(participantId);
     }
 
+    async getParticipantByConversationsAndUserIds(conversationId, userIds = [], options = {}) {
+        if (!conversationId || userIds.length === 0) throw new BadRequestError('params invalid');
+        return await participantsModel.findAll({
+            where: {
+                conversation_id: conversationId,
+                user_id: { [Op.in]: userIds },
+            },
+            ...options,
+        });
+    }
+
     async getParticipantByConversationId(conversationId) {
         return await participantsModel.findAll({
             where: { conversation_id: conversationId },
-            order: [['joined_at', 'ASC']]
+            order: [['joined_at', 'ASC']],
         });
     }
 
@@ -35,7 +52,7 @@ class ParticipantsService {
         if (participant) {
             return await participant.update({
                 ...participantData,
-                updated_at: new Date().toISOString()
+                updated_at: new Date().toISOString(),
             });
         }
         return null;
@@ -47,7 +64,7 @@ class ParticipantsService {
         if (participant) {
             await participant.update({
                 is_active: false,
-                updated_at: new Date().toISOString()
+                updated_at: new Date().toISOString(),
             });
             return true;
         }

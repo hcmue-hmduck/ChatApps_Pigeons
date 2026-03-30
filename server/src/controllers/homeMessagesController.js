@@ -36,6 +36,14 @@ class HomeMessagesController {
         }).send(res);
     }
 
+    async getSummaryMessages(req, res) {
+        const {conversation_id, user_id} = req.body
+        return new SuccessResponse({
+            message: 'Get summary messages successfully',
+            metadata: await homeMessagesService.getSummaryMessages(conversation_id, user_id)
+        }).send(res)
+    }
+
     async postHomeMessages(req, res) {
         const conversationId = req.params.convID;
         const { senderId, content, parent_message_id, message_type, file_url, file_name, file_size, thumbnail_url, duration, link_description, has_link } = req.body;

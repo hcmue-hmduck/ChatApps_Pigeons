@@ -20,6 +20,8 @@ const authentication = async (req, res, next) => {
         verifyJWT(accessToken, secretKey);
 
         req.user = { id: uid, role, sid };
+
+        console.log('user:::', req.user)
         next();
     } catch (error) {
         if (error.name === 'TokenExpiredError') throw new UnauthorizedError('access token expired');
