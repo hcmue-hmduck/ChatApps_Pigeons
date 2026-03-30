@@ -10,6 +10,15 @@
         </div>
 
         <ng-container *ngIf="!loadingUser() && userInfo() as user">
+            <!-- Processing Overlay -->
+            <div class="pf-processing-overlay" *ngIf="isProcessing()">
+                <div class="pf-spinner-wrap">
+                    <div class="pf-spinner"></div>
+                    <div class="pf-spinner-glow"></div>
+                </div>
+                <span class="pf-processing-text">Đang xử lý...</span>
+            </div>
+
             <!-- LEFT panel -->
             <div class="pf-panel-left">
                 <div class="pf-deco pf-deco-1"></div>

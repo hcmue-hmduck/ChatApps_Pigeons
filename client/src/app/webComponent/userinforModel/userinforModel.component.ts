@@ -43,6 +43,7 @@ export class UserInforModel {
     showChangePassword = signal(false);
     loadingUser = signal(false);
     uploadingAvatar = signal(false);
+    isProcessing = signal(false);
     editForm: any = {};
     changePassForm = { oldPass: '', newPass: '', confirmPass: '' };
     private onUpdateProfileSocket?: (data: any) => void;
@@ -139,6 +140,7 @@ export class UserInforModel {
     }
 
     saveProfile() {
+        this.isProcessing.set(true);
         this.userService.updateUser(this.currentUserId, this.editForm).subscribe({
             next: () => {
                 const updatedData = { ...this.userInfo(), ...this.editForm, updated_at: new Date().toISOString() };
@@ -149,15 +151,27 @@ export class UserInforModel {
 
                 this.socketService.emit('updateProfile', updatedData);
                 this.isEditingProfile.set(false);
+                this.isProcessing.set(false);
+                this.cdr.markForCheck();
             },
-            error: (err) => console.error('Error updating profile:', err),
+            error: (err) => {
+                console.error('Error updating profile:', err);
+                this.isProcessing.set(false);
+                this.cdr.markForCheck();
+            },
         });
     }
 
     saveChangePassword() {
+        this.isProcessing.set(true);
         console.log('Changing password:', this.changePassForm);
-        this.showChangePassword.set(false);
-        this.changePassForm = { oldPass: '', newPass: '', confirmPass: '' };
+        // Giả lập delay vì chưa có API đổi mật khẩu thật hoặc API chạy quá nhanh
+        setTimeout(() => {
+            this.showChangePassword.set(false);
+            this.isProcessing.set(false);
+            this.changePassForm = { oldPass: '', newPass: '', confirmPass: '' };
+            this.cdr.markForCheck();
+        }, 1000);
     }
 
     changeAvatar() {
@@ -172,6 +186,7 @@ export class UserInforModel {
         formData.append('files', file);
 
         this.uploadingAvatar.set(true);
+        this.isProcessing.set(true);
         this.cdr.markForCheck();
 
         this.uploadService.uploadFile(`avatars:${this.currentUserId}`, formData).subscribe({
@@ -189,12 +204,14 @@ export class UserInforModel {
                     });
                 }
                 this.uploadingAvatar.set(false);
+                this.isProcessing.set(false);
                 this.cdr.markForCheck();
                 this.fileInput.nativeElement.value = '';
             },
             error: (err: any) => {
                 console.error('Error uploading avatar:', err);
                 this.uploadingAvatar.set(false);
+                this.isProcessing.set(false);
                 this.cdr.markForCheck();
                 this.fileInput.nativeElement.value = '';
             },
