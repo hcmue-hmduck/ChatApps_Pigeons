@@ -25,6 +25,16 @@ class ParticipantsController {
             },
         }).send(res);
     }
+
+    async getLastReadMessageByConversationAndUser(req, res) {
+        const convID = req.params.convID;
+        const userID = req.params.userID;
+
+        new SuccessResponse({
+            message: 'Get last read message successfully',
+            metadata: await participantsService.getLastReadMessageByConversationAndUser(convID, userID)
+        }).send(res);
+    }
 }
 
 module.exports = new ParticipantsController();

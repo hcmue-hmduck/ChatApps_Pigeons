@@ -686,6 +686,19 @@
         ============================================================ -->
 @if (!isBlocked()) {
 <div class="input-area">
+    @if (showUnreadSummaryPopup) {
+    <div class="unread-summary-popup" role="status" aria-live="polite">
+        <span class="unread-summary-count">{{ unreadSummaryCount }} unread messages</span>
+        <button class="unread-summary-cta" type="button" (click)="openAiSummaryModal()">
+            <span class="sparkle-icon">✨</span>
+            <span>Summarize with AI</span>
+        </button>
+        <button class="unread-summary-close" type="button" (click)="dismissUnreadSummaryPopup()" aria-label="Dismiss summary suggestion" title="Bỏ qua gợi ý tóm tắt">
+            <i class="bi bi-x"></i>
+        </button>
+    </div>
+    }
+
     <!-- Typing indicator -->
     @if (typingUsers().length > 0) {
     <div class="typing-indicator-wrap">
@@ -867,6 +880,58 @@
     </div>
     <div class="blocked-text">
         <p>Bạn đã bị chặn bởi người này</p>
+    </div>
+</div>
+}
+@if (showAiSummaryModal) {
+<div class="ai-summary-overlay" (click)="closeAiSummaryModal()">
+    <div class="ai-summary-modal" (click)="$event.stopPropagation()">
+        <div class="ai-summary-header">
+            <div class="ai-summary-title-wrap">
+                <span class="ai-summary-avatar">🤖</span>
+                <h3>AI Summary</h3>
+                <span class="ai-summary-title-sparkle">✨</span>
+            </div>
+            <div class="ai-summary-header-actions">
+                @if (aiSummaryDone && !isAiSummaryCursorVisible()) {
+                <span class="ai-summary-done-badge">Done</span>
+                }
+                <button class="ai-summary-close" type="button" (click)="closeAiSummaryModal()" aria-label="Close summary">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="ai-summary-body" #summaryStreamViewport>
+            @if (aiSummaryLoading && !aiSummaryText) {
+            <div class="ai-summary-skeleton" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            }
+
+            @if (aiSummaryError) {
+            <div class="ai-summary-error">{{ aiSummaryError }}</div>
+            }
+
+            @if (aiSummaryText) {
+            <p class="ai-summary-content">
+                {{ aiSummaryText }}
+                @if (isAiSummaryCursorVisible()) {
+                <span class="ai-summary-cursor"></span>
+                }
+            </p>
+            } @else if (!aiSummaryLoading && !aiSummaryError) {
+            <p class="ai-summary-empty">No summary content yet.</p>
+            }
+        </div>
+
+        <div class="ai-summary-footer">
+            <button class="ai-summary-close-secondary" type="button" (click)="closeAiSummaryModal()">
+                Close
+            </button>
+        </div>
     </div>
 </div>
 }

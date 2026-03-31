@@ -102,16 +102,31 @@ export class MessagesLayoutComponent
     @Input() userBlock: any[] = [];
     @Input() onlineUsers: Set<string> = new Set();
     @Input() UserPresence: Map<string, UserPresence> = new Map();
+    @Input() summaryTriggerUnreadCount = 0;
+    @Input() summaryTriggerLastReadMessageId = '';
+    @Input() summaryTriggerKey = 0;
 
     @Output() toggleDetails = new EventEmitter<void>();
 
     @ViewChild('messagesContent') messagesContent!: ElementRef<HTMLDivElement>;
     @ViewChild('messageInput', { static: false }) messageInput!: ElementRef<HTMLTextAreaElement>;
     @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
+    @ViewChild('summaryStreamViewport') summaryStreamViewport?: ElementRef<HTMLDivElement>;
 
     autoScroll = true;
     isNearBottom = true;
     showScrollToBottom = false;
+    showUnreadSummaryPopup = false;
+    unreadSummaryCount = 0;
+    showAiSummaryModal = false;
+    aiSummaryLoading = false;
+    aiSummaryStreaming = false;
+    aiSummaryDone = false;
+    aiSummaryText = '';
+    aiSummaryError = '';
+    private aiSummaryQueue: string[] = [];
+    private aiSummaryTypewriterTimer: any;
+    private aiSummaryStreamToken = 0;
 
     // Check if a user is online
     isUserOnline(userId: string): boolean {
@@ -917,6 +932,7 @@ export class MessagesLayoutComponent
 
             // Chỉ xử lý khi thực sự thay đổi conversation
             if (newConversationId && newConversationId !== oldConversationId) {
+                this.resetAiSummaryUI();
                 this.conversationId = newConversationId;
 
                 // Load messages và setup socket mới (cleanup được xử lý trong setupSocketListener)
@@ -924,6 +940,20 @@ export class MessagesLayoutComponent
                 this.needsFocus = true;
                 this.setupSocketListener(newConversationId);
             }
+        }
+
+        if (changes['summaryTriggerKey']) {
+            const triggerKey = Number(changes['summaryTriggerKey'].currentValue || 0);
+            const unreadCount = Number(this.summaryTriggerUnreadCount || 0);
+
+            if (triggerKey > 0 && unreadCount >= 10) {
+                this.unreadSummaryCount = unreadCount;
+                this.showUnreadSummaryPopup = true;
+            } else {
+                this.showUnreadSummaryPopup = false;
+            }
+
+            this.cdr.markForCheck();
         }
     }
 
@@ -947,6 +977,7 @@ export class MessagesLayoutComponent
     }
 
     ngOnDestroy() {
+        this.stopAiSummaryStream();
         if (this.timeUpdateInterval) {
             clearInterval(this.timeUpdateInterval);
         }
@@ -2560,6 +2591,154 @@ export class MessagesLayoutComponent
         }
 
         return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    dismissUnreadSummaryPopup() {
+        this.showUnreadSummaryPopup = false;
+        this.cdr.markForCheck();
+    }
+
+    openAiSummaryModal() {
+        this.showUnreadSummaryPopup = false;
+        this.showAiSummaryModal = true;
+        this.startAiSummaryStream();
+    }
+
+    closeAiSummaryModal() {
+        this.showAiSummaryModal = false;
+        this.stopAiSummaryStream();
+        this.aiSummaryLoading = false;
+        this.aiSummaryError = '';
+        this.cdr.markForCheck();
+    }
+
+    isAiSummaryCursorVisible(): boolean {
+        return this.aiSummaryStreaming || this.aiSummaryQueue.length > 0;
+    }
+
+    private resetAiSummaryUI() {
+        this.showUnreadSummaryPopup = false;
+        this.showAiSummaryModal = false;
+        this.unreadSummaryCount = 0;
+        this.aiSummaryText = '';
+        this.aiSummaryError = '';
+        this.aiSummaryDone = false;
+        this.aiSummaryLoading = false;
+        this.stopAiSummaryStream();
+    }
+
+    private stopAiSummaryStream() {
+        this.aiSummaryStreamToken += 1;
+        this.aiSummaryStreaming = false;
+        this.stopAiSummaryTypewriter();
+        this.aiSummaryQueue = [];
+    }
+
+    private startAiSummaryStream() {
+        this.stopAiSummaryStream();
+        this.aiSummaryText = '';
+        this.aiSummaryError = '';
+        this.aiSummaryDone = false;
+        this.aiSummaryLoading = true;
+        this.aiSummaryStreaming = true;
+
+        const conversationId = this.conversationId;
+        const userId = String(this.currentUserId || '').trim();
+        if (!conversationId || !userId) {
+            this.aiSummaryLoading = false;
+            this.aiSummaryStreaming = false;
+            this.aiSummaryError = 'Không thể tạo tóm tắt cho cuộc trò chuyện này.';
+            this.cdr.markForCheck();
+            return;
+        }
+
+        const streamToken = ++this.aiSummaryStreamToken;
+
+        this.cdr.markForCheck();
+
+        void this.messagesService.streamSummaryMessages(
+            conversationId,
+            this.summaryTriggerLastReadMessageId,
+            {
+            onChunk: (content: string) => {
+                this.ngZone.run(() => {
+                    if (streamToken !== this.aiSummaryStreamToken) return;
+                    this.aiSummaryLoading = false;
+                    this.enqueueAiSummaryChunk(content);
+                    this.cdr.markForCheck();
+                });
+            },
+            onDone: () => {
+                this.ngZone.run(() => {
+                    if (streamToken !== this.aiSummaryStreamToken) return;
+                    this.aiSummaryLoading = false;
+                    this.aiSummaryStreaming = false;
+                    this.aiSummaryDone = true;
+                    if (this.aiSummaryQueue.length === 0) {
+                        this.stopAiSummaryTypewriter();
+                    }
+                    this.scrollAiSummaryToBottom();
+                    this.cdr.markForCheck();
+                });
+            },
+            onError: (error: unknown) => {
+                this.ngZone.run(() => {
+                    if (streamToken !== this.aiSummaryStreamToken) return;
+                    this.aiSummaryLoading = false;
+                    this.aiSummaryStreaming = false;
+                    this.aiSummaryDone = false;
+                    this.aiSummaryError = error instanceof Error
+                        ? error.message
+                        : 'Không thể tạo tóm tắt. Vui lòng thử lại.';
+                    this.cdr.markForCheck();
+                });
+            },
+        });
+    }
+
+    private enqueueAiSummaryChunk(content: string) {
+        const tokens = content.split(/(\s+)/).filter(Boolean);
+        this.aiSummaryQueue.push(...tokens);
+        this.startAiSummaryTypewriter();
+    }
+
+    private startAiSummaryTypewriter() {
+        if (this.aiSummaryTypewriterTimer) return;
+
+        this.aiSummaryTypewriterTimer = setInterval(() => {
+            if (this.aiSummaryQueue.length === 0) {
+                if (!this.aiSummaryStreaming) {
+                    this.stopAiSummaryTypewriter();
+                    this.cdr.markForCheck();
+                }
+                return;
+            }
+
+            this.aiSummaryText += this.aiSummaryQueue.shift() || '';
+            this.scrollAiSummaryToBottom();
+            this.cdr.markForCheck();
+
+            if (this.aiSummaryQueue.length === 0 && !this.aiSummaryStreaming) {
+                this.stopAiSummaryTypewriter();
+            }
+        }, 26);
+    }
+
+    private stopAiSummaryTypewriter() {
+        if (this.aiSummaryTypewriterTimer) {
+            clearInterval(this.aiSummaryTypewriterTimer);
+            this.aiSummaryTypewriterTimer = null;
+        }
+    }
+
+    private scrollAiSummaryToBottom() {
+        this.ngZone.runOutsideAngular(() => {
+            requestAnimationFrame(() => {
+                const viewport = this.summaryStreamViewport?.nativeElement;
+                if (!viewport) return;
+                viewport.scrollTop = viewport.scrollHeight;
+            });
+        });
     }
 
     onTyping() {

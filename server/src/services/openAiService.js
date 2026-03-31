@@ -61,13 +61,16 @@ class OpenAiService {
         },
     });
 
-    async summarizeMessages(messages) {
-        if (!messages || messages.lenght === 0) return null;
+    async *summarizeMessages(messages = []) {
+        if (!messages || messages.length === 0) {
+            yield 'Hiện chưa có tin nhắn chưa đọc để tóm tắt.';
+            return;
+        }
 
         const request = buildSummarizeRequest(messages);
 
         try {
-            const completion = await this.#openai.chat.completions.create({
+            const stream = await this.#openai.chat.completions.create({
                 model: modelAI,
                 messages: [
                     {
@@ -75,9 +78,13 @@ class OpenAiService {
                         content: JSON.stringify(request),
                     },
                 ],
+                stream: true
             });
 
-            return completion?.choices?.[0]?.message?.content || '';
+            for await (const churn of stream) {
+                const content = churn?.choices?.[0]?.delta?.content
+                if(content) yield content
+            }
         } catch (error) {
             throw error;
         }

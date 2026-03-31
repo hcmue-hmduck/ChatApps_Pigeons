@@ -4190,3 +4190,378 @@
     opacity: 0.85;
     letter-spacing: 0.1px;
 }
+
+/* ============================================================
+   AI SUMMARY POPUP + MODAL
+   ============================================================ */
+.unread-summary-popup {
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    bottom: calc(100% + 10px);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 44px 10px 12px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.74);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 14px 36px rgba(2, 6, 23, 0.45);
+    z-index: 50;
+    animation: unreadSummaryIn 220ms ease-out;
+}
+
+@keyframes unreadSummaryIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.unread-summary-count {
+    font-size: 12px;
+    font-weight: 700;
+    color: #e2e8f0;
+    white-space: nowrap;
+}
+
+.unread-summary-cta {
+    margin-left: auto;
+    margin-right: 6px;
+    border: none;
+    border-radius: 999px;
+    padding: 7px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #f8fafc;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(105deg, #3b82f6, #6366f1 55%, #8b5cf6);
+    box-shadow: 0 10px 20px rgba(99, 102, 241, 0.34);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.unread-summary-cta:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 22px rgba(99, 102, 241, 0.44);
+}
+
+.sparkle-icon {
+    font-size: 13px;
+}
+
+.unread-summary-close {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.08);
+    font-weight: bold !important;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.unread-summary-close:hover {
+    background: rgba(255, 255, 255, 0.16);
+    color: #f8fafc;
+}
+
+.ai-summary-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    z-index: 1700;
+    background: rgba(2, 6, 23, 0.42);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.ai-summary-modal {
+    width: min(92vw, 480px);
+    max-height: min(78vh, 620px);
+    display: flex;
+    flex-direction: column;
+    border-radius: 16px;
+    border: 1px solid transparent;
+    background:
+        linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(129, 140, 248, 0.25)) border-box,
+        linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.93)) padding-box;
+    box-shadow: 0 28px 48px rgba(2, 6, 23, 0.45);
+    color: #e2e8f0;
+    animation: summaryModalIn 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes summaryModalIn {
+    from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.ai-summary-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.ai-summary-title-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.ai-summary-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(59, 130, 246, 0.22);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+.ai-summary-title-wrap h3 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.ai-summary-title-sparkle {
+    color: #a5b4fc;
+    font-size: 14px;
+}
+
+.ai-summary-header-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ai-summary-done-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 999px;
+    color: #14532d;
+    background: #bbf7d0;
+}
+
+.ai-summary-close {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+
+.ai-summary-body {
+    flex: 1;
+    min-height: 180px;
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 16px;
+    scroll-behavior: smooth;
+}
+
+.ai-summary-content {
+    margin: 0;
+    white-space: pre-wrap;
+    line-height: 1.56;
+    font-size: 14px;
+}
+
+.ai-summary-cursor {
+    display: inline-block;
+    width: 7px;
+    height: 1em;
+    margin-left: 2px;
+    border-radius: 1px;
+    background: #93c5fd;
+    vertical-align: text-bottom;
+    animation: summaryCursorBlink 900ms steps(1, end) infinite;
+}
+
+@keyframes summaryCursorBlink {
+    0%,
+    45% {
+        opacity: 1;
+    }
+
+    46%,
+    100% {
+        opacity: 0;
+    }
+}
+
+.ai-summary-skeleton {
+    display: grid;
+    gap: 10px;
+}
+
+.ai-summary-skeleton span {
+    height: 12px;
+    border-radius: 8px;
+    background: linear-gradient(90deg, rgba(148, 163, 184, 0.16), rgba(226, 232, 240, 0.28), rgba(148, 163, 184, 0.16));
+    background-size: 200% 100%;
+    animation: summarySkeletonShimmer 1.2s linear infinite;
+}
+
+.ai-summary-skeleton span:nth-child(1) {
+    width: 84%;
+}
+
+.ai-summary-skeleton span:nth-child(2) {
+    width: 92%;
+}
+
+.ai-summary-skeleton span:nth-child(3) {
+    width: 70%;
+}
+
+@keyframes summarySkeletonShimmer {
+    from {
+        background-position: 200% 0;
+    }
+
+    to {
+        background-position: -200% 0;
+    }
+}
+
+.ai-summary-error {
+    font-size: 13px;
+    color: #fecaca;
+    background: rgba(127, 29, 29, 0.24);
+    border: 1px solid rgba(248, 113, 113, 0.45);
+    padding: 9px 10px;
+    border-radius: 10px;
+}
+
+.ai-summary-empty {
+    margin: 0;
+    font-size: 13px;
+    color: rgba(226, 232, 240, 0.7);
+}
+
+.ai-summary-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px 16px 16px;
+    border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.ai-summary-again,
+.ai-summary-close-secondary {
+    border-radius: 10px;
+    border: 1px solid rgba(148, 163, 184, 0.38);
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.ai-summary-again {
+    border: none;
+    color: #f8fafc;
+    background: linear-gradient(115deg, #2563eb, #4f46e5 58%, #7c3aed);
+}
+
+.ai-summary-again:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.ai-summary-close-secondary {
+    color: inherit;
+    background: rgba(148, 163, 184, 0.12);
+}
+
+@media (prefers-color-scheme: light) {
+    .ai-summary-overlay {
+        background: rgba(226, 232, 240, 0.48);
+    }
+
+    .ai-summary-modal {
+        color: #0f172a;
+        background:
+            linear-gradient(120deg, rgba(59, 130, 246, 0.24), rgba(129, 140, 248, 0.24)) border-box,
+            linear-gradient(180deg, #ffffff, #f8fafc) padding-box;
+        box-shadow: 0 24px 48px rgba(15, 23, 42, 0.22);
+    }
+
+    .ai-summary-close-secondary {
+        background: rgba(148, 163, 184, 0.2);
+    }
+
+    .ai-summary-empty {
+        color: rgba(15, 23, 42, 0.62);
+    }
+
+    .unread-summary-popup {
+        background: rgba(255, 255, 255, 0.7);
+        border-color: rgba(148, 163, 184, 0.35);
+    }
+
+    .unread-summary-count {
+        color: #000000;
+    }
+}
+
+@media (max-width: 640px) {
+    .unread-summary-popup {
+        border-radius: 16px;
+        min-height: 46px;
+        padding-right: 44px;
+    }
+
+    .unread-summary-cta {
+        margin-left: 0;
+        margin-right: 6px;
+    }
+
+    .ai-summary-overlay {
+        padding: 10px;
+    }
+
+    .ai-summary-modal {
+        width: 100%;
+        max-height: 86vh;
+    }
+
+    .ai-summary-body {
+        max-height: 52vh;
+    }
+}

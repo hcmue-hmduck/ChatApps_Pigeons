@@ -28,6 +28,19 @@ class ParticipantsService {
         });
     }
 
+    async getLastReadMessageByConversationAndUser(conversationId, userId) {
+        if (!conversationId || !userId) throw new BadRequestError('params invalid');
+
+        return await participantsModel.findOne({
+            where: {
+                conversation_id: conversationId,
+                user_id: userId,
+            },
+            attributes: ['last_read_message_id'],
+            raw: true,
+        });
+    }
+
     async getParticipantByConversationId(conversationId) {
         return await participantsModel.findAll({
             where: { conversation_id: conversationId },

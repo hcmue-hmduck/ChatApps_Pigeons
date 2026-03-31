@@ -53,4 +53,76 @@ export class Messages {
     unpinMessage(pinMessageId: string): Observable<any> {
         return this.http.delete(`${this.apiUrl}/pinmessage/${pinMessageId}`);
     }
+
+    async streamSummaryMessages(
+        conversationId: string,
+        fromLastReadMessageId: string,
+        handlers: {
+            onChunk: (content: string) => void;
+            onDone: () => void;
+            onError: (error: unknown) => void;
+        },
+    ): Promise<void> {
+        try {
+            const safeLastReadMessageId = encodeURIComponent(fromLastReadMessageId || 'null');
+            const response = await fetch(`${this.apiUrl}/${conversationId}/summary/${safeLastReadMessageId}`, {
+                method: 'GET',
+                credentials: 'include',
+                headers: {
+                    Accept: 'text/event-stream',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`Summary request failed with status ${response.status}`);
+            }
+
+            const reader = response.body?.getReader();
+            if (!reader) {
+                throw new Error('Readable stream is not available for summary response');
+            }
+
+            const decoder = new TextDecoder('utf-8');
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const events = buffer.split('\n\n');
+                buffer = events.pop() || '';
+
+                for (const eventChunk of events) {
+                    const lines = eventChunk
+                        .split('\n')
+                        .map((line) => line.trim())
+                        .filter((line) => line.startsWith('data:'));
+
+                    for (const line of lines) {
+                        const payload = line.slice(5).trim();
+                        if (!payload) continue;
+
+                        if (payload === '[DONE]') {
+                            handlers.onDone();
+                            return;
+                        }
+
+                        const parsed = JSON.parse(payload);
+                        if (parsed?.error) {
+                            throw new Error(parsed.error);
+                        }
+
+                        if (parsed?.content) {
+                            handlers.onChunk(parsed.content);
+                        }
+                    }
+                }
+            }
+
+            handlers.onDone();
+        } catch (error) {
+            handlers.onError(error);
+        }
+    }
 }

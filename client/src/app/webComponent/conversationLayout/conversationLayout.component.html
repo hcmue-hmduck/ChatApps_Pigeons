@@ -87,7 +87,11 @@
             [getMessageInfor]="getMessageInfor" [onlineUsers]="onlineUsers()"
             [conversationType]="selectedConversationType" [UserPresence]="UserPresence()"
             [joinedConversations]="conversations?.homeConversationData?.joinedConversations || []"
-            [userBlock]="userBlock()" (toggleDetails)="toggleConversationInfor()">
+            [userBlock]="userBlock()"
+            [summaryTriggerUnreadCount]="aiSummaryTriggerUnreadCount"
+            [summaryTriggerLastReadMessageId]="aiSummaryTriggerLastReadMessageId"
+            [summaryTriggerKey]="aiSummaryTriggerKey"
+            (toggleDetails)="toggleConversationInfor()">
         </messages-layout>
         } @else {
         <app-intro-layout [hasConversations]="conversations?.homeConversationData?.joinedConversations?.length > 0"

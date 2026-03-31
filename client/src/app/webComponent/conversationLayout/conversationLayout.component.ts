@@ -68,11 +68,15 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     selectedConversationType = '';
     getMessageInfor: any = {};
     isFirstConversationReady = signal(false);
+    aiSummaryTriggerUnreadCount = 0;
+    aiSummaryTriggerLastReadMessageId = '';
+    aiSummaryTriggerKey = 0;
 
     private onUpdateProfileSocket?: (data: any) => void;
     private readUpdateInFlightByConversation = new Map<string, boolean>();
     private pendingReadMessageIdByConversation = new Map<string, string>();
     private hasInitWelcomeResetEffect = false;
+    private aiSummaryTriggerRequestToken = 0;
 
     constructor(
         private socketService: SocketService,
@@ -405,6 +409,9 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     // ── Conversation Selection ──────────────────────────────
     handleConversationID(conv: any) {
         // this.socketService.off('newMessage');
+        const unreadCountOnClick = Number(conv?.unread_count || 0);
+        this.triggerAiSummarySuggestion(conv, unreadCountOnClick);
+
         this.selectedConversationId = conv.conversation_id;
         this.selectedConversationType = conv.type;
         const selectedConv = this.conversations?.homeConversationData?.joinedConversations?.find(
@@ -442,6 +449,64 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                 this.queueParticipantReadUpdate(conv.conversation_id, currentParticipant.id, conv.lastMessage.id);
             }
         }
+    }
+
+    private triggerAiSummarySuggestion(conv: any, unreadCount: number) {
+        const localLastReadMessageId = this.getLastReadMessageIdFromConversation(conv);
+
+        if (unreadCount < 10) {
+            this.setAiSummaryTrigger(unreadCount, localLastReadMessageId);
+            return;
+        }
+
+        // Clear previous popup state while waiting for fresh last_read_message_id from API.
+        this.setAiSummaryTrigger(0, '');
+
+        const conversationId = conv?.conversation_id ? String(conv.conversation_id) : '';
+        const userId = String(this.currentUserId || '').trim();
+        if (!conversationId || !userId) {
+            this.setAiSummaryTrigger(unreadCount, localLastReadMessageId);
+            return;
+        }
+
+        const requestToken = ++this.aiSummaryTriggerRequestToken;
+        this.participantService.getLastReadMessageByConversationAndUser(conversationId, userId).subscribe({
+            next: (response) => {
+                if (requestToken !== this.aiSummaryTriggerRequestToken) return;
+
+                const lastReadFromApi = response?.metadata?.last_read_message_id
+                    ? String(response.metadata.last_read_message_id)
+                    : '';
+
+                this.setAiSummaryTrigger(unreadCount, lastReadFromApi || localLastReadMessageId);
+                this.cdr.markForCheck();
+            },
+            error: (error) => {
+                if (requestToken !== this.aiSummaryTriggerRequestToken) return;
+
+                console.error('Error fetching last read message id for summary trigger:', error);
+                this.setAiSummaryTrigger(unreadCount, localLastReadMessageId);
+                this.cdr.markForCheck();
+            }
+        });
+    }
+
+    private getLastReadMessageIdFromConversation(conv: any): string {
+        const currentParticipant = conv?.participants?.find((p: any) => p.user_id === this.currentUserId);
+        const participantLastReadMessageId = currentParticipant?.last_read_message_id
+            ? String(currentParticipant.last_read_message_id)
+            : '';
+        const conversationLastReadMessageId = conv?.last_read_message_id
+            ? String(conv.last_read_message_id)
+            : '';
+
+        return participantLastReadMessageId || conversationLastReadMessageId;
+    }
+
+    private setAiSummaryTrigger(unreadCount: number, lastReadMessageId: string) {
+        this.aiSummaryTriggerUnreadCount = unreadCount;
+        this.aiSummaryTriggerLastReadMessageId = lastReadMessageId;
+        this.aiSummaryTriggerKey += 1;
     }
 
     private queueParticipantReadUpdate(conversationId: string, participantId: string, lastReadMessageId: string) {

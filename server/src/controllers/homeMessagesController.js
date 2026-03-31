@@ -36,12 +36,31 @@ class HomeMessagesController {
         }).send(res);
     }
 
+    // [GET] /home/messages/:convID/summary/:lastRMsgID
     async getSummaryMessages(req, res) {
-        const {conversation_id, user_id} = req.body
-        return new SuccessResponse({
-            message: 'Get summary messages successfully',
-            metadata: await homeMessagesService.getSummaryMessages(conversation_id, user_id)
-        }).send(res)
+        const conversation_id = req.params?.convID;
+        const rawLastReadMessageId = req.params?.lastRMsgID;
+        const last_read_message_id =
+            !rawLastReadMessageId || rawLastReadMessageId === 'null'
+                ? null
+                : rawLastReadMessageId;
+
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+
+        try {
+            for await (const content of homeMessagesService.getSummaryMessages(conversation_id, last_read_message_id)) {
+                res.write(`data: ${JSON.stringify({ content })}\n\n`);
+            }
+
+            res.write('data: [DONE]\n\n');
+            res.end();
+        } catch (error) {
+            const errorMessage = error?.message || 'Failed to summarize messages';
+            res.write(`data: ${JSON.stringify({ error: errorMessage })}\n\n`);
+            res.end();
+        }
     }
 
     async postHomeMessages(req, res) {
