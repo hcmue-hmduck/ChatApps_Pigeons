@@ -3,80 +3,130 @@
     @if (isFirstConversationReady() && hasConversations()) {
     <section class="conv-panel">
         <div class="conv-header">
-            <h5>ChatPigeons</h5>
-            <div class="conv-search-wrap">
-                <i class="bi bi-search"></i>
-                <input type="text" class="conv-search-input" placeholder="Tìm kiếm...">
+            <div class="conv-header-row">
+                <!-- Title -->
+                <h5 class="app-title" [class.hidden]="isSearchView()">HỘI THOẠI</h5>
+
+                <!-- Search Container -->
+                <div class="search-expand-container" [class.active]="isSearchView()">
+                    <!-- Back button (only visible when active, slides in) -->
+                    <button class="btn-back-search" [class.show]="isSearchView()" (click)="exitSearch()">
+                        <i class="bi bi-arrow-left"></i>
+                    </button>
+
+                    <!-- The wrapper that expands -->
+                    <div class="conv-search-wrap" [class.collapsed]="!isSearchView()">
+                        <div class="search-trigger" *ngIf="!isSearchView()" (click)="enterSearch()"></div>
+                        <i class="bi bi-search search-icon"></i>
+                        <input #searchInput type="text" class="conv-search-input" placeholder="Tìm kiếm..."
+                            [value]="searchTerm()" (input)="onSearch($event)">
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="conv-list">
+        <div class="conv-list-container">
+            <!-- Normal Conversation List -->
+            <div class="conv-list" *ngIf="!isSearchView()">
 
-            @if (conversations?.homeConversationData?.joinedConversations?.length) {
-            @for (conv of conversations.homeConversationData.joinedConversations; track conv.conversation_id) {
-            <a href="javascript:void(0)" class="conv-item"
-                [class.active]="selectedConversationId === conv.conversation_id"
-                [class.is-unread]="conv.unread_count > 0" (click)="handleConversationID(conv)">
-                <div class="conv-avatar-col">
-                    @if (conv.type === 'group') {
-                    <div class="avatar-wrapper">
-                        <app-group-avatar-layout [members]="conv.participants || []" [isGroup]="true"
-                            [avatarUrl]="conv.avatar_url && conv.avatar_url.trim() ? conv.avatar_url : null"
-                            [alt]="conv.title" [size]="46">
-                        </app-group-avatar-layout>
-                        <span class="status-dot" [class.online]="hasOnlineUser(conv)"
-                            [class.offline]="!hasOnlineUser(conv)"></span>
-                    </div>
-                    } @else if (conv.type === 'direct' && getOtherParticipant(conv); as other) {
-                    <div class="avatar-wrapper">
-                        <img [src]="other.avatar_url" [alt]="other.full_name" class="avatar-img">
-                        @if (isUserOnline(other.user_id)) {
-                        <span class="status-dot online"></span>
-                        } @else {
-                        <span class="status-dot offline"></span>
+                @if (conversations?.homeConversationData?.joinedConversations?.length) {
+                @for (conv of conversations.homeConversationData.joinedConversations; track conv.conversation_id) {
+                <a href="javascript:void(0)" class="conv-item"
+                    [class.active]="selectedConversationId === conv.conversation_id"
+                    [class.is-unread]="conv.unread_count > 0" (click)="handleConversationID(conv)">
+                    <div class="conv-avatar-col">
+                        @if (conv.type === 'group') {
+                        <div class="avatar-wrapper">
+                            <app-group-avatar-layout [members]="conv.participants || []" [isGroup]="true"
+                                [avatarUrl]="conv.avatar_url && conv.avatar_url.trim() ? conv.avatar_url : null"
+                                [alt]="conv.title" [size]="46">
+                            </app-group-avatar-layout>
+                            <span class="status-dot" [class.online]="hasOnlineUser(conv)"
+                                [class.offline]="!hasOnlineUser(conv)"></span>
+                        </div>
+                        } @else if (conv.type === 'direct' && getOtherParticipant(conv); as other) {
+                        <div class="avatar-wrapper">
+                            <img [src]="other.avatar_url" [alt]="other.full_name" class="avatar-img">
+                            @if (isUserOnline(other.user_id)) {
+                            <span class="status-dot online"></span>
+                            } @else {
+                            <span class="status-dot offline"></span>
+                            }
+                        </div>
                         }
                     </div>
-                    }
-                </div>
-                <div class="conv-info">
-                    <div class="conv-info-top">
-                        <span class="conv-name">{{ conv.title }}</span>
-                        @if (conv.lastMessage) {
-                        <span class="conv-time">
-                            {{ relativeTime(conv.lastMessage.created_at) }}
-                        </span>
-                        }
-                    </div>
-                    <div class="conv-info-bottom">
-                        <span class="conv-last-msg">
+                    <div class="conv-info">
+                        <div class="conv-info-top">
+                            <span class="conv-name">{{ conv.title }}</span>
                             @if (conv.lastMessage) {
-                            @if (getLastMessageSenderName(conv)) {
-                            <span>{{ getLastMessageSenderName(conv) }}&nbsp;</span>
+                            <span class="conv-time">
+                                {{ relativeTime(conv.lastMessage.created_at) }}
+                            </span>
                             }
-                            @if (conv.lastMessage.is_deleted) {
-                            Tin nhắn đã được gỡ
-                            } @else {
-                            <span [innerHTML]="conv.lastMessage.content"></span>
+                        </div>
+                        <div class="conv-info-bottom">
+                            <span class="conv-last-msg">
+                                @if (conv.lastMessage) {
+                                @if (getLastMessageSenderName(conv)) {
+                                <span>{{ getLastMessageSenderName(conv) }}&nbsp;</span>
+                                }
+                                @if (conv.lastMessage.is_deleted) {
+                                Tin nhắn đã được gỡ
+                                } @else {
+                                <span [innerHTML]="conv.lastMessage.content"></span>
+                                }
+                                } @else {
+                                <span class="empty-last-msg">Hãy bắt đầu đoạn chat ngay</span>
+                                }
+                            </span>
+                            @if (conv.unread_count > 0) {
+                            <span class="unread-badge">{{ conv.unread_count }}</span>
                             }
-                            } @else {
-                            <span class="empty-last-msg">Hãy bắt đầu đoạn chat ngay</span>
-                            }
-                        </span>
-                        @if (conv.unread_count > 0) {
-                        <span class="unread-badge">{{ conv.unread_count }}</span>
-                        }
+                        </div>
+                    </div>
+                </a>
+                }
+                } @else {
+                <div class="empty-state">
+                    <i class="bi bi-chat-left-text"></i>
+                    <p>Chưa có cuộc trò chuyện nào</p>
+                    <p class="empty-subtitle">Nhấn <i class="bi bi-pencil-square empty-icon-small"></i> để bắt đầu chat
+                        mới
+                    </p>
+                </div>
+                }
+            </div>
+
+            <!-- Panel Kết quả tìm kiếm (chiếm chỗ conv-list) -->
+            <div class="search-view-list" *ngIf="isSearchView()">
+                <div class="search-loading" *ngIf="isSearching()">
+                    <div class="spinner-tiny"></div>
+                    <span>Đang tìm kiếm...</span>
+                </div>
+                <div class="search-no-results"
+                    *ngIf="!isSearching() && searchTerm().trim() && searchResults().length === 0">
+                    Không tìm thấy người dùng phù hợp
+                </div>
+
+                <div class="search-results-items" *ngIf="searchResults().length > 0">
+                    <div class="search-item" *ngFor="let user of searchResults()" (click)="selectSearchResult(user)">
+                        <div class="search-avatar">
+                            <img [src]="user.avatar_url || 'https://ui-avatars.com/api/?name=' + user.full_name"
+                                alt="avatar">
+                            <span class="status-dot" [ngClass]="user.status"></span>
+                        </div>
+                        <div class="search-info">
+                            <div class="search-name">{{user.full_name}}</div>
+                            <div class="search-email">{{user.email}}</div>
+                        </div>
                     </div>
                 </div>
-            </a>
-            }
-            } @else {
-            <div class="empty-state">
-                <i class="bi bi-chat-left-text"></i>
-                <p>Chưa có cuộc trò chuyện nào</p>
-                <p class="empty-subtitle">Nhấn <i class="bi bi-pencil-square empty-icon-small"></i> để bắt đầu chat mới
-                </p>
+
+                <div class="search-empty-prompt" *ngIf="!searchTerm().trim() && !isSearching()">
+                    <i class="bi bi-search"></i>
+                    <p>Nhập tên hoặc email để tìm kiếm</p>
+                </div>
             </div>
-            }
         </div>
     </section>
 
@@ -87,11 +137,13 @@
             [getMessageInfor]="getMessageInfor" [onlineUsers]="onlineUsers()"
             [conversationType]="selectedConversationType" [UserPresence]="UserPresence()"
             [joinedConversations]="conversations?.homeConversationData?.joinedConversations || []"
+
             [userBlock]="userBlock()"
             [summaryTriggerUnreadCount]="aiSummaryTriggerUnreadCount"
             [summaryTriggerLastReadMessageId]="aiSummaryTriggerLastReadMessageId"
             [summaryTriggerKey]="aiSummaryTriggerKey"
-            (toggleDetails)="toggleConversationInfor()">
+            (toggleDetails)="toggleConversationInfor()"
+            (conversationCreated)="handleConversationCreated($event)">
         </messages-layout>
         } @else {
         <app-intro-layout [hasConversations]="conversations?.homeConversationData?.joinedConversations?.length > 0"

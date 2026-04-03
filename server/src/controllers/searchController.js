@@ -1,4 +1,5 @@
 const searchService = require('../services/searchService');
+const SuccessResponse = require('../core/successResponse');
 
 class SearchController {
     async searchUsers(req, res) {

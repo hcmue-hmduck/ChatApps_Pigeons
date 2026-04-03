@@ -9,13 +9,17 @@ import {
     ChangeDetectionStrategy,
     ChangeDetectorRef,
     ViewEncapsulation,
-    NgZone
+    NgZone,
+    ViewChild,
+    ElementRef
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Subject, debounceTime, distinctUntilChanged, switchMap, of } from 'rxjs';
 import { MessagesLayoutComponent } from '../messagesLayout/messagesLayout.component';
 import { NavigationService } from '../../services/navigation';
 import { SocketService } from '../../services/socket';
 import { Conversation } from '../../services/conversation';
+import { SearchService } from '../../services/searchService';
 import { GroupAvatarLayoutComponent } from '../groupAvatarLayout/groupAvatarLayout.component';
 import { IntroLayoutComponent } from '../introLayout/introLayout.component';
 import { Participant } from '../../services/participant';
@@ -29,6 +33,7 @@ export interface UserPresence {
 }
 
 import { ConversationInfoLayoutComponent } from '../conversationInforLayout/conversationInforLayout.component';
+import { title } from 'node:process';
 
 @Component({
     selector: 'conversation-layout',
@@ -51,8 +56,11 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     conversationService = inject(Conversation);
     participantService = inject(Participant);
     userBlockService = inject(UserBlock);
+    searchService = inject(SearchService);
     private ngZone = inject(NgZone);
     private timeUpdateInterval: any;
+
+    @ViewChild('searchInput') searchInput!: ElementRef;
 
     // Sidebar toggle state
     showConversationInfor = signal(false);
@@ -72,7 +80,21 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     aiSummaryTriggerLastReadMessageId = '';
     aiSummaryTriggerKey = 0;
 
+    // Search state
+    searchTerm = signal('');
+    searchResults = signal<any[]>([]);
+    isSearching = signal(false);
+    isSearchView = signal(false);
+    private searchSubject = new Subject<string>();
+
     private onUpdateProfileSocket?: (data: any) => void;
+    private onUpdateParticipantSocket?: (data: any) => void;
+    private onAddMemberSocket?: (data: any) => void;
+    private onOnlineUsersListSocket?: (userIds: string[]) => void;
+    private onUserStatusChangedSocket?: (data: any) => void;
+    private onNewConversationSocket?: (data: any) => void;
+    private onUpdateConversationSocket?: (data: any) => void;
+
     private readUpdateInFlightByConversation = new Map<string, boolean>();
     private pendingReadMessageIdByConversation = new Map<string, string>();
     private hasInitWelcomeResetEffect = false;
@@ -107,6 +129,31 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
             this.socketService.emit('userOnline', this.currentUserId);
         }
 
+        // Setup search debounce
+        this.searchSubject.pipe(
+            debounceTime(300),
+            distinctUntilChanged(),
+            switchMap(term => {
+                if (!term.trim()) {
+                    this.isSearching.set(false);
+                    return of({ metadata: { users: [] } });
+                }
+                this.isSearching.set(true);
+                return this.searchService.searchUsers(term);
+            })
+        ).subscribe({
+            next: (response) => {
+                this.searchResults.set(response.metadata?.users || []);
+                this.isSearching.set(false);
+                this.cdr.markForCheck();
+            },
+            error: (err) => {
+                console.error('Search error:', err);
+                this.isSearching.set(false);
+                this.cdr.markForCheck();
+            }
+        });
+
         // Đảm bảo tick luôn cập nhật đúng mỗi phút
         this.timeUpdateInterval = setInterval(() => {
             this.ngZone.run(() => {
@@ -119,14 +166,13 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         if (this.timeUpdateInterval) {
             clearInterval(this.timeUpdateInterval);
         }
-        if (this.onUpdateProfileSocket) {
-            this.socketService.off('updateProfile', this.onUpdateProfileSocket);
-            this.onUpdateProfileSocket = undefined;
-        }
-        this.socketService.off('updateConversation');
-        this.socketService.off('userStatusChanged');
-        this.socketService.off('onlineUsersList');
-        this.socketService.off('newConversation');
+        if (this.onUpdateProfileSocket) this.socketService.off('updateProfile', this.onUpdateProfileSocket);
+        if (this.onUpdateParticipantSocket) this.socketService.off('updateParticipant', this.onUpdateParticipantSocket);
+        if (this.onAddMemberSocket) this.socketService.off('addMember', this.onAddMemberSocket);
+        if (this.onOnlineUsersListSocket) this.socketService.off('onlineUsersList', this.onOnlineUsersListSocket);
+        if (this.onUserStatusChangedSocket) this.socketService.off('userStatusChanged', this.onUserStatusChangedSocket);
+        if (this.onNewConversationSocket) this.socketService.off('newConversation', this.onNewConversationSocket);
+        if (this.onUpdateConversationSocket) this.socketService.off('updateConversation', this.onUpdateConversationSocket);
     }
 
     // ── Load Data ─────────────────────────────────────────
@@ -177,7 +223,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     }
 
     private setupSocketListeners() {
-        this.socketService.on('onlineUsersList', (userIds: string[]) => {
+        this.onOnlineUsersListSocket = (userIds: string[]) => {
             this.onlineUsers.set(new Set(userIds));
             this.UserPresence.update(currentMap => {
                 const updatedMap = new Map(currentMap);
@@ -189,9 +235,10 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                 });
                 return updatedMap;
             });
-        });
+        };
+        this.socketService.on('onlineUsersList', this.onOnlineUsersListSocket);
 
-        this.socketService.on('userStatusChanged', (data: { userId: string; status: string, last_online_at: Date }) => {
+        this.onUserStatusChangedSocket = (data: { userId: string; status: string, last_online_at: Date }) => {
             const set = new Set(this.onlineUsers());
             data.status === 'online' ? set.add(data.userId) : set.delete(data.userId);
             this.onlineUsers.set(set);
@@ -204,20 +251,41 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                 });
                 return updatedMap;
             });
-        });
+        };
+        this.socketService.on('userStatusChanged', this.onUserStatusChangedSocket);
 
-        this.socketService.on('newConversation', ({ conversationId }: { conversationId: string }) => {
+        this.onNewConversationSocket = (data: any) => {
+            const { conversationId, senderId } = data;
+            
+            // JOIN ROOM NGAY LẬP TỨC để không bỏ lỡ tin nhắn đầu tiên (race condition)
+            this.socketService.emit('joinConversation', conversationId);
+
             const currentJoined = this.conversations?.homeConversationData?.joinedConversations || [];
+            
+            // Nếu hội thoại đã có trong danh sách, không cần làm gì thêm (đã join room ở trên)
             const alreadyJoined = currentJoined.some((c: any) => c.conversation_id === conversationId);
-            if (alreadyJoined) {
-                this.socketService.emit('joinConversation', conversationId);
-                return;
+            if (alreadyJoined) return;
+
+            // KIỂM TRA NẾU ĐANG Ở CONVERSATION ẢO VỚI NGƯỜI NÀY - TỰ ĐỘNG CHUYỂN SANG ID THẬT
+            if (this.selectedConversationId && this.selectedConversationId.startsWith('conv_')) {
+                const otherUserId = this.getMessageInfor?.other_participant?.user_id;
+                if (otherUserId === senderId) {
+                    this.handleConversationCreated(conversationId, data.participants);
+                    // Tiếp tục chạy để loadConversations() và lấy toàn bộ metadata (bao gồm Participant ID thật)
+                }
             }
 
             this.conversationService.getConversations(this.currentUserId).subscribe({
                 next: (response) => {
                     this.conversations = response.metadata || {};
                     const joined = this.conversations?.homeConversationData?.joinedConversations || [];
+                    
+                    // NẾU ĐANG Ở TRONG PHÒNG VỪU NÂNG CẤP, CẬP NHẬT LẠI getMessageInfor
+                    const updatedConv = joined.find((c: any) => c.conversation_id === this.selectedConversationId);
+                    if (updatedConv) {
+                        this.handleConversationID(updatedConv);
+                    }
+
                     joined.forEach((conv: any) =>
                         this.socketService.emit('joinConversation', conv.conversation_id)
                     );
@@ -225,9 +293,10 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                 },
                 error: () => { }
             });
-        });
+        };
+        this.socketService.on('newConversation', this.onNewConversationSocket);
 
-        this.socketService.on('updateConversation', (data: any) => {
+        this.onUpdateConversationSocket = (data: any) => {
             const cur = this.conversations;
             if (!cur?.homeConversationData?.joinedConversations) return;
 
@@ -284,7 +353,8 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                 };
                 this.cdr.markForCheck();
             }
-        });
+        };
+        this.socketService.on('updateConversation', this.onUpdateConversationSocket);
 
         this.onUpdateProfileSocket = (data: any) => {
             console.log('Received updateProfile event in Conversation:', data);
@@ -351,7 +421,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         };
         this.socketService.on('updateProfile', this.onUpdateProfileSocket);
 
-        this.socketService.on('updateParticipant', (data: any) => {
+        this.onUpdateParticipantSocket = (data: any) => {
             const cur = this.conversations;
             if (!cur?.homeConversationData?.joinedConversations) return;
 
@@ -364,8 +434,6 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                         return p;
                     });
 
-                    // Nếu người vừa đọc chính là mình (đọc từ máy khác hoặc tab khác)
-                    // thì phải reset unread_count về 0 ngay lập tức
                     const isMe = data.user_id === this.currentUserId;
 
                     return {
@@ -383,17 +451,16 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                 homeConversationData: { ...cur.homeConversationData, joinedConversations: updated },
             };
             this.cdr.markForCheck();
-        });
+        };
+        this.socketService.on('updateParticipant', this.onUpdateParticipantSocket);
 
-        this.socketService.on('addMember', (data: any) => {
+        this.onAddMemberSocket = (data: any) => {
             console.log('Received addMember event in Conversation:', data);
-            // Tải lại danh sách cuộc trò chuyện để lấy list participants mới
             this.conversationService.getConversations(this.currentUserId).subscribe({
                 next: (response) => {
                     this.conversations = response.metadata || {};
                     const joined = this.conversations?.homeConversationData?.joinedConversations || [];
                     
-                    // Nếu đang mở đúng conversation đó, cập nhật getMessageInfor
                     if (this.selectedConversationId === data.conversation_id) {
                         const target = joined.find((c: any) => c.conversation_id === data.conversation_id);
                         if (target) {
@@ -403,7 +470,47 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                     this.cdr.markForCheck();
                 }
             });
-        });
+        };
+        this.socketService.on('addMember', this.onAddMemberSocket);
+    }
+
+    handleConversationCreated(newId: string, realParticipants?: any[]) {
+        const oldId = this.selectedConversationId;
+        this.selectedConversationId = newId;
+
+        // JOIN ROOM MỚI NGAY LẬP TỨC
+        this.socketService.emit('joinConversation', newId);
+
+        // Cập nhật trực tiếp trong mảng hội thoại để tránh reload toàn bộ danh sách
+        const joined = this.conversations?.homeConversationData?.joinedConversations;
+        if (joined) {
+            const index = joined.findIndex((c: any) => c.conversation_id === oldId);
+            if (index !== -1) {
+                // Thay thế ID ảo bằng ID thật
+                joined[index].conversation_id = newId;
+                
+                // NẾU CÓ THÔNG TIN PARTICIPANTS THỰC, CẬP NHẬT LUÔN
+                if (realParticipants) {
+                    joined[index].participants = realParticipants;
+                }
+
+                // Cập nhật lại tham chiếu để Angular detect changes (vì OnPush)
+                this.conversations = {
+                    ...this.conversations,
+                    homeConversationData: {
+                        ...this.conversations.homeConversationData,
+                        joinedConversations: [...joined],
+                    },
+                };
+
+                // Cập nhật getMessageInfor ngay lập tức để tránh lỗi participant ID ảo
+                const updatedConv = joined[index];
+                if (this.selectedConversationId === updatedConv.conversation_id) {
+                    this.handleConversationID(updatedConv);
+                }
+            }
+        }
+        this.cdr.markForCheck();
     }
 
     // ── Conversation Selection ──────────────────────────────
@@ -510,7 +617,12 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     }
 
     private queueParticipantReadUpdate(conversationId: string, participantId: string, lastReadMessageId: string) {
-        if (!conversationId || !participantId || !lastReadMessageId) return;
+        if (!participantId || participantId.startsWith('par_')) {
+            console.warn('[SYNC] Skipping read update for virtual participant:', participantId);
+            return;
+        }
+
+        if (!conversationId || !lastReadMessageId) return;
 
         this.pendingReadMessageIdByConversation.set(conversationId, lastReadMessageId);
         if (this.readUpdateInFlightByConversation.get(conversationId)) return;
@@ -641,7 +753,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         const date = new Date(dateInput);
         const diffMs = now.getTime() - date.getTime();
         const diffSec = Math.floor(diffMs / 1000);
-        if (diffSec < 60) return 'vừa xong';
+        if (diffSec < 60) return 'Vừa xong';
         const diffMin = Math.floor(diffSec / 60);
         if (diffMin < 60) return `${diffMin} phút`;
         const diffHour = Math.floor(diffMin / 60);
@@ -654,5 +766,72 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         if (diffYear < 10) return `${diffYear} năm`;
         // Nếu quá 10 năm, hiển thị đầy đủ ngày/tháng/năm
         return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+
+    // ── Search Actions ─────────────────────────────────────
+    onSearch(event: any) {
+        const term = event.target.value;
+        this.searchTerm.set(term);
+        this.searchSubject.next(term);
+    }
+
+    enterSearch() {
+        this.isSearchView.set(true);
+        setTimeout(() => {
+            if (this.searchInput) {
+                this.searchInput.nativeElement.focus();
+            }
+        }, 50);
+    }
+
+    exitSearch() {
+        this.isSearchView.set(false);
+        this.searchTerm.set('');
+        this.searchResults.set([]);
+        this.cdr.markForCheck();
+    }
+
+    selectSearchResult(user: any) {
+        // Clear search
+        this.exitSearch();
+        
+        // Find existing direct conversation with this user
+        const joined = this.conversations?.homeConversationData?.joinedConversations || [];
+        const existingConv = joined.find((c: any) => 
+            c.type === 'direct' && c.participants.some((p: any) => p.user_id === user.id)
+        );
+
+        if (existingConv) {
+            this.handleConversationID(existingConv);
+        } else {
+            const randomId = Math.random().toString(36).substring(2, 15);
+            const newConv = {
+                conversation_id: 'conv_' + randomId,
+                type: 'direct',
+                title: user.full_name,  
+                avatar_url: user.avatar_url,
+                participants: [
+                    {
+                        id: 'par_' + randomId,
+                        user_id: this.currentUserId,
+                        full_name: this.conversations?.homeConversationData?.userInfo?.full_name,
+                        avatar_url: this.conversations?.homeConversationData?.userInfo?.avatar_url,
+                        last_online_at: this.conversations?.homeConversationData?.userInfo?.last_online_at,
+                    },
+                    {
+                        id: 'par_' + randomId ,
+                        user_id: user.id,
+                        full_name: user.full_name,
+                        avatar_url: user.avatar_url,
+                        last_online_at: user.last_online_at,
+                    },
+                ],
+                last_message: null,
+                unread_count: 0,
+                updated_at: new Date().toISOString(),
+            };
+            this.conversations.homeConversationData?.joinedConversations.unshift(newConv);
+            this.handleConversationID(newConv);
+        }
     }
 }

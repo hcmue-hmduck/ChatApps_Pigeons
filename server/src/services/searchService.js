@@ -1,10 +1,21 @@
-const { User } = require('../models/usersModel');
+const { Op } = require('sequelize');
+const User = require('../models/usersModel');
 
 class SearchService {
     async searchUsers(keyword) {
-        const users = await User.find({
-            $text: { $search: keyword },
-        }).select('name email avatar');
+        if (!keyword) return [];
+        
+        const users = await User.findAll({
+            where: {
+                [Op.or]: [
+                    { full_name: { [Op.iLike]: `%${keyword}%` } },
+                    { email: { [Op.iLike]: `%${keyword}%` } },
+                ],
+                is_active: true,
+            },
+            attributes: ['id', 'full_name', 'email', 'avatar_url', 'status'],
+            limit: 10,
+        });
         return users;
     }
 }

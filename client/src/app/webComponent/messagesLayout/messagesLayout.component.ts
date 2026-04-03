@@ -24,7 +24,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PickerModule } from '@ctrl/ngx-emoji-mart';
-import { finalize, forkJoin, Observable, from, concatMap, tap } from 'rxjs';
+import { finalize, forkJoin, Observable, from, concatMap, tap, firstValueFrom } from 'rxjs';
 import { GROUP_CALL, SendCallPayload } from '../../models/callData';
 import { AuthService } from '../../services/authService';
 import { CallService } from '../../services/callService';
@@ -107,6 +107,7 @@ export class MessagesLayoutComponent
     @Input() summaryTriggerKey = 0;
 
     @Output() toggleDetails = new EventEmitter<void>();
+    @Output() conversationCreated = new EventEmitter<string>();
 
     @ViewChild('messagesContent') messagesContent!: ElementRef<HTMLDivElement>;
     @ViewChild('messageInput', { static: false }) messageInput!: ElementRef<HTMLTextAreaElement>;
@@ -323,6 +324,9 @@ export class MessagesLayoutComponent
     private onUnpinMessageSocket?: (data: any) => void;
     private onUpdateProfileSocket?: (data: any) => void;
     private onDeleteMessageSocket?: (data: any) => void;
+    private onTypingSocket?: (data: any) => void;
+    private onStopTypingSocket?: (data: any) => void;
+    
     private pinnedMenuTimeout: any;
 
     onPinnedMenuMouseLeave() {
@@ -594,8 +598,8 @@ export class MessagesLayoutComponent
         if (this.onUnpinMessageSocket) this.socketService.off('unpinMessage', this.onUnpinMessageSocket);
         if (this.onUpdateProfileSocket) this.socketService.off('updateProfile', this.onUpdateProfileSocket);
         if (this.onDeleteMessageSocket) this.socketService.off('deleteMessage', this.onDeleteMessageSocket);
-        this.socketService.off('typing');
-        this.socketService.off('stopTyping');
+        if (this.onTypingSocket) this.socketService.off('typing', this.onTypingSocket);
+        if (this.onStopTypingSocket) this.socketService.off('stopTyping', this.onStopTypingSocket);
 
         this.onNewMessageSocket = undefined;
         this.onUpdateMessageSocket = undefined;
@@ -604,6 +608,8 @@ export class MessagesLayoutComponent
         this.onUnpinMessageSocket = undefined;
         this.onUpdateProfileSocket = undefined;
         this.onDeleteMessageSocket = undefined;
+        this.onTypingSocket = undefined;
+        this.onStopTypingSocket = undefined;
     }
 
     setupSocketListener(conversationId: string) {
@@ -842,7 +848,7 @@ export class MessagesLayoutComponent
         };
         this.socketService.on('updateProfile', this.onUpdateProfileSocket);
 
-        this.socketService.on('typing', (data: any) => {
+        this.onTypingSocket = (data: any) => {
             if (data.conversation_id === conversationId && data.user_id !== this.currentUserId) {
                 this.typingUsers.update(users => {
                     if (!users.find(u => u.user_id === data.user_id)) {
@@ -852,14 +858,16 @@ export class MessagesLayoutComponent
                 });
                 this.cdr.markForCheck();
             }
-        });
+        };
+        this.socketService.on('typing', this.onTypingSocket);
 
-        this.socketService.on('stopTyping', (data: any) => {
+        this.onStopTypingSocket = (data: any) => {
             if (data.conversation_id === conversationId) {
                 this.typingUsers.update(users => users.filter(u => u.user_id !== data.user_id));
                 this.cdr.markForCheck();
             }
-        });
+        };
+        this.socketService.on('stopTyping', this.onStopTypingSocket);
 
         // Setup listener cho xóa tin nhắn
         this.onDeleteMessageSocket = (data: any) => {
@@ -913,8 +921,23 @@ export class MessagesLayoutComponent
     ngOnInit() {
         console.log('Online User', this.onlineUsers);
         if (this.conversationId) {
-            this.loadMessages(this.conversationId);
-            this.setupSocketListener(this.conversationId);
+            if (this.conversationId.startsWith('conv_')) {
+                this.getMessagesData.set({
+                    homeMessagesData: {
+                        messages: [],
+                        conversation_type: '',
+                        pinnedMessages: [],
+                    },
+                }); // Clear messages data ngay khi conversationId thay đổi để tránh hiển thị nhầm lẫn
+                this.pinnedMessages.set([]); // Clear pinned messages
+                this.isLoadingMore = false;
+                this.isLoaded = true;
+                return; // Clear messages data ngay khi conversationId thay đổi để tránh hiển thị nhầm lẫn
+            }
+            else {
+                this.loadMessages(this.conversationId);
+                this.setupSocketListener(this.conversationId);
+            }
         }
 
         this.ngZone.runOutsideAngular(() => {
@@ -926,6 +949,7 @@ export class MessagesLayoutComponent
 
     ngOnChanges(changes: SimpleChanges) {
         console.log(`getMessageInfor:::`, this.getMessageInfor);
+
         if (changes['conversationId']) {
             const newConversationId = changes['conversationId'].currentValue;
             const oldConversationId = changes['conversationId'].previousValue;
@@ -934,8 +958,33 @@ export class MessagesLayoutComponent
             if (newConversationId && newConversationId !== oldConversationId) {
                 this.resetAiSummaryUI();
                 this.conversationId = newConversationId;
-
                 // Load messages và setup socket mới (cleanup được xử lý trong setupSocketListener)
+                if (newConversationId.startsWith('conv_')) {
+                    this.getMessagesData.set({
+                        homeMessagesData: {
+                            messages: [],
+                            conversation_type: '',
+                            pinnedMessages: [],
+                        },
+                    }); // Clear messages data ngay khi conversationId thay đổi để tránh hiển thị nhầm lẫn
+                    this.pinnedMessages.set([]); // Clear pinned messages
+                    this.isLoaded = true;
+                    this.isLoadingMore = false;
+                    return; // Clear messages data ngay khi conversationId thay đổi để tránh hiển thị nhầm lẫn
+                }
+                // Nếu là quá trình nâng cấp từ hội thoại ảo lên thật của chính nó
+                if (oldConversationId && oldConversationId.startsWith('conv_') && !newConversationId.startsWith('conv_')) {
+                    this.setupSocketListener(newConversationId);
+
+                    // Nếu danh sách tin nhắn hiện tại đang trống (người nhận), hãy gọi loadMessages 
+                    // để lấy những tin nhắn đầu tiên vừa được tạo (vì người nhận có thể lỡ mất socket newMessage do chưa join room kịp)
+                    const currentMsgs = this.getMessagesData()?.homeMessagesData?.messages || [];
+                    if (currentMsgs.length === 0) {
+                        this.loadMessages(newConversationId);
+                    }
+                    return;
+                }
+
                 this.loadMessages(newConversationId);
                 this.needsFocus = true;
                 this.setupSocketListener(newConversationId);
@@ -984,6 +1033,12 @@ export class MessagesLayoutComponent
         if (this.scrollTimeout) {
             clearTimeout(this.scrollTimeout);
         }
+        if (this.typingTimeout) {
+            clearTimeout(this.typingTimeout);
+        }
+        if (this.pinnedMenuTimeout) {
+            clearTimeout(this.pinnedMenuTimeout);
+        }
         // Cleanup listeners của component này, không chạm listener ở component khác
         this.detachMessageSocketListeners();
 
@@ -998,6 +1053,7 @@ export class MessagesLayoutComponent
         this.loading = true;
         this.reactionPickerMessageId = null;
         this.messageReactions.set(new Map<string, any[]>());
+
         this.messagesService.getMessages(conversationId).subscribe({
             next: (response) => {
                 this.lastMessageId = response.metadata?.homeMessagesData?.last_message_id || '';
@@ -1098,7 +1154,8 @@ export class MessagesLayoutComponent
         messageTransform?: (msg: any) => any,
         file_metadata?: any,
         replyToMessageObj?: any,
-        existingTempId?: string
+        existingTempId?: string,
+        isNewConversationUpgrade: boolean = false
     ) {
         this.postMessage$(
             content,
@@ -1107,7 +1164,8 @@ export class MessagesLayoutComponent
             messageTransform,
             file_metadata,
             replyToMessageObj,
-            existingTempId
+            existingTempId,
+            isNewConversationUpgrade
         ).subscribe();
     }
 
@@ -1118,7 +1176,8 @@ export class MessagesLayoutComponent
         messageTransform?: (msg: any) => any,
         file_metadata?: any,
         replyToMessageObj?: any,
-        existingTempId?: string
+        existingTempId?: string,
+        isNewConversationUpgrade: boolean = false
     ): Observable<any> {
         const tempId = 'temp-' + Date.now();
         const messageData = {
@@ -1198,14 +1257,22 @@ export class MessagesLayoutComponent
                         }
 
                         // Chỉ notify khi conversation chưa có trong danh sách local (thường là cuộc trò chuyện mới tạo)
+                        // HOẶC nếu đây là một cuộc nâng cấp từ ảo lên thật (vô hiệu hóa guard isKnownConversation vì lúc này message list đã được cập nhật ID thật rồi)
                         const isKnownConversation = (this.joinedConversations || [])
                             .some((conv: any) => conv.conversation_id === this.conversationId);
-                        if (!isKnownConversation) {
+                        
+                        if (!isKnownConversation || isNewConversationUpgrade) {
                             const receiverIds = (this.getMessageInfor?.participants || [])
                                 .map((p: any) => p.user_id)
-                                .filter((id: string) => id !== this.currentUserId);
+                                .filter((id: any) => String(id) !== String(this.currentUserId));
+                            
                             if (receiverIds.length > 0) {
-                                this.socketService.emit('notifyNewConversation', { receiverIds, conversationId: this.conversationId });
+                                this.socketService.emit('notifyNewConversation', {
+                                    receiverIds,
+                                    conversationId: this.conversationId,
+                                    senderId: this.currentUserId,
+                                    participants: this.getMessageInfor?.participants
+                                });
                             }
                         }
 
@@ -1222,19 +1289,23 @@ export class MessagesLayoutComponent
                             },
                         }));
 
-                        this.participantService.putParticipant({
-                            id: this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId)?.id,
-                            last_read_message_id: realId
-                        }).subscribe({
-                            next: () => {
-                                this.socketService.emit('updateParticipant', {
-                                    conversation_id: this.conversationId,
-                                    user_id: this.currentUserId,
-                                    last_read_message_id: realId
-                                });
-                            },
-                            error: (err) => console.error('Error updating participant:', err),
-                        });
+                        const participantId = this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId)?.id;
+                        
+                        if (participantId && !participantId.startsWith('par_')) {
+                            this.participantService.putParticipant({
+                                id: participantId,
+                                last_read_message_id: realId
+                            }).subscribe({
+                                next: () => {
+                                    this.socketService.emit('updateParticipant', {
+                                        conversation_id: this.conversationId,
+                                        user_id: this.currentUserId,
+                                        last_read_message_id: realId
+                                    });
+                                },
+                                error: (err) => console.error('Error updating participant:', err),
+                            });
+                        }
                     },
                     error: (error) => {
                         this.loading = false;
@@ -1253,13 +1324,20 @@ export class MessagesLayoutComponent
 
         // không cập nhật nội dung trò chuyện nếu đang ở conversation khác
         if (this.conversationId === conversationId) {
-            this.getMessagesData.update((old) => ({
-                ...old,
-                homeMessagesData: {
-                    ...old.homeMessagesData,
-                    messages: [...old.homeMessagesData.messages, newMessage],
-                },
-            }))
+            this.getMessagesData.update((old) => {
+                const homeMessagesData = old?.homeMessagesData || {
+                    messages: [],
+                    pinnedMessages: [],
+                    conversation_type: '',
+                };
+                return {
+                    ...old,
+                    homeMessagesData: {
+                        ...homeMessagesData,
+                        messages: [...(homeMessagesData.messages || []), newMessage],
+                    },
+                };
+            });
         }
     }
 
@@ -1277,6 +1355,39 @@ export class MessagesLayoutComponent
     async handleSendBtn() {
         this.stopTyping();
         if (!this.newMessage.trim() && this.preUploadFiles().length === 0) return;
+
+        let isNewConversationUpgrade = false;
+        if (this.conversationId.startsWith('conv_')) {
+            isNewConversationUpgrade = true;
+            const response = await firstValueFrom(
+                this.conversationService.postConversation(
+                    this.getMessageInfor?.other_participant?.user_id,
+                    this.getMessageInfor?.user_info?.id
+                )
+            );
+            console.log('RS', response);
+            const newConvData = response.metadata?.newConversation;
+            if (newConvData) {
+                this.conversationId = newConvData.conv?.id;
+
+                // Cập nhật ID thật cho các participants trong getMessageInfor để tránh lỗi 500 khi updateParticipant
+                const realParticipants = [newConvData.you, ...newConvData.participants];
+                if (this.getMessageInfor?.participants) {
+                    this.getMessageInfor.participants = this.getMessageInfor.participants.map(
+                        (p: any) => {
+                            const realP = realParticipants.find((rp: any) => rp.user_id === p.user_id);
+                            return realP ? { ...p, id: realP.id } : p;
+                        }
+                    );
+                }
+
+                // JOIN SOCKET ROOM MỚI VÀ THÔNG BÁO CHO CHA
+                this.setupSocketListener(this.conversationId);
+                this.conversationCreated.emit(this.conversationId);
+            }
+        }
+
+        console.log('newConversationId', this.conversationId);
 
         const messageContent = this.newMessage;
         const replyTo = this.replyToMessage ? this.replyToMessage.id : undefined;
@@ -1310,20 +1421,22 @@ export class MessagesLayoutComponent
                 undefined,
                 linkMetadata,
                 replyToMessageObj,
+                undefined,
+                isNewConversationUpgrade
             );
         }
 
         // 2. Nếu có files, upload files
         if (stagedFiles.length > 0) {
             this.loading = false; // Progress được hiện qua _uploading trên từng temp message
-            this.uploadFileAttachment(stagedFiles);
+            this.uploadFileAttachment(stagedFiles, isNewConversationUpgrade);
             this.clearPreUploadFiles();
         } else {
             this.loading = false;
         }
     }
 
-    uploadFileAttachment(files: File[]) {
+    uploadFileAttachment(files: File[], isNewConversationUpgrade: boolean = false) {
         // Validation: Filter out files that exceed Cloudinary limits
         const validFiles: File[] = [];
         for (const file of files) {
@@ -1442,7 +1555,10 @@ export class MessagesLayoutComponent
                             undefined,
                             fileMetadata,
                             undefined,
-                            tempId
+                            tempId,
+                            // Chỉ trigger upgrade notify cho file đầu tiên TRONG TRƯỜNG HỢP không có tin nhắn văn bản đi kèm
+                            // (nếu đã có tin nhắn văn bản, notify đã được gửi ở postAndBroadcastMessage)
+                            index === 0 ? isNewConversationUpgrade : false
                         );
                     }),
                     finalize(() => {
