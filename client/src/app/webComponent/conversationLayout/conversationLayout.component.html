@@ -58,11 +58,27 @@
                     <div class="conv-info">
                         <div class="conv-info-top">
                             <span class="conv-name">{{ conv.title }}</span>
-                            @if (conv.lastMessage) {
-                            <span class="conv-time">
-                                {{ relativeTime(conv.lastMessage.created_at) }}
-                            </span>
-                            }
+                            <div class="conv-time-actions-wrap">
+                                @if (conv.lastMessage) {
+                                <span class="conv-time" [class.hidden]="activeConvMenuId === conv.conversation_id">
+                                    {{ relativeTime(conv.lastMessage.created_at) }}
+                                </span>
+                                }
+
+                                <div class="conv-actions-inline" (click)="toggleConvMenu($event, conv.conversation_id)"
+                                    [class.active]="activeConvMenuId === conv.conversation_id">
+                                    <i class="bi bi-three-dots"></i>
+                                    @if (activeConvMenuId === conv.conversation_id) {
+                                    <div class="conv-dropdown">
+                                        <div class="conv-dropdown-item"
+                                            (click)="pinConversation($event, conv.conversation_id)">
+                                            <i class="bi bi-pin-angle"></i>
+                                            <span>Ghim hội thoại</span>
+                                        </div>
+                                    </div>
+                                    }
+                                </div>
+                            </div>
                         </div>
                         <div class="conv-info-bottom">
                             <span class="conv-last-msg">
@@ -73,7 +89,8 @@
                                 @if (conv.lastMessage.is_deleted) {
                                 Tin nhắn đã được gỡ
                                 } @else {
-                                <span [innerHTML]="conv.lastMessage.content"></span>
+                                <span
+                                    [innerHTML]="formatMessageText(conv.lastMessage.content, conv.participants)"></span>
                                 }
                                 } @else {
                                 <span class="empty-last-msg">Hãy bắt đầu đoạn chat ngay</span>

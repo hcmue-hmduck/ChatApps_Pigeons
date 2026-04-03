@@ -11,7 +11,8 @@ import {
     ViewEncapsulation,
     NgZone,
     ViewChild,
-    ElementRef
+    ElementRef,
+    HostListener
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subject, debounceTime, distinctUntilChanged, switchMap, of } from 'rxjs';
@@ -26,6 +27,7 @@ import { Participant } from '../../services/participant';
 import { UserBlock } from '../../services/userBlock';
 import { DateTimeUtils } from '../../utils/DateTimeUtils/datetimeUtils';
 import { FileUtils } from '../../utils/FileUtils/fileUltils';
+import { LinkPreviewUtils } from '../../utils/LinkUtils/linkPreviewUtils';
 
 export interface UserPresence {
     status: string;
@@ -57,6 +59,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     participantService = inject(Participant);
     userBlockService = inject(UserBlock);
     searchService = inject(SearchService);
+    linkPreviewUtils = inject(LinkPreviewUtils);
     private ngZone = inject(NgZone);
     private timeUpdateInterval: any;
 
@@ -99,6 +102,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     private pendingReadMessageIdByConversation = new Map<string, string>();
     private hasInitWelcomeResetEffect = false;
     private aiSummaryTriggerRequestToken = 0;
+    activeConvMenuId: string | null = null;
 
     constructor(
         private socketService: SocketService,
@@ -747,6 +751,13 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         return isSystem ? name : `${name}:`;
     }
 
+    formatMessageText(content: string | null | undefined, participants?: any[]): string {
+        if (!content) return '';
+        // Replace newlines with spaces for single-line sidebar preview
+        const singleLineContent = content.replace(/\n/g, ' ');
+        return this.linkPreviewUtils.formatMessageText(singleLineContent, participants || []);
+    }
+
     relativeTime(dateInput: string | Date): string {
         // Luôn tính từ thời điểm hiện tại, không cache
         const now = new Date();
@@ -832,6 +843,31 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
             };
             this.conversations.homeConversationData?.joinedConversations.unshift(newConv);
             this.handleConversationID(newConv);
+        }
+    }
+
+    toggleConvMenu(event: MouseEvent, convId: string) {
+        event.stopPropagation();
+        if (this.activeConvMenuId === convId) {
+            this.activeConvMenuId = null;
+        } else {
+            this.activeConvMenuId = convId;
+        }
+    }
+
+    pinConversation(event: MouseEvent, convId: string) {
+        event.stopPropagation();
+        console.log('Pinning conversation:', convId);
+        // Logic will be added here
+        this.activeConvMenuId = null;
+    }
+
+    @HostListener('document:click', ['$event'])
+    onDocumentClick(event: MouseEvent) {
+        const target = event.target as HTMLElement;
+        const isClickInside = target.closest('.conv-actions-inline');
+        if (!isClickInside) {
+            this.activeConvMenuId = null;
         }
     }
 }
