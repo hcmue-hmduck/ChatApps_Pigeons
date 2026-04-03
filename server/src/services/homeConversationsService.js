@@ -170,11 +170,19 @@ class HomeConversationService {
 
     async createConversation(participants_id, conversation_type, name, avatar_url, created_by, last_message_id, last_message_at) {
         const conv = await conversationsService.createConversation(conversation_type, name, avatar_url, created_by, last_message_id, last_message_at);
+        
+        const participants = [];
+        if (participants_id) {
+            participants.push(await participantsService.createParticipant(conv.id, { user_id: participants_id }));
+        }
+        
+        const you = await participantsService.createParticipant(conv.id, { user_id: created_by, role: 'owner' });
+
         return {
             conv,
-            participants: await participantsService.createParticipant(conv.id, participants_id),
-            you: await participantsService.createParticipant(conv.id, created_by)
-        }
+            participants,
+            you
+        };
     }
 }
 

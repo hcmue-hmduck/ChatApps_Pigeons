@@ -132,14 +132,24 @@ io.on('connection', (socket) => {
     });
 
     // Thông báo cho người nhận biết có cuộc trò chuyện mới
-    socket.on('notifyNewConversation', ({ receiverIds, conversationId }) => {
+    socket.on('notifyNewConversation', (data) => {
+        const { receiverIds } = data;
         if (!Array.isArray(receiverIds)) return;
         receiverIds.forEach((receiverId) => {
             const receiverSockets = onlineUsers.get(receiverId);
             if (receiverSockets) {
                 receiverSockets.forEach((socketId) => {
-                    io.to(socketId).emit('newConversation', { conversationId });
+                    io.to(socketId).emit('newConversation', data);
                 });
+            } else {
+                // Thử tìm kiếm theo kiểu dữ liệu khác (String/Number) để phòng trường hợp lệch kiểu giữa DB và Socket Map
+                const alternateId = typeof receiverId === 'string' ? Number(receiverId) : String(receiverId);
+                const altSockets = onlineUsers.get(alternateId);
+                if (altSockets) {
+                    altSockets.forEach((socketId) => {
+                        io.to(socketId).emit('newConversation', data);
+                    });
+                }
             }
         });
     });

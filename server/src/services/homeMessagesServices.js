@@ -134,13 +134,13 @@ class HomeMessagesService {
         };
     }
 
-    
-    async getUnreadMessages({conversation_id, last_read_message_id}) {
-        if(!conversation_id) 
+
+    async getUnreadMessages({ conversation_id, last_read_message_id }) {
+        if (!conversation_id)
             throw new BadRequestError('params invalid')
 
         const unreadMessages = await messagesService.getUnreadMessages(
-            {conversation_id, last_read_message_id},
+            { conversation_id, last_read_message_id },
             {
                 attributes: ['id', 'sender_id', 'message_type', 'content', 'parent_message_id', 'file_name', 'link_description'],
                 raw: true,
@@ -148,17 +148,17 @@ class HomeMessagesService {
             }
         )
 
-        if(unreadMessages.length === 0) return null
+        if (unreadMessages.length === 0) return null
 
         const senderIds = Array.from(new Set(unreadMessages.map(m => m.sender_id)))
 
         const participants = await participantsService.getParticipantByConversationsAndUserIds(
             conversation_id,
             senderIds,
-            {attributes: ['user_id', 'nick_name'], raw: true}
+            { attributes: ['user_id', 'nick_name'], raw: true }
         )
 
-        const participantsMap = participants.reduce((acc, p) =>  {
+        const participantsMap = participants.reduce((acc, p) => {
             acc[p.user_id] = p.nick_name
             return acc
         }, [])
@@ -169,7 +169,7 @@ class HomeMessagesService {
         })
 
         const updateUnreadMessages = unreadMessages.map(m => {
-            const {id, sender_id, message_type, content, parent_message_id, file_name, link_description } = m
+            const { id, sender_id, message_type, content, parent_message_id, file_name, link_description } = m
             const result = {
                 msg_no: messageIdsMap[id],
                 sender: participantsMap[sender_id],
@@ -180,15 +180,15 @@ class HomeMessagesService {
             if(file_name) result['file_name'] = file_name
             if(link_description) result['file_desc'] = link_description
             if(parent_message_id) result['reply_to'] = messageIdsMap[parent_message_id]
-
+        
             return result
         })
 
         return updateUnreadMessages
-    }   
+    }
 
     async *getSummaryMessages(conversation_id, last_read_message_id) {
-        if(!conversation_id) throw new BadRequestError('params invalid')
+        if (!conversation_id) throw new BadRequestError('params invalid')
 
         const unreadMessages = await this.getUnreadMessages({
             conversation_id,
@@ -198,12 +198,13 @@ class HomeMessagesService {
         console.log(`getSummaryMessages:::`, unreadMessages)
 
         if (!unreadMessages || unreadMessages.length === 0) {
-            yield 'Hiện chưa có tin nhắn chưa đọc để tóm tắt.';
-            return;
+            yield 'Hiện chưa có tin nhắn chưa đọc để tóm tắt.'
+            return
         }
 
-        for await (const content of openAiService.summarizeMessages(unreadMessages) )
+        for await (const content of openAiService.summarizeMessages(unreadMessages)) {
             yield content
+        }
     }
 
     async postMessageToConversation(
