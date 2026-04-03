@@ -2256,15 +2256,6 @@
     user-select: none;
 }
 
-/* Mention Tag in Chat Bubble */
-::ng-deep .mention-tag {
-    color: #00f2ff;
-    font-weight: 600;
-    background: rgba(0, 242, 255, 0.1);
-    padding: 1px 4px;
-    border-radius: 4px;
-    cursor: pointer;
-}
 
 .emoji-btn {
     width: 34px;
@@ -4571,22 +4562,6 @@
     text-overflow: ellipsis;
 }
 
-/* Mention tag in chat bubbles */
-::ng-deep .mention-tag {
-    color: #00f2ff;
-    font-weight: 700;
-    background: rgba(0, 242, 255, 0.1);
-    padding: 0 4px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: inline-block;
-}
-
-::ng-deep .mention-tag:hover {
-    background: rgba(0, 242, 255, 0.2);
-    text-shadow: 0 0 8px rgba(0, 242, 255, 0.5);
-}
 
 /* Mention Pill in Editor */
 .mention-pill {

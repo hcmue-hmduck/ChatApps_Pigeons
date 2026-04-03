@@ -35,7 +35,6 @@ export interface UserPresence {
 }
 
 import { ConversationInfoLayoutComponent } from '../conversationInforLayout/conversationInforLayout.component';
-import { title } from 'node:process';
 
 @Component({
     selector: 'conversation-layout',
@@ -49,7 +48,7 @@ import { title } from 'node:process';
 export class ConversationLayoutComponent implements OnInit, OnDestroy {
     @Input() currentUserId: string = '';
 
-    conversations: any = {};
+    conversations = signal<any>({});
     onlineUsers = signal<Set<string>>(new Set());
     UserPresence = signal<Map<string, UserPresence>>(new Map());
 
@@ -183,8 +182,8 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     loadConversations() {
         this.conversationService.getConversations(this.currentUserId).subscribe({
             next: (response) => {
-                this.conversations = response.metadata || {};
-                const joined = this.conversations.homeConversationData?.joinedConversations || [];
+                this.conversations.set(response.metadata || {});
+                const joined = this.conversations().homeConversationData?.joinedConversations || [];
                 if (joined.length > 0) {
                     this.selectedConversationId = '';
                     this.selectedConversationType = '';
@@ -207,7 +206,19 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                     this.socketService.emit('joinConversation', conv.conversation_id)
                 );
 
-                this.cdr.markForCheck();
+                // Sort inline to avoid a second Signal set() call
+                const sorted = [...joined].sort((a: any, b: any) => {
+                    if (a.is_pinned && !b.is_pinned) return -1;
+                    if (!a.is_pinned && b.is_pinned) return 1;
+                    const timeA = new Date(a.lastMessage?.created_at || a.updated_at || 0).getTime();
+                    const timeB = new Date(b.lastMessage?.created_at || b.updated_at || 0).getTime();
+                    return timeB - timeA;
+                });
+                const cur = this.conversations();
+                this.conversations.set({
+                    ...cur,
+                    homeConversationData: { ...cur?.homeConversationData, joinedConversations: sorted }
+                });
             },
             error: (error) => {
                 console.error('Error loading conversations:', error);
@@ -264,7 +275,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
             // JOIN ROOM NGAY LẬP TỨC để không bỏ lỡ tin nhắn đầu tiên (race condition)
             this.socketService.emit('joinConversation', conversationId);
 
-            const currentJoined = this.conversations?.homeConversationData?.joinedConversations || [];
+            const currentJoined = this.conversations()?.homeConversationData?.joinedConversations || [];
 
             // Nếu hội thoại đã có trong danh sách, không cần làm gì thêm (đã join room ở trên)
             const alreadyJoined = currentJoined.some((c: any) => c.conversation_id === conversationId);
@@ -281,8 +292,8 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
 
             this.conversationService.getConversations(this.currentUserId).subscribe({
                 next: (response) => {
-                    this.conversations = response.metadata || {};
-                    const joined = this.conversations?.homeConversationData?.joinedConversations || [];
+                    this.conversations.set(response.metadata || {});
+                    const joined = this.conversations()?.homeConversationData?.joinedConversations || [];
 
                     // NẾU ĐANG Ở TRONG PHÒNG VỪU NÂNG CẤP, CẬP NHẬT LẠI getMessageInfor
                     const updatedConv = joined.find((c: any) => c.conversation_id === this.selectedConversationId);
@@ -293,7 +304,6 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                     joined.forEach((conv: any) =>
                         this.socketService.emit('joinConversation', conv.conversation_id)
                     );
-                    this.cdr.markForCheck();
                 },
                 error: () => { }
             });
@@ -301,7 +311,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         this.socketService.on('newConversation', this.onNewConversationSocket);
 
         this.onUpdateConversationSocket = (data: any) => {
-            const cur = this.conversations;
+            const cur = this.conversations();
             if (!cur?.homeConversationData?.joinedConversations) return;
 
             const convList = [...cur.homeConversationData.joinedConversations];
@@ -351,18 +361,17 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                 convList.splice(index, 1);
                 convList.unshift(conv);
 
-                this.conversations = {
+                this.conversations.set({
                     ...cur,
                     homeConversationData: { ...cur.homeConversationData, joinedConversations: convList },
-                };
-                this.cdr.markForCheck();
+                });
             }
         };
         this.socketService.on('updateConversation', this.onUpdateConversationSocket);
 
         this.onUpdateProfileSocket = (data: any) => {
             console.log('Received updateProfile event in Conversation:', data);
-            const curConversations = this.conversations;
+            const curConversations = this.conversations();
             let updatedUserInfo = curConversations?.homeConversationData?.userInfo;
 
             if (data.id === this.currentUserId) {
@@ -373,13 +382,13 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
             console.log('UpdateProfile in Messages:', convList);
             if (!convList?.length) {
                 if (data.id === this.currentUserId && curConversations?.homeConversationData) {
-                    this.conversations = {
+                    this.conversations.set({
                         ...curConversations,
                         homeConversationData: {
                             ...curConversations.homeConversationData,
                             userInfo: updatedUserInfo
                         }
-                    };
+                    });
                 }
                 return;
             }
@@ -413,20 +422,19 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                 };
             });
 
-            this.conversations = {
+            this.conversations.set({
                 ...curConversations,
                 homeConversationData: {
                     ...curConversations.homeConversationData,
                     userInfo: updatedUserInfo,
                     joinedConversations: updatedConvList
                 }
-            };
-            this.cdr.markForCheck();
+            });
         };
         this.socketService.on('updateProfile', this.onUpdateProfileSocket);
 
         this.onUpdateParticipantSocket = (data: any) => {
-            const cur = this.conversations;
+            const cur = this.conversations();
             if (!cur?.homeConversationData?.joinedConversations) return;
 
             const updated = cur.homeConversationData.joinedConversations.map((c: any) => {
@@ -450,11 +458,10 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                 return c;
             });
 
-            this.conversations = {
+            this.conversations.set({
                 ...cur,
                 homeConversationData: { ...cur.homeConversationData, joinedConversations: updated },
-            };
-            this.cdr.markForCheck();
+            });
         };
         this.socketService.on('updateParticipant', this.onUpdateParticipantSocket);
 
@@ -462,8 +469,8 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
             console.log('Received addMember event in Conversation:', data);
             this.conversationService.getConversations(this.currentUserId).subscribe({
                 next: (response) => {
-                    this.conversations = response.metadata || {};
-                    const joined = this.conversations?.homeConversationData?.joinedConversations || [];
+                    this.conversations.set(response.metadata || {});
+                    const joined = this.conversations()?.homeConversationData?.joinedConversations || [];
 
                     if (this.selectedConversationId === data.conversation_id) {
                         const target = joined.find((c: any) => c.conversation_id === data.conversation_id);
@@ -471,7 +478,6 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                             this.handleConversationID(target);
                         }
                     }
-                    this.cdr.markForCheck();
                 }
             });
         };
@@ -486,7 +492,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         this.socketService.emit('joinConversation', newId);
 
         // Cập nhật trực tiếp trong mảng hội thoại để tránh reload toàn bộ danh sách
-        const joined = this.conversations?.homeConversationData?.joinedConversations;
+        const joined = this.conversations()?.homeConversationData?.joinedConversations;
         if (joined) {
             const index = joined.findIndex((c: any) => c.conversation_id === oldId);
             if (index !== -1) {
@@ -499,13 +505,13 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                 }
 
                 // Cập nhật lại tham chiếu để Angular detect changes (vì OnPush)
-                this.conversations = {
-                    ...this.conversations,
+                this.conversations.set({
+                    ...this.conversations(),
                     homeConversationData: {
-                        ...this.conversations.homeConversationData,
+                        ...this.conversations().homeConversationData,
                         joinedConversations: [...joined],
                     },
-                };
+                });
 
                 // Cập nhật getMessageInfor ngay lập tức để tránh lỗi participant ID ảo
                 const updatedConv = joined[index];
@@ -525,14 +531,14 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
 
         this.selectedConversationId = conv.conversation_id;
         this.selectedConversationType = conv.type;
-        const selectedConv = this.conversations?.homeConversationData?.joinedConversations?.find(
+        const selectedConv = this.conversations()?.homeConversationData?.joinedConversations?.find(
             (c: any) => c.conversation_id === this.selectedConversationId,
         );
         const otherParticipant = selectedConv?.type === 'direct' ? this.getOtherParticipant(selectedConv) : null;
         this.getMessageInfor = {
             title: selectedConv?.title,
             participants: selectedConv?.participants,
-            user_info: this.conversations?.homeConversationData?.userInfo,
+            user_info: this.conversations()?.homeConversationData?.userInfo,
             type: selectedConv?.type,
             avatar_url: selectedConv?.avatar_url,
             other_participant: otherParticipant,
@@ -652,7 +658,6 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                     if (newestPending === latestMessageId) {
                         this.pendingReadMessageIdByConversation.delete(conversationId);
                         this.readUpdateInFlightByConversation.set(conversationId, false);
-                        this.cdr.markForCheck();
                         return;
                     }
 
@@ -682,11 +687,10 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         if (!this.isFirstConversationReady()) {
             this.isFirstConversationReady.set(true);
         }
-        this.cdr.markForCheck();
     }
 
     private selectOrReloadConversation(conversationId: string) {
-        const joined = this.conversations?.homeConversationData?.joinedConversations || [];
+        const joined = this.conversations()?.homeConversationData?.joinedConversations || [];
         const found = joined.find((c: any) => c.conversation_id === conversationId);
         if (found) {
             this.handleConversationID(found);
@@ -694,8 +698,8 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         } else {
             this.conversationService.getConversations(this.currentUserId).subscribe({
                 next: (response) => {
-                    this.conversations = response.metadata || {};
-                    const newJoined = this.conversations?.homeConversationData?.joinedConversations || [];
+                    this.conversations.set(response.metadata || {});
+                    const newJoined = this.conversations()?.homeConversationData?.joinedConversations || [];
                     newJoined.forEach((conv: any) =>
                         this.socketService.emit('joinConversation', conv.conversation_id)
                     );
@@ -704,7 +708,6 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                         this.handleConversationID(target);
                     }
                     this.navService.pendingConversationId.set(null);
-                    this.cdr.markForCheck();
                 },
                 error: () => {
                     this.navService.pendingConversationId.set(null);
@@ -714,7 +717,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     }
 
     hasConversations(): boolean {
-        return (this.conversations?.homeConversationData?.joinedConversations?.length || 0) > 0;
+        return (this.conversations()?.homeConversationData?.joinedConversations?.length || 0) > 0;
     }
 
     // ── Helpers ────────────────────────────────────────────
@@ -751,8 +754,10 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         return isSystem ? name : `${name}:`;
     }
 
-    formatMessageText(content: string | null | undefined, participants?: any[]): string {
+    formatMessageText(content: string | null | undefined, participants?: any[], isHtml: boolean = false): string {
         if (!content) return '';
+        // Nếu content đã là HTML (ví dụ system message với <i> icon), trả về trực tiếp
+        if (isHtml || /<[a-z][\s\S]*>/i.test(content)) return content;
         // Replace newlines with spaces for single-line sidebar preview
         const singleLineContent = content.replace(/\n/g, ' ');
         return this.linkPreviewUtils.formatMessageText(singleLineContent, participants || []);
@@ -807,7 +812,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         this.exitSearch();
 
         // Find existing direct conversation with this user
-        const joined = this.conversations?.homeConversationData?.joinedConversations || [];
+        const joined = this.conversations()?.homeConversationData?.joinedConversations || [];
         const existingConv = joined.find((c: any) =>
             c.type === 'direct' && c.participants.some((p: any) => p.user_id === user.id)
         );
@@ -816,6 +821,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
             this.handleConversationID(existingConv);
         } else {
             const randomId = Math.random().toString(36).substring(2, 15);
+            const userInfo = this.conversations()?.homeConversationData?.userInfo;
             const newConv = {
                 conversation_id: 'conv_' + randomId,
                 type: 'direct',
@@ -825,9 +831,9 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                     {
                         id: 'par_' + randomId,
                         user_id: this.currentUserId,
-                        full_name: this.conversations?.homeConversationData?.userInfo?.full_name,
-                        avatar_url: this.conversations?.homeConversationData?.userInfo?.avatar_url,
-                        last_online_at: this.conversations?.homeConversationData?.userInfo?.last_online_at,
+                        full_name: userInfo?.full_name,
+                        avatar_url: userInfo?.avatar_url,
+                        last_online_at: userInfo?.last_online_at,
                     },
                     {
                         id: 'par_' + randomId,
@@ -841,7 +847,17 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                 unread_count: 0,
                 updated_at: new Date().toISOString(),
             };
-            this.conversations.homeConversationData?.joinedConversations.unshift(newConv);
+
+            // Immutable update — do NOT mutate signal value directly
+            const cur = this.conversations();
+            const joined = cur?.homeConversationData?.joinedConversations || [];
+            this.conversations.set({
+                ...cur,
+                homeConversationData: {
+                    ...cur?.homeConversationData,
+                    joinedConversations: [newConv, ...joined]
+                }
+            });
             this.handleConversationID(newConv);
         }
     }
@@ -855,19 +871,61 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         }
     }
 
-    pinConversation(event: MouseEvent, convId: string) {
+    pinConversation(event: MouseEvent, conv: any) {
         event.stopPropagation();
-        console.log('Pinning conversation:', convId);
-        // Logic will be added here
+        const newPinnedStatus = !conv.is_pinned;
+        console.log(newPinnedStatus ? 'Pinning' : 'Unpinning', 'conversation:', conv.conversation_id);
+
+        const currentParticipant = conv.participants?.find((p: any) => p.user_id === this.currentUserId);
+        if (!currentParticipant?.id) {
+            console.error('Participant ID not found for current user');
+            return;
+        }
+
         this.activeConvMenuId = null;
+        this.participantService.putParticipant({ id: currentParticipant.id, is_pinned: newPinnedStatus }).subscribe({
+            next: () => {
+                conv.is_pinned = newPinnedStatus;
+                console.log('Conversation status updated successfully');
+                this.sortConversations();
+            },
+            error: () => {
+                console.log('Failed to update conversation status');
+            }
+        });
     }
 
     @HostListener('document:click', ['$event'])
     onDocumentClick(event: MouseEvent) {
+        // Only process clicks when a menu is actually open (avoids running on every app click)
+        if (this.activeConvMenuId === null) return;
         const target = event.target as HTMLElement;
         const isClickInside = target.closest('.conv-actions-inline');
         if (!isClickInside) {
             this.activeConvMenuId = null;
         }
+    }
+
+    private sortConversations() {
+        const cur = this.conversations();
+        const joined = cur?.homeConversationData?.joinedConversations;
+        if (!joined) return;
+
+        const sorted = [...joined].sort((a: any, b: any) => {
+            if (a.is_pinned && !b.is_pinned) return -1;
+            if (!a.is_pinned && b.is_pinned) return 1;
+
+            const timeA = new Date(a.lastMessage?.created_at || a.updated_at || 0).getTime();
+            const timeB = new Date(b.lastMessage?.created_at || b.updated_at || 0).getTime();
+            return timeB - timeA;
+        });
+
+        this.conversations.set({
+            ...cur,
+            homeConversationData: {
+                ...cur.homeConversationData,
+                joinedConversations: sorted
+            }
+        });
     }
 }

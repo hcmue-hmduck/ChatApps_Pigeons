@@ -29,8 +29,8 @@
             <!-- Normal Conversation List -->
             <div class="conv-list" *ngIf="!isSearchView()">
 
-                @if (conversations?.homeConversationData?.joinedConversations?.length) {
-                @for (conv of conversations.homeConversationData.joinedConversations; track conv.conversation_id) {
+                @if (conversations()?.homeConversationData?.joinedConversations?.length) {
+                @for (conv of conversations()!.homeConversationData.joinedConversations; track conv.conversation_id) {
                 <a href="javascript:void(0)" class="conv-item"
                     [class.active]="selectedConversationId === conv.conversation_id"
                     [class.is-unread]="conv.unread_count > 0" (click)="handleConversationID(conv)">
@@ -71,9 +71,9 @@
                                     @if (activeConvMenuId === conv.conversation_id) {
                                     <div class="conv-dropdown">
                                         <div class="conv-dropdown-item"
-                                            (click)="pinConversation($event, conv.conversation_id)">
-                                            <i class="bi bi-pin-angle"></i>
-                                            <span>Ghim hội thoại</span>
+                                            (click)="pinConversation($event, conv)">
+                                            <i class="bi" [class.bi-pin-angle]="!conv.is_pinned" [class.bi-pin-fill]="conv.is_pinned"></i>
+                                            <span>{{ conv.is_pinned ? 'Bỏ ghim' : 'Ghim hội thoại' }}</span>
                                         </div>
                                     </div>
                                     }
@@ -96,9 +96,14 @@
                                 <span class="empty-last-msg">Hãy bắt đầu đoạn chat ngay</span>
                                 }
                             </span>
-                            @if (conv.unread_count > 0) {
-                            <span class="unread-badge">{{ conv.unread_count }}</span>
-                            }
+                            <div class="conv-info-badges">
+                                @if (conv.unread_count > 0) {
+                                <span class="unread-badge">{{ conv.unread_count }}</span>
+                                }
+                                @if (conv.is_pinned) {
+                                <i class="bi bi-pin-angle-fill conv-pinned-icon"></i>
+                                }
+                            </div>
                         </div>
                     </div>
                 </a>
@@ -153,20 +158,20 @@
         <messages-layout [conversationId]="selectedConversationId" [currentUserId]="currentUserId"
             [getMessageInfor]="getMessageInfor" [onlineUsers]="onlineUsers()"
             [conversationType]="selectedConversationType" [UserPresence]="UserPresence()"
-            [joinedConversations]="conversations?.homeConversationData?.joinedConversations || []"
+            [joinedConversations]="conversations()?.homeConversationData?.joinedConversations || []"
             [userBlock]="userBlock()" [summaryTriggerUnreadCount]="aiSummaryTriggerUnreadCount"
             [summaryTriggerLastReadMessageId]="aiSummaryTriggerLastReadMessageId"
             [summaryTriggerKey]="aiSummaryTriggerKey" (toggleDetails)="toggleConversationInfor()"
             (conversationCreated)="handleConversationCreated($event)">
         </messages-layout>
         } @else {
-        <app-intro-layout [hasConversations]="conversations?.homeConversationData?.joinedConversations?.length > 0"
+        <app-intro-layout [hasConversations]="(conversations()?.homeConversationData?.joinedConversations?.length ?? 0) > 0"
             (startNewConversation)="createConversation()"></app-intro-layout>
         }
     </main>
     } @else if (isFirstConversationReady() && !hasConversations()) {
     <section class="welcome-screen">
-        <app-intro-layout [hasConversations]="conversations?.homeConversationData?.joinedConversations?.length > 0"
+        <app-intro-layout [hasConversations]="(conversations()?.homeConversationData?.joinedConversations?.length ?? 0) > 0"
             (startNewConversation)="createConversation()"></app-intro-layout>
     </section>
     }
@@ -174,9 +179,9 @@
     <!-- ===================== PANEL 4: INFO SIDEBAR ===================== -->
     @if (showConversationInfor() && hasConversations() && selectedConversationId) {
     <app-conversation-info-layout (closePanel)="toggleConversationInfor()"
-        [userInfor]="conversations.homeConversationData?.userInfo" [currentUserId]="currentUserId"
+        [userInfor]="conversations()?.homeConversationData?.userInfo" [currentUserId]="currentUserId"
         [userPresence]="UserPresence()" [conversationAvatar]="getMessageInfor?.avatar_url"
-        [conversationInfor]="conversations.homeConversationData?.joinedConversations?.find(conv => conv.conversation_id === selectedConversationId)">
+        [conversationInfor]="conversations()?.homeConversationData?.joinedConversations?.find(conv => conv.conversation_id === selectedConversationId)">
     </app-conversation-info-layout>
     }
 </div>

@@ -618,6 +618,14 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  justify-content: space-between;
+}
+
+.conv-info-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .conv-last-msg {
@@ -908,18 +916,14 @@ app-conversation-info-layout {
 
 /* pf-* styles live in userinforModel.component.css */
 
-/* Mention tag in last message preview */
-.conv-last-msg ::ng-deep .mention-tag {
+/* Mention tag in last message preview — no bg, just bold neon */
+.conv-last-msg .mention-tag {
   color: var(--accent);
   font-weight: 600;
-  background: rgba(0, 242, 255, 0.1);
-  padding: 0 2px;
-  border-radius: 4px;
-  display: inline-block;
-}
-
-.conv-last-msg ::ng-deep .mention-tag:hover {
-  background: rgba(0, 242, 255, 0.2);
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  display: inline;
 }
 
 .conv-last-msg ::ng-deep .conv-dropdown-item:hover {
@@ -1003,4 +1007,12 @@ app-conversation-info-layout {
 .conv-dropdown-item i {
   font-size: 14px;
   color: var(--accent);
+}
+
+.conv-pinned-icon {
+  font-size: 11px;
+  color: var(--accent);
+  opacity: 0.8;
+  margin-left: 2px;
+  transform: rotate(45deg);
 }

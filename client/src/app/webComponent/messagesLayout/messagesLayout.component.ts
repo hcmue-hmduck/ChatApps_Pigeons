@@ -186,20 +186,31 @@ export class MessagesLayoutComponent
 
         if (type === 'image') {
             iconHtml = '<i class="bi bi-image me-1"></i>';
-            if (!text || text === pm.file_url) text = 'Hình ảnh';
+            text = 'Hình ảnh';
         } else if (type === 'video') {
             iconHtml = '<i class="bi bi-camera-video me-1"></i>';
-            if (!text || text === pm.file_url) text = 'Video';
+            text = 'Video';
         } else if (type === 'file') {
             const iconClass = this.fileUtils.getAttachmentIconClass({ message_type: 'file', file_name: pm.file_name });
             iconHtml = `<i class="bi ${iconClass} me-1"></i> `;
-            text = pm.file_name || pm.content || 'Tệp đính kèm';
+            text = pm.file_name || 'Tệp đính kèm';
         } else if (type === 'call') {
             iconHtml = '<i class="bi bi-telephone me-1"></i>';
             text = 'Cuộc gọi';
         }
 
-        return `${iconHtml}<span>${text}</span>`;
+        return `${iconHtml}${text}`;
+    }
+
+    // Plain-text preview dùng cho system message (không chứa HTML tag)
+    private pinnedMessagePreviewText(pm: any): string {
+        if (!pm) return '';
+        const type = pm.message_type || 'text';
+        if (type === 'image') return '<i class="bi bi-image me-1"></i>Hình ảnh';
+        if (type === 'video') return '<i class="bi bi-camera-video me-1"></i>Video';
+        if (type === 'file') return `<i class="bi bi-paperclip me-1"></i>${pm.file_name || 'Tệp đính kèm'}`;
+        if (type === 'call') return '<i class="bi bi-telephone me-1"></i>Cuộc gọi';
+        return pm.content || '';
     }
 
     getPinnedMessage(msgId: string): any | null {
@@ -381,8 +392,7 @@ export class MessagesLayoutComponent
 
                 this.socketService.emit('unpinMessage', pm);
 
-                const systemPreview = this.formatPinnedMessagePreview(pm);
-                const messageContent = `đã bỏ ghim tin nhắn: ${systemPreview}`;
+                const messageContent = `đã bỏ ghim tin nhắn: ${this.pinnedMessagePreviewText(pm)}`;
                 this.postAndBroadcastMessage(messageContent, 'system');
             },
             error: (error) => {
@@ -2255,8 +2265,7 @@ export class MessagesLayoutComponent
                 // Broadcast cho người khác trong conversation
                 this.socketService.emit('pinMessage', newPinMessage);
 
-                const systemPreview = this.formatPinnedMessagePreview(newPinMessage);
-                const messageContent = `đã ghim tin nhắn: ${systemPreview}`;
+                const messageContent = `đã ghim tin nhắn: ${this.pinnedMessagePreviewText(newPinMessage)}`;
                 const message_type = 'system';
 
                 this.postAndBroadcastMessage(messageContent, message_type);
@@ -2459,35 +2468,70 @@ export class MessagesLayoutComponent
         this.replyToMessage = null;
     }
 
-    // Scroll to specific message and highlight it
+    // Scroll to specific message and highlight it.
+    // If the message is not yet in the DOM, keeps calling loadMoreMessages() until found.
     scrollToMessage(messageId: string) {
         if (!messageId) return;
+        this._doScrollToMessage(messageId, 0);
+    }
 
-        // Find the message element
-        const messageElement = document.getElementById(`message-${messageId}`);
-        if (!messageElement) {
-            console.warn('Message not found:', messageId);
+    private _doScrollToMessage(messageId: string, attempt: number) {
+        const MAX_ATTEMPTS = 30; // 30 × loadMoreMessages = tối đa ~1500 tin
+
+        const el = document.getElementById(`message-${messageId}`);
+        if (el) {
+            // Found — scroll and highlight
+            if (this.highlightTimeout) clearTimeout(this.highlightTimeout);
+
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            this.highlightedMessageId = messageId;
+            this.cdr.markForCheck();
+
+            this.highlightTimeout = setTimeout(() => {
+                this.highlightedMessageId = null;
+                this.cdr.markForCheck();
+            }, 2000);
             return;
         }
 
-        // Clear previous highlight timeout
-        if (this.highlightTimeout) {
-            clearTimeout(this.highlightTimeout);
+        // Not in DOM yet
+        if (!this.hasMore || attempt >= MAX_ATTEMPTS) {
+            console.warn('scrollToMessage: tin nhắn không tìm thấy, id =', messageId);
+            return;
         }
 
-        // Scroll to message with smooth behavior
-        messageElement.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center',
+        // Load thêm một batch tin nhắn cũ hơn rồi thử lại sau khi render xong
+        this.isLoadingMore = true;
+        this.messagesService.getMessages(this.conversationId, 50, this.currentOffset).subscribe({
+            next: (response) => {
+                const olderMessages = response.metadata?.homeMessagesData?.messages || [];
+                if (olderMessages.length === 0) {
+                    this.hasMore = false;
+                    this.isLoadingMore = false;
+                    console.warn('scrollToMessage: hết tin nhắn, không tìm thấy id =', messageId);
+                    return;
+                }
+
+                this.getMessagesData.update((old) => ({
+                    ...old,
+                    homeMessagesData: {
+                        ...old.homeMessagesData,
+                        messages: [...olderMessages, ...old.homeMessagesData.messages],
+                    },
+                }));
+
+                this.currentOffset += olderMessages.length;
+                this.hasMore = response.metadata?.homeMessagesData?.hasMore ?? false;
+                this.isLoadingMore = false;
+
+                // Đợi Angular render batch mới xong rồi thử tìm lại
+                setTimeout(() => this._doScrollToMessage(messageId, attempt + 1), 100);
+            },
+            error: () => {
+                this.isLoadingMore = false;
+                console.warn('scrollToMessage: lỗi khi load thêm tin nhắn');
+            }
         });
-
-        // Trigger highlight animation
-        this.highlightedMessageId = messageId;
-
-        // Remove highlight after 2 seconds
-        this.highlightTimeout = setTimeout(() => {
-            this.highlightedMessageId = null;
-        }, 2000);
     }
 
     isBlocked(): boolean {
