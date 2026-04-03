@@ -256,11 +256,13 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
 
         this.onNewConversationSocket = (data: any) => {
             const { conversationId, senderId } = data;
+
             
             // JOIN ROOM NGAY LẬP TỨC để không bỏ lỡ tin nhắn đầu tiên (race condition)
             this.socketService.emit('joinConversation', conversationId);
 
             const currentJoined = this.conversations?.homeConversationData?.joinedConversations || [];
+
             
             // Nếu hội thoại đã có trong danh sách, không cần làm gì thêm (đã join room ở trên)
             const alreadyJoined = currentJoined.some((c: any) => c.conversation_id === conversationId);
@@ -460,6 +462,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                 next: (response) => {
                     this.conversations = response.metadata || {};
                     const joined = this.conversations?.homeConversationData?.joinedConversations || [];
+
                     
                     if (this.selectedConversationId === data.conversation_id) {
                         const target = joined.find((c: any) => c.conversation_id === data.conversation_id);
@@ -488,6 +491,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
             if (index !== -1) {
                 // Thay thế ID ảo bằng ID thật
                 joined[index].conversation_id = newId;
+
                 
                 // NẾU CÓ THÔNG TIN PARTICIPANTS THỰC, CẬP NHẬT LUÔN
                 if (realParticipants) {
@@ -794,8 +798,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     selectSearchResult(user: any) {
         // Clear search
         this.exitSearch();
-        
-        // Find existing direct conversation with this user
+
         const joined = this.conversations?.homeConversationData?.joinedConversations || [];
         const existingConv = joined.find((c: any) => 
             c.type === 'direct' && c.participants.some((p: any) => p.user_id === user.id)
@@ -808,7 +811,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
             const newConv = {
                 conversation_id: 'conv_' + randomId,
                 type: 'direct',
-                title: user.full_name,  
+                title: user.full_name,
                 avatar_url: user.avatar_url,
                 participants: [
                     {
@@ -819,7 +822,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                         last_online_at: this.conversations?.homeConversationData?.userInfo?.last_online_at,
                     },
                     {
-                        id: 'par_' + randomId ,
+                        id: 'par_' + randomId,
                         user_id: user.id,
                         full_name: user.full_name,
                         avatar_url: user.avatar_url,
