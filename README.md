@@ -96,13 +96,13 @@ npm install
 npm run start
 ```
 
-Ứng dụng sẽ khả dụng tại: `http://localhost:4200` theo mặc định.
+Ứng dụng sẽ khả dụng tại: `http://localhost:5200`.
 
 ---
 
 <div align="center">
 
-Dự án này được thiết kế với chuẩn mực cao nhất về UI/UX và hiệu năng backend.
+Dự án này được thiết kế với chuẩn mực cao nhất về UI/UX và hiệu năng backend ^_^ 
 
 ---
 </div>

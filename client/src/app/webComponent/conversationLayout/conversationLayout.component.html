@@ -137,12 +137,9 @@
             [getMessageInfor]="getMessageInfor" [onlineUsers]="onlineUsers()"
             [conversationType]="selectedConversationType" [UserPresence]="UserPresence()"
             [joinedConversations]="conversations?.homeConversationData?.joinedConversations || []"
-
-            [userBlock]="userBlock()"
-            [summaryTriggerUnreadCount]="aiSummaryTriggerUnreadCount"
+            [userBlock]="userBlock()" [summaryTriggerUnreadCount]="aiSummaryTriggerUnreadCount"
             [summaryTriggerLastReadMessageId]="aiSummaryTriggerLastReadMessageId"
-            [summaryTriggerKey]="aiSummaryTriggerKey"
-            (toggleDetails)="toggleConversationInfor()"
+            [summaryTriggerKey]="aiSummaryTriggerKey" (toggleDetails)="toggleConversationInfor()"
             (conversationCreated)="handleConversationCreated($event)">
         </messages-layout>
         } @else {

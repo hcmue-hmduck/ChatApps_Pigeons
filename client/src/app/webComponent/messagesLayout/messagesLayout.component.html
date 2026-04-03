@@ -242,7 +242,7 @@
                         <div class="reply-content-preview">
                             @if (!msg.parent_message_info.parent_message_is_deleted) {
                             @if (msg.parent_message_info.parent_message_type === 'text') {
-                            {{ msg.parent_message_info.parent_message_content }}
+                            <div [innerHTML]="formatMessageText(msg.parent_message_info.parent_message_content)"></div>
                             } @else {
                             @if (msg.parent_message_info.parent_message_type === 'image' ||
                             msg.parent_message_info.parent_message_type === 'video') {
@@ -494,7 +494,7 @@
                         <div class="reply-content-preview">
                             @if (!msg.parent_message_info.parent_message_is_deleted) {
                             @if (msg.parent_message_info.parent_message_type === 'text') {
-                            {{ msg.parent_message_info.parent_message_content }}
+                            <div [innerHTML]="formatMessageText(msg.parent_message_info.parent_message_content)"></div>
                             } @else {
                             @if (msg.parent_message_info.parent_message_type === 'image' ||
                             msg.parent_message_info.parent_message_type === 'video') {
@@ -693,7 +693,8 @@
             <span class="sparkle-icon">✨</span>
             <span>Summarize with AI</span>
         </button>
-        <button class="unread-summary-close" type="button" (click)="dismissUnreadSummaryPopup()" aria-label="Dismiss summary suggestion" title="Bỏ qua gợi ý tóm tắt">
+        <button class="unread-summary-close" type="button" (click)="dismissUnreadSummaryPopup()"
+            aria-label="Dismiss summary suggestion" title="Bỏ qua gợi ý tóm tắt">
             <i class="bi bi-x"></i>
         </button>
     </div>
@@ -730,7 +731,7 @@
             </div>
             <div class="reply-preview-text">
                 @if (replyToMessage.message_type === 'text') {
-                {{ replyToMessage.content }}
+                <div [innerHTML]="formatMessageText(replyToMessage.content)"></div>
                 } @else if (replyToMessage.message_type === 'image') {
                 <i class="bi bi-image me-1"></i> Hình ảnh
                 } @else if (replyToMessage.message_type === 'video') {
@@ -847,9 +848,30 @@
 
         <!-- Text box -->
         <div class="input-box">
-            <textarea #messageInput class="msg-textarea" [(ngModel)]="newMessage" placeholder="Nhập tin nhắn..."
-                (keydown)="handleKeyDown($event)" (paste)="handleInputPaste($event)" rows="1" autofocus>
-        </textarea>
+            <!-- Mention Suggestions -->
+            @if (showMentionList() && mentionParticipants().length > 0) {
+            <div class="mention-suggestions">
+                @for (participant of mentionParticipants(); track participant.user_id; let i = $index) {
+                <div class="mention-item" [class.active]="i === mentionSelectedIndex()"
+                    (click)="selectMention(participant)">
+                    <img [src]="participant.avatar_url || 'https://ui-avatars.com/api/?name=' + participant.full_name"
+                        class="mention-avatar">
+                    <div class="mention-info">
+                        <span class="mention-name">{{ participant.full_name }}</span>
+                        <span class="mention-email">{{ participant.email }}</span>
+                    </div>
+                </div>
+                }
+            </div>
+            }
+
+            <div #messageInput class="msg-input-editable" contenteditable="true" (keydown)="handleKeyDown($event)"
+                (input)="onInput($event)" (paste)="handleInputPaste($event)" autofocus>
+            </div>
+            @if (isInputEmpty()) {
+            <div class="input-placeholder">Nhập tin nhắn...</div>
+            }
+
             <button class="emoji-btn" title="Biểu tượng cảm xúc" (click)="toggleEmojiPicker()">
                 <i class="bi bi-emoji-smile"></i>
             </button>
@@ -896,7 +918,8 @@
                 @if (aiSummaryDone && !isAiSummaryCursorVisible()) {
                 <span class="ai-summary-done-badge">Done</span>
                 }
-                <button class="ai-summary-close" type="button" (click)="closeAiSummaryModal()" aria-label="Close summary">
+                <button class="ai-summary-close" type="button" (click)="closeAiSummaryModal()"
+                    aria-label="Close summary">
                     <i class="bi bi-x-lg"></i>
                 </button>
             </div>

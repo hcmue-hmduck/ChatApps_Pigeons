@@ -15,6 +15,7 @@ import {
     inject,
     signal,
     untracked,
+    computed,
     ChangeDetectorRef,
     Output,
     EventEmitter,
@@ -150,7 +151,10 @@ export class MessagesLayoutComponent
     }
 
     formatMessageText(content: string | null | undefined): string {
-        return this.linkPreviewUtils.formatMessageText(content);
+        if (!content) return '';
+        // Lấy danh sách thành viên từ conversation hiện tại
+        const participants = this.getMessageInfor?.participants || [];
+        return this.linkPreviewUtils.formatMessageText(content, participants);
     }
 
     getStoredLinkPreview(message: any): any | null {
@@ -267,13 +271,13 @@ export class MessagesLayoutComponent
     reactionDetails = signal<any[]>([]);
     readonly quickReactionEmojis: string[] = ['👍', '❤️', '🥰', '😂', '😮', '😢', '😡'];
     readonly reactionLottieUrls: Record<string, string> = {
-        '👍': 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f44d/lottie.json' ,
-        '❤️': 'https://fonts.gstatic.com/s/e/notoemoji/latest/2764_fe0f/lottie.json' ,
-        '🥰': 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f917/lottie.json' ,
-        '😂': 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f602/lottie.json' ,
-        '😮': 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f62e/lottie.json' ,
-        '😢': 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f622/lottie.json' ,
-        '😡': 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f621/lottie.json' 
+        '👍': 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f44d/lottie.json',
+        '❤️': 'https://fonts.gstatic.com/s/e/notoemoji/latest/2764_fe0f/lottie.json',
+        '🥰': 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f917/lottie.json',
+        '😂': 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f602/lottie.json',
+        '😮': 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f62e/lottie.json',
+        '😢': 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f622/lottie.json',
+        '😡': 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f621/lottie.json'
     };
     private messageReactions = signal(new Map<string, any[]>());
     private countReactionMap = signal(new Map<string, Record<string, number>>());
@@ -283,6 +287,23 @@ export class MessagesLayoutComponent
     typingUsers = signal<any[]>([]);
     private isTyping = false;
     private typingTimeout: any;
+
+    // Mention state
+    showMentionList = signal(false);
+    mentionSearchTerm = signal('');
+    mentionSelectedIndex = signal(0);
+    private mentionLastIndex = -1;
+    private savedSelectionRange: Range | null = null;
+
+    mentionParticipants = computed(() => {
+        const term = this.mentionSearchTerm().toLowerCase();
+        const participants = this.getMessageInfor?.participants || [];
+        if (!term) return participants.filter((p: any) => p.user_id !== this.currentUserId);
+        return participants.filter((p: any) =>
+            p.user_id !== this.currentUserId &&
+            (p.full_name?.toLowerCase().includes(term) || p.email?.toLowerCase().includes(term))
+        );
+    });
 
     // Highlight state for reply navigation
     highlightedMessageId: string | null = null;
@@ -326,7 +347,7 @@ export class MessagesLayoutComponent
     private onDeleteMessageSocket?: (data: any) => void;
     private onTypingSocket?: (data: any) => void;
     private onStopTypingSocket?: (data: any) => void;
-    
+
     private pinnedMenuTimeout: any;
 
     onPinnedMenuMouseLeave() {
@@ -1260,12 +1281,12 @@ export class MessagesLayoutComponent
                         // HOẶC nếu đây là một cuộc nâng cấp từ ảo lên thật (vô hiệu hóa guard isKnownConversation vì lúc này message list đã được cập nhật ID thật rồi)
                         const isKnownConversation = (this.joinedConversations || [])
                             .some((conv: any) => conv.conversation_id === this.conversationId);
-                        
+
                         if (!isKnownConversation || isNewConversationUpgrade) {
                             const receiverIds = (this.getMessageInfor?.participants || [])
                                 .map((p: any) => p.user_id)
                                 .filter((id: any) => String(id) !== String(this.currentUserId));
-                            
+
                             if (receiverIds.length > 0) {
                                 this.socketService.emit('notifyNewConversation', {
                                     receiverIds,
@@ -1290,7 +1311,7 @@ export class MessagesLayoutComponent
                         }));
 
                         const participantId = this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId)?.id;
-                        
+
                         if (participantId && !participantId.startsWith('par_')) {
                             this.participantService.putParticipant({
                                 id: participantId,
@@ -1341,7 +1362,41 @@ export class MessagesLayoutComponent
         }
     }
 
+    isInputEmpty(): boolean {
+        const el = this.messageInput?.nativeElement;
+        if (!el) return true;
+        const text = el.textContent || '';
+        return text.trim().length === 0 && el.querySelectorAll('.mention-pill').length === 0;
+    }
+
+    private getMarkupContent(element: HTMLElement): string {
+        let markup = '';
+        const nodes = element.childNodes;
+
+        for (let i = 0; i < nodes.length; i++) {
+            const node = nodes[i];
+            if (node.nodeType === Node.TEXT_NODE) {
+                markup += node.textContent;
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                const el = node as HTMLElement;
+                if (el.classList.contains('mention-pill')) {
+                    const userId = el.getAttribute('data-id');
+                    markup += `@[${userId}]`;
+                } else if (el.tagName === 'BR') {
+                    markup += '\n';
+                } else {
+                    markup += this.getMarkupContent(el);
+                }
+            }
+        }
+        return markup;
+    }
+
     handleKeyDown(event: KeyboardEvent) {
+        if (this.handleMentionKeyDown(event)) {
+            return;
+        }
+
         // Chỉ gửi tin nhắn khi Enter (không có Shift)
         if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
@@ -1349,12 +1404,20 @@ export class MessagesLayoutComponent
         } else {
             this.onTyping();
         }
-        // Nếu Shift+Enter thì cho phép xuống dòng (mặc định của textarea)
+    }
+
+    onInput(event: Event) {
+        this.onTyping();
+        this.checkMentionState();
     }
 
     async handleSendBtn() {
         this.stopTyping();
-        if (!this.newMessage.trim() && this.preUploadFiles().length === 0) return;
+        const el = this.messageInput.nativeElement;
+        const markupContent = this.getMarkupContent(el).trim();
+        const stagedFiles = this.preUploadFiles().map(f => f.file);
+
+        if (!markupContent && stagedFiles.length === 0) return;
 
         let isNewConversationUpgrade = false;
         if (this.conversationId.startsWith('conv_')) {
@@ -1365,12 +1428,9 @@ export class MessagesLayoutComponent
                     this.getMessageInfor?.user_info?.id
                 )
             );
-            console.log('RS', response);
             const newConvData = response.metadata?.newConversation;
             if (newConvData) {
                 this.conversationId = newConvData.conv?.id;
-
-                // Cập nhật ID thật cho các participants trong getMessageInfor để tránh lỗi 500 khi updateParticipant
                 const realParticipants = [newConvData.you, ...newConvData.participants];
                 if (this.getMessageInfor?.participants) {
                     this.getMessageInfor.participants = this.getMessageInfor.participants.map(
@@ -1380,32 +1440,38 @@ export class MessagesLayoutComponent
                         }
                     );
                 }
-
-                // JOIN SOCKET ROOM MỚI VÀ THÔNG BÁO CHO CHA
                 this.setupSocketListener(this.conversationId);
                 this.conversationCreated.emit(this.conversationId);
             }
         }
 
-        console.log('newConversationId', this.conversationId);
-
-        const messageContent = this.newMessage;
         const replyTo = this.replyToMessage ? this.replyToMessage.id : undefined;
         const replyToMessageObj = this.replyToMessage;
-        const stagedFiles = this.preUploadFiles().map(f => f.file);
 
         // Chờ lấy link preview mới nhất
-        const linkPreview = await this.linkPreviewUtils.getLinkPreviewAsync(messageContent);
+        const linkPreview = await this.linkPreviewUtils.getLinkPreviewAsync(markupContent);
 
-        this.newMessage = '';
-        this.closedPreviewUrls.clear();
-        this.replyToMessage = null;
-        this.activeMessageLinkPreview = null;
-        this.loading = true;
-        this.error = '';
+        if (stagedFiles.length > 0) {
+            // Nếu có files, gửi file đính kèm với caption là text
+            this.uploadFileAttachment(stagedFiles, isNewConversationUpgrade);
+            this.clearPreUploadFiles();
 
-        // 1. Nếu có text, gửi text trước
-        if (messageContent.trim()) {
+            // Nếu có text đi kèm khi gửi file, gửi nó như một tin nhắn riêng hoặc caption (tùy logic backend)
+            // Ở đây logic hiện tại là gửi text riêng nến có nội dung
+            if (markupContent) {
+                this.postAndBroadcastMessage(
+                    markupContent,
+                    'text',
+                    replyTo,
+                    undefined,
+                    undefined,
+                    replyToMessageObj,
+                    undefined,
+                    isNewConversationUpgrade
+                );
+            }
+        } else {
+            // Chỉ gửi text
             const linkMetadata = linkPreview ? {
                 file_url: linkPreview.url,
                 thumbnail_url: linkPreview.image,
@@ -1415,7 +1481,7 @@ export class MessagesLayoutComponent
             } : undefined;
 
             this.postAndBroadcastMessage(
-                messageContent,
+                markupContent,
                 'text',
                 replyTo,
                 undefined,
@@ -1426,14 +1492,14 @@ export class MessagesLayoutComponent
             );
         }
 
-        // 2. Nếu có files, upload files
-        if (stagedFiles.length > 0) {
-            this.loading = false; // Progress được hiện qua _uploading trên từng temp message
-            this.uploadFileAttachment(stagedFiles, isNewConversationUpgrade);
-            this.clearPreUploadFiles();
-        } else {
-            this.loading = false;
-        }
+        // Clear input
+        el.innerHTML = '';
+        this.newMessage = '';
+        this.cancelReply();
+        this.aiSummaryStreamToken = 0;
+        this.aiSummaryText = '';
+        this.aiSummaryDone = false;
+        this.cdr.markForCheck();
     }
 
     uploadFileAttachment(files: File[], isNewConversationUpgrade: boolean = false) {
@@ -2776,40 +2842,40 @@ export class MessagesLayoutComponent
             conversationId,
             this.summaryTriggerLastReadMessageId,
             {
-            onChunk: (content: string) => {
-                this.ngZone.run(() => {
-                    if (streamToken !== this.aiSummaryStreamToken) return;
-                    this.aiSummaryLoading = false;
-                    this.enqueueAiSummaryChunk(content);
-                    this.cdr.markForCheck();
-                });
-            },
-            onDone: () => {
-                this.ngZone.run(() => {
-                    if (streamToken !== this.aiSummaryStreamToken) return;
-                    this.aiSummaryLoading = false;
-                    this.aiSummaryStreaming = false;
-                    this.aiSummaryDone = true;
-                    if (this.aiSummaryQueue.length === 0) {
-                        this.stopAiSummaryTypewriter();
-                    }
-                    this.scrollAiSummaryToBottom();
-                    this.cdr.markForCheck();
-                });
-            },
-            onError: (error: unknown) => {
-                this.ngZone.run(() => {
-                    if (streamToken !== this.aiSummaryStreamToken) return;
-                    this.aiSummaryLoading = false;
-                    this.aiSummaryStreaming = false;
-                    this.aiSummaryDone = false;
-                    this.aiSummaryError = error instanceof Error
-                        ? error.message
-                        : 'Không thể tạo tóm tắt. Vui lòng thử lại.';
-                    this.cdr.markForCheck();
-                });
-            },
-        });
+                onChunk: (content: string) => {
+                    this.ngZone.run(() => {
+                        if (streamToken !== this.aiSummaryStreamToken) return;
+                        this.aiSummaryLoading = false;
+                        this.enqueueAiSummaryChunk(content);
+                        this.cdr.markForCheck();
+                    });
+                },
+                onDone: () => {
+                    this.ngZone.run(() => {
+                        if (streamToken !== this.aiSummaryStreamToken) return;
+                        this.aiSummaryLoading = false;
+                        this.aiSummaryStreaming = false;
+                        this.aiSummaryDone = true;
+                        if (this.aiSummaryQueue.length === 0) {
+                            this.stopAiSummaryTypewriter();
+                        }
+                        this.scrollAiSummaryToBottom();
+                        this.cdr.markForCheck();
+                    });
+                },
+                onError: (error: unknown) => {
+                    this.ngZone.run(() => {
+                        if (streamToken !== this.aiSummaryStreamToken) return;
+                        this.aiSummaryLoading = false;
+                        this.aiSummaryStreaming = false;
+                        this.aiSummaryDone = false;
+                        this.aiSummaryError = error instanceof Error
+                            ? error.message
+                            : 'Không thể tạo tóm tắt. Vui lòng thử lại.';
+                        this.cdr.markForCheck();
+                    });
+                },
+            });
     }
 
     private enqueueAiSummaryChunk(content: string) {
@@ -2883,5 +2949,139 @@ export class MessagesLayoutComponent
             });
             if (this.typingTimeout) clearTimeout(this.typingTimeout);
         }
+    }
+
+    // --- Mention Methods ---
+
+    private checkMentionState() {
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) return;
+
+        const range = selection.getRangeAt(0);
+        const container = range.startContainer;
+
+        if (container.nodeType !== Node.TEXT_NODE) {
+            this.closeMentionList();
+            return;
+        }
+
+        const textBeforeCursor = container.textContent?.substring(0, range.startOffset) || '';
+        const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+
+        if (lastAtIndex !== -1) {
+            if (lastAtIndex === 0 || textBeforeCursor.charAt(lastAtIndex - 1) === ' ' || textBeforeCursor.charAt(lastAtIndex - 1) === '\n') {
+                const term = textBeforeCursor.substring(lastAtIndex + 1);
+                if (!term.includes(' ')) {
+                    this.mentionLastIndex = lastAtIndex;
+                    this.mentionSearchTerm.set(term);
+                    this.showMentionList.set(true);
+                    this.mentionSelectedIndex.set(0);
+                    this.saveSelection();
+                    return;
+                }
+            }
+        }
+
+        this.closeMentionList();
+    }
+
+    private saveSelection() {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) {
+            this.savedSelectionRange = sel.getRangeAt(0);
+        }
+    }
+
+    private restoreSelection() {
+        if (!this.savedSelectionRange) return;
+        const sel = window.getSelection();
+        if (sel) {
+            sel.removeAllRanges();
+            sel.addRange(this.savedSelectionRange);
+        }
+    }
+
+    private closeMentionList() {
+        this.showMentionList.set(false);
+        this.mentionSearchTerm.set('');
+        this.mentionSelectedIndex.set(0);
+    }
+
+    selectMention(participant: any) {
+        this.restoreSelection();
+        const sel = window.getSelection();
+        if (!sel || !sel.rangeCount) return;
+
+        const range = sel.getRangeAt(0);
+        const textNode = range.startContainer;
+
+        // Remove the "@term" text
+        const textContent = textNode.textContent || '';
+        const beforeAt = textContent.substring(0, this.mentionLastIndex);
+        const afterCursor = textContent.substring(range.startOffset);
+
+        textNode.textContent = beforeAt;
+
+        // Create the pill
+        const pill = document.createElement('span');
+        pill.className = 'mention-pill';
+        pill.setAttribute('data-id', participant.user_id);
+        pill.textContent = `@${participant.full_name}`;
+        pill.contentEditable = 'false';
+
+        // Insert pill and trailing space
+        range.setStartAfter(textNode);
+        range.insertNode(pill);
+
+        const spaceNode = document.createTextNode('\u00A0'); // Non-breaking space
+        range.setStartAfter(pill);
+        range.insertNode(spaceNode);
+
+        // Move cursor after the space
+        range.setStartAfter(spaceNode);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+
+        // If there was text after the cursor, restore it
+        if (afterCursor) {
+            const trailingTextNode = document.createTextNode(afterCursor);
+            range.insertNode(trailingTextNode);
+            range.setStartBefore(trailingTextNode);
+            range.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(range);
+        }
+
+        this.closeMentionList();
+        this.cdr.markForCheck();
+    }
+
+    private handleMentionKeyDown(event: KeyboardEvent): boolean {
+        if (!this.showMentionList()) return false;
+
+        const participants = this.mentionParticipants();
+        if (participants.length === 0) return false;
+
+        switch (event.key) {
+            case 'ArrowDown':
+                event.preventDefault();
+                this.mentionSelectedIndex.set((this.mentionSelectedIndex() + 1) % participants.length);
+                return true;
+            case 'ArrowUp':
+                event.preventDefault();
+                this.mentionSelectedIndex.set((this.mentionSelectedIndex() - 1 + participants.length) % participants.length);
+                return true;
+            case 'Enter':
+            case 'Tab':
+                event.preventDefault();
+                this.selectMention(participants[this.mentionSelectedIndex()]);
+                return true;
+            case 'Escape':
+                event.preventDefault();
+                this.closeMentionList();
+                return true;
+        }
+        return false;
     }
 }

@@ -29,13 +29,13 @@ export class LinkPreviewUtils {
         return `https://${trimmed}`;
     }
 
-    formatMessageText(content: string | null | undefined): string {
+    formatMessageText(content: string | null | undefined, participants?: any[]): string {
         if (!content) return '';
 
         const escaped = this.escapeHtml(content);
         const urlPattern = /((?:https?:\/\/|www\.)[^\s<]+)/gi;
 
-        const linked = escaped.replace(urlPattern, (match: string) => {
+        let linked = escaped.replace(urlPattern, (match: string) => {
             const trailingPunctuationMatch = match.match(/[.,!?;:]+$/);
             const trailingPunctuation = trailingPunctuationMatch ? trailingPunctuationMatch[0] : '';
             const cleanUrl = trailingPunctuation
@@ -44,6 +44,14 @@ export class LinkPreviewUtils {
 
             const href = this.escapeHtml(this.normalizeUrl(cleanUrl));
             return `<a href="${href}" target="_blank" rel="noopener noreferrer">${cleanUrl}</a>${trailingPunctuation}`;
+        });
+
+        // 2. Mentions: @[user_id]
+        const mentionPattern = /@\[([^\]]+)\]/g;
+        linked = linked.replace(mentionPattern, (match, userId) => {
+            const participant = participants?.find(p => p.user_id === userId);
+            const name = participant ? participant.full_name : 'người dùng';
+            return `<span class="mention-tag">@${name}</span>`;
         });
 
         return linked.replace(/\n/g, '<br>');
