@@ -7,6 +7,7 @@ import { Participant } from '../../services/participant';
 import { FormsModule } from '@angular/forms';
 import { SocketService } from '../../services/socket';
 import { FileUtils } from '../../utils/FileUtils/fileUltils';
+import { ImgVidUtils } from '../../utils/img_vidUtils/img_vidUtils';
 import { forkJoin, lastValueFrom } from 'rxjs';
 import { Messages } from '../../services/messages';
 
@@ -31,24 +32,7 @@ export class ConversationInfoLayoutComponent implements OnInit {
     fileData = signal<any[]>([]);
     linkData = signal<any[]>([]);
 
-    // Image viewer modal state
-    isImageViewerOpen = false;
-    currentViewerIndex = 0;
-    viewerZoom = 1;
-    readonly viewerZoomMin = 0.5;
-    readonly viewerZoomMax = 3;
-    readonly viewerZoomStep = 0.2;
-    viewerPanX = 0;
-    viewerPanY = 0;
-    isViewerDragging = false;
-    private viewerDragStartX = 0;
-    private viewerDragStartY = 0;
-    private viewerPanStartX = 0;
-    private viewerPanStartY = 0;
-
-    // Video viewer modal state
-    isVideoViewerOpen = false;
-    currentVideoIndex = 0;
+    mediaViewer!: ImgVidUtils;
 
     // Add Member modal state
     isAddMemberModalOpen = false;
@@ -67,7 +51,9 @@ export class ConversationInfoLayoutComponent implements OnInit {
     fileUtils = inject(FileUtils);
     private cdr = inject(ChangeDetectorRef);
 
-    constructor() { }
+    constructor() {
+        this.mediaViewer = new ImgVidUtils(this.fileUtils);
+    }
 
     ngOnInit(): void {
         this.loadMediaData();
@@ -153,126 +139,110 @@ export class ConversationInfoLayoutComponent implements OnInit {
         });
     }
 
-    openGallery(index: number) {
-        if (this.imgData().length === 0) return;
-        this.currentViewerIndex = index;
-        this.resetViewerState();
-        this.isImageViewerOpen = true;
+    get isImageViewerOpen(): boolean {
+        return this.mediaViewer.isOpen && this.mediaViewer.type === 'image';
     }
 
-    private resetViewerState() {
-        this.viewerZoom = 1;
-        this.viewerPanX = 0;
-        this.viewerPanY = 0;
-        this.isViewerDragging = false;
+    get isVideoViewerOpen(): boolean {
+        return this.mediaViewer.isOpen && this.mediaViewer.type === 'video';
+    }
+
+    get currentViewerIndex(): number {
+        return this.mediaViewer.currentIndex;
+    }
+
+    get currentVideoIndex(): number {
+        return this.mediaViewer.currentIndex;
+    }
+
+    get viewerZoom(): number {
+        return this.mediaViewer.zoom;
+    }
+
+    get viewerZoomMin(): number {
+        return this.mediaViewer.zoomMin;
+    }
+
+    get viewerZoomMax(): number {
+        return this.mediaViewer.zoomMax;
+    }
+
+    get isViewerDragging(): boolean {
+        return this.mediaViewer.isDragging;
+    }
+
+    get viewerPanX(): number {
+        return this.mediaViewer.panX;
+    }
+
+    get viewerPanY(): number {
+        return this.mediaViewer.panY;
+    }
+
+    openGallery(index: number) {
+        const urls = this.imgData().map(item => item.file_url).filter(Boolean);
+        this.mediaViewer.openImageGallery(urls, index);
     }
 
     closeImageViewer() {
-        this.isImageViewerOpen = false;
-        this.resetViewerState();
+        this.mediaViewer.closeViewer();
     }
 
     get viewerImageUrl(): string {
-        const url = this.imgData()[this.currentViewerIndex]?.file_url;
-        return this.fileUtils.resolveMediaUrl(url);
+        return this.mediaViewer.mediaUrl;
     }
 
     nextImage(event?: Event) {
-        event?.stopPropagation();
-        if (this.currentViewerIndex < this.imgData().length - 1) {
-            this.currentViewerIndex++;
-            this.resetViewerState();
-        }
+        this.mediaViewer.next(event);
     }
 
     prevImage(event?: Event) {
-        event?.stopPropagation();
-        if (this.currentViewerIndex > 0) {
-            this.currentViewerIndex--;
-            this.resetViewerState();
-        }
+        this.mediaViewer.prev(event);
     }
 
     zoomInViewer(event?: Event) {
-        event?.stopPropagation();
-        this.viewerZoom = Math.min(
-            this.viewerZoomMax,
-            Number((this.viewerZoom + this.viewerZoomStep).toFixed(2)),
-        );
+        this.mediaViewer.zoomIn(event);
     }
 
     zoomOutViewer(event?: Event) {
-        event?.stopPropagation();
-        this.viewerZoom = Math.max(
-            this.viewerZoomMin,
-            Number((this.viewerZoom - this.viewerZoomStep).toFixed(2)),
-        );
-
-        if (this.viewerZoom <= 1) {
-            this.viewerPanX = 0;
-            this.viewerPanY = 0;
-            this.isViewerDragging = false;
-        }
+        this.mediaViewer.zoomOut(event);
     }
 
     resetViewerZoom(event?: Event) {
-        event?.stopPropagation();
-        this.resetViewerState();
+        this.mediaViewer.resetTransform(event);
     }
 
     onViewerPointerDown(event: PointerEvent) {
-        if (this.viewerZoom <= 1) return;
-        event.stopPropagation();
-        event.preventDefault();
-        this.isViewerDragging = true;
-        this.viewerDragStartX = event.clientX;
-        this.viewerDragStartY = event.clientY;
-        this.viewerPanStartX = this.viewerPanX;
-        this.viewerPanStartY = this.viewerPanY;
+        this.mediaViewer.onPointerDown(event);
     }
 
     onViewerPointerMove(event: PointerEvent) {
-        if (!this.isViewerDragging || this.viewerZoom <= 1) return;
-        event.stopPropagation();
-        event.preventDefault();
-        const deltaX = event.clientX - this.viewerDragStartX;
-        const deltaY = event.clientY - this.viewerDragStartY;
-        this.viewerPanX = this.viewerPanStartX + deltaX;
-        this.viewerPanY = this.viewerPanStartY + deltaY;
+        this.mediaViewer.onPointerMove(event);
     }
 
     onViewerPointerUp(event?: PointerEvent) {
-        event?.stopPropagation();
-        this.isViewerDragging = false;
+        this.mediaViewer.onPointerUp(event);
     }
 
     openVideoGallery(index: number) {
-        if (this.vidData().length === 0) return;
-        this.currentVideoIndex = index;
-        this.isVideoViewerOpen = true;
+        const urls = this.vidData().map(item => item.file_url).filter(Boolean);
+        this.mediaViewer.openVideoGallery(urls, index);
     }
 
     closeVideoViewer() {
-        this.isVideoViewerOpen = false;
+        this.mediaViewer.closeViewer();
     }
 
     get viewerVideoUrl(): string {
-        const url = this.vidData()[this.currentVideoIndex]?.file_url;
-        return this.fileUtils.resolveMediaUrl(url);
+        return this.mediaViewer.mediaUrl;
     }
 
     nextVideo(event?: Event) {
-        event?.stopPropagation();
-        if (this.currentVideoIndex < this.vidData().length - 1) {
-            this.currentVideoIndex++;
-        }
+        this.mediaViewer.next(event);
     }
 
     prevVideo(event?: Event) {
-        event?.stopPropagation();
-        if (this.currentVideoIndex > 0) {
-            this.currentVideoIndex--;
-        }
+        this.mediaViewer.prev(event);
     }
 
     openLink(link: string) {

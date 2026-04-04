@@ -46,14 +46,6 @@ export class Messages {
         return this.http.delete(`${this.apiUrl}/${messageId}`);
     }
 
-    pinMessage(message_id: string, conversation_id: string, pinned_by: string, note: string, order_index: number): Observable<any> {
-        return this.http.post(`${this.apiUrl}/pinmessage`, { message_id, conversation_id, pinned_by, note, order_index });
-    }
-
-    unpinMessage(pinMessageId: string): Observable<any> {
-        return this.http.delete(`${this.apiUrl}/pinmessage/${pinMessageId}`);
-    }
-
     async streamSummaryMessages(
         conversationId: string,
         fromLastReadMessageId: string,

@@ -872,7 +872,7 @@
             <div class="input-placeholder">Nhập tin nhắn...</div>
             }
 
-            <button class="emoji-btn" title="Biểu tượng cảm xúc" (click)="toggleEmojiPicker()">
+            <button class="emoji-btn" title="Biểu tượng cảm xúc" (mousedown)="onEmojiButtonMouseDown($event)" (click)="toggleEmojiPicker()">
                 <i class="bi bi-emoji-smile"></i>
             </button>
             <!-- Emoji picker -->
@@ -961,6 +961,16 @@
 <!-- Image Viewer Modal Overlay (bounded to messages layout) -->
 @if (isImageViewerOpen) {
 <div class="image-viewer-overlay" (click)="closeImageViewer()">
+    @if (viewerTotal > 1) {
+    <button class="nav-btn prev" (click)="prevImage($event)" [disabled]="currentViewerIndex <= 0" title="Ảnh trước">
+        <i class="bi bi-chevron-left"></i>
+    </button>
+    <button class="nav-btn next" (click)="nextImage($event)" [disabled]="currentViewerIndex >= viewerTotal - 1"
+        title="Ảnh sau">
+        <i class="bi bi-chevron-right"></i>
+    </button>
+    }
+
     <div class="viewer-toolbar" (click)="$event.stopPropagation()">
         <button class="viewer-tool-btn" title="Thu nhỏ" (click)="zoomOutViewer($event)"
             [disabled]="viewerZoom <= viewerZoomMin">
@@ -982,6 +992,10 @@
         <img [src]="viewerImageUrl" class="viewer-image" [class.dragging]="isViewerDragging"
             [style.transform]="'translate(' + viewerPanX + 'px, ' + viewerPanY + 'px) scale(' + viewerZoom + ')'"
             (pointerdown)="onViewerPointerDown($event)" (click)="$event.stopPropagation()" alt="Full screen preview">
+    </div>
+
+    <div class="viewer-counter">
+        {{ currentViewerIndex + 1 }} / {{ viewerTotal }}
     </div>
 </div>
 }

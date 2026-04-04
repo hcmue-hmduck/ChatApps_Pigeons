@@ -135,3 +135,16 @@ app-root {
 	width: 100%;
 	min-height: 100vh;
 }
+
+/* ── Mention Tag (global — works with [innerHTML] without ::ng-deep) ── */
+.mention-tag {
+    color: #00f2ff;
+    font-weight: 700;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.mention-tag:hover {
+    color: #5effff;
+    text-shadow: 0 0 8px rgba(0, 242, 255, 0.5);
+}

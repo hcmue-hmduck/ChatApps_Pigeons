@@ -46,6 +46,7 @@ class HomeConversationService {
         // Build participantsMap & ownerInfoMap trong 1 lần duyệt
         const participantsMap = new Map();
         const ownerInfoMap = new Map();
+        const isPinnedMap = new Map(); // Store is_pinned status per conversation
 
         allParticipants.forEach((p) => {
             const user = usersMap.get(p.user_id);
@@ -71,6 +72,10 @@ class HomeConversationService {
                     user_id: p.user_id,
                     owner: p.role,
                 };
+
+            if (participantInfo.user_id === userId) {
+                isPinnedMap.set(p.conversation_id, p.is_pinned);
+            }
 
             if (!participantsMap.has(p.conversation_id)) {
                 participantsMap.set(p.conversation_id, []);
@@ -153,6 +158,7 @@ class HomeConversationService {
                 participants: convParticipants,
                 lastMessage: messagesMap.get(conv.last_message_id) || null,
                 unread_count: unreadCountsMap[conv.id] || 0,
+                is_pinned: isPinnedMap.get(conv.id) || false
             };
         });
 

@@ -4,6 +4,7 @@ import {
     AfterViewInit,
     Component,
     ElementRef,
+    HostBinding,
     HostListener,
     Input,
     OnChanges,
@@ -37,6 +38,7 @@ import Swal from 'sweetalert2';
 import { UploadService } from '../../services/uploadService';
 import { Participant } from '../../services/participant';
 import { FileUtils } from '../../utils/FileUtils/fileUltils';
+import { ImgVidUtils } from '../../utils/img_vidUtils/img_vidUtils';
 import { LinkPreviewUtils } from '../../utils/LinkUtils/linkPreviewUtils';
 import { DateTimeUtils } from '../../utils/DateTimeUtils/datetimeUtils';
 import { GroupAvatarLayoutComponent } from '../groupAvatarLayout/groupAvatarLayout.component';
@@ -72,6 +74,11 @@ export interface StagedFile {
 })
 export class MessagesLayoutComponent
     implements OnInit, OnChanges, AfterViewInit, AfterViewChecked, OnDestroy {
+
+    @HostBinding('class.viewer-open')
+    get viewerOpenClass(): boolean {
+        return this.mediaViewer?.isOpen ?? false;
+    }
 
     callService = inject(CallService);
     authService = inject(AuthService);
@@ -186,20 +193,31 @@ export class MessagesLayoutComponent
 
         if (type === 'image') {
             iconHtml = '<i class="bi bi-image me-1"></i>';
-            if (!text || text === pm.file_url) text = 'Hình ảnh';
+            text = 'Hình ảnh';
         } else if (type === 'video') {
             iconHtml = '<i class="bi bi-camera-video me-1"></i>';
-            if (!text || text === pm.file_url) text = 'Video';
+            text = 'Video';
         } else if (type === 'file') {
             const iconClass = this.fileUtils.getAttachmentIconClass({ message_type: 'file', file_name: pm.file_name });
             iconHtml = `<i class="bi ${iconClass} me-1"></i> `;
-            text = pm.file_name || pm.content || 'Tệp đính kèm';
+            text = pm.file_name || 'Tệp đính kèm';
         } else if (type === 'call') {
             iconHtml = '<i class="bi bi-telephone me-1"></i>';
             text = 'Cuộc gọi';
         }
 
-        return `${iconHtml}<span>${text}</span>`;
+        return `${iconHtml}${text}`;
+    }
+
+    // Plain-text preview dùng cho system message (không chứa HTML tag)
+    private pinnedMessagePreviewText(pm: any): string {
+        if (!pm) return '';
+        const type = pm.message_type || 'text';
+        if (type === 'image') return '<i class="bi bi-image me-1"></i>Hình ảnh';
+        if (type === 'video') return '<i class="bi bi-camera-video me-1"></i>Video';
+        if (type === 'file') return `<i class="bi bi-paperclip me-1"></i>${pm.file_name || 'Tệp đính kèm'}`;
+        if (type === 'call') return '<i class="bi bi-telephone me-1"></i>Cuộc gọi';
+        return pm.content || '';
     }
 
     getPinnedMessage(msgId: string): any | null {
@@ -309,20 +327,7 @@ export class MessagesLayoutComponent
     highlightedMessageId: string | null = null;
     private highlightTimeout: any;
 
-    // Image viewer modal state
-    isImageViewerOpen = false;
-    viewerImageUrl = '';
-    viewerZoom = 1;
-    readonly viewerZoomMin = 0.5;
-    readonly viewerZoomMax = 3;
-    readonly viewerZoomStep = 0.2;
-    viewerPanX = 0;
-    viewerPanY = 0;
-    isViewerDragging = false;
-    private viewerDragStartX = 0;
-    private viewerDragStartY = 0;
-    private viewerPanStartX = 0;
-    private viewerPanStartY = 0;
+    mediaViewer!: ImgVidUtils;
 
     // Forward modal state
     showForwardModal = false;
@@ -382,8 +387,7 @@ export class MessagesLayoutComponent
 
                 this.socketService.emit('unpinMessage', pm);
 
-                const systemPreview = this.formatPinnedMessagePreview(pm);
-                const messageContent = `đã bỏ ghim tin nhắn: ${systemPreview}`;
+                const messageContent = `đã bỏ ghim tin nhắn: ${this.pinnedMessagePreviewText(pm)}`;
                 this.postAndBroadcastMessage(messageContent, 'system');
             },
             error: (error) => {
@@ -397,82 +401,94 @@ export class MessagesLayoutComponent
         return this.dateTimeUtils.shouldShowDateSeparator(currentMsg.created_at, prevMsg?.created_at);
     }
 
+    get isImageViewerOpen(): boolean {
+        return this.mediaViewer.isOpen && this.mediaViewer.type === 'image';
+    }
+
+    get currentViewerIndex(): number {
+        return this.mediaViewer.currentIndex;
+    }
+
+    get viewerTotal(): number {
+        return this.mediaViewer.items.length;
+    }
+
+    get viewerImageUrl(): string {
+        return this.mediaViewer.mediaUrl;
+    }
+
+    get viewerZoom(): number {
+        return this.mediaViewer.zoom;
+    }
+
+    get viewerZoomMin(): number {
+        return this.mediaViewer.zoomMin;
+    }
+
+    get viewerZoomMax(): number {
+        return this.mediaViewer.zoomMax;
+    }
+
+    get viewerPanX(): number {
+        return this.mediaViewer.panX;
+    }
+
+    get viewerPanY(): number {
+        return this.mediaViewer.panY;
+    }
+
+    get isViewerDragging(): boolean {
+        return this.mediaViewer.isDragging;
+    }
+
+    private getImageViewerUrls(): string[] {
+        const messages = this.getMessagesData().homeMessagesData?.messages || [];
+        return messages
+            .filter((msg: any) => msg.message_type === 'image' && !!msg.file_url)
+            .map((msg: any) => msg.file_url);
+    }
+
     openImageViewer(url: string) {
-        const resolved = this.fileUtils.resolveMediaUrl(url);
-        if (!resolved) return;
-        this.viewerImageUrl = resolved;
-        this.viewerZoom = 1;
-        this.viewerPanX = 0;
-        this.viewerPanY = 0;
-        this.isViewerDragging = false;
-        this.isImageViewerOpen = true;
+        const urls = this.getImageViewerUrls();
+        if (urls.length === 0) return;
+        const foundIndex = urls.findIndex(item => item === url);
+        this.mediaViewer.openImageGallery(urls, foundIndex >= 0 ? foundIndex : 0);
     }
 
     closeImageViewer() {
-        this.isImageViewerOpen = false;
-        this.viewerImageUrl = '';
-        this.viewerZoom = 1;
-        this.viewerPanX = 0;
-        this.viewerPanY = 0;
-        this.isViewerDragging = false;
+        this.mediaViewer.closeViewer();
+    }
+
+    nextImage(event?: Event) {
+        this.mediaViewer.next(event);
+    }
+
+    prevImage(event?: Event) {
+        this.mediaViewer.prev(event);
     }
 
     zoomInViewer(event?: Event) {
-        event?.stopPropagation();
-        this.viewerZoom = Math.min(
-            this.viewerZoomMax,
-            Number((this.viewerZoom + this.viewerZoomStep).toFixed(2)),
-        );
+        this.mediaViewer.zoomIn(event);
     }
 
     zoomOutViewer(event?: Event) {
-        event?.stopPropagation();
-        this.viewerZoom = Math.max(
-            this.viewerZoomMin,
-            Number((this.viewerZoom - this.viewerZoomStep).toFixed(2)),
-        );
-
-        if (this.viewerZoom <= 1) {
-            this.viewerPanX = 0;
-            this.viewerPanY = 0;
-            this.isViewerDragging = false;
-        }
+        this.mediaViewer.zoomOut(event);
     }
 
     resetViewerZoom(event?: Event) {
-        event?.stopPropagation();
-        this.viewerZoom = 1;
-        this.viewerPanX = 0;
-        this.viewerPanY = 0;
-        this.isViewerDragging = false;
+        this.mediaViewer.resetTransform(event);
     }
 
     onViewerPointerDown(event: PointerEvent) {
-        if (this.viewerZoom <= 1) return;
-
-        event.stopPropagation();
-        event.preventDefault();
-        this.isViewerDragging = true;
-        this.viewerDragStartX = event.clientX;
-        this.viewerDragStartY = event.clientY;
-        this.viewerPanStartX = this.viewerPanX;
-        this.viewerPanStartY = this.viewerPanY;
+        this.mediaViewer.onPointerDown(event);
     }
 
     onViewerPointerMove(event: PointerEvent) {
-        if (!this.isViewerDragging || this.viewerZoom <= 1) return;
-
-        event.stopPropagation();
-        event.preventDefault();
-        const deltaX = event.clientX - this.viewerDragStartX;
-        const deltaY = event.clientY - this.viewerDragStartY;
-        this.viewerPanX = this.viewerPanStartX + deltaX;
-        this.viewerPanY = this.viewerPanStartY + deltaY;
+        this.mediaViewer.onPointerMove(event);
     }
 
     onViewerPointerUp(event?: PointerEvent) {
-        event?.stopPropagation();
-        this.isViewerDragging = false;
+        this.mediaViewer.onPointerUp(event);
     }
 
     // --- Media rendering helpers ---
@@ -501,6 +517,7 @@ export class MessagesLayoutComponent
         public fileUtils: FileUtils,
         private socketService: SocketService,
     ) {
+        this.mediaViewer = new ImgVidUtils(this.fileUtils);
         this.initEffect();
     }
 
@@ -1420,8 +1437,42 @@ export class MessagesLayoutComponent
         const el = this.messageInput.nativeElement;
         const markupContent = this.getMarkupContent(el).trim();
         const stagedFiles = this.preUploadFiles().map(f => f.file);
+        const replyTo = this.replyToMessage ? this.replyToMessage.id : undefined;
+        const replyToMessageObj = this.replyToMessage;
 
         if (!markupContent && stagedFiles.length === 0) return;
+
+        let optimisticTextTempId: string | undefined;
+        const isVirtualConversation = this.conversationId.startsWith('conv_');
+
+        // Optimistic UI: luôn hiển thị text ngay khi bấm gửi, trước cả bước tạo conversation thật.
+        if (isVirtualConversation && markupContent) {
+            const currentUser = this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId) || {};
+            optimisticTextTempId = 'temp-' + Date.now();
+            this.messageStatus.set('Đang gửi');
+            this.updateUIWithNewMessage({
+                id: optimisticTextTempId,
+                _trackId: optimisticTextTempId,
+                sender_id: this.currentUserId,
+                sender_name: currentUser.full_name,
+                sender_avatar: currentUser.avatar_url,
+                content: markupContent,
+                conversation_id: this.conversationId,
+                created_at: new Date().toISOString(),
+                deleted_for_all: false,
+                message_type: 'text',
+                parent_message_id: replyToMessageObj?.id || null,
+                parent_message_info: replyToMessageObj ? {
+                    parent_message_id: replyToMessageObj.id || null,
+                    parent_message_content: replyToMessageObj.content || null,
+                    parent_message_name: replyToMessageObj.sender_name || null,
+                    parent_message_is_deleted: replyToMessageObj.is_deleted || null,
+                    parent_message_sender_id: replyToMessageObj.sender_id || null,
+                    parent_message_type: replyToMessageObj.message_type || null,
+                    parent_message_thumbnail_url: replyToMessageObj.thumbnail_url || null,
+                } : null,
+            }, this.conversationId);
+        }
 
         let isNewConversationUpgrade = false;
         if (this.conversationId.startsWith('conv_')) {
@@ -1453,17 +1504,13 @@ export class MessagesLayoutComponent
             }
         }
 
-        const replyTo = this.replyToMessage ? this.replyToMessage.id : undefined;
-        const replyToMessageObj = this.replyToMessage;
-
         // Chờ lấy link preview mới nhất
         const linkPreview = await this.linkPreviewUtils.getLinkPreviewAsync(markupContent);
 
         if (stagedFiles.length > 0) {
             this.loading = false; // Progress được hiện qua _uploading trên từng temp message
-            this.uploadFileAttachment(stagedFiles, isNewConversationUpgrade);
-            this.clearPreUploadFiles();
 
+            // Giữ thứ tự hiển thị bên sender: text (nếu có) luôn lên trước media.
             if (markupContent) {
                 this.postAndBroadcastMessage(
                     markupContent,
@@ -1472,10 +1519,14 @@ export class MessagesLayoutComponent
                     undefined,
                     undefined,
                     replyToMessageObj,
-                    undefined,
+                    optimisticTextTempId,
                     isNewConversationUpgrade
                 );
             }
+
+            // Khi đã có text, không để media file đầu tiên phát notify nâng cấp conversation nữa.
+            this.uploadFileAttachment(stagedFiles, isNewConversationUpgrade, !!markupContent);
+            this.clearPreUploadFiles();
         } else {
             this.loading = false;
             const linkMetadata = linkPreview ? {
@@ -1493,7 +1544,7 @@ export class MessagesLayoutComponent
                 undefined,
                 linkMetadata,
                 replyToMessageObj,
-                undefined,
+                optimisticTextTempId,
                 isNewConversationUpgrade
             );
         }
@@ -1508,7 +1559,11 @@ export class MessagesLayoutComponent
         this.cdr.markForCheck();
     }
 
-    uploadFileAttachment(files: File[], isNewConversationUpgrade: boolean = false) {
+    uploadFileAttachment(
+        files: File[],
+        isNewConversationUpgrade: boolean = false,
+        hasTextMessage: boolean = false
+    ) {
         // Validation: Filter out files that exceed Cloudinary limits
         const validFiles: File[] = [];
         for (const file of files) {
@@ -1630,7 +1685,7 @@ export class MessagesLayoutComponent
                             tempId,
                             // Chỉ trigger upgrade notify cho file đầu tiên TRONG TRƯỜNG HỢP không có tin nhắn văn bản đi kèm
                             // (nếu đã có tin nhắn văn bản, notify đã được gửi ở postAndBroadcastMessage)
-                            index === 0 ? isNewConversationUpgrade : false
+                            index === 0 && !hasTextMessage ? isNewConversationUpgrade : false
                         );
                     }),
                     finalize(() => {
@@ -2261,8 +2316,7 @@ export class MessagesLayoutComponent
                 // Broadcast cho người khác trong conversation
                 this.socketService.emit('pinMessage', newPinMessage);
 
-                const systemPreview = this.formatPinnedMessagePreview(newPinMessage);
-                const messageContent = `đã ghim tin nhắn: ${systemPreview}`;
+                const messageContent = `đã ghim tin nhắn: ${this.pinnedMessagePreviewText(newPinMessage)}`;
                 const message_type = 'system';
 
                 this.postAndBroadcastMessage(messageContent, message_type);
@@ -2433,12 +2487,21 @@ export class MessagesLayoutComponent
     showEmojiPicker = false;
 
     // Toggle emoji picker
+    onEmojiButtonMouseDown(event: MouseEvent) {
+        event.preventDefault();
+        this.rememberEditorSelection();
+    }
+
     toggleEmojiPicker() {
+        this.rememberEditorSelection();
         this.showEmojiPicker = !this.showEmojiPicker;
     }
 
     addEmoji(event: any) {
-        this.newMessage += event.emoji.native;
+        const emoji = event?.emoji?.native || '';
+        if (!emoji) return;
+
+        this.insertEmojiIntoEditor(emoji);
         this.onTyping();
         this.showEmojiPicker = false; // Đóng picker sau khi chọn emoji
         // Focus lại vào input sau khi chọn emoji
@@ -2447,6 +2510,48 @@ export class MessagesLayoutComponent
                 this.messageInput.nativeElement.focus();
             }
         }, 100);
+    }
+
+    private rememberEditorSelection() {
+        const host = this.messageInput?.nativeElement;
+        const sel = window.getSelection();
+        if (!host || !sel || sel.rangeCount === 0) return;
+
+        const range = sel.getRangeAt(0);
+        if (host.contains(range.startContainer) && host.contains(range.endContainer)) {
+            this.savedSelectionRange = range.cloneRange();
+        }
+    }
+
+    private insertEmojiIntoEditor(emoji: string) {
+        const host = this.messageInput?.nativeElement;
+        if (!host) return;
+
+        host.focus();
+
+        const sel = window.getSelection();
+        const range = this.savedSelectionRange?.cloneRange()
+            || (sel && sel.rangeCount > 0 && host.contains(sel.anchorNode) ? sel.getRangeAt(0).cloneRange() : null);
+
+        if (!range) {
+            host.appendChild(document.createTextNode(emoji));
+        } else {
+            range.deleteContents();
+            const emojiNode = document.createTextNode(emoji);
+            range.insertNode(emojiNode);
+            range.setStartAfter(emojiNode);
+            range.collapse(true);
+
+            if (sel) {
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+
+            this.savedSelectionRange = range.cloneRange();
+        }
+
+        this.newMessage = this.getMarkupContent(host).trim();
+        host.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
     // Reply state
@@ -2465,35 +2570,70 @@ export class MessagesLayoutComponent
         this.replyToMessage = null;
     }
 
-    // Scroll to specific message and highlight it
+    // Scroll to specific message and highlight it.
+    // If the message is not yet in the DOM, keeps calling loadMoreMessages() until found.
     scrollToMessage(messageId: string) {
         if (!messageId) return;
+        this._doScrollToMessage(messageId, 0);
+    }
 
-        // Find the message element
-        const messageElement = document.getElementById(`message-${messageId}`);
-        if (!messageElement) {
-            console.warn('Message not found:', messageId);
+    private _doScrollToMessage(messageId: string, attempt: number) {
+        const MAX_ATTEMPTS = 30; // 30 × loadMoreMessages = tối đa ~1500 tin
+
+        const el = document.getElementById(`message-${messageId}`);
+        if (el) {
+            // Found — scroll and highlight
+            if (this.highlightTimeout) clearTimeout(this.highlightTimeout);
+
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            this.highlightedMessageId = messageId;
+            this.cdr.markForCheck();
+
+            this.highlightTimeout = setTimeout(() => {
+                this.highlightedMessageId = null;
+                this.cdr.markForCheck();
+            }, 2000);
             return;
         }
 
-        // Clear previous highlight timeout
-        if (this.highlightTimeout) {
-            clearTimeout(this.highlightTimeout);
+        // Not in DOM yet
+        if (!this.hasMore || attempt >= MAX_ATTEMPTS) {
+            console.warn('scrollToMessage: tin nhắn không tìm thấy, id =', messageId);
+            return;
         }
 
-        // Scroll to message with smooth behavior
-        messageElement.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center',
+        // Load thêm một batch tin nhắn cũ hơn rồi thử lại sau khi render xong
+        this.isLoadingMore = true;
+        this.messagesService.getMessages(this.conversationId, 50, this.currentOffset).subscribe({
+            next: (response) => {
+                const olderMessages = response.metadata?.homeMessagesData?.messages || [];
+                if (olderMessages.length === 0) {
+                    this.hasMore = false;
+                    this.isLoadingMore = false;
+                    console.warn('scrollToMessage: hết tin nhắn, không tìm thấy id =', messageId);
+                    return;
+                }
+
+                this.getMessagesData.update((old) => ({
+                    ...old,
+                    homeMessagesData: {
+                        ...old.homeMessagesData,
+                        messages: [...olderMessages, ...old.homeMessagesData.messages],
+                    },
+                }));
+
+                this.currentOffset += olderMessages.length;
+                this.hasMore = response.metadata?.homeMessagesData?.hasMore ?? false;
+                this.isLoadingMore = false;
+
+                // Đợi Angular render batch mới xong rồi thử tìm lại
+                setTimeout(() => this._doScrollToMessage(messageId, attempt + 1), 100);
+            },
+            error: () => {
+                this.isLoadingMore = false;
+                console.warn('scrollToMessage: lỗi khi load thêm tin nhắn');
+            }
         });
-
-        // Trigger highlight animation
-        this.highlightedMessageId = messageId;
-
-        // Remove highlight after 2 seconds
-        this.highlightTimeout = setTimeout(() => {
-            this.highlightedMessageId = null;
-        }, 2000);
     }
 
     isBlocked(): boolean {

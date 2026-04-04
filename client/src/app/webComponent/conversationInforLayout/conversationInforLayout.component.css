@@ -673,14 +673,19 @@
    ============================================================ */
 .image-viewer-overlay {
     position: fixed;
-    inset: 0;
-    background: rgba(10, 20, 52, 0.92);
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100dvw;
+    height: 100dvh;
+    background: rgba(8, 12, 24, 0.94);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1500;
+    z-index: 4000;
     animation: viewerFadeIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
 }
@@ -700,7 +705,7 @@
 .viewer-content {
     position: relative;
     max-width: min(92vw, 1120px);
-    max-height: 85vh;
+    max-height: calc(100dvh - 110px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -776,7 +781,7 @@
     align-items: center;
     gap: 12px;
     padding: 8px 16px;
-    background: rgba(15, 23, 42, 0.6);
+    background: rgba(10, 16, 30, 0.72);
     backdrop-filter: blur(8px);
     border: 1px solid rgba(0, 242, 255, 0.22);
     border-radius: 30px;
@@ -853,7 +858,7 @@
     left: 50%;
     transform: translateX(-50%);
     padding: 6px 16px;
-    background: rgba(15, 23, 42, 0.6);
+    background: rgba(10, 16, 30, 0.72);
     backdrop-filter: blur(8px);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 20px;
@@ -869,14 +874,19 @@
    ============================================================ */
 .video-viewer-overlay {
     position: fixed;
-    inset: 0;
-    background: rgba(8, 12, 28, 0.95);
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100dvw;
+    height: 100dvh;
+    background: rgba(7, 10, 20, 0.95);
     backdrop-filter: blur(15px);
     -webkit-backdrop-filter: blur(15px);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1500;
+    z-index: 4000;
     animation: viewerFadeIn 0.3s ease-out;
 }
 

@@ -158,13 +158,15 @@
   outline: none;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   box-sizing: border-box;
-  min-width: 0; /* Cho phép input thu nhỏ lại thành icon 38px */
+  min-width: 0;
+  /* Cho phép input thu nhỏ lại thành icon 38px */
 }
 
 .conv-search-wrap.collapsed .conv-search-input {
   padding: 0;
   border-radius: 50%;
-  background: rgba(0, 242, 255, 0.1); /* Nổi bật */
+  background: rgba(0, 242, 255, 0.1);
+  /* Nổi bật */
   border-color: rgba(0, 242, 255, 0.3);
   color: transparent !important;
   box-shadow: 0 0 10px rgba(0, 242, 255, 0.2);
@@ -616,6 +618,14 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  justify-content: space-between;
+}
+
+.conv-info-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .conv-last-msg {
@@ -905,3 +915,104 @@ app-conversation-info-layout {
 }
 
 /* pf-* styles live in userinforModel.component.css */
+
+/* Mention tag in last message preview — no bg, just bold neon */
+.conv-last-msg .mention-tag {
+  color: var(--accent);
+  font-weight: 600;
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  display: inline;
+}
+
+.conv-last-msg ::ng-deep .conv-dropdown-item:hover {
+  background: rgba(0, 242, 255, 0.2);
+}
+
+/* Time & Actions Toggle (Top Right) */
+.conv-time-actions-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 60px;
+}
+
+.conv-actions-inline {
+  display: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  transition: all 0.2s;
+}
+
+.conv-actions-inline:hover, .conv-actions-inline.active {
+  color: var(--accent);
+}
+
+/* Toggle Logic: Hide time, show dots on hover or when menu is active */
+.conv-item:hover .conv-time, 
+.conv-item.menu-open .conv-time,
+.conv-time.hidden {
+  display: none;
+}
+
+.conv-item:hover .conv-actions-inline,
+.conv-actions-inline.active {
+  display: block;
+}
+
+/* Action Dropdown Menu (Inline version) */
+.conv-actions-inline .conv-dropdown {
+  position: absolute;
+  top: calc(100% + 5px);
+  right: 0;
+  width: 140px;
+  background: rgba(13, 25, 41, 0.96);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 4px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  animation: dropdownFadeIn 0.2s ease-out;
+}
+
+@keyframes dropdownFadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.conv-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  color: #e2efff;
+  font-size: 12.5px;
+  font-weight: 500;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.conv-dropdown-item:hover {
+  background: rgba(0, 242, 255, 0.12);
+  color: var(--accent);
+}
+
+.conv-dropdown-item i {
+  font-size: 14px;
+  color: var(--accent);
+}
+
+.conv-pinned-icon {
+  font-size: 11px;
+  color: var(--accent);
+  opacity: 0.8;
+  margin-left: 2px;
+  transform: rotate(45deg);
+}

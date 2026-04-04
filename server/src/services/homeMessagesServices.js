@@ -269,11 +269,23 @@ class HomeMessagesService {
             parent_message_id ? messagesService.getMessageById(parent_message_id) : Promise.resolve(null),
         ]);
 
-        // 2. Update conversation + lấy parent sender (song song — không phụ thuộc nhau)
-        const [, parentSender] = await Promise.all([
+        // 2. Update conversation + đồng bộ mốc đã đọc của người gửi + lấy parent sender
+        const [, , parentSender] = await Promise.all([
             conversationsService.updateConversation(conversationId, {
                 last_message_id: newMessage.id,
             }),
+            (async () => {
+                const senderParticipant = await participantsService.getParticipant({
+                    conversation_id: conversationId,
+                    user_id: senderId,
+                });
+
+                if (!senderParticipant) return null;
+
+                return participantsService.updateParticipant(senderParticipant.id, {
+                    last_read_message_id: newMessage.id,
+                });
+            })(),
             parentMessage ? usersService.getUserById(parentMessage.sender_id) : Promise.resolve(null),
         ]);
 

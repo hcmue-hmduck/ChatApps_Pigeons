@@ -1,3 +1,4 @@
+const { get } = require('http');
 const cloudinary = require('../configs/cloudinaryConfig');
 
 class UploadService {
@@ -42,11 +43,18 @@ class UploadService {
         const path = require('path');
         console.log('options', options);
         let folderPath = 'chatPigeons';
+        let fileType = this.constructor.getResourceType(options.originalName || filePath);
+        if (fileType === 'raw') {
+            fileType = 'file'
+        }
+
+        fileType = fileType + 's';
+        
         if (options.convID) {
             if (options.convID.startsWith('avatars')) {
                 folderPath += `/avatars/${options.convID.split(':')[1]}`;
             } else {
-                folderPath += `/conversations/${options.convID}`;
+                folderPath += `/conversations/${options.convID}/${fileType}`;
             }
         } else if (options.feedID) {
             folderPath += `/feeds/${options.feedID}`;
