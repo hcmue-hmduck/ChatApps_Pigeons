@@ -352,6 +352,7 @@ export class MessagesLayoutComponent
     private onDeleteMessageSocket?: (data: any) => void;
     private onTypingSocket?: (data: any) => void;
     private onStopTypingSocket?: (data: any) => void;
+    private onReactionMessageSocket?: (data: any) => void;
 
     
     private pinnedMenuTimeout: any;
@@ -639,6 +640,7 @@ export class MessagesLayoutComponent
         if (this.onDeleteMessageSocket) this.socketService.off('deleteMessage', this.onDeleteMessageSocket);
         if (this.onTypingSocket) this.socketService.off('typing', this.onTypingSocket);
         if (this.onStopTypingSocket) this.socketService.off('stopTyping', this.onStopTypingSocket);
+        if (this.onReactionMessageSocket) this.socketService.off('reactionMessage', this.onReactionMessageSocket);
 
         this.onNewMessageSocket = undefined;
         this.onUpdateMessageSocket = undefined;
@@ -649,6 +651,7 @@ export class MessagesLayoutComponent
         this.onDeleteMessageSocket = undefined;
         this.onTypingSocket = undefined;
         this.onStopTypingSocket = undefined;
+        this.onReactionMessageSocket = undefined;
     }
 
     setupSocketListener(conversationId: string) {
@@ -941,7 +944,7 @@ export class MessagesLayoutComponent
         };
         this.socketService.on('deleteMessage', this.onDeleteMessageSocket);
 
-        this.socketService.on('reactionMessage', (data: any) => {
+        this.onReactionMessageSocket = (data: any) => {
             console.log('Received reactionMessage event:', data);
             this.messageReactions.update(map => {
                 const newMap = new Map(map);
@@ -954,7 +957,8 @@ export class MessagesLayoutComponent
                 return newMap;
             })
             this.cdr.markForCheck();
-        });
+        };
+        this.socketService.on('reactionMessage', this.onReactionMessageSocket);
     }
 
     ngOnInit() {

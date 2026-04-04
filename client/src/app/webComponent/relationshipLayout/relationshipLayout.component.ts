@@ -73,6 +73,15 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
     showMoreMenuId: string | null = null;
 
     private updateProfileListener!: (data: any) => void;
+    private onUpdateFriendSocket?: (data: any) => void;
+    private onSendFriendRequestSocket?: (data: any) => void;
+    private onCancelSentRequestSocket?: (data: any) => void;
+    private onRejectFriendRequestSocket?: (data: any) => void;
+    private onAcceptFriendRequestSocket?: (data: any) => void;
+    private onBlockUserSocket?: (data: any) => void;
+    private onUnblockUserSocket?: (data: any) => void;
+    private onOnlineUsersListSocket?: (userIds: string[]) => void;
+    private onUserStatusChangedSocket?: (data: { userId: string, status: string }) => void;
 
     @HostListener('document:click', ['$event'])
     onDocumentClick(event: MouseEvent) {
@@ -106,11 +115,15 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
         if (this.updateProfileListener) {
             this.socketService.off('updateProfile', this.updateProfileListener);
         }
-        this.socketService.off('updateFriend');
-        this.socketService.off('sendFriendRequest');
-        this.socketService.off('cancelSentRequest');
-        this.socketService.off('rejectFriendRequest');
-        this.socketService.off('acceptFriendRequest');
+        if (this.onUpdateFriendSocket) this.socketService.off('updateFriend', this.onUpdateFriendSocket);
+        if (this.onSendFriendRequestSocket) this.socketService.off('sendFriendRequest', this.onSendFriendRequestSocket);
+        if (this.onCancelSentRequestSocket) this.socketService.off('cancelSentRequest', this.onCancelSentRequestSocket);
+        if (this.onRejectFriendRequestSocket) this.socketService.off('rejectFriendRequest', this.onRejectFriendRequestSocket);
+        if (this.onAcceptFriendRequestSocket) this.socketService.off('acceptFriendRequest', this.onAcceptFriendRequestSocket);
+        if (this.onBlockUserSocket) this.socketService.off('blockUser', this.onBlockUserSocket);
+        if (this.onUnblockUserSocket) this.socketService.off('unblockUser', this.onUnblockUserSocket);
+        if (this.onOnlineUsersListSocket) this.socketService.off('onlineUsersList', this.onOnlineUsersListSocket);
+        if (this.onUserStatusChangedSocket) this.socketService.off('userStatusChanged', this.onUserStatusChangedSocket);
     }
 
     ngOnChanges(changes: SimpleChanges) {
@@ -190,15 +203,19 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
         if (this.updateProfileListener) {
             this.socketService.off('updateProfile', this.updateProfileListener);
         }
-        this.socketService.off('updateFriend');
-        this.socketService.off('sendFriendRequest');
-        this.socketService.off('cancelSentRequest');
-        this.socketService.off('rejectFriendRequest');
-        this.socketService.off('acceptFriendRequest');
+        if (this.onUpdateFriendSocket) this.socketService.off('updateFriend', this.onUpdateFriendSocket);
+        if (this.onSendFriendRequestSocket) this.socketService.off('sendFriendRequest', this.onSendFriendRequestSocket);
+        if (this.onCancelSentRequestSocket) this.socketService.off('cancelSentRequest', this.onCancelSentRequestSocket);
+        if (this.onRejectFriendRequestSocket) this.socketService.off('rejectFriendRequest', this.onRejectFriendRequestSocket);
+        if (this.onAcceptFriendRequestSocket) this.socketService.off('acceptFriendRequest', this.onAcceptFriendRequestSocket);
+        if (this.onBlockUserSocket) this.socketService.off('blockUser', this.onBlockUserSocket);
+        if (this.onUnblockUserSocket) this.socketService.off('unblockUser', this.onUnblockUserSocket);
+        if (this.onOnlineUsersListSocket) this.socketService.off('onlineUsersList', this.onOnlineUsersListSocket);
+        if (this.onUserStatusChangedSocket) this.socketService.off('userStatusChanged', this.onUserStatusChangedSocket);
 
         this.socketService.on('updateProfile', this.updateProfileListener);
 
-        this.socketService.on('updateFriend', (data: any) => {
+        this.onUpdateFriendSocket = (data: any) => {
             console.log('Received updateFriend event:', data);
             // remover_id is the ID of the person who performed the deletion
             const removerId = data.remover_id;
@@ -210,31 +227,35 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
 
             this.friendIds.delete(removerId);
             this.sendingRequestsIds.delete(removerId);
-        });
+        };
+        this.socketService.on('updateFriend', this.onUpdateFriendSocket);
 
-        this.socketService.on('sendFriendRequest', (data: any) => {
+        this.onSendFriendRequestSocket = (data: any) => {
             if (data.receiver_id === this.currentUserId) {
                 console.log('sendFriendRequestEmit', data);
                 this.friendRequestsIds.add(data.sender_id);
                 this.friendRequests.update((requests: any) => [...requests, data]);
             }
-        });
+        };
+        this.socketService.on('sendFriendRequest', this.onSendFriendRequestSocket);
 
-        this.socketService.on('cancelSentRequest', (data: any) => {
+        this.onCancelSentRequestSocket = (data: any) => {
             console.log('cancelSentRequestEmit', data);
             console.log('FR', this.friendRequests());
             this.friendRequests.update((requests: any) => requests.filter((request: any) => request.id !== data));
             this.sentRequests.update((requests: any) => requests.filter((request: any) => request.id !== data));
-        });
+        };
+        this.socketService.on('cancelSentRequest', this.onCancelSentRequestSocket);
 
-        this.socketService.on('rejectFriendRequest', (data: any) => {
+        this.onRejectFriendRequestSocket = (data: any) => {
             this.sentRequests.update((requests: any) => requests.filter((request: any) => request.id !== data.id));
             console.log('rejectFriendRequestEmit', data);
             console.log('SendingRequestsIds', this.sendingRequestsIds);
             this.sendingRequestsIds.delete(data.receiver_id);
-        });
+        };
+        this.socketService.on('rejectFriendRequest', this.onRejectFriendRequestSocket);
 
-        this.socketService.on('acceptFriendRequest', (data: any) => {
+        this.onAcceptFriendRequestSocket = (data: any) => {
             console.log('Received acceptFriendRequest event:', data);
             // Check if we are the person who originally sent this request
             if (data.sender_id === this.currentUserId) {
@@ -242,28 +263,31 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
                 this.friends.update((friends: any) => [...friends, data]);
                 this.sentRequests.update((requests: any) => requests.filter((r: any) => r.id !== data.request_id));
             }
-        });
+        };
+        this.socketService.on('acceptFriendRequest', this.onAcceptFriendRequestSocket);
 
-        this.socketService.on('blockUser', (data: any) => {
+        this.onBlockUserSocket = (data: any) => {
             console.log('Received blockUser event:', data);
             if (data.blocked_id === this.currentUserId) {
                 this.searchResults.update((results: any) => results.filter((r: any) => r.id !== data.blocker_id));
                 this.sentRequests.update((requests: any) => requests.filter((r: any) => r.id !== data.blocker_id));
                 this.friendRequests.update((requests: any) => requests.filter((r: any) => r.id !== data.blocker_id));
             }
-        });
+        };
+        this.socketService.on('blockUser', this.onBlockUserSocket);
 
-        this.socketService.on('unblockUser', (data: any) => {
+        this.onUnblockUserSocket = (data: any) => {
             console.log('Received unblockUser event:', data);
             if (data.blocked_id === this.currentUserId) {
                 console.log('blockUser', this.blockedUser());
                 this.blockedUser.update((blocks: any) => blocks.filter((b: any) => b.id !== data.blocked_id));
                 this.searchResults.update((results: any) => [...results, data]);
             }
-        });
+        };
+        this.socketService.on('unblockUser', this.onUnblockUserSocket);
 
         // User Presence Listeners
-        this.socketService.on('onlineUsersList', (userIds: string[]) => {
+        this.onOnlineUsersListSocket = (userIds: string[]) => {
             console.log('[Relationship] Received onlineUsersList:', userIds);
             const onlineSet = new Set(userIds);
 
@@ -278,12 +302,14 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
             })));
 
             this.cdr.markForCheck();
-        });
+        };
+        this.socketService.on('onlineUsersList', this.onOnlineUsersListSocket);
 
-        this.socketService.on('userStatusChanged', (data: { userId: string, status: string }) => {
+        this.onUserStatusChangedSocket = (data: { userId: string, status: string }) => {
             console.log('[Relationship] userStatusChanged:', data);
             this.updateStatus(data.userId, data.status);
-        });
+        };
+        this.socketService.on('userStatusChanged', this.onUserStatusChangedSocket);
     }
 
     loadData() {

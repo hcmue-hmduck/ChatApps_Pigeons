@@ -1,4 +1,4 @@
-import { Component, signal, Output, EventEmitter, Input, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, signal, Output, EventEmitter, Input, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GroupAvatarLayoutComponent } from '../groupAvatarLayout/groupAvatarLayout.component';
 import { MediaService } from '../../services/media';
@@ -18,7 +18,7 @@ import { Messages } from '../../services/messages';
     templateUrl: './conversationInforLayout.component.html',
     styleUrls: ['./conversationInforLayout.component.css']
 })
-export class ConversationInfoLayoutComponent implements OnInit {
+export class ConversationInfoLayoutComponent implements OnInit, OnDestroy {
     @Output() closePanel = new EventEmitter<void>();
 
     @Input() userInfor: any;
@@ -50,6 +50,7 @@ export class ConversationInfoLayoutComponent implements OnInit {
     messagesService = inject(Messages);
     fileUtils = inject(FileUtils);
     private cdr = inject(ChangeDetectorRef);
+    private onUpdateConversationInfoSocket?: (data: any) => void;
 
     constructor() {
         this.mediaViewer = new ImgVidUtils(this.fileUtils);
@@ -64,7 +65,11 @@ export class ConversationInfoLayoutComponent implements OnInit {
     }
 
     socketEmitListener() {
-        this.socketService.on('updateConversationInfo', (data: any) => {
+        if (this.onUpdateConversationInfoSocket) {
+            this.socketService.off('updateConversationInfo', this.onUpdateConversationInfoSocket);
+        }
+
+        this.onUpdateConversationInfoSocket = (data: any) => {
             if (data.conversation_id === this.conversationInfor?.conversation_id && data.upload_file) {
                 const newFiles = Array.isArray(data.upload_file) ? data.upload_file : [data.upload_file];
                 newFiles.forEach((file: any) => {
@@ -78,7 +83,16 @@ export class ConversationInfoLayoutComponent implements OnInit {
                     }
                 });
             }
-        });
+        };
+
+        this.socketService.on('updateConversationInfo', this.onUpdateConversationInfoSocket);
+    }
+
+    ngOnDestroy(): void {
+        if (this.onUpdateConversationInfoSocket) {
+            this.socketService.off('updateConversationInfo', this.onUpdateConversationInfoSocket);
+            this.onUpdateConversationInfoSocket = undefined;
+        }
     }
 
     loadMediaData() {

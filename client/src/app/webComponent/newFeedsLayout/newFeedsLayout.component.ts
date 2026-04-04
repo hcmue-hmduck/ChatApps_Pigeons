@@ -149,6 +149,14 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
     expandedPosts = new Set<string>();
     expandedContentIds = signal<Set<string>>(new Set());
     private observer: IntersectionObserver | null = null;
+    private onUpdateProfileSocket?: (data: any) => void;
+    private onNewPostSocket?: (data: any) => void;
+    private onUpdatePostSocket?: (data: any) => void;
+    private onDeletePostSocket?: (data: any) => void;
+    private onNewCommentSocket?: (data: any) => void;
+    private onPostReactSocket?: (data: any) => void;
+    private onUserStatusChangedSocket?: (data: { userId: string, status: string }) => void;
+    private onOnlineUsersListSocket?: (onlineIds: string[]) => void;
 
     newPostContent = '';
     newPostPrivacy = 'public';
@@ -228,7 +236,14 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         }
         this.clearSelectedMedia(false);
         this.clearEditNewMedia(false);
-        this.socketService.off('newPost');
+        if (this.onUpdateProfileSocket) this.socketService.off('updateProfile', this.onUpdateProfileSocket);
+        if (this.onNewPostSocket) this.socketService.off('newPost', this.onNewPostSocket);
+        if (this.onUpdatePostSocket) this.socketService.off('updatePost', this.onUpdatePostSocket);
+        if (this.onDeletePostSocket) this.socketService.off('deletePost', this.onDeletePostSocket);
+        if (this.onNewCommentSocket) this.socketService.off('newComment', this.onNewCommentSocket);
+        if (this.onPostReactSocket) this.socketService.off('PostReact', this.onPostReactSocket);
+        if (this.onUserStatusChangedSocket) this.socketService.off('userStatusChanged', this.onUserStatusChangedSocket);
+        if (this.onOnlineUsersListSocket) this.socketService.off('onlineUsersList', this.onOnlineUsersListSocket);
     }
 
     triggerAttachmentPicker(input: HTMLInputElement) {
@@ -240,7 +255,16 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
     }
 
     setupSocketListener() {
-        this.socketService.on('updateProfile', (data: any) => {
+        if (this.onUpdateProfileSocket) this.socketService.off('updateProfile', this.onUpdateProfileSocket);
+        if (this.onNewPostSocket) this.socketService.off('newPost', this.onNewPostSocket);
+        if (this.onUpdatePostSocket) this.socketService.off('updatePost', this.onUpdatePostSocket);
+        if (this.onDeletePostSocket) this.socketService.off('deletePost', this.onDeletePostSocket);
+        if (this.onNewCommentSocket) this.socketService.off('newComment', this.onNewCommentSocket);
+        if (this.onPostReactSocket) this.socketService.off('PostReact', this.onPostReactSocket);
+        if (this.onUserStatusChangedSocket) this.socketService.off('userStatusChanged', this.onUserStatusChangedSocket);
+        if (this.onOnlineUsersListSocket) this.socketService.off('onlineUsersList', this.onOnlineUsersListSocket);
+
+        this.onUpdateProfileSocket = (data: any) => {
             // Update local user info if it's the current user
             if (this._userInfor?.id === data.id) {
                 this.userInfor = data;
@@ -274,10 +298,10 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
 
                 return hasChanges ? updatedPost : post;
             }));
-        });
+        };
+        this.socketService.on('updateProfile', this.onUpdateProfileSocket);
 
-
-        this.socketService.on('newPost', (data: any) => {
+        this.onNewPostSocket = (data: any) => {
             console.log('Received newPost event on server:', data);
             if (data.shared_post) {
                 this.posts.update(posts => posts.map(post => {
@@ -295,9 +319,10 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                 }
                 return [data, ...posts];
             });
-        });
+        };
+        this.socketService.on('newPost', this.onNewPostSocket);
 
-        this.socketService.on('updatePost', (data: any) => {
+        this.onUpdatePostSocket = (data: any) => {
             console.log('Received updatePost event on server:', data);
             this.posts.update(posts => {
                 return posts.map(post => {
@@ -308,9 +333,10 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                     return post;
                 });
             });
-        });
+        };
+        this.socketService.on('updatePost', this.onUpdatePostSocket);
 
-        this.socketService.on('deletePost', (data: any) => {
+        this.onDeletePostSocket = (data: any) => {
             this.posts.update(posts => {
                 return posts.filter(post => post.id !== data.id).map(post => {
                     if (post.shared_post && post.shared_post.id === data.id) {
@@ -322,9 +348,10 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                     return post;
                 });
             });
-        });
+        };
+        this.socketService.on('deletePost', this.onDeletePostSocket);
 
-        this.socketService.on('newComment', (data) => {
+        this.onNewCommentSocket = (data: any) => {
             console.log('Received newComment event on server:', data);
             this.posts.update(posts => posts.map(post => {
                 if (post.id === data.post_id) {
@@ -333,9 +360,10 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                 }
                 return post;
             }));
-        });
+        };
+        this.socketService.on('newComment', this.onNewCommentSocket);
 
-        this.socketService.on('PostReact', (data: any) => {
+        this.onPostReactSocket = (data: any) => {
             console.log('Received PostReact event from socket:', data);
             const { type, postId, userId, reaction, reactionId } = data;
 
@@ -359,8 +387,10 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                 }
                 return p;
             }));
-        });
-        this.socketService.on('userStatusChanged', (data: { userId: string, status: string }) => {
+        };
+        this.socketService.on('PostReact', this.onPostReactSocket);
+
+        this.onUserStatusChangedSocket = (data: { userId: string, status: string }) => {
             // 1. Update Sidebar
             this.onlineNodes.update(nodes => nodes.map(node =>
                 node.id === data.userId ? { ...node, status: data.status } : node
@@ -398,14 +428,16 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
 
                 return hasChanges ? updatedPost : post;
             }));
-        });
+        };
+        this.socketService.on('userStatusChanged', this.onUserStatusChangedSocket);
 
-        this.socketService.on('onlineUsersList', (onlineIds: string[]) => {
+        this.onOnlineUsersListSocket = (onlineIds: string[]) => {
             this.onlineNodes.update(nodes => nodes.map(node => ({
                 ...node,
                 status: onlineIds.includes(node.id) ? 'online' : 'offline'
             })));
-        });
+        };
+        this.socketService.on('onlineUsersList', this.onOnlineUsersListSocket);
     }
 
     onAttachmentSelected(event: Event) {
