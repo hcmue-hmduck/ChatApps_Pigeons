@@ -4,7 +4,10 @@ const GitHubStrategy = require('passport-github2').Strategy;
 const LocalStrategy = require('passport-local').Strategy;
 const userService = require('../services/usersService.js');
 
-const { google, github, facebook } = require('../configs/index.js');
+const { app, google, github, facebook } = require('../configs/index.js');
+
+const googleCallbackUrl = `${app.backendUrl}/access/google/callback`;
+const githubCallbackUrl = `${app.backendUrl}/access/github/callback`;
 
 const localVerifyCallback = async (email, password, cb) => {
     try {
@@ -49,7 +52,7 @@ passport.use(
         {
             clientID: google.clientId,
             clientSecret: google.clientSecret,
-            callbackURL: '/access/google/callback',
+            callbackURL: googleCallbackUrl,
         },
         socialVerifyCallback,
     ),
@@ -60,7 +63,7 @@ passport.use(
         {
             clientID: github.clientId,
             clientSecret: github.clientSecret,
-            callbackURL: '/access/github/callback',
+            callbackURL: githubCallbackUrl,
         },
         socialVerifyCallback,
     ),
