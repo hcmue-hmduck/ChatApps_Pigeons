@@ -17,7 +17,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { Subject, debounceTime, distinctUntilChanged, switchMap, of } from 'rxjs';
 import { MessagesLayoutComponent } from '../messagesLayout/messagesLayout.component';
-import { NavigationService } from '../../services/navigation';
+import { DirectConversationTarget, NavigationService } from '../../services/navigation';
 import { SocketService } from '../../services/socket';
 import { Conversation } from '../../services/conversation';
 import { SearchService } from '../../services/searchService';
@@ -112,6 +112,13 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
             const pendingId = this.navService.pendingConversationId();
             if (!pendingId) return;
             this.selectOrReloadConversation(pendingId);
+        });
+
+        effect(() => {
+            const pendingUser = this.navService.pendingDirectConversationUser();
+            if (!pendingUser?.id) return;
+            this.openDirectConversationWithUser(pendingUser);
+            this.navService.pendingDirectConversationUser.set(null);
         });
 
         effect(() => {
@@ -835,6 +842,12 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     selectSearchResult(user: any) {
         // Clear search
         this.exitSearch();
+
+        this.openDirectConversationWithUser(user);
+    }
+
+    private openDirectConversationWithUser(user: DirectConversationTarget) {
+        if (!user?.id) return;
 
         // Find existing direct conversation with this user
         const joined = this.conversations()?.homeConversationData?.joinedConversations || [];

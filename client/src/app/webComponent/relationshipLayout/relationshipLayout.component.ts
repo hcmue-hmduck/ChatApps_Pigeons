@@ -5,7 +5,6 @@ import { forkJoin } from 'rxjs';
 import Swal from 'sweetalert2';
 import { Friend } from '../../services/friend';
 import { FriendRequest } from '../../services/friendrequest';
-import { Conversation } from '../../services/conversation';
 import { User } from '../../services/user';
 import { UserBlock } from '../../services/userBlock';
 import { SocketService } from '../../services/socket';
@@ -97,7 +96,6 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
         private friendService: Friend,
         private userService: User,
         private friendRequestService: FriendRequest,
-        private conversationService: Conversation,
         private userBlockService: UserBlock,
         private socketService: SocketService,
         private navService: NavigationService,
@@ -864,39 +862,13 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
         return this.friendRequests().find(req => req.sender_id === userId);
     }
 
-    sendMessage(receiverId: string) {
-        this.conversationService.getConversations(this.currentUserId).subscribe({
-            next: (res: any) => {
-                const joinedConversations = res.metadata?.homeConversationData?.joinedConversations || [];
-                // Tìm cuộc trò chuyện direct đã tồn tại với receiverId
-                const existingConv = joinedConversations.find((conv: any) =>
-                    conv.type === 'direct' &&
-                    conv.participants.some((p: any) => p.user_id === receiverId)
-                );
-
-                if (existingConv) {
-                    this.navService.openConversation(existingConv.conversation_id);
-                } else {
-                    this.conversationService.createConversation(receiverId, 'direct', '', '', this.currentUserId, '', '').subscribe({
-                        next: (createRes: any) => {
-                            const newId = createRes?.metadata?.newConversation?.conv?.id;
-                            if (newId) {
-                                this.navService.openConversation(newId);
-                            }
-                        },
-                        error: (err: any) => console.error('Error creating conversation:', err)
-                    });
-                }
-            },
-            error: (err: any) => {
-                console.error('Error checking existing conversations:', err);
-                this.conversationService.createConversation(receiverId, 'direct', '', '', this.currentUserId, '', '').subscribe({
-                    next: (createRes: any) => {
-                        const newId = createRes?.metadata?.newConversation?.conv?.id;
-                        if (newId) this.navService.openConversation(newId);
-                    }
-                });
-            }
+    sendMessage(user: any) {
+        if (!user?.id) return;
+        this.navService.openDirectConversation({
+            id: user.id,
+            full_name: user.full_name,
+            avatar_url: user.avatar_url,
+            last_online_at: user.last_online_at,
         });
     }
 }
