@@ -1,10 +1,10 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { User } from './user';
-import { firstValueFrom, Observable } from 'rxjs';
+import { of, Observable, firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { HttpClient } from '@angular/common/http';
 import { LoginPayload, SignupPayload } from '../models/authData';
-import { tap } from 'rxjs/operators';
+import { tap, catchError, map } from 'rxjs/operators';
 
 interface UserInfor {
     id: string;
@@ -135,7 +135,9 @@ export class AuthService {
     }
 
     logout(): Observable<any> {
-        return this.httpClient.post(`${this.apiUrl}/logout`, {});
+        return this.httpClient.post(`${this.apiUrl}/logout`, {}).pipe(
+            tap(() => this.clearLocalUser())
+        );
     }
 
     // Xóa trạng thái local khi đăng xuất (dùng khi server lỗi)
@@ -166,7 +168,27 @@ export class AuthService {
                     });
                     console.log('Refresh success - User set:', user.id);
                 }
+            }),
+            catchError((err) => {
+                this.clearLocalUser();
+                throw err;
             })
+        );
+    }
+
+    /**
+     * Checks if a session is currently active. 
+     * If memory is empty, attempts to re-authenticate via backend cookies.
+     */
+    checkSession(): Observable<boolean> {
+        if (this.getUserId()) {
+            return of(true);
+        }
+        
+        // If memory is empty (e.g. after refresh), try to re-auth using cookies
+        return this.refreshToken().pipe(
+            map(() => true),
+            catchError(() => of(false))
         );
     }
 

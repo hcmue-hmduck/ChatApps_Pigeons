@@ -8,6 +8,7 @@ import { ConversationLayoutComponent } from './webComponent/conversationLayout/c
 import { MainLayoutComponent } from './webComponent/mainLayout/mainLayout.component';
 import { IntroLayoutComponent } from './webComponent/introLayout/introLayout.component';
 import { MessagesLayoutComponent } from './webComponent/messagesLayout/messagesLayout.component';
+import { authGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
     {
@@ -18,10 +19,12 @@ export const routes: Routes = [
     {
         path: 'call-display',
         component: CallLayoutComponent,
+        canActivate: [authGuard]
     },
     {
         path: '',
         component: MainLayoutComponent,
+        canActivate: [authGuard],
         children: [
             {
                 path: 'conversations',
