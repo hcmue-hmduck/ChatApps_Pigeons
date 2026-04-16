@@ -32,8 +32,8 @@ const decodeJWT = (token) => {
 
 const COOKIE_TOKENS_OPTIONS = {
     httpOnly: true,      // Ngăn XSS
-    secure: true,        // HTTPS only
-    sameSite: 'lax',     // Cho phep gui cookie trong dieu kien an toan
+    secure: true,        // HTTPS only (Bắt buộc khi dùng SameSite=Lax + HTTPS)
+    sameSite: 'lax',     // An toàn - hoạt động vì frontend/backend cùng origin qua Proxy
     path: '/',
 };
 

@@ -77,7 +77,8 @@
             "host": "0.0.0.0",
             "ssl": true,
             "sslCert": "../cert/cert.crt",
-            "sslKey": "../cert/cert.key"
+            "sslKey": "../cert/cert.key",
+            "proxyConfig": "proxy.conf.json"
           },
           "configurations": {
             "production": {
