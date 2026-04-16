@@ -1,4 +1,5 @@
-import { Injectable, signal } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
+import { Router } from '@angular/router';
 
 export type AppView = 'messages' | 'friends' | 'newFeeds';
 export type FriendsTab = 'friends' | 'friend_requests' | 'blocked' | 'sent_requests' | 'friends_suggestions';
@@ -12,6 +13,8 @@ export interface DirectConversationTarget {
 
 @Injectable({ providedIn: 'root' })
 export class NavigationService {
+    router = inject(Router);
+
     activeView = signal<AppView>('messages');
     activeFriendsTab = signal<FriendsTab>('friends_suggestions');
     pendingConversationId = signal<string | null>(null);
@@ -20,6 +23,13 @@ export class NavigationService {
 
     setView(view: AppView) {
         this.activeView.set(view);
+        if (view === 'messages') {
+            this.router.navigate(['/conversations']);
+        } else if (view === 'friends') {
+            this.router.navigate(['/relationship']);
+        } else if (view === 'newFeeds') {
+            this.router.navigate(['/new-feeds']);
+        }
     }
 
     setFriendsTab(tab: FriendsTab) {

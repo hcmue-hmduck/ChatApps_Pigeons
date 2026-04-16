@@ -28,11 +28,11 @@ class AccessService {
     async login(user) {
         if (!user) throw new BadRequestError('missing parameters');
 
-        const { id, role, full_name, avatar_url, email } = user;
+        const { id, role, full_name, avatar_url, email, bio, phone_number, birthday, gender, is_email_verified, is_phone_verified, last_online_at, created_at, updated_at } = user;
         const tokens = await this.#createSession(id, role);
 
         return {
-            user: { id, role, full_name, avatar_url, email },
+            user: { id, role, full_name, avatar_url, email, bio, phone_number, birthday, gender, is_email_verified, is_phone_verified, last_online_at, created_at, updated_at },
             tokens,
         };
     }
@@ -44,9 +44,26 @@ class AccessService {
 
     async refreshToken({ userId, userRole, sid }) {
         if (!userId || !userRole || !sid) throw new BadRequestError('missing parameters');
+        const foundUser = await userService.getUserById(userId);
+        console.log('foundUser', foundUser.id);
         const tokens = await this.#updateSession(userId, userRole, sid);
         return {
-            user: { id: userId },
+            user: { 
+                id: userId,
+                role: userRole,
+                full_name: foundUser.full_name,
+                avatar_url: foundUser.avatar_url,
+                email: foundUser.email,
+                bio: foundUser.bio,
+                phone_number: foundUser.phone_number,
+                birthday: foundUser.birthday,
+                gender: foundUser.gender,
+                is_email_verified: foundUser.is_email_verified,
+                is_phone_verified: foundUser.is_phone_verified,
+                last_online_at: foundUser.last_online_at,
+                created_at: foundUser.created_at,
+                updated_at: foundUser.updated_at
+            },
             tokens,
         };
     }

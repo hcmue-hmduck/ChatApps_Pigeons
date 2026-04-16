@@ -1,6 +1,6 @@
 :host {
-  --admin-primary: #00f2ff;
-  --admin-border: rgba(0, 242, 255, 0.1);
+  --admin-primary: var(--accent);
+  --admin-border: rgba(187, 134, 252, 0.1);
   --text-slate-100: #f1f5f9;
   --text-slate-300: #cbd5e1;
   --text-slate-400: #94a3b8;
@@ -18,7 +18,7 @@
     font-weight: 700;
     color: var(--text-slate-100);
     margin: 0;
-    text-shadow: 0 0 8px rgba(0, 242, 255, 0.4);
+    text-shadow: 0 0 8px rgba(187, 134, 252, 0.4);
 }
 
 .user-count {
@@ -71,11 +71,11 @@
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    border: 1px solid rgba(0, 242, 255, 0.3);
+    border: 1px solid rgba(187, 134, 252, 0.3);
     padding: 2px;
     background: #0d1117;
     object-fit: cover;
-    box-shadow: 0 0 10px rgba(0, 242, 255, 0.1);
+    box-shadow: 0 0 10px rgba(187, 134, 252, 0.1);
 }
 
 /* Status Badges */
@@ -114,10 +114,10 @@
     font-size: 0.75rem;
     font-weight: 600;
     color: var(--admin-primary);
-    background: rgba(0, 242, 255, 0.05);
+    background: rgba(187, 134, 252, 0.05);
     padding: 4px 10px;
     border-radius: 6px;
-    border: 1px solid rgba(0, 242, 255, 0.1);
+    border: 1px solid rgba(187, 134, 252, 0.1);
 }
 
 /* States */

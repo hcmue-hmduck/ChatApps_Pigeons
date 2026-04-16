@@ -7,10 +7,8 @@ import {
     HostBinding,
     HostListener,
     Input,
-    OnChanges,
     OnDestroy,
     OnInit,
-    SimpleChanges,
     ViewChild,
     effect,
     inject,
@@ -43,6 +41,9 @@ import { LinkPreviewUtils } from '../../utils/LinkUtils/linkPreviewUtils';
 import { DateTimeUtils } from '../../utils/DateTimeUtils/datetimeUtils';
 import { GroupAvatarLayoutComponent } from '../groupAvatarLayout/groupAvatarLayout.component';
 import { MessageReactions } from '../../services/messagereactions';
+import { ActiveConversationService } from '../../services/activeConversation.service';
+import { MessageStoreService } from '../../services/messageStore.service';
+import { Router } from '@angular/router';
 
 export interface UserPresence {
     status: string;
@@ -73,7 +74,7 @@ export interface StagedFile {
     schemas: [CUSTOM_ELEMENTS_SCHEMA]
 })
 export class MessagesLayoutComponent
-    implements OnInit, OnChanges, AfterViewInit, AfterViewChecked, OnDestroy {
+    implements OnInit, AfterViewInit, AfterViewChecked, OnDestroy {
 
     @HostBinding('class.viewer-open')
     get viewerOpenClass(): boolean {
@@ -86,6 +87,7 @@ export class MessagesLayoutComponent
     dateTimeUtils = inject(DateTimeUtils);
     private cdr = inject(ChangeDetectorRef);
     private ngZone = inject(NgZone);
+    private router = inject(Router);
     private timeUpdateInterval: any;
 
     getMessagesData = signal<any>({
@@ -100,19 +102,95 @@ export class MessagesLayoutComponent
     error = '';
     newMessage: string = '';
     messageStatus = signal('Đã gửi');
-    activeMessageLinkPreview: any | null = null;
 
-    @Input() conversationId: string = '';
-    @Input() conversationType: string = '';
-    @Input() currentUserId: any = {};
-    @Input() getMessageInfor: any = {};
-    @Input() joinedConversations: any[] = [];
-    @Input() userBlock: any[] = [];
-    @Input() onlineUsers: Set<string> = new Set();
-    @Input() UserPresence: Map<string, UserPresence> = new Map();
+    convStore = inject(ActiveConversationService);
+    messageStore = inject(MessageStoreService);
+
+    @Input() set convID(val: string) {
+        if (val && val !== this.conversationId()) {
+            // Proactive Guard: If list is loaded, check if ID is actually valid or virtual
+            if (this.convStore.isDataLoaded()) {
+                const isValid = this.convStore.getConversationById(val);
+                const isVirtual = val.startsWith('conv_');
+                if (!isValid && !isVirtual) {
+                    console.warn('[GUARD] Instant redirect for bad ID:', val);
+                    this.convStore.setActiveConversationId('');
+                    this.router.navigate(['/conversations']);
+                    return;
+                }
+            }
+
+            this.resetComponentState();
+            this.conversationId.set(val);
+            this.loadMessages(val);
+            this.setupSocketListener(val);
+        }
+    }
+
+    private resetComponentState() {
+        this.loading = true;
+        this.activeScrollRequestId++; // Cancel any ongoing scrollToMessage attempts
+        
+        // Clear data to prevent ghosting
+        this.getMessagesData.set({
+            homeMessagesData: {
+                messages: [],
+                conversation_type: '',
+                pinnedMessages: [],
+            },
+        });
+        this.pinnedMessages.set([]);
+        
+        // Reset flags
+        this.isLoaded = false;
+        this.error = '';
+        this.newMessage = '';
+        
+        // Clear active timeouts
+        if (this.highlightTimeout) clearTimeout(this.highlightTimeout);
+        if (this.scrollTimeout) clearTimeout(this.scrollTimeout);
+        if (this.aiSummaryTypewriterTimer) clearInterval(this.aiSummaryTypewriterTimer);
+        this.stopAiSummaryStream();
+        
+        // Reset scroll position indicator
+        this.autoScroll = true;
+        this.isNearBottom = true;
+        this.pendingScroll = true; // Ensure next cycle cleans up any remaining offsets
+
+        // Cố định scroll về đáy ngay lập tức để tránh jitter của đoạn chat cũ
+        if (this.messagesContent?.nativeElement) {
+            this.messagesContent.nativeElement.scrollTop = 0;
+        }
+    }
+    conversationId = signal<string>('');
+
+    // Computed signals based on convStore and conversationId
+    currentUserId = computed(() => this.authService.getUserId());
+    onlineUsers = computed(() => this.convStore.onlineUsers());
+    UserPresence = computed(() => this.convStore.userPresence());
+    userBlock = computed(() => this.convStore.userBlock());
+    
+    currentConversation = computed(() => this.convStore.getConversationById(this.conversationId()));
+    
+    conversationType = computed(() => this.currentConversation()?.type || '');
+    
     @Input() summaryTriggerUnreadCount = 0;
     @Input() summaryTriggerLastReadMessageId = '';
     @Input() summaryTriggerKey = 0;
+    
+
+    getMessageInfor = computed(() => {
+        const conv = this.currentConversation();
+        if (!conv) return {};
+        return {
+            title: conv.title,
+            participants: conv.participants,
+            user_info: this.convStore.conversations()?.homeConversationData?.userInfo,
+            type: conv.type,
+            avatar_url: conv.avatar_url,
+            other_participant: conv.type === 'direct' ? conv.participants.find((p: any) => String(p.user_id) !== String(this.currentUserId())) : null
+        };
+    });
 
     @Output() toggleDetails = new EventEmitter<void>();
     @Output() conversationCreated = new EventEmitter<string>();
@@ -139,28 +217,28 @@ export class MessagesLayoutComponent
 
     // Check if a user is online
     isUserOnline(userId: string): boolean {
-        // return this.onlineUsers.has(userId);
-        return this.UserPresence.get(userId)?.status === 'online';
+        return this.convStore.userPresence().get(userId)?.status === 'online';
     }
 
     getUserLastOnlineAt(participant: any): string | Date {
-        // Lấy dữ liệu realtime từ UserPresence trước
-        const presence = this.UserPresence.get(participant?.user_id);
+        const presence = this.convStore.userPresence().get(participant?.user_id);
         if (presence && presence.last_online_at) {
             return presence.last_online_at;
         }
-        // Nếu không có realtime, lấy DB data khởi tạo ban đầu
         return participant?.last_online_at;
     }
 
     relativeTime(dateInput: string | Date): string {
+        // Access timeTick signal to establish a reactive dependency
+        // This ensures the template re-renders whenever the global tick changes
+        this.convStore.timeTick();
         return this.dateTimeUtils.relativeTime(dateInput);
     }
 
     formatMessageText(content: string | null | undefined): string {
         if (!content) return '';
         // Lấy danh sách thành viên từ conversation hiện tại
-        const participants = this.getMessageInfor?.participants || [];
+        const participants = this.getMessageInfor()?.participants || [];
         return this.linkPreviewUtils.formatMessageText(content, participants);
     }
 
@@ -226,43 +304,17 @@ export class MessagesLayoutComponent
 
     closedPreviewUrls = new Set<string>();
 
-    getLinkPreview(content: string): any | null {
-        if (!content) {
-            this.activeMessageLinkPreview = null;
-            return null;
-        }
-
-        const url = this.linkPreviewUtils.extractFirstUrl(content);
-        let isHidden = false;
-
-        if (url) {
-            for (const closedUrl of this.closedPreviewUrls) {
-                if (closedUrl.includes(url) || url.includes(closedUrl)) {
-                    isHidden = true;
-                    break;
-                }
-            }
-        }
-
-        const previewData = this.linkPreviewUtils.getLinkPreview(content, (preview) => {
-            if (content === this.newMessage) {
-                this.activeMessageLinkPreview = preview;
-            }
-            this.cdr.markForCheck();
-        });
-
-        // Hide UI by returning null if closed, but activeMessageLinkPreview is still saved via callback!
-        if (isHidden) return null;
-
-        return previewData;
-    }
-
     clearLinkPreview() {
-        const url = this.linkPreviewUtils.extractFirstUrl(this.newMessage);
+        const preview = this.activeComposerLinkPreview();
+        const url = preview?.url || this.linkPreviewUtils.extractFirstUrl(this.newMessage);
+        
         if (url) {
             this.closedPreviewUrls.add(url);
-            this.cdr.markForCheck();
         }
+        
+        // Immediately clear the state
+        this.activeComposerLinkPreview.set(null);
+        this.cdr.markForCheck();
     }
 
     isLoaded = false;
@@ -272,9 +324,13 @@ export class MessagesLayoutComponent
     hasMore = true; // Còn tin nhắn cũ hơn để load
     isLoadingMore = false; // Đang load thêm tin nhắn
     currentOffset = 0; // Vị trí hiện tại (số messages đã load)
+
+    // Link Preview state
+    activeComposerLinkPreview = signal<any | null>(null);
     lastMessageId = ''; // ID của tin nhắn cuối cùng đã load
 
     private scrollTimeout: any;
+    private activeScrollRequestId = 0;
     private lastConversationId: string = ''; // Track conversation changes
     private pendingScroll = false; // Flag to scroll in ngAfterViewChecked
     private needsFocus = true; // Flag to auto-focus input
@@ -297,8 +353,6 @@ export class MessagesLayoutComponent
         '😢': 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f622/lottie.json',
         '😡': 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f621/lottie.json'
     };
-    private messageReactions = signal(new Map<string, any[]>());
-    private countReactionMap = signal(new Map<string, Record<string, number>>());
     private isSyncingReaction = signal(false);
 
     // Typing state
@@ -315,10 +369,10 @@ export class MessagesLayoutComponent
 
     mentionParticipants = computed(() => {
         const term = this.mentionSearchTerm().toLowerCase();
-        const participants = this.getMessageInfor?.participants || [];
-        if (!term) return participants.filter((p: any) => p.user_id !== this.currentUserId);
+        const participants = this.getMessageInfor()?.participants || [];
+        if (!term) return participants.filter((p: any) => p.user_id !== this.currentUserId());
         return participants.filter((p: any) =>
-            p.user_id !== this.currentUserId &&
+            p.user_id !== this.currentUserId() &&
             (p.full_name?.toLowerCase().includes(term) || p.email?.toLowerCase().includes(term))
         );
     });
@@ -343,6 +397,8 @@ export class MessagesLayoutComponent
     preUploadFiles = signal<StagedFile[]>([]);
     showPinnedDropdown = false;
     openPinnedMenuId: string | null = null;
+    private onTypingSocket?: (data: any) => void;
+    private onStopTypingSocket?: (data: any) => void;
     private onNewMessageSocket?: (data: any) => void;
     private onUpdateMessageSocket?: (data: any) => void;
     private onUpdateConversationSocket?: (data: any) => void;
@@ -350,9 +406,6 @@ export class MessagesLayoutComponent
     private onUnpinMessageSocket?: (data: any) => void;
     private onUpdateProfileSocket?: (data: any) => void;
     private onDeleteMessageSocket?: (data: any) => void;
-    private onTypingSocket?: (data: any) => void;
-    private onStopTypingSocket?: (data: any) => void;
-    private onReactionMessageSocket?: (data: any) => void;
 
     
     private pinnedMenuTimeout: any;
@@ -391,7 +444,7 @@ export class MessagesLayoutComponent
                 const messageContent = `đã bỏ ghim tin nhắn: ${this.pinnedMessagePreviewText(pm)}`;
                 this.postAndBroadcastMessage(messageContent, 'system');
             },
-            error: (error) => {
+            error: (error: any) => {
                 console.error('Error unpinning message:', error);
             }
         });
@@ -537,6 +590,24 @@ export class MessagesLayoutComponent
                 })
             }
         })
+
+        // Effect mới: Tự động đồng bộ Dữ liệu vào Cache (Service)
+        effect(() => {
+            const data = this.getMessagesData();
+            const pinned = this.pinnedMessages();
+            const convId = this.conversationId();
+            const isLoaded = this.isLoaded;
+
+            if (convId && isLoaded) {
+                this.messageStore.setConversationState(convId, {
+                    getMessagesData: data,
+                    pinnedMessages: pinned,
+                    messageReactions: this.convStore.globalReactions(),
+                    lastMessageId: this.lastMessageId,
+                    isLoaded: true
+                });
+            }
+        });
     }
 
     // TrackBy function để tối ưu rendering
@@ -584,26 +655,35 @@ export class MessagesLayoutComponent
 
     handleInputPaste(event: ClipboardEvent) {
         const clipboard = event.clipboardData;
-        if (!clipboard?.items?.length) return;
+        if (!clipboard) return;
 
+        // 1. Handle Images
         const pastedImageFiles: File[] = [];
-        for (const item of Array.from(clipboard.items)) {
-            if (item.kind !== 'file') continue;
-            if (!item.type.startsWith('image/')) continue;
-
-            const file = item.getAsFile();
-            if (file) pastedImageFiles.push(file);
+        const items = Array.from(clipboard.items);
+        for (const item of items) {
+            if (item.kind === 'file' && item.type.startsWith('image/')) {
+                const file = item.getAsFile();
+                if (file) pastedImageFiles.push(file);
+            }
         }
 
-        if (pastedImageFiles.length === 0) return;
+        if (pastedImageFiles.length > 0) {
+            this.addFilesToStaging(pastedImageFiles);
+        }
 
-        // If clipboard only has image data, prevent default to avoid odd paste behavior in textarea.
+        // 2. Handle Text (Normalizing to Plain Text to avoid HTML/Link-to-title issues)
         const pastedText = clipboard.getData('text/plain');
-        if (!pastedText) {
+        if (pastedText) {
+            event.preventDefault();
+            // Insert as plain text at current cursor position
+            document.execCommand('insertText', false, pastedText);
+            
+            // Sync state immediately
+            this.onInput(event);
+        } else if (pastedImageFiles.length > 0) {
+            // If only images and no text, prevent default to avoid odd browser behavior
             event.preventDefault();
         }
-
-        this.addFilesToStaging(pastedImageFiles);
     }
 
     removePreUploadFile(index: number) {
@@ -631,16 +711,8 @@ export class MessagesLayoutComponent
     }
 
     private detachMessageSocketListeners() {
-        if (this.onNewMessageSocket) this.socketService.off('newMessage', this.onNewMessageSocket);
-        if (this.onUpdateMessageSocket) this.socketService.off('updateMessage', this.onUpdateMessageSocket);
-        if (this.onUpdateConversationSocket) this.socketService.off('updateConversation', this.onUpdateConversationSocket);
-        if (this.onPinMessageSocket) this.socketService.off('pinMessage', this.onPinMessageSocket);
-        if (this.onUnpinMessageSocket) this.socketService.off('unpinMessage', this.onUnpinMessageSocket);
-        if (this.onUpdateProfileSocket) this.socketService.off('updateProfile', this.onUpdateProfileSocket);
-        if (this.onDeleteMessageSocket) this.socketService.off('deleteMessage', this.onDeleteMessageSocket);
         if (this.onTypingSocket) this.socketService.off('typing', this.onTypingSocket);
         if (this.onStopTypingSocket) this.socketService.off('stopTyping', this.onStopTypingSocket);
-        if (this.onReactionMessageSocket) this.socketService.off('reactionMessage', this.onReactionMessageSocket);
 
         this.onNewMessageSocket = undefined;
         this.onUpdateMessageSocket = undefined;
@@ -651,7 +723,6 @@ export class MessagesLayoutComponent
         this.onDeleteMessageSocket = undefined;
         this.onTypingSocket = undefined;
         this.onStopTypingSocket = undefined;
-        this.onReactionMessageSocket = undefined;
     }
 
     setupSocketListener(conversationId: string) {
@@ -662,10 +733,8 @@ export class MessagesLayoutComponent
 
         // Setup listener cho tin nhắn mới
         this.onNewMessageSocket = (data: any) => {
-            if (data.conversation_id === conversationId && data.sender_id !== this.currentUserId) {
+            if (data.conversation_id === conversationId && data.sender_id !== this.currentUserId()) {
                 this.lastMessageId = data.id;
-                console.log('this.lastMessageId', this.lastMessageId);
-                console.log('data', data.sender_id, this.currentUserId);
                 // Kiểm tra xem tin nhắn đã tồn tại chưa (tránh duplicate)
                 const currentMessages = this.getMessagesData().homeMessagesData?.messages || [];
                 const messageExists = currentMessages.some((msg: any) => msg.id === data.id);
@@ -776,7 +845,6 @@ export class MessagesLayoutComponent
 
         // Đồng bộ thay đổi trạng thái call vào message list (pending/ongoing/completed/missed...)
         this.onUpdateConversationSocket = (data: any) => {
-            console.log('Received updateConversation event in Messages:', data);
             if (data?.conversation_id !== conversationId) return;
             if (!(data?.message_type === 'call' || data?.call || data?.call_id)) return;
 
@@ -833,7 +901,6 @@ export class MessagesLayoutComponent
         this.socketService.on('unpinMessage', this.onUnpinMessageSocket);
 
         this.onUpdateProfileSocket = (data: any) => {
-            console.log('Received updateProfile event in Messages:', data);
 
             this.getMessagesData.update((old) => {
                 // Nếu chưa có data thì return luôn
@@ -891,7 +958,7 @@ export class MessagesLayoutComponent
         this.socketService.on('updateProfile', this.onUpdateProfileSocket);
 
         this.onTypingSocket = (data: any) => {
-            if (data.conversation_id === conversationId && data.user_id !== this.currentUserId) {
+            if (data.conversation_id === conversationId && data.user_id !== this.currentUserId()) {
                 this.typingUsers.update(users => {
                     if (!users.find(u => u.user_id === data.user_id)) {
                         return [...users, data];
@@ -943,111 +1010,14 @@ export class MessagesLayoutComponent
             }
         };
         this.socketService.on('deleteMessage', this.onDeleteMessageSocket);
-
-        this.onReactionMessageSocket = (data: any) => {
-            console.log('Received reactionMessage event:', data);
-            this.messageReactions.update(map => {
-                const newMap = new Map(map);
-                newMap.set(data.message_id, data.reactions);
-                return newMap;
-            })
-            this.countReactionMap.update(map => {
-                const newMap = new Map(map);
-                newMap.set(data.message_id, data.counts);
-                return newMap;
-            })
-            this.cdr.markForCheck();
-        };
-        this.socketService.on('reactionMessage', this.onReactionMessageSocket);
     }
 
     ngOnInit() {
         console.log('Online User', this.onlineUsers);
-        if (this.conversationId) {
-            if (this.conversationId.startsWith('conv_')) {
-                this.getMessagesData.set({
-                    homeMessagesData: {
-                        messages: [],
-                        conversation_type: '',
-                        pinnedMessages: [],
-                    },
-                }); // Clear messages data ngay khi conversationId thay đổi để tránh hiển thị nhầm lẫn
-                this.pinnedMessages.set([]); // Clear pinned messages
-                this.isLoadingMore = false;
-                this.isLoaded = true;
-                return; // Clear messages data ngay khi conversationId thay đổi để tránh hiển thị nhầm lẫn
-            }
-            else {
-                this.loadMessages(this.conversationId);
-                this.setupSocketListener(this.conversationId);
-            }
-        }
-
-        this.ngZone.runOutsideAngular(() => {
-            this.timeUpdateInterval = setInterval(() => {
-                this.cdr.detectChanges();
-            }, 60000);
-        });
+        // Optimization: Không gọi loadMessages ở đây nữa vì @Input convID đã handle việc này 
+        // ngay khi component được khởi tạo nếu có giá trị.
     }
 
-    ngOnChanges(changes: SimpleChanges) {
-        console.log(`getMessageInfor:::`, this.getMessageInfor);
-
-        if (changes['conversationId']) {
-            const newConversationId = changes['conversationId'].currentValue;
-            const oldConversationId = changes['conversationId'].previousValue;
-
-            // Chỉ xử lý khi thực sự thay đổi conversation
-            if (newConversationId && newConversationId !== oldConversationId) {
-                this.resetAiSummaryUI();
-                this.conversationId = newConversationId;
-                // Load messages và setup socket mới (cleanup được xử lý trong setupSocketListener)
-                if (newConversationId.startsWith('conv_')) {
-                    this.getMessagesData.set({
-                        homeMessagesData: {
-                            messages: [],
-                            conversation_type: '',
-                            pinnedMessages: [],
-                        },
-                    }); // Clear messages data ngay khi conversationId thay đổi để tránh hiển thị nhầm lẫn
-                    this.pinnedMessages.set([]); // Clear pinned messages
-                    this.isLoaded = true;
-                    this.isLoadingMore = false;
-                    return; // Clear messages data ngay khi conversationId thay đổi để tránh hiển thị nhầm lẫn
-                }
-                // Nếu là quá trình nâng cấp từ hội thoại ảo lên thật của chính nó
-                if (oldConversationId && oldConversationId.startsWith('conv_') && !newConversationId.startsWith('conv_')) {
-                    this.setupSocketListener(newConversationId);
-
-                    // Nếu danh sách tin nhắn hiện tại đang trống (người nhận), hãy gọi loadMessages 
-                    // để lấy những tin nhắn đầu tiên vừa được tạo (vì người nhận có thể lỡ mất socket newMessage do chưa join room kịp)
-                    const currentMsgs = this.getMessagesData()?.homeMessagesData?.messages || [];
-                    if (currentMsgs.length === 0) {
-                        this.loadMessages(newConversationId);
-                    }
-                    return;
-                }
-
-                this.loadMessages(newConversationId);
-                this.needsFocus = true;
-                this.setupSocketListener(newConversationId);
-            }
-        }
-
-        if (changes['summaryTriggerKey']) {
-            const triggerKey = Number(changes['summaryTriggerKey'].currentValue || 0);
-            const unreadCount = Number(this.summaryTriggerUnreadCount || 0);
-
-            if (triggerKey > 0 && unreadCount >= 10) {
-                this.unreadSummaryCount = unreadCount;
-                this.showUnreadSummaryPopup = true;
-            } else {
-                this.showUnreadSummaryPopup = false;
-            }
-
-            this.cdr.markForCheck();
-        }
-    }
 
     ngAfterViewInit() {
         // Scroll xuống dưới cùng sau khi view được khởi tạo
@@ -1070,9 +1040,6 @@ export class MessagesLayoutComponent
 
     ngOnDestroy() {
         this.stopAiSummaryStream();
-        if (this.timeUpdateInterval) {
-            clearInterval(this.timeUpdateInterval);
-        }
         if (this.scrollTimeout) {
             clearTimeout(this.scrollTimeout);
         }
@@ -1092,51 +1059,84 @@ export class MessagesLayoutComponent
 
     loadMessages(conversationId: string) {
         if (!conversationId) return;
-        this.isLoaded = false;
-        this.loading = true;
+
+        // 1. Kiểm tra Cache trước
+        const cache = this.messageStore.getConversationState(conversationId);
+        if (cache.isLoaded) {
+            this.getMessagesData.set(cache.getMessagesData);
+            this.pinnedMessages.set(cache.pinnedMessages);
+            // Re-sync reactions from cache to global service if needed, 
+            // but global service might already have them. 
+            // In any case, we don't set a local messageReactions signal anymore.
+            this.lastMessageId = cache.lastMessageId;
+            this.loading = false;
+            this.isLoaded = true;
+            this.pendingScroll = true; // Kích hoạt scroll cho cache hit
+        } else {
+            this.isLoaded = false;
+            this.loading = true;
+        }
+
         this.reactionPickerMessageId = null;
-        this.messageReactions.set(new Map<string, any[]>());
 
         this.messagesService.getMessages(conversationId).subscribe({
             next: (response) => {
-                this.lastMessageId = response.metadata?.homeMessagesData?.last_message_id || '';
-                this.getMessagesData.set(response.metadata || {});
-                this.pinnedMessages.set(response.metadata?.homeMessagesData?.pinnedMessages || []);
+                const data = response.metadata || {};
+                this.lastMessageId = data.homeMessagesData?.last_message_id || '';
+                
+                const messages = data.homeMessagesData?.messages || [];
+                const pinned = data.homeMessagesData?.pinnedMessages || [];
+                
+                this.getMessagesData.set(data);
+                this.pinnedMessages.set(pinned);
                 this.loading = false;
                 this.isLoaded = true;
 
-                const reactionsMap = new Map<string, any[]>();
-                const countReactionMap = new Map<string, Record<string, number>>();
-                for (const reaction of response.metadata?.homeMessagesData?.messages || []) {
-                    if (reaction.reactions.length > 0) {
-                        reactionsMap.set(reaction.id, reaction.reactions);
-                        countReactionMap.set(reaction.id, reaction.countReactionMap);
+                // 2. Check if the conversation actually exists on the server
+                if (data.is_not_found) {
+                    const isVirtual = conversationId.startsWith('conv_');
+                    if (!isVirtual) {
+                        console.warn('[REDRECT] Invalid conversation ID detected, clearing state and navigating away:', conversationId);
+                        this.convStore.setActiveConversationId('');
+                        this.router.navigate(['/conversations']);
+                        return;
                     }
                 }
-                this.messageReactions.set(reactionsMap);
-                this.countReactionMap.set(countReactionMap);
 
-                console.log('messageReactions: ', this.messageReactions());
-                console.log('countReactionMap: ', this.countReactionMap());
+                // 2. Cập nhật Cache sau khi load thành công
+                this.messageStore.setConversationState(conversationId, {
+                    getMessagesData: data,
+                    pinnedMessages: pinned,
+                    messageReactions: this.convStore.globalReactions(),
+                    lastMessageId: this.lastMessageId,
+                    isLoaded: true
+                });
 
-                // Reset pagination state
-                this.currentOffset = response.metadata?.homeMessagesData?.messages?.length || 0;
-                this.hasMore = response.metadata?.homeMessagesData?.hasMore ?? true;
+                // --- Logic Reactions (Centralized Cache Sync) ---
+                for (const msg of messages) {
+                    if (msg.reactions && msg.reactions.length > 0) {
+                        this.convStore.syncReactions(msg.id, msg.reactions, msg.countReactionMap);
+                    }
+                }
 
-                // Chỉ reset scroll khi THAY ĐỔI conversation, không reset khi có tin nhắn mới
+                // --- Logic Pagination & Scroll (Original) ---
+                this.currentOffset = messages.length;
+                this.hasMore = data.homeMessagesData?.hasMore ?? true;
+
                 const isConversationChange = this.lastConversationId !== conversationId;
                 if (isConversationChange) {
                     this.lastConversationId = conversationId;
-                    // Scroll xuống cuối
                     this.pendingScroll = true;
                 }
-                // Nếu là tin nhắn mới trong cùng conversation, giữ nguyên scroll position
             },
-            error: (error) => {
-                console.error('Error:', error);
+            error: (error: any) => {
+                console.error('Error loading messages:', error);
                 this.error = error.message;
                 this.loading = false;
                 this.isLoaded = true;
+                // Redirect if conversation is truly not found (404/500)
+                this.convStore.setActiveConversationId('');
+                this.router.navigate(['/conversations']);
             },
         });
     }
@@ -1147,7 +1147,7 @@ export class MessagesLayoutComponent
 
         this.isLoadingMore = true;
 
-        this.messagesService.getMessages(this.conversationId, 50, this.currentOffset).subscribe({
+        this.messagesService.getMessages(this.conversationId(), 50, this.currentOffset).subscribe({
             next: (response) => {
                 const olderMessages = response.metadata?.homeMessagesData?.messages || [];
                 if (olderMessages.length === 0) {
@@ -1169,7 +1169,7 @@ export class MessagesLayoutComponent
                 this.hasMore = response.metadata?.homeMessagesData?.hasMore ?? false;
                 this.isLoadingMore = false;
             },
-            error: (error) => {
+            error: (error: any) => {
                 console.error('Error loading more messages:', error);
                 this.isLoadingMore = false;
             },
@@ -1177,7 +1177,7 @@ export class MessagesLayoutComponent
     }
 
     getLastMessageSenderName(sender_id: string, sender_name: string): string {
-        if (sender_id === this.currentUserId) return 'Bạn ';
+        if (sender_id === this.currentUserId()) return 'Bạn ';
         return sender_name ? sender_name : 'Ai đó';
     }
 
@@ -1226,10 +1226,10 @@ export class MessagesLayoutComponent
         const messageData = {
             id: tempId,
             _trackId: tempId,
-            sender_id: this.currentUserId,
+            sender_id: this.currentUserId(),
             call_id: null,
             content: content,
-            conversation_id: this.conversationId,
+            conversation_id: this.conversationId(),
             created_at: new Date().toISOString(),
             deleted_for_all: false,
             duration: file_metadata?.duration ? Math.round(file_metadata?.duration) : null,
@@ -1253,7 +1253,7 @@ export class MessagesLayoutComponent
             ? messageTransform(messageData)
             : { ...messageData };
 
-        const currentUser = this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId) || {};
+        const currentUser = this.getMessageInfor()?.participants.find((p: any) => p.user_id === this.currentUserId()) || {};
         const newMessage = {
             ...messageToAdd,
             sender_name: currentUser.full_name,
@@ -1264,11 +1264,11 @@ export class MessagesLayoutComponent
 
         const effectiveTempId = existingTempId ?? tempId;
         if (!existingTempId) {
-            this.updateUIWithNewMessage(newMessage, this.conversationId);
+            this.updateUIWithNewMessage(newMessage, this.conversationId());
         }
 
         return this.messagesService
-            .postMessage(this.conversationId, this.currentUserId, content, replyTo, messageType, file_metadata)
+            .postMessage(this.conversationId(), this.currentUserId(), content, replyTo, messageType, file_metadata)
             .pipe(
                 tap({
                     next: (response) => {
@@ -1285,7 +1285,7 @@ export class MessagesLayoutComponent
                             sender_avatar: currentUser.avatar_url,
                         };
 
-                        this.conversationService.putConversation(this.conversationId, {
+                        this.conversationService.putConversation(this.conversationId(), {
                             last_message_id: realId
                         }).subscribe();
 
@@ -1294,29 +1294,29 @@ export class MessagesLayoutComponent
                         // Cập nhật media sidebar (nếu là media message)
                         if (realMessage.message_type !== 'text') {
                             this.socketService.emit('updateConversationInfo', {
-                                conversation_id: this.conversationId,
+                                conversation_id: this.conversationId(),
                                 upload_file: realMessage // Emit nguyên object tin nhắn như yêu cầu của user
                             });
                         }
 
                         // Chỉ notify khi conversation chưa có trong danh sách local (thường là cuộc trò chuyện mới tạo)
                         // HOẶC nếu đây là một cuộc nâng cấp từ ảo lên thật (vô hiệu hóa guard isKnownConversation vì lúc này message list đã được cập nhật ID thật rồi)
-                        const isKnownConversation = (this.joinedConversations || [])
-                            .some((conv: any) => conv.conversation_id === this.conversationId);
+                        const isKnownConversation = (this.convStore.joinedConversations() || [])
+                            .some((conv: any) => conv.conversation_id === this.conversationId());
 
                         
                         if (!isKnownConversation || isNewConversationUpgrade) {
-                            const receiverIds = (this.getMessageInfor?.participants || [])
+                            const receiverIds = (this.getMessageInfor()?.participants || [])
                                 .map((p: any) => p.user_id)
-                                .filter((id: any) => String(id) !== String(this.currentUserId));
+                                .filter((id: any) => String(id) !== String(this.currentUserId()));
 
                             
                             if (receiverIds.length > 0) {
                                 this.socketService.emit('notifyNewConversation', {
                                     receiverIds,
-                                    conversationId: this.conversationId,
-                                    senderId: this.currentUserId,
-                                    participants: this.getMessageInfor?.participants
+                                    conversationId: this.conversationId(),
+                                    senderId: this.currentUserId(),
+                                    participants: this.getMessageInfor()?.participants
                                 });
                             }
                         }
@@ -1334,7 +1334,7 @@ export class MessagesLayoutComponent
                             },
                         }));
 
-                        const participantId = this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId)?.id;
+                        const participantId = this.getMessageInfor()?.participants.find((p: any) => p.user_id === this.currentUserId())?.id;
 
                         
                         if (participantId && !participantId.startsWith('par_')) {
@@ -1344,16 +1344,16 @@ export class MessagesLayoutComponent
                             }).subscribe({
                                 next: () => {
                                     this.socketService.emit('updateParticipant', {
-                                        conversation_id: this.conversationId,
-                                        user_id: this.currentUserId,
+                                        conversation_id: this.conversationId(),
+                                        user_id: this.currentUserId(),
                                         last_read_message_id: realId
                                     });
                                 },
-                                error: (err) => console.error('Error updating participant:', err),
+                                error: (err: any) => console.error('Error updating participant:', err),
                             });
                         }
                     },
-                    error: (error) => {
+                    error: (error: any) => {
                         this.loading = false;
                         console.error('Error posting message:', error);
                         this.messageStatus.set('Lỗi');
@@ -1363,13 +1363,12 @@ export class MessagesLayoutComponent
     }
 
     updateUIWithNewMessage(newMessage: any, conversationId?: string) {
-        console.log(`updateUIWithNewMessage:::`, newMessage);
         // cập nhật lastMessage
-        if (!conversationId) conversationId = this.conversationId;
+        if (!conversationId) conversationId = this.conversationId();
 
 
         // không cập nhật nội dung trò chuyện nếu đang ở conversation khác
-        if (this.conversationId === conversationId) {
+        if (this.conversationId() === conversationId) {
             this.getMessagesData.update((old) => {
                 const homeMessagesData = old?.homeMessagesData || {
                     messages: [],
@@ -1432,8 +1431,42 @@ export class MessagesLayoutComponent
     }
 
     onInput(event: Event) {
+        const host = this.messageInput?.nativeElement;
+        if (host) {
+            // Synchronize internal state with the contenteditable content
+            this.newMessage = this.getMarkupContent(host).trim();
+        }
+
         this.onTyping();
         this.checkMentionState();
+
+        // ── Restored Link Preview Logic ──
+        if (!this.newMessage) {
+            this.activeComposerLinkPreview.set(null);
+            return;
+        }
+
+        const url = this.linkPreviewUtils.extractFirstUrl(this.newMessage);
+        if (!url) {
+            this.activeComposerLinkPreview.set(null);
+            return;
+        }
+
+        // Check if this URL was recently closed (X)
+        const isClosed = Array.from(this.closedPreviewUrls).some(u => u.includes(url) || url.includes(u));
+        if (isClosed) {
+            this.activeComposerLinkPreview.set(null);
+            return;
+        }
+
+        // Trigger immediate fetch
+        // Returns loading state if not cached, facilitating logic for skeleton effect
+        const preview = this.linkPreviewUtils.getLinkPreview(this.newMessage, (res) => {
+            this.activeComposerLinkPreview.set(res);
+            this.cdr.markForCheck();
+        });
+
+        this.activeComposerLinkPreview.set(preview);
     }
 
     async handleSendBtn() {
@@ -1447,21 +1480,21 @@ export class MessagesLayoutComponent
         if (!markupContent && stagedFiles.length === 0) return;
 
         let optimisticTextTempId: string | undefined;
-        const isVirtualConversation = this.conversationId.startsWith('conv_');
+        const isVirtualConversation = this.conversationId().startsWith('conv_');
 
         // Optimistic UI: luôn hiển thị text ngay khi bấm gửi, trước cả bước tạo conversation thật.
         if (isVirtualConversation && markupContent) {
-            const currentUser = this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId) || {};
+            const currentUser = this.getMessageInfor()?.participants.find((p: any) => p.user_id === this.currentUserId()) || {};
             optimisticTextTempId = 'temp-' + Date.now();
             this.messageStatus.set('Đang gửi');
             this.updateUIWithNewMessage({
                 id: optimisticTextTempId,
                 _trackId: optimisticTextTempId,
-                sender_id: this.currentUserId,
+                sender_id: this.currentUserId(),
                 sender_name: currentUser.full_name,
                 sender_avatar: currentUser.avatar_url,
                 content: markupContent,
-                conversation_id: this.conversationId,
+                conversation_id: this.conversationId(),
                 created_at: new Date().toISOString(),
                 deleted_for_all: false,
                 message_type: 'text',
@@ -1475,26 +1508,26 @@ export class MessagesLayoutComponent
                     parent_message_type: replyToMessageObj.message_type || null,
                     parent_message_thumbnail_url: replyToMessageObj.thumbnail_url || null,
                 } : null,
-            }, this.conversationId);
+            }, this.conversationId());
         }
 
         let isNewConversationUpgrade = false;
-        if (this.conversationId.startsWith('conv_')) {
+        if (this.conversationId().startsWith('conv_')) {
             isNewConversationUpgrade = true;
             const response = await firstValueFrom(
                 this.conversationService.postConversation(
-                    this.getMessageInfor?.other_participant?.user_id,
-                    this.getMessageInfor?.user_info?.id
+                    this.getMessageInfor()?.other_participant?.user_id,
+                    this.getMessageInfor()?.user_info?.id
                 )
             );
             const newConvData = response.metadata?.newConversation;
             if (newConvData) {
-                this.conversationId = newConvData.conv?.id;
+                this.conversationId.set(newConvData.conv?.id);
 
                 // Cập nhật ID thật cho các participants trong getMessageInfor để tránh lỗi 500 khi updateParticipant
                 const realParticipants = [newConvData.you, ...newConvData.participants];
-                if (this.getMessageInfor?.participants) {
-                    this.getMessageInfor.participants = this.getMessageInfor.participants.map(
+                if (this.getMessageInfor()?.participants) {
+                    this.getMessageInfor().participants = this.getMessageInfor().participants.map(
                         (p: any) => {
                             const realP = realParticipants.find((rp: any) => rp.user_id === p.user_id);
                             return realP ? { ...p, id: realP.id } : p;
@@ -1503,8 +1536,8 @@ export class MessagesLayoutComponent
                 }
 
                 // JOIN SOCKET ROOM MỚI VÀ THÔNG BÁO CHO CHA
-                this.setupSocketListener(this.conversationId);
-                this.conversationCreated.emit(this.conversationId);
+                this.setupSocketListener(this.conversationId());
+                this.convStore.upgradeConversation(this.conversationId(), this.conversationId());
             }
         }
 
@@ -1551,11 +1584,15 @@ export class MessagesLayoutComponent
                 optimisticTextTempId,
                 isNewConversationUpgrade
             );
+
+            // Clear typing indicator immediately after sending
+            this.stopTyping();
         }
 
         // Clear input và state
         el.innerHTML = '';
         this.newMessage = '';
+        this.activeComposerLinkPreview.set(null); // Clear preview immediately on send
         this.cancelReply();
         this.aiSummaryStreamToken = 0;
         this.aiSummaryText = '';
@@ -1577,7 +1614,7 @@ export class MessagesLayoutComponent
                     icon: 'warning',
                     title: 'Tệp quá lớn',
                     text: validation.message,
-                    confirmButtonColor: '#00f2ff',
+                    confirmButtonColor: 'var(--accent)',
                     background: '#06131f',
                     color: '#fff'
                 });
@@ -1590,7 +1627,7 @@ export class MessagesLayoutComponent
         const finalFiles = validFiles;
 
         const formData = new FormData();
-        const currentUser = this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId) || {};
+        const currentUser = this.getMessageInfor()?.participants.find((p: any) => p.user_id === this.currentUserId()) || {};
 
         // Bước 1: Tạo temp message ngay lập tức cho mỗi file
         const tempEntries: { tempId: string; file: File }[] = [];
@@ -1609,11 +1646,11 @@ export class MessagesLayoutComponent
                 id: tempId,
                 _trackId: tempId,
                 _uploading: true,  // hiện progress bar
-                sender_id: this.currentUserId,
+                sender_id: this.currentUserId(),
                 sender_name: currentUser.full_name,
                 sender_avatar: currentUser.avatar_url,
                 content: file.name,
-                conversation_id: this.conversationId,
+                conversation_id: this.conversationId(),
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
                 message_type: messageType,
@@ -1631,11 +1668,11 @@ export class MessagesLayoutComponent
 
             tempEntries.push({ tempId, file });
             this.messageStatus.set('');
-            this.updateUIWithNewMessage(tempMsg, this.conversationId);
+            this.updateUIWithNewMessage(tempMsg, this.conversationId());
         });
 
         // Bước 2: Upload lên Cloudinary
-        this.uploadService.uploadFile(this.conversationId, formData).subscribe({
+        this.uploadService.uploadFile(this.conversationId(), formData).subscribe({
             next: (response) => {
                 const uploadedFiles = response.metadata.files;
 
@@ -1697,13 +1734,13 @@ export class MessagesLayoutComponent
                         this.messageStatus.set('');
                     })
                 ).subscribe({
-                    error: (err) => {
+                    error: (err: any) => {
                         console.error('Lỗi khi lưu chuỗi tin nhắn:', err);
                         this.messageStatus.set('Lỗi khi gửi');
                     }
                 });
             },
-            error: (error) => {
+            error: (error: any) => {
                 console.error('Error uploading files:', error);
                 this.error = 'Không thể tải lên tệp tin. Vui lòng thử lại.';
                 // Đánh dấu lỗi cho các temp message thay vì xóa
@@ -1812,7 +1849,7 @@ export class MessagesLayoutComponent
     getMessageReactions(message: any): any {
         if (!message?.id) return { emoji_char: '', count: 0 };
         const key = this.messageKey(message.id);
-        const counts = (this.countReactionMap().get(key) || {}) as Record<string, number>;
+        const counts = (this.convStore.globalReactionCounts().get(key) || {}) as Record<string, number>;
 
         let allEmoji = '';
         let allCount = 0;
@@ -1878,10 +1915,8 @@ export class MessagesLayoutComponent
         event.stopPropagation();
         if (!message?.id) return;
         const key = this.messageKey(message.id);
-        const details = this.messageReactions().get(key) || [];
-        const participants = this.joinedConversations.find((conv: any) => conv.conversation_id === this.conversationId)?.participants || [];
-        console.log('User Data', participants);
-        console.log('Details', details);
+        const details = this.convStore.globalReactions().get(key) || [];
+        const participants = this.convStore.joinedConversations().find((conv: any) => conv.conversation_id === this.conversationId())?.participants || [];
         details.forEach((reaction: any) => {
             const user = participants.find((p: any) => p.user_id === reaction.user_id);
             reaction.user = user;
@@ -1903,11 +1938,11 @@ export class MessagesLayoutComponent
 
         this.isSyncingReaction.set(true);
         const messageId = this.messageKey(message.id);
-        const userId = this.currentUserId;
+        const userId = this.currentUserId();
 
         // 1. Get raw reactions for toggle logic
-        const rawReactions = (this.messageReactions().get(messageId) || []).map(r => ({ ...r }));
-        const counts = { ...(this.countReactionMap().get(messageId) || {}) } as Record<string, number>;
+        const rawReactions = (this.convStore.globalReactions().get(messageId) || []).map(r => ({ ...r }));
+        const counts = { ...(this.convStore.globalReactionCounts().get(messageId) || {}) } as Record<string, number>;
 
         const existingIdx = rawReactions.findIndex(r => r.user_id === userId);
 
@@ -1929,14 +1964,14 @@ export class MessagesLayoutComponent
             }
         }
 
-        // 3. Update Signals
-        this.messageReactions.update(map => {
+        // 3. Update Global State
+        this.convStore.globalReactions.update(map => {
             const newMap = new Map(map);
             newMap.set(messageId, rawReactions);
             return newMap;
         });
 
-        this.countReactionMap.update(map => {
+        this.convStore.globalReactionCounts.update(map => {
             const newMap = new Map(map);
             newMap.set(messageId, counts);
             return newMap;
@@ -1948,12 +1983,12 @@ export class MessagesLayoutComponent
 
         // 4. Persistence call
         if (!isRemoving) {
-            this.messageReactionsService.addMessageReaction(this.conversationId, messageId, userId, emoji)
+            this.messageReactionsService.addMessageReaction(this.conversationId(), messageId, userId, emoji)
                 .pipe(finalize(() => this.isSyncingReaction.set(false)))
                 .subscribe({
-                    next: (res) => {
+                    next: (res: any) => {
                         console.log('Toggle synced:', res);
-                        this.messageReactions.update(map => {
+                        this.convStore.globalReactions.update(map => {
                             const reactions = map.get(messageId);
                             if (reactions) {
                                 const updateID = reactions.find((r: any) => r.user_id === userId && r.emoji_char === emoji && !r.id);
@@ -1964,7 +1999,7 @@ export class MessagesLayoutComponent
                             return map;
                         });
                     },
-                    error: (err) => console.error('Sync error:', err)
+                    error: (err: any) => console.error('Sync error:', err)
                 });
         }
         else {
@@ -1976,20 +2011,20 @@ export class MessagesLayoutComponent
                         }
                     }))
                     .subscribe({
-                        next: (res) => console.log('Toggle synced:', res),
-                        error: (err) => console.error('Sync error:', err)
+                        next: (res: any) => console.log('Toggle synced:', res),
+                        error: (err: any) => console.error('Sync error:', err)
                     });
             } else {
                 this.isSyncingReaction.set(false);
             }
 
             if (reactIndex.emoji_char !== emoji) {
-                this.messageReactionsService.addMessageReaction(this.conversationId, messageId, userId, emoji)
+                this.messageReactionsService.addMessageReaction(this.conversationId(), messageId, userId, emoji)
                     .pipe(finalize(() => this.isSyncingReaction.set(false)))
                     .subscribe({
-                        next: (res) => {
+                        next: (res: any) => {
                             console.log('Toggle synced:', res);
-                            this.messageReactions.update(map => {
+                            this.convStore.globalReactions.update(map => {
                                 const reactions = map.get(messageId);
                                 if (reactions) {
                                     const updateID = reactions.find((r: any) => r.user_id === userId && r.emoji_char === emoji && !r.id);
@@ -2000,7 +2035,7 @@ export class MessagesLayoutComponent
                                 return map;
                             });
                         },
-                        error: (err) => console.error('Sync error:', err)
+                        error: (err: any) => console.error('Sync error:', err)
                     });
             }
         }
@@ -2008,7 +2043,7 @@ export class MessagesLayoutComponent
         this.socketService.emit('reactionMessage', {
             reactions: rawReactions,
             counts: counts,
-            conversation_id: this.conversationId,
+            conversation_id: this.conversationId(),
             message_id: messageId
         });
     }
@@ -2099,8 +2134,8 @@ export class MessagesLayoutComponent
                 }));
 
                 const currentUser =
-                    this.getMessageInfor?.participants.find(
-                        (p: any) => p.user_id === this.currentUserId,
+                    this.getMessageInfor()?.participants.find(
+                        (p: any) => p.user_id === this.currentUserId()
                     ) || {};
                 const newMessage = {
                     ...response.metadata.deleteResult,
@@ -2115,7 +2150,7 @@ export class MessagesLayoutComponent
                     this.socketService.emit('updateConversation', newMessage);
                 }
             },
-            error: (error) => {
+            error: (error: any) => {
                 console.error('Error deleting message:', error);
                 this.error = error.message;
             },
@@ -2125,7 +2160,6 @@ export class MessagesLayoutComponent
     }
 
     forwardMessage(msg: any) {
-        console.log('Forwarding message:', this.joinedConversations);
         this.forwardingMessage = msg;
         this.showForwardModal = true;
         this.forwardLoading = false;
@@ -2133,9 +2167,9 @@ export class MessagesLayoutComponent
         this.forwardSearch = '';
         this.selectedForwardConversationIds.clear();
 
-        const joined = this.joinedConversations || [];
+        const joined = this.convStore.joinedConversations() || [];
         this.forwardConversations = joined.filter(
-            (conv: any) => conv.conversation_id !== this.conversationId,
+            (conv: any) => conv.conversation_id !== this.conversationId(),
         );
 
         if (this.forwardConversations.length === 0) {
@@ -2207,7 +2241,7 @@ export class MessagesLayoutComponent
 
         const participants = conv?.participants || [];
         const receiver = participants.find(
-            (p: any) => String(p?.user_id) !== String(this.currentUserId),
+            (p: any) => String(p?.user_id) !== String(this.currentUserId()),
         );
 
         return (
@@ -2257,7 +2291,7 @@ export class MessagesLayoutComponent
         }
 
         const { content, messageType, fileMetadata } = this.resolveForwardPayload(this.forwardingMessage);
-        const parentUserInfo = this.getMessageInfor?.user_info || {};
+        const parentUserInfo = this.getMessageInfor()?.user_info || {};
 
         this.forwardLoading = false;
         this.forwardError = '';
@@ -2265,7 +2299,7 @@ export class MessagesLayoutComponent
         const requests = targetConversationIds.map((targetConversationId) =>
             this.messagesService.postMessage(
                 targetConversationId,
-                this.currentUserId,
+                this.currentUserId(),
                 content,
                 undefined,
                 messageType,
@@ -2274,7 +2308,7 @@ export class MessagesLayoutComponent
         );
 
         forkJoin(requests).subscribe({
-            next: (responses) => {
+            next: (responses: any) => {
                 // this.forwardLoading = false;
                 this.closeForwardModal();
                 responses.forEach((res: any) => {
@@ -2290,7 +2324,7 @@ export class MessagesLayoutComponent
                     }
                 });
             },
-            error: (error) => {
+            error: (error: any) => {
                 console.error('Error forwarding message:', error);
                 this.forwardError = 'Chuyển tiếp thất bại. Vui lòng thử lại.';
                 this.forwardLoading = false;
@@ -2299,9 +2333,9 @@ export class MessagesLayoutComponent
     }
 
     pinMessage(msg: any) {
-        this.pinMessageService.pinMessage(msg.id, this.conversationId, this.currentUserId, msg.content, 1).subscribe({
+        this.pinMessageService.pinMessage(msg.id, this.conversationId(), this.currentUserId(), msg.content, 1).subscribe({
             next: (response) => {
-                const currentUser = this.getMessageInfor?.participants.find((p: any) => p.user_id === this.currentUserId) || {};
+                const currentUser = this.getMessageInfor()?.participants.find((p: any) => p.user_id === this.currentUserId()) || {};
                 const newPinMessage = {
                     ...response.metadata.newPinMessage,
                     pinned_by_name: currentUser.full_name,
@@ -2325,7 +2359,7 @@ export class MessagesLayoutComponent
 
                 this.postAndBroadcastMessage(messageContent, message_type);
             },
-            error: (error) => {
+            error: (error: any) => {
                 console.error('Lỗi khi ghim tin nhắn:', error);
             }
         });
@@ -2383,8 +2417,8 @@ export class MessagesLayoutComponent
                     }));
 
                     const currentUser =
-                        this.getMessageInfor?.participants.find(
-                            (p: any) => p.user_id === this.currentUserId,
+                        this.getMessageInfor()?.participants.find(
+                            (p: any) => p.user_id === this.currentUserId()
                         ) || {};
                     const updatedMsg = this.getMessagesData().homeMessagesData.messages.find(
                         (m: any) => m.parent_message_id === messageId,
@@ -2405,7 +2439,7 @@ export class MessagesLayoutComponent
 
                     this.closeEditModal();
                 },
-                error: (error) => {
+                error: (error: any) => {
                     console.error('Error editing message:', error);
                     this.error = error.message;
                     this.closeEditModal();
@@ -2566,7 +2600,6 @@ export class MessagesLayoutComponent
         this.messageInput?.nativeElement?.focus();
         const messages = this.getMessagesData().homeMessagesData?.messages || [];
         this.replyToMessage = messages.find((m: any) => m.id === msgId);
-        console.log('Parent Mess:', this.replyToMessage);
     }
 
     // Đóng khung reply
@@ -2578,15 +2611,23 @@ export class MessagesLayoutComponent
     // If the message is not yet in the DOM, keeps calling loadMoreMessages() until found.
     scrollToMessage(messageId: string) {
         if (!messageId) return;
-        this._doScrollToMessage(messageId, 0);
+        
+        const requestId = this.activeScrollRequestId;
+        // Add a small delay for DOM stability, especially if triggered from a menu that is closing
+        setTimeout(() => {
+            this._doScrollToMessage(messageId, 0, requestId);
+        }, 10);
     }
 
-    private _doScrollToMessage(messageId: string, attempt: number) {
-        const MAX_ATTEMPTS = 30; // 30 × loadMoreMessages = tối đa ~1500 tin
+    private _doScrollToMessage(messageId: string, attempt: number, requestId: number) {
+        // Break recursion if we have switched conversations
+        if (requestId !== this.activeScrollRequestId) return;
+        
+        const MAX_ATTEMPTS = 30;
 
         const el = document.getElementById(`message-${messageId}`);
         if (el) {
-            // Found — scroll and highlight
+            // Found in DOM — scroll and highlight
             if (this.highlightTimeout) clearTimeout(this.highlightTimeout);
 
             el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -2600,24 +2641,45 @@ export class MessagesLayoutComponent
             return;
         }
 
-        // Not in DOM yet
+        // Not in DOM — check if it exists in local data but just not rendered yet
+        const currentMessages = this.getMessagesData().homeMessagesData?.messages || [];
+        const existsInLocalData = currentMessages.some((m: any) => m.id === messageId);
+
+        if (existsInLocalData) {
+            // Message is in store but not yet in DOM, wait for a frame and try again without loading
+            if (attempt < 5) { // Limit local retries
+                setTimeout(() => this._doScrollToMessage(messageId, attempt + 1, requestId), 60);
+                return;
+            }
+        }
+
+        // Not in local data — Load older messages
         if (!this.hasMore || attempt >= MAX_ATTEMPTS) {
             console.warn('scrollToMessage: tin nhắn không tìm thấy, id =', messageId);
             return;
         }
 
-        // Load thêm một batch tin nhắn cũ hơn rồi thử lại sau khi render xong
+        // Proactive scroll towards the top (older messages area) while fetching
+        if (this.messagesContent?.nativeElement) {
+            this.messagesContent.nativeElement.scrollTo({
+                top: this.messagesContent.nativeElement.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+
         this.isLoadingMore = true;
-        this.messagesService.getMessages(this.conversationId, 50, this.currentOffset).subscribe({
+        // High throughput batch size for ultra-fast deep search
+        this.messagesService.getMessages(this.conversationId(), 100, this.currentOffset).subscribe({
             next: (response) => {
                 const olderMessages = response.metadata?.homeMessagesData?.messages || [];
                 if (olderMessages.length === 0) {
                     this.hasMore = false;
                     this.isLoadingMore = false;
-                    console.warn('scrollToMessage: hết tin nhắn, không tìm thấy id =', messageId);
+                    // Exit recursion if we reach the end of history without finding the message
                     return;
                 }
 
+                // Prepend older messages
                 this.getMessagesData.update((old) => ({
                     ...old,
                     homeMessagesData: {
@@ -2630,20 +2692,24 @@ export class MessagesLayoutComponent
                 this.hasMore = response.metadata?.homeMessagesData?.hasMore ?? false;
                 this.isLoadingMore = false;
 
-                // Đợi Angular render batch mới xong rồi thử tìm lại
-                setTimeout(() => this._doScrollToMessage(messageId, attempt + 1), 100);
+                // Instant chaining if still not in local data, otherwise wait slightly for render
+                const foundInNewBatch = olderMessages.some((m: any) => m.id === messageId);
+                const delay = foundInNewBatch ? 60 : 0;
+                
+                setTimeout(() => this._doScrollToMessage(messageId, attempt + 1, requestId), delay);
             },
             error: () => {
                 this.isLoadingMore = false;
-                console.warn('scrollToMessage: lỗi khi load thêm tin nhắn');
-            }
+            },
         });
     }
 
     isBlocked(): boolean {
-        if (this.getMessageInfor.participants.length > 2) return false;
-        const parti = this.getMessageInfor.participants.find((p: any) => p.user_id !== this.currentUserId);
-        return this.userBlock.find((block: any) => block.blocked_id === parti.user_id);
+        const infor = this.getMessageInfor();
+        if (!infor?.participants || infor.participants.length > 2) return false;
+        const parti = infor.participants.find((p: any) => p.user_id !== this.currentUserId());
+        if (!parti) return false;
+        return this.userBlock()?.some((block: any) => block.blocked_id === parti.user_id) ?? false;
     }
 
     async openCallWindow({
@@ -2668,9 +2734,9 @@ export class MessagesLayoutComponent
 
                 const payload: any = {
                     type: 'sendCallData',
-                    conversationType: this.conversationType,
-                    conversationId: this.conversationId,
-                    userId: this.currentUserId,
+                    conversationType: this.conversationType(),
+                    conversationId: this.conversationId(),
+                    userId: this.currentUserId(),
                     callId,
                     initializeVideo,
                     inviterName,
@@ -2678,18 +2744,18 @@ export class MessagesLayoutComponent
                     inviterId,
                 };
 
-                if (this.conversationType === GROUP_CALL) {
+                if (this.conversationType() === GROUP_CALL) {
                     payload.avatarWrap = {
                         isGroup: true,
-                        avatarUrl: this.getMessageInfor.avatar_url
-                            && this.getMessageInfor.avatar_url.trim()
-                            ? this.getMessageInfor.avatar_url : null,
-                        members: this.getMessageInfor.participants ?? [],
+                        avatarUrl: this.getMessageInfor().avatar_url
+                            && this.getMessageInfor().avatar_url.trim()
+                            ? this.getMessageInfor().avatar_url : null,
+                        members: this.getMessageInfor().participants ?? [],
                     }
                 } else {
                     payload.avatarWrap = {
                         isGroup: false,
-                        avatarUrl: this.getMessageInfor.other_participant.avatar_url
+                        avatarUrl: this.getMessageInfor()?.other_participant?.avatar_url
                     }
                 }
 
@@ -2727,7 +2793,7 @@ export class MessagesLayoutComponent
     }
 
     getLatestJoinableGroupCallMessage(): any | null {
-        if (this.conversationType !== GROUP_CALL) return null;
+        if (this.conversationType() !== GROUP_CALL) return null;
 
         const messages = this.getMessagesData().homeMessagesData?.messages || [];
         for (let i = messages.length - 1; i >= 0; i--) {
@@ -2756,19 +2822,19 @@ export class MessagesLayoutComponent
 
         this.callService.joinCall(callId).subscribe({
             next: () => {
-                this.callService.createLogJoinGroupCall(this.conversationId).subscribe({
-                    next: (res) => {
-                        const { name, avatarUrl } = this.authService.getUserInfor();
+                this.callService.createLogJoinGroupCall(this.conversationId()).subscribe({
+                    next: (res: any) => {
+                        const { full_name, avatar_url } = this.authService.getUserInfor();
                         const callLogMessage = {
                             ...res.metadata,
-                            sender_name: name,
-                            sender_avatar: avatarUrl,
+                            sender_name: full_name,
+                            sender_avatar: avatar_url,
                         };
 
                         this.updateUIWithNewMessage(callLogMessage);
                         this.broadcastMessage(callLogMessage);
                     },
-                    error: (error) => console.error(error),
+                    error: (error: any) => console.error(error),
                 });
 
                 this.openCallWindow({
@@ -2800,14 +2866,14 @@ export class MessagesLayoutComponent
             return;
         }
 
-        this.callService.startCall(this.conversationId, this.conversationType, media_type).subscribe({
+        this.callService.startCall(this.conversationId(), this.conversationType(), media_type).subscribe({
             next: async (res) => {
-                const { name, avatarUrl } = this.authService.getUserInfor();
+                const { full_name, avatar_url } = this.authService.getUserInfor();
 
                 const message = {
                     ...res.metadata,
-                    sender_name: name,
-                    sender_avatar: avatarUrl,
+                    sender_name: full_name,
+                    sender_avatar: avatar_url,
                 }
 
                 const callId = message.call.id;
@@ -2820,25 +2886,25 @@ export class MessagesLayoutComponent
                 this.broadcastMessage(message);
 
                 if (message.call.call_type && message.call.call_type === GROUP_CALL) {
-                    this.callService.createLogJoinGroupCall(this.conversationId).subscribe({
-                        next: (res) => {
+                    this.callService.createLogJoinGroupCall(this.conversationId()).subscribe({
+                        next: (res: any) => {
                             const systemMessage = {
                                 ...res.metadata,
                                 sender_name: name,
-                                sender_avatar: avatarUrl,
+                                sender_avatar: avatar_url,
                             };
 
                             this.updateUIWithNewMessage(systemMessage);
                             this.broadcastMessage(systemMessage);
                         },
-                        error: (error) => console.error(error)
+                        error: (error: any) => console.error(error)
                     })
                 }
 
                 const initializeVideo = media_type === 'video' ? true : false;
                 this.openCallWindow({ initializeVideo, callId });
             },
-            error: (error) => console.log(error)
+            error: (error: any) => console.log(error)
         })
     }
 
@@ -2974,8 +3040,8 @@ export class MessagesLayoutComponent
         this.aiSummaryLoading = true;
         this.aiSummaryStreaming = true;
 
-        const conversationId = this.conversationId;
-        const userId = String(this.currentUserId || '').trim();
+        const conversationId = this.conversationId();
+        const userId = String(this.currentUserId() || '').trim();
         if (!conversationId || !userId) {
             this.aiSummaryLoading = false;
             this.aiSummaryStreaming = false;
@@ -3077,9 +3143,9 @@ export class MessagesLayoutComponent
         if (!this.isTyping) {
             this.isTyping = true;
             this.socketService.emit('typing', {
-                conversation_id: this.conversationId,
-                user_id: this.currentUserId,
-                full_name: this.authService.getUserInfor().name
+                conversation_id: this.conversationId(),
+                user_id: this.currentUserId(),
+                full_name: this.authService.getUserInfor().full_name
             });
         }
 
@@ -3094,8 +3160,8 @@ export class MessagesLayoutComponent
         if (this.isTyping) {
             this.isTyping = false;
             this.socketService.emit('stopTyping', {
-                conversation_id: this.conversationId,
-                user_id: this.currentUserId
+                conversation_id: this.conversationId(),
+                user_id: this.currentUserId()
             });
             if (this.typingTimeout) clearTimeout(this.typingTimeout);
         }
@@ -3146,8 +3212,12 @@ export class MessagesLayoutComponent
         if (!this.savedSelectionRange) return;
         const sel = window.getSelection();
         if (sel) {
-            sel.removeAllRanges();
-            sel.addRange(this.savedSelectionRange);
+            try {
+                sel.removeAllRanges();
+                sel.addRange(this.savedSelectionRange);
+            } catch (e) {
+                console.error('Failed to restore selection:', e);
+            }
         }
     }
 
@@ -3158,9 +3228,10 @@ export class MessagesLayoutComponent
     }
 
     selectMention(participant: any) {
+        if (!participant) return;
         this.restoreSelection();
         const sel = window.getSelection();
-        if (!sel || !sel.rangeCount) return;
+        if (!sel || sel.rangeCount === 0) return;
 
         const range = sel.getRangeAt(0);
         const textNode = range.startContainer;

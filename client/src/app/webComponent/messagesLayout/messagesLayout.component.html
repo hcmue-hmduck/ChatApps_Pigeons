@@ -5,20 +5,21 @@
     <div class="chat-header-left">
 
         <!-- Avatar section -->
-        @if (getMessageInfor?.participants) {
+        @if (getMessageInfor().participants) {
         <div class="header-avatar-wrap">
-            @if (getMessageInfor?.type === 'group') {
-            <app-group-avatar-layout [members]="getMessageInfor.participants || []" [isGroup]="true"
-                [avatarUrl]="getMessageInfor.avatar_url && getMessageInfor.avatar_url.trim() ? getMessageInfor.avatar_url : null"
-                [alt]="getMessageInfor.title" [size]="42">
+            @if (getMessageInfor().type === 'group') {
+            <app-group-avatar-layout [members]="getMessageInfor().participants || []" [isGroup]="true"
+                [avatarUrl]="getMessageInfor().avatar_url && getMessageInfor().avatar_url.trim() ? getMessageInfor().avatar_url : null"
+                [alt]="getMessageInfor().title" [size]="42">
             </app-group-avatar-layout>
             } @else {
-            @if (getMessageInfor?.other_participant) {
+            @if (getMessageInfor().other_participant) {
             <div>
-                <img [src]="getMessageInfor.other_participant.avatar_url"
-                    [alt]="getMessageInfor.other_participant.full_name" class="header-avatar">
-                <span class="header-status-dot" [class.online]="isUserOnline(getMessageInfor.other_participant.user_id)"
-                    [class.offline]="!isUserOnline(getMessageInfor.other_participant.user_id)">
+                <img [src]="getMessageInfor().other_participant.avatar_url"
+                    [alt]="getMessageInfor().other_participant.full_name" class="header-avatar">
+                <span class="header-status-dot"
+                    [class.online]="isUserOnline(getMessageInfor().other_participant.user_id)"
+                    [class.offline]="!isUserOnline(getMessageInfor().other_participant.user_id)">
                 </span>
             </div>
             }
@@ -28,19 +29,19 @@
 
         <!-- Title & sub -->
         <div class="chat-header-info">
-            <p class="chat-header-title">{{ getMessageInfor.title || 'Conversation' }}</p>
-            @if (getMessageInfor?.type === 'group') {
+            <p class="chat-header-title">{{ getMessageInfor().title || 'Conversation' }}</p>
+            @if (getMessageInfor().type === 'group') {
             <p class="chat-header-sub">
-                {{ getMessageInfor.participants?.length || 0 }} thành viên
+                {{ getMessageInfor().participants?.length || 0 }} thành viên
             </p>
             }
-            @if (getMessageInfor?.type === 'direct' && getMessageInfor?.other_participant) {
-            <p class="chat-header-sub" [class.online]="isUserOnline(getMessageInfor.other_participant.user_id)">
-                @if (isUserOnline(getMessageInfor.other_participant.user_id)) {
+            @if (getMessageInfor().type === 'direct' && getMessageInfor().other_participant) {
+            <p class="chat-header-sub" [class.online]="isUserOnline(getMessageInfor().other_participant.user_id)">
+                @if (isUserOnline(getMessageInfor().other_participant.user_id)) {
                 Đang hoạt động
                 } @else {
-                @if (getUserLastOnlineAt(getMessageInfor.other_participant)) {
-                Hoạt động {{ relativeTime(getUserLastOnlineAt(getMessageInfor.other_participant)) }} trước
+                @if (getUserLastOnlineAt(getMessageInfor().other_participant)) {
+                Hoạt động {{ relativeTime(getUserLastOnlineAt(getMessageInfor().other_participant)) }} trước
                 } @else {
                 Ngoại tuyến
                 }
@@ -188,7 +189,7 @@
             </div>
             <div class="no-messages-content">
                 <h4 class="no-messages-title">Chưa có tin nhắn nào</h4>
-                @if (getMessageInfor?.type === 'group') {
+                @if (getMessageInfor().type === 'group') {
                 <p class="no-messages-subtitle">Hãy gửi lời chào đầu tiên để bắt đầu cuộc trò chuyện nhóm.</p>
                 } @else {
                 <p class="no-messages-subtitle">Bắt đầu cuộc trò chuyện bằng một tin nhắn thân thiện.</p>
@@ -222,7 +223,7 @@
         </div>
         } @else {
         <!-- ===== MY MESSAGES ===== -->
-        @if (currentUserId === msg.sender_id) {
+        @if (currentUserId() === msg.sender_id) {
         <div class="message-row me-row" id="message-{{msg.id}}" [class.highlighted]="highlightedMessageId === msg.id">
             <div class="me-row-content">
 
@@ -232,7 +233,7 @@
                     @if (msg.parent_message_id) {
                     <div class="reply-sender-label me-label">
                         <i class="bi bi-reply me-1"></i>
-                        @if (msg.parent_message_info.parent_message_sender_id === currentUserId) {
+                        @if (msg.parent_message_info.parent_message_sender_id === currentUserId()) {
                         Bạn đã trả lời chính mình
                         } @else {
                         Bạn đã trả lời {{ msg.parent_message_info.parent_message_name }}
@@ -482,7 +483,7 @@
                     @if (msg.parent_message_id) {
                     <div class="reply-sender-label other-label">
                         <i class="bi bi-reply me-1"></i>
-                        @if (msg.parent_message_info.parent_message_sender_id === currentUserId) {
+                        @if (msg.parent_message_info.parent_message_sender_id === currentUserId()) {
                         {{ msg.sender_name }} đã trả lời bạn
                         } @else if (msg.parent_message_info.parent_message_sender_id === msg.sender_id) {
                         {{ msg.sender_name }} đã trả lời chính mình
@@ -726,7 +727,7 @@
         <div class="reply-preview-content">
             <div class="reply-preview-to">
                 Đang trả lời
-                <strong>{{ replyToMessage.sender_id === currentUserId ? 'chính mình' : replyToMessage.sender_name
+                <strong>{{ replyToMessage.sender_id === currentUserId() ? 'chính mình' : replyToMessage.sender_name
                     }}</strong>
             </div>
             <div class="reply-preview-text">
@@ -760,7 +761,7 @@
     }
 
     <!-- Link Preview -->
-    @let composerPreview = getLinkPreview(newMessage);
+    @let composerPreview = activeComposerLinkPreview();
     @if (composerPreview) {
     <div class="composer-link-preview-container">
         <div class="link-preview-card composer-preview" [class.is-loading]="composerPreview.loading">
@@ -872,7 +873,8 @@
             <div class="input-placeholder">Nhập tin nhắn...</div>
             }
 
-            <button class="emoji-btn" title="Biểu tượng cảm xúc" (mousedown)="onEmojiButtonMouseDown($event)" (click)="toggleEmojiPicker()">
+            <button class="emoji-btn" title="Biểu tượng cảm xúc" (mousedown)="onEmojiButtonMouseDown($event)"
+                (click)="toggleEmojiPicker()">
                 <i class="bi bi-emoji-smile"></i>
             </button>
             <!-- Emoji picker -->

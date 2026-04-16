@@ -6,12 +6,24 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Prerender,
   },
   {
-    path: 'conversations/:id',
+    path: 'conversations/:convID',
+    renderMode: RenderMode.Client,
+  },
+  {
+    path: 'conversations',
+    renderMode: RenderMode.Client,
+  },
+  {
+    path: 'new-feeds',
+    renderMode: RenderMode.Client,
+  },
+  {
+    path: 'relationship',
     renderMode: RenderMode.Client,
   },
   {
     path: 'admin',
-    renderMode: RenderMode.Prerender,
+    renderMode: RenderMode.Client,
   },
   {
     path: 'call-display',
@@ -19,6 +31,6 @@ export const serverRoutes: ServerRoute[] = [
   },
   {
     path: '**',
-    renderMode: RenderMode.Prerender,
+    renderMode: RenderMode.Server,
   },
 ];

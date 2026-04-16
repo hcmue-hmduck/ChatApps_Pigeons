@@ -122,9 +122,11 @@ export class HomeLayoutComponent implements OnInit {
         this.authService.login(payload as LoginPayload).subscribe({
             next: (res) => {
                 const { id } = res?.metadata;
-                if (!id) this.router.navigate(['/']);
-
-                this.router.navigate(['/conversations', id]);
+                if (!id) {
+                    this.router.navigate(['/']);
+                } else {
+                    this.router.navigate(['/conversations']);
+                }
             },
             error: (error) => {
                 console.error(error.error);
@@ -287,11 +289,7 @@ export class HomeLayoutComponent implements OnInit {
                         const { id } = signupRes?.metadata;
                         this.isAuthenticating.set(false);
                         this.closeVerifyModal();
-                        if (!id) {
-                            this.router.navigate(['/']);
-                        } else {
-                            this.router.navigate(['/conversations', id]);
-                        }
+                            this.router.navigate(['/conversations']);
                     },
                     error: (signupError) => {
                         this.isAuthenticating.set(false);

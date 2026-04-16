@@ -25,7 +25,7 @@
 
     <!-- Primary Action -->
     <div class="action-section">
-      @if (!hasConversations) {
+      @if (!hasConversations()) {
       <button class="btn-start" (click)="handleStart()">
         <span>BẮT ĐẦU TRÒ CHUYỆN</span>
       </button>

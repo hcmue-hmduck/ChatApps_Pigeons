@@ -799,7 +799,7 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
             showCancelButton: true,
             confirmButtonText: 'Gửi lời mời',
             cancelButtonText: 'Hủy',
-            confirmButtonColor: '#00f2ff',
+            confirmButtonColor: 'var(--accent)',
             background: '#0a1622',
             color: '#fff',
             inputAttributes: {

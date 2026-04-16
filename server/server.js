@@ -13,6 +13,8 @@ const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const passport = require('./src/configs/passportConfig.js')
 
+const { model } = require('./src/configs/geminiConfig.js');
+
 const http = require('http');
 const https = require('https');
 
@@ -422,7 +424,6 @@ app.use((error, req, res, next) => {
         code: error.code || 'INTERNAL_ERROR',
     });
 });
-
 
 server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

@@ -27,7 +27,7 @@ export class CallLayoutComponent implements OnInit {
     readonly avatarUrlDefault = '/assets/AvatarDefault.jpg';
 
     userAvatarUrl = computed<string>(() => {
-        return this.authService.getUserInfor()?.avatarUrl || this.avatarUrlDefault;
+        return this.authService.getUserInfor()?.avatar_url || this.avatarUrlDefault;
     });
 
     waitingAvatarUrl = computed<string>(() => {

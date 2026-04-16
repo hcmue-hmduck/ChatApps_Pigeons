@@ -19,7 +19,15 @@ class HomeMessagesService {
         ]);
 
         if (!conversation) {
-            throw new Error(`Conversation ${conversationId} not found`);
+            // Virtual conversation or non-existent — return empty skeleton instead of 500 error
+            return {
+                id: conversationId,
+                messages: [],
+                pinnedMessages: [],
+                hasMore: false,
+                is_not_found: true,
+                conversation_type: 'direct', // Default fallback
+            };
         }
 
         const safePinned = pinnedMessages || [];
@@ -63,19 +71,15 @@ class HomeMessagesService {
         const refMessagesMap = new Map(refMessages.map((m) => [m.id, m]));
 
         // Group reactions by message_id
-        console.log('--- messageReactions raw metadata ---', (messageReactions || []).length);
         const reactionsMap = {};
         const countReactionMap = {};
         (messageReactions || []).forEach((r) => {
             const mId = r.message_id;
-            console.log('Grouping reaction for message:', mId);
             if (!reactionsMap[mId]) reactionsMap[mId] = [];
             reactionsMap[mId].push(r.dataValues);
             if (!countReactionMap[mId]) countReactionMap[mId] = {};
             countReactionMap[mId][r.emoji_char] = (countReactionMap[mId][r.emoji_char] || 0) + 1;
         });
-        console.log('ReactionsMap final keys:', reactionsMap);
-        console.log('CountReactionMap final keys:', countReactionMap);
 
         // 6. Map Pinned Messages → plain objects
         const mappedPinnedMessages = safePinned.map((pin) => {
@@ -195,7 +199,6 @@ class HomeMessagesService {
             last_read_message_id,
         })
 
-        console.log(`getSummaryMessages:::`, unreadMessages)
 
         if (!unreadMessages || unreadMessages.length === 0) {
             yield 'Hiện chưa có tin nhắn chưa đọc để tóm tắt.'

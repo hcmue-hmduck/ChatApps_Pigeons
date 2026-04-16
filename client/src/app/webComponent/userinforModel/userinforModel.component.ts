@@ -61,25 +61,14 @@ export class UserInforModel {
     }
 
     // Public method to open the modal from parent using User ID
-    open(userId: string) {
-        this.currentUserId = userId;
-        this.loadingUser.set(true);
+    open(initialData?: any) {
         this.showProfileModal.set(true);
-        this.cdr.markForCheck();
 
-        this.userService.getUserById(userId).subscribe({
-            next: (response) => {
-                const user = response.metadata?.userInfor || response.metadata || null;
-                this.userInfo.set(user);
-                this.loadingUser.set(false);
-                this.cdr.markForCheck();
-            },
-            error: (error) => {
-                console.error('Error loading user info:', error);
-                this.loadingUser.set(false);
-                this.cdr.markForCheck();
-            }
-        });
+        if (initialData) {
+            this.userInfo.set(initialData);
+            this.loadingUser.set(false);
+        }
+        this.cdr.markForCheck();
     }
 
     setupSocketListeners() {
@@ -148,6 +137,9 @@ export class UserInforModel {
 
                 // Emit to parent (Sidebar) to refresh the UI immediately
                 this.profileUpdated.emit(updatedData);
+                
+                // Cập nhật state trung tâm để toàn ứng dụng nhận dữ liệu mới mà không cần gọi API
+                this.authService.updateLocalUser(updatedData);
 
                 this.socketService.emit('updateProfile', updatedData);
                 this.isEditingProfile.set(false);
@@ -198,6 +190,10 @@ export class UserInforModel {
                             const updated = { ...this.userInfo(), avatar_url: avatarUrl };
                             this.userInfo.set(updated);
                             this.profileUpdated.emit(updated);
+                            
+                            // Cập nhật state trung tâm
+                            this.authService.updateLocalUser(updated);
+
                             this.socketService.emit('updateProfile', updated);
                         },
                         error: (err: any) => console.error('Error saving avatar:', err),

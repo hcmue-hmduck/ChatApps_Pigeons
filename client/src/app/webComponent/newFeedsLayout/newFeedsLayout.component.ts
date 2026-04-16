@@ -96,7 +96,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
 
     // Reaction system
     reactions = [
-        { id: 'like', icon: '👍', label: 'Thích', color: '#00f2ff', lottieUrl: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f44d/lottie.json' },
+        { id: 'like', icon: '👍', label: 'Thích', color: 'var(--accent)', lottieUrl: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f44d/lottie.json' },
         { id: 'love', icon: '❤️', label: 'Yêu thích', color: '#ff3d71', lottieUrl: 'https://fonts.gstatic.com/s/e/notoemoji/latest/2764_fe0f/lottie.json' },
         { id: 'care', icon: '🥰', label: 'Thương thương', color: '#f7b125', lottieUrl: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f917/lottie.json' },
         { id: 'haha', icon: '😂', label: 'Haha', color: '#ffaa00', lottieUrl: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f602/lottie.json' },
@@ -452,7 +452,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                     icon: 'warning',
                     title: 'Tệp quá lớn',
                     text: validation.message,
-                    confirmButtonColor: '#00f2ff',
+                    confirmButtonColor: 'var(--accent)',
                     background: '#06131f',
                     color: '#fff'
                 });
@@ -530,7 +530,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                 icon: 'warning',
                 title: 'Tệp quá lớn',
                 text: validation.message,
-                confirmButtonColor: '#00f2ff',
+                confirmButtonColor: 'var(--accent)',
                 background: '#06131f',
                 color: '#fff'
             });
@@ -1155,7 +1155,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
             text: 'Bạn có chắc chắn muốn xóa bài viết này không?',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#00f2ff',
+            confirmButtonColor: 'var(--accent)',
             cancelButtonColor: '#d33',
             confirmButtonText: 'Xóa',
             cancelButtonText: 'Hủy',

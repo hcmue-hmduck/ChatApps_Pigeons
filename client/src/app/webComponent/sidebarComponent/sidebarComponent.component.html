@@ -1,9 +1,4 @@
-<!-- ====================================================
-     SHELL: Sidebar + Content Area
-     ==================================================== -->
 <div class="app-shell">
-
-    <!-- ── NAV SIDEBAR (Always show) ── -->
     <aside class="icon-sidebar">
         <img src="assets/PigeonLogo.ico" alt="Pigeons" class="sidebar-logo" (click)="goToMessagesWelcome()">
         <nav class="nav-icons">
@@ -27,7 +22,7 @@
         <div class="sidebar-bottom">
             <!-- User Avatar if ready -->
             <img [src]="userInfo()?.avatar_url" alt="avatar" class="sidebar-user-avatar" title="Hồ sơ cá nhân"
-                *ngIf="userInfo()" (click)="userProfileModal.open(currentUserId)">
+                *ngIf="userInfo()" (click)="userProfileModal.open(userInfo())">
 
             <!-- Placeholder if loading -->
             <div class="sidebar-user-avatar-placeholder" *ngIf="!userInfo()">
@@ -40,33 +35,8 @@
         </div>
     </aside>
 
-    <!-- ── CONTENT AREA ── -->
-    <div class="content-area">
-
-        <!-- ── BLURRED LOADING OVERLAY ── -->
-        <div class="content-loading-overlay" [class.visible]="loading() || !isReady()">
-            <div class="spinner-accent"></div>
-            <p class="loading-text">Loading...</p>
-        </div>
-
-        <!-- VIEW: Messages (Panel 2 + Panel 3) -->
-        <conversation-layout [style.display]="navService.activeView() === 'messages' ? 'flex' : 'none'"
-            [currentUserId]="currentUserId">
-        </conversation-layout>
-
-        <!-- VIEW: Friends -->
-        <relationship-layout [style.display]="navService.activeView() === 'friends' ? 'flex' : 'none'"
-            [currentUserId]="currentUserId">
-        </relationship-layout>
-
-        <new-feeds-layout [style.display]="navService.activeView() === 'newFeeds' ? 'flex' : 'none'"
-            [userInfor]="userInfo()">
-        </new-feeds-layout>
-
-    </div>
-
     <!-- Child Profile Modal Component -->
-    <user-infor-modal #userProfileModal [currentUserId]="currentUserId" [editPremission]="true"
+    <user-infor-modal #userProfileModal [currentUserId]="currentUserId()" [editPremission]="true"
         (profileUpdated)="handleProfileUpdate($event)">
     </user-infor-modal>
 </div>

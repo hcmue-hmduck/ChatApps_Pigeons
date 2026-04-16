@@ -7,47 +7,45 @@
    GLOBAL CSS VARIABLES — Pigeons Chat · Dark Glass
    ====================================================== */
 :root {
-	/* ── Core Accent (Neon Cyan glow) ── */
-	--accent: #00f2ff;
-	--accent-hover: #5effff;
-	--accent-light: rgba(0, 242, 255, 0.18);
-	--accent-lighter: rgba(0, 242, 255, 0.10);
-	--accent-glow: 0 0 20px rgba(0, 242, 255, 0.45);
+	/* ── Core Accent (Neon Purple - Black Neon Style) ── */
+	--accent: #bb86fc;
+	--accent-hover: #d7b7ff;
+	--accent-light: rgba(187, 134, 252, 0.18);
+	--accent-lighter: rgba(187, 134, 252, 0.10);
+	--accent-glow: 0 0 20px rgba(187, 134, 252, 0.45);
 
-	/* ── App Background — Ebony Black ── */
-	--app-bg: #05070a;
+	/* ── App Background — Deep Obsidian ── */
+	--app-bg: #020408;
 	--cyber-bg:
-		radial-gradient(circle at 50% -20%, rgba(0, 242, 255, 0.08), transparent 40%),
-		linear-gradient(rgba(0, 242, 255, 0.02) 1px, transparent 1px),
-		linear-gradient(90deg, rgba(0, 242, 255, 0.02) 1px, transparent 1px);
+		radial-gradient(circle at 50% -20%, rgba(187, 134, 252, 0.08), transparent 40%),
+		linear-gradient(rgba(187, 134, 252, 0.02) 1px, transparent 1px),
+		linear-gradient(90deg, rgba(187, 134, 252, 0.02) 1px, transparent 1px);
 
-	/* ── Dark Glass layers ── */
-	--glass-strong: rgba(15, 23, 42, 0.40);
-	/* slate-900/40 from NeonChat */
+	/* ── Dark Glass layers (Intro Style - Slate Navy) ── */
+	--glass-strong: var(--glass-strong);
 	--glass-medium: rgba(255, 255, 255, 0.05);
 	--glass-light: rgba(255, 255, 255, 0.03);
 	--glass-ultra: rgba(255, 255, 255, 0.02);
-	--glass-border: rgba(255, 255, 255, 0.10);
-	--glass-border-subtle: rgba(255, 255, 255, 0.05);
-	--glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-	--glass-shadow-deep: 0 24px 64px rgba(0, 0, 0, 0.7);
-	--glass-blur: blur(24px);
-	/* Optimized from 30px */
+	--glass-border: rgba(187, 134, 252, 0.15);
+	--glass-border-subtle: rgba(187, 134, 252, 0.08);
+	--glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.65);
+	--glass-shadow-deep: 0 24px 64px rgba(0, 0, 0, 0.85);
+	--glass-blur: blur(20px);
 	--glass-blur-heavy: blur(40px);
 
 	/* ── Shimmer overlay ── */
-	--shimmer: linear-gradient(135deg, rgba(0, 242, 255, 0.10) 0%, rgba(255, 255, 255, 0.03) 50%, transparent 100%);
+	--shimmer: linear-gradient(135deg, rgba(187, 134, 252, 0.10) 0%, rgba(255, 255, 255, 0.03) 50%, transparent 100%);
 
 	/* ── Icon Sidebar ── */
 	--sidebar-bg: rgba(255, 255, 255, 0.07);
 	--sidebar-icon-default: rgba(170, 230, 255, 0.45);
 	--sidebar-icon-active: #ffffff;
-	--sidebar-active-bg: rgba(0, 242, 255, 0.18);
+	--sidebar-active-bg: rgba(187, 134, 252, 0.18);
 
 	/* ── Conversation Panel ── */
 	--conv-bg: rgba(255, 255, 255, 0.06);
-	--conv-item-hover: rgba(0, 242, 255, 0.08);
-	--conv-item-active-bg: rgba(0, 242, 255, 0.12);
+	--conv-item-hover: rgba(187, 134, 252, 0.08);
+	--conv-item-active-bg: rgba(187, 134, 252, 0.12);
 	--border: rgba(255, 255, 255, 0.1);
 
 	/* ── Text ── */
@@ -56,10 +54,10 @@
 	--text-muted: #6b8eac;
 
 	/* ── Messages ── */
-	--msg-accent: #00f2ff;
+	--msg-accent: var(--accent);
 	--msg-accent-hover: #5effff;
 	--msg-bg: rgba(255, 255, 255, 0.05);
-	--msg-me-gradient: linear-gradient(135deg, rgba(0, 242, 255, 0.15) 0%, rgba(0, 150, 255, 0.05) 100%);
+	--msg-me-gradient: linear-gradient(135deg, rgba(187, 134, 252, 0.15) 0%, rgba(0, 150, 255, 0.05) 100%);
 	--msg-me-text: #ffffff;
 	--msg-other-bg: rgba(255, 255, 255, 0.05);
 	--msg-other-text: #e2f5ff;
@@ -117,17 +115,17 @@ body {
 }
 
 .neon-glow {
-	text-shadow: 0 0 10px rgba(0, 242, 255, 0.6);
+	text-shadow: 0 0 10px rgba(187, 134, 252, 0.6);
 }
 
 .neon-border {
-	border-color: rgba(0, 242, 255, 0.3) !important;
-	box-shadow: 0 0 15px rgba(0, 242, 255, 0.15), inset 0 0 5px rgba(0, 242, 255, 0.1) !important;
+	border-color: rgba(187, 134, 252, 0.3) !important;
+	box-shadow: 0 0 15px rgba(187, 134, 252, 0.15), inset 0 0 5px rgba(187, 134, 252, 0.1) !important;
 }
 
 .message-gradient {
 	background: var(--msg-me-gradient);
-	border: 1px solid rgba(0, 242, 255, 0.2);
+	border: 1px solid rgba(187, 134, 252, 0.2);
 }
 
 app-root {
@@ -136,9 +134,26 @@ app-root {
 	min-height: 100vh;
 }
 
+/* ── Routed component layout (router-outlet siblings) ──
+   CSS trong app.css bị Angular scoped (_ngcontent) nên không áp dụng
+   được cho host elements của routed components.
+   Đặt ở đây (global styles.css) để đảm bảo áp dụng đúng. */
+conversation-layout,
+new-feeds-layout,
+relationship-layout,
+home-layout,
+app-admin-layout,
+app-call-layout {
+	flex: 1 1 0%;
+	min-width: 0;
+	height: 100%;
+	overflow: hidden;
+	display: block;
+}
+
 /* ── Mention Tag (global — works with [innerHTML] without ::ng-deep) ── */
 .mention-tag {
-    color: #00f2ff;
+    color: var(--accent);
     font-weight: 700;
     cursor: pointer;
     transition: color 0.2s;
@@ -146,5 +161,5 @@ app-root {
 
 .mention-tag:hover {
     color: #5effff;
-    text-shadow: 0 0 8px rgba(0, 242, 255, 0.5);
+    text-shadow: 0 0 8px rgba(187, 134, 252, 0.5);
 }

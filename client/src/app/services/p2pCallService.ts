@@ -84,13 +84,13 @@ export class P2PCallService {
             const offer = await this.peerConnection?.createOffer();
             await this.peerConnection?.setLocalDescription(offer);
 
-            const { name, avatarUrl, id } = this.authService.getUserInfor();
+            const { full_name, avatar_url, id } = this.authService.getUserInfor();
             this.socketService.emit('directCall:newOffer', {
                 offer,
                 conversationId: this.callState.conversationId,
                 callId: this.callState.callId,
-                inviterName: name,
-                inviterAvatarUrl: avatarUrl,
+                inviterName: full_name,
+                inviterAvatarUrl: avatar_url,
                 inviterId: id,
                 initializeVideo: this.callState.isCameraOn(),
             });
@@ -385,13 +385,13 @@ export class P2PCallService {
             this.canSendLocalIceCandidates = true;
             this.sendLocalIceCandidates();
 
-            const { name, avatarUrl, id } = this.authService.getUserInfor();
+            const { full_name, avatar_url, id } = this.authService.getUserInfor();
             this.socketService.emit('directCall:newAnswer', {
                 answer,
                 conversationId: this.callState.conversationId,
                 answererId: id,
-                answererName: name,
-                answererAvatarUrl: avatarUrl,
+                answererName: full_name,
+                answererAvatarUrl: avatar_url,
             });
             console.log('P2P answer sent');
         } catch (error) {

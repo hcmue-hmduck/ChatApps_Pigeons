@@ -1,94 +1,25 @@
 /* ============================================================
    SIDEBAR COMPONENT — App Shell · Liquid Glass
    ============================================================ */
+
+/* :host controls sizing as a flex child of .app-container */
+:host {
+    display: block;
+    flex-shrink: 0;
+    height: 100%;
+}
+
 .app-shell {
     display: flex;
-    height: 100vh;
-    padding: 12px 0 12px 12px;
-    gap: 12px;
+    height: 100%;
+    /* Fill :host height */
+    padding: 0;
+    /* Remove redundant padding as parent now has it */
+    gap: 0;
     box-sizing: border-box;
     overflow: hidden;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background: transparent;
-}
-
-.content-area {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    overflow: hidden;
-    position: relative;
-    /* For the overlay */
-}
-
-/* Ensure child layouts expand to fill the content area */
-.content-area>conversation-layout,
-.content-area>relationship-layout,
-.content-area>new-feeds-layout {
-    display: flex;
-    flex: 1;
-    min-width: 0;
-    height: 100%;
-}
-
-/* ── Content-area loading overlay (Blurred) ── */
-.content-loading-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(11, 14, 20, 0);
-    backdrop-filter: blur(0px);
-    -webkit-backdrop-filter: blur(0px);
-    z-index: 50;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    color: var(--accent);
-    border-radius: 20px;
-    border: 1px solid transparent;
-    pointer-events: none;
-    /* Allow interaction when hidden */
-    opacity: 0;
-    transition:
-        opacity 0.4s ease,
-        backdrop-filter 0.4s ease,
-        background 0.4s ease,
-        border-color 0.4s ease;
-}
-
-.content-loading-overlay.visible {
-    opacity: 1;
-    pointer-events: auto;
-    background: rgba(11, 14, 20, 0.4);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border-color: var(--accent-lighter);
-}
-
-.loading-text {
-    font-size: 14px;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--accent);
-    text-shadow: 0 0 10px rgba(0, 242, 255, 0.4);
-}
-
-.spinner-accent {
-    width: 44px;
-    height: 44px;
-    border: 3px solid rgba(0, 242, 255, 0.20);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    filter: drop-shadow(0 0 10px rgba(0, 242, 255, 0.60));
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
 }
 
 /* ── ICON SIDEBAR — Liquid Glass ── */
@@ -118,7 +49,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, rgba(0, 242, 255, 0.10) 0%, transparent 60%);
+    background: linear-gradient(135deg, rgba(187, 134, 252, 0.10) 0%, transparent 60%);
     pointer-events: none;
 }
 
@@ -169,7 +100,7 @@
 .sidebar-nav-btn:hover {
     color: var(--accent);
     transform: translateY(-1px);
-    text-shadow: 0 0 10px rgba(0, 242, 255, 0.4);
+    text-shadow: 0 0 10px rgba(187, 134, 252, 0.4);
 }
 
 .sidebar-nav-btn.active {
@@ -224,7 +155,7 @@
     border: 2px solid var(--accent-light);
     cursor: pointer;
     transition: all 0.22s;
-    box-shadow: 0 0 10px rgba(0, 242, 255, 0.25), 0 2px 8px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 0 10px rgba(187, 134, 252, 0.25), 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .sidebar-user-avatar-placeholder {
@@ -239,7 +170,7 @@
 .sidebar-user-avatar:hover {
     border-color: var(--accent);
     transform: scale(1.08);
-    box-shadow: 0 0 0 3px rgba(0, 242, 255, 0.22), 0 0 18px rgba(0, 242, 255, 0.45);
+    box-shadow: 0 0 0 3px rgba(187, 134, 252, 0.22), 0 0 18px rgba(187, 134, 252, 0.45);
 }
 
 .sidebar-logout-btn {

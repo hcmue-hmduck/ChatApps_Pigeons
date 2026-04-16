@@ -24,7 +24,7 @@ class UsersController {
         new SuccessResponse({
             message: 'Get user successfully',
             metadata: {
-                user,
+                // user,
                 userInfor: user,
             },
         }).send(res)

@@ -53,8 +53,8 @@ const refreshAuthentication = async (req, res, next) => {
 
         const { rt_secret, rotated_at } = sessionInfo;
 
-        // vừa mới đổi refresh token => race condition
-        if (rotated_at && Date.now() - new Date(rotated_at) < 5000)
+        // vừa mới đổi refresh token => race condition (chặn trong 1 giây)
+        if (rotated_at && Date.now() - new Date(rotated_at) < 1000)
             throw new TooManyRequestError('too many refresh request');
 
         verifyJWT(refreshToken, rt_secret);

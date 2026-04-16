@@ -9,20 +9,17 @@ import {
     signal,
     ChangeDetectionStrategy,
     ChangeDetectorRef,
+    computed,
+    effect
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
-import { NavigationService, AppView } from '../../services/navigation';
+import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../services/authService';
 import { User } from '../../services/user';
 import { SocketService } from '../../services/socket';
-import { ConversationLayoutComponent } from '../conversationLayout/conversationLayout.component';
-import { RelationshipLayoutComponent } from '../relationshipLayout/relationshipLayout.component';
 import { UserInforModel } from '../userinforModel/userinforModel.component';
-import { NewFeedsLayoutComponent } from '../newFeedsLayout/newFeedsLayout.component';
 import { FileUtils } from '../../utils/FileUtils/fileUltils';
-import { error } from 'console';
 
 @Component({
     selector: 'sidebar-component',
@@ -30,38 +27,38 @@ import { error } from 'console';
     imports: [
         CommonModule,
         FormsModule,
-        ConversationLayoutComponent,
-        RelationshipLayoutComponent,
         UserInforModel,
-        NewFeedsLayoutComponent,
     ],
     templateUrl: './sidebarComponent.component.html',
     styleUrls: ['./sidebarComponent.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SidebarComponent implements OnInit, OnDestroy {
-    navService = inject(NavigationService);
     authService = inject(AuthService);
     cdr = inject(ChangeDetectorRef);
+    router = inject(Router);
 
     // ── State ──────────────────────────────────────────────
-    currentUserId = '';
+    currentUserId = computed(() => this.authService.getUserId());
     userInfo = signal<any>(null);
     loading = signal(false);
     isReady = signal(false);
 
     constructor(
-        private router: ActivatedRoute,
+        private route: ActivatedRoute,
         private userService: User,
         private socketService: SocketService,
         public fileUtils: FileUtils
-    ) { }
+    ) {
+        effect(() => {
+            console.log('currentUserId changed:', this.currentUserId());
+        this.userInfo.set(this.authService.getUserInfor());
+            console.log('userInfo', this.userInfo());
+        });
+    }
 
     ngOnInit() {
-        this.currentUserId = this.router.snapshot.paramMap.get('id') || '';
-        this.authService.setUserInfo(this.currentUserId);
         this.setupSocketListeners();
-        this.loadUserInfo();
     }
 
     ngOnDestroy() {
@@ -72,15 +69,23 @@ export class SidebarComponent implements OnInit, OnDestroy {
         this.authService
             .logout()
             .subscribe({
-                next: () => window.location.href = '/',
-                error: (error) => console.error(error),
+                next: () => {
+                    this.authService.clearLocalUser();
+                    window.location.href = '/';
+                },
+                error: () => {
+                    // Kể cả khi server lỗi (token hết hạn, 401...),
+                    // vẫn xóa trạng thái local và chuyển về trang đăng nhập.
+                    this.authService.clearLocalUser();
+                    window.location.href = '/';
+                },
             });
     }
 
     // ── Socket Listeners ──────────────────────────────────
     setupSocketListeners() {
         this.socketService.on('updateProfile_sidebar', (data: any) => {
-            if (data.id === this.currentUserId) {
+            if (data.id === this.currentUserId()) {
                 this.userInfo.set(data);
                 this.cdr.markForCheck();
             }
@@ -90,7 +95,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     // ── Load Data ─────────────────────────────────────────
     loadUserInfo() {
         this.loading.set(true);
-        this.userService.getUserById(this.currentUserId).subscribe({
+        this.userService.getUserById(this.currentUserId()).subscribe({
             next: (response) => {
                 console.log('User', response.metadata?.userInfor);
                 this.userInfo.set(response.metadata?.userInfor || null);
@@ -107,16 +112,26 @@ export class SidebarComponent implements OnInit, OnDestroy {
     }
 
     // ── Navigation ────────────────────────────────────────
-    setView(view: AppView) {
-        this.navService.setView(view);
+    setView(view: string) {
+        if (view === 'messages') {
+            this.router.navigate(['/conversations']);
+        } else if (view === 'friends') {
+            this.router.navigate(['/relationship']);
+        } else if (view === 'newFeeds') {
+            this.router.navigate(['/new-feeds']);
+        }
     }
 
     goToMessagesWelcome() {
-        this.navService.goToMessagesWelcome();
+        this.router.navigate(['/conversations']);
     }
 
-    isActive(view: AppView): boolean {
-        return this.navService.activeView() === view;
+    isActive(view: string): boolean {
+        const url = this.router.url;
+        if (view === 'messages') return url.includes('/conversations');
+        if (view === 'friends') return url.includes('/relationship');
+        if (view === 'newFeeds') return url.includes('/new-feeds');
+        return false;
     }
 
     // ── Profile Modal Callback ────────────────────────────
