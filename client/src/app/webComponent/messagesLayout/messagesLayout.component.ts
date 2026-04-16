@@ -140,7 +140,16 @@ export class MessagesLayoutComponent
             },
         });
         this.pinnedMessages.set([]);
+        this.typingUsers.set([]);
         
+        // Emits stopTyping for the old conversation if we left while typing
+        if (this.isTyping) {
+            this.isTyping = false;
+            this.socketService.emit('stopTyping', {
+                conversation_id: this.conversationId(),
+                user_id: this.currentUserId()
+            });
+        }
         // Reset flags
         this.isLoaded = false;
         this.error = '';
@@ -149,6 +158,7 @@ export class MessagesLayoutComponent
         // Clear active timeouts
         if (this.highlightTimeout) clearTimeout(this.highlightTimeout);
         if (this.scrollTimeout) clearTimeout(this.scrollTimeout);
+        if (this.typingTimeout) clearTimeout(this.typingTimeout);
         if (this.aiSummaryTypewriterTimer) clearInterval(this.aiSummaryTypewriterTimer);
         this.stopAiSummaryStream();
         
@@ -711,6 +721,13 @@ export class MessagesLayoutComponent
     }
 
     private detachMessageSocketListeners() {
+        if (this.onNewMessageSocket) this.socketService.off('newMessage', this.onNewMessageSocket);
+        if (this.onUpdateMessageSocket) this.socketService.off('updateMessage', this.onUpdateMessageSocket);
+        if (this.onUpdateConversationSocket) this.socketService.off('updateConversation', this.onUpdateConversationSocket);
+        if (this.onPinMessageSocket) this.socketService.off('pinMessage', this.onPinMessageSocket);
+        if (this.onUnpinMessageSocket) this.socketService.off('unpinMessage', this.onUnpinMessageSocket);
+        if (this.onUpdateProfileSocket) this.socketService.off('updateProfile', this.onUpdateProfileSocket);
+        if (this.onDeleteMessageSocket) this.socketService.off('deleteMessage', this.onDeleteMessageSocket);
         if (this.onTypingSocket) this.socketService.off('typing', this.onTypingSocket);
         if (this.onStopTypingSocket) this.socketService.off('stopTyping', this.onStopTypingSocket);
 
@@ -1254,10 +1271,11 @@ export class MessagesLayoutComponent
             : { ...messageData };
 
         const currentUser = this.getMessageInfor()?.participants.find((p: any) => p.user_id === this.currentUserId()) || {};
+        const authUser = this.authService.getUserInfor() || {};
         const newMessage = {
             ...messageToAdd,
-            sender_name: currentUser.full_name,
-            sender_avatar: currentUser.avatar_url,
+            sender_name: authUser.full_name || currentUser.full_name,
+            sender_avatar: authUser.avatar_url || currentUser.avatar_url,
         };
 
         this.messageStatus.set('Đang gửi');
@@ -1628,6 +1646,7 @@ export class MessagesLayoutComponent
 
         const formData = new FormData();
         const currentUser = this.getMessageInfor()?.participants.find((p: any) => p.user_id === this.currentUserId()) || {};
+        const authUser = this.authService.getUserInfor() || {};
 
         // Bước 1: Tạo temp message ngay lập tức cho mỗi file
         const tempEntries: { tempId: string; file: File }[] = [];
@@ -1647,8 +1666,8 @@ export class MessagesLayoutComponent
                 _trackId: tempId,
                 _uploading: true,  // hiện progress bar
                 sender_id: this.currentUserId(),
-                sender_name: currentUser.full_name,
-                sender_avatar: currentUser.avatar_url,
+                sender_name: authUser.full_name || currentUser.full_name,
+                sender_avatar: authUser.avatar_url || currentUser.avatar_url,
                 content: file.name,
                 conversation_id: this.conversationId(),
                 created_at: new Date().toISOString(),
@@ -3153,7 +3172,7 @@ export class MessagesLayoutComponent
 
         this.typingTimeout = setTimeout(() => {
             this.stopTyping();
-        }, 600);
+        }, 1500);
     }
 
     stopTyping() {
