@@ -53,13 +53,9 @@ const refreshAuthentication = async (req, res, next) => {
 
         const { rt_secret, rotated_at } = sessionInfo;
 
-        // vừa mới đổi refresh token => race condition (chặn trong 1 giây)
-        if (rotated_at && Date.now() - new Date(rotated_at) < 1000)
-            throw new TooManyRequestError('too many refresh request');
-
         verifyJWT(refreshToken, rt_secret);
 
-        req.user = { id: uid, role, sid };
+        req.user = { id: uid, role, sid, rt_secret, rt_cookie: refreshToken };
         next();
     } catch (error) {
         // lỗi bình thường: token hết hạn || race condition

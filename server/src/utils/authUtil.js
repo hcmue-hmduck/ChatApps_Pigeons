@@ -30,12 +30,12 @@ const decodeJWT = (token) => {
     return JWT.decode(token);
 };
 
-const isDev = process.env.RENDER === 'true';
+const isProd = process.env.RENDER === 'true';
 
 const COOKIE_TOKENS_OPTIONS = {
     httpOnly: true,      // Ngăn XSS
     secure: true,        // HTTPS only (Bắt buộc khi dùng SameSite=None)
-    sameSite: 'none', // 'lax' cho proxy local, 'none' cho deploy (khác domain)
+    sameSite: isProd ? 'none' : 'lax', // Render (isProd) dùng 'none', Local dùng 'lax'
     path: '/',
 };
 

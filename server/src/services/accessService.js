@@ -42,11 +42,25 @@ class AccessService {
         await redisService.deleteUserSession(userId, sid);
     }
 
-    async refreshToken({ userId, userRole, sid }) {
-        if (!userId || !userRole || !sid) throw new BadRequestError('missing parameters');
+    async refreshToken({ userId, userRole, sid, rt_secret, rt_cookie }) {
+        if (!userId || !userRole || !sid || !rt_secret || !rt_cookie) throw new BadRequestError('missing parameters');
         const foundUser = await userService.getUserById(userId);
-        console.log('foundUser', foundUser.id);
-        const tokens = await this.#updateSession(userId, userRole, sid);
+        
+        // DO NOT rotate refresh token! Just issue new access token.
+        const timeToLiveSecond = 60 * 60 * 24 * 7;
+        const secretKey1 = createKey();
+        const accessToken = signJWT({ uid: userId, role: userRole, sid }, secretKey1, '30m');
+
+        await redisService.updateUserSession({
+            userId,
+            sid,
+            accessTokenSecret: secretKey1,
+            refreshTokenSecret: rt_secret, // Keep the old one!
+            timeToLiveSecond,
+        });
+
+        const tokens = { accessToken, refreshToken: rt_cookie };
+        
         return {
             user: { 
                 id: userId,

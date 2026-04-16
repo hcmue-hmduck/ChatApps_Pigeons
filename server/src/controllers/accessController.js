@@ -49,8 +49,8 @@ class AccessController {
 
     // [POST] /access/refresh-token
     async refreshToken(req, res, next) {
-        const { id, sid, role } = req.user;
-        const results = await accessService.refreshToken({ userId: id, sid, userRole: role });
+        const { id, sid, role, rt_secret, rt_cookie } = req.user;
+        const results = await accessService.refreshToken({ userId: id, sid, userRole: role, rt_secret, rt_cookie });
         const { accessToken, refreshToken } = results.tokens;
         setCookieTokens(res, accessToken, refreshToken);
         return new SuccessResponse({
