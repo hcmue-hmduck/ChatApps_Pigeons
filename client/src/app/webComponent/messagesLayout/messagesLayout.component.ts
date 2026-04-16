@@ -3158,13 +3158,18 @@ export class MessagesLayoutComponent
         });
     }
 
+    private lastTypingEmitTime = 0;
+
     onTyping() {
-        if (!this.isTyping) {
+        const now = Date.now();
+        // Emit typing event if we just started typing OR if 1.5 seconds have passed since last emit (Heartbeat)
+        if (!this.isTyping || now - this.lastTypingEmitTime > 1500) {
             this.isTyping = true;
+            this.lastTypingEmitTime = now;
             this.socketService.emit('typing', {
                 conversation_id: this.conversationId(),
                 user_id: this.currentUserId(),
-                full_name: this.authService.getUserInfor().full_name
+                full_name: this.authService.getUserInfor()?.full_name
             });
         }
 
