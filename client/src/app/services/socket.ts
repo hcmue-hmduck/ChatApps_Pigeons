@@ -15,9 +15,8 @@ export class SocketService {
             return;
         }
 
-        // Kết nối về cùng origin (5200), proxy sẽ forward WebSocket đến backend (8080)
-        this.socket = io({
-            path: '/api/socket.io',
+        this.socket = io(environment.apiUrl, {
+            withCredentials: true,
         });
 
         this.socket.on('connect', () => {
