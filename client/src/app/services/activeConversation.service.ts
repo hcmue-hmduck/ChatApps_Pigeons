@@ -175,12 +175,7 @@ export class ActiveConversationService implements OnDestroy {
             }
         });
 
-        // Load Friend Request Count 
-        this.socketService.on('sendFriendRequest', (data: any) => {
-             if (data.receiver_id === userId) {
-                 this.friendRequestCount.update(c => c + 1);
-             }
-        });
+
 
         // --- NEW: Reconnection support ---
         this.socketService.on('connect', () => {
@@ -206,15 +201,30 @@ export class ActiveConversationService implements OnDestroy {
                     updatedUserInfo = { ...updatedUserInfo, ...data };
                 }
 
+                const currentUserId = this.authService.getUserId();
+
                 const updated = cur.homeConversationData.joinedConversations.map((conv: any) => {
-                    // Cập nhật participants cho TẤT CẢ loại nhóm chat thay vì chỉ nhóm 'direct'
-                    if (conv.participants) {
-                        const participants = conv.participants.map((p: any) => 
-                            p.user_id === data.id ? { ...p, ...data } : p
-                        );
-                        return { ...conv, participants };
+                    let newTitle = conv.title;
+                    let newAvatarUrl = conv.avatar_url;
+
+                    // Nếu là chat đơn, và người đổi thông tin KHÔNG phải là mình (tức là đối tác)
+                    if (conv.type === 'direct' && String(data.id) !== String(currentUserId)) {
+                        const hasOtherUser = conv.participants?.some((p: any) => String(p.user_id) === String(data.id));
+                        if (hasOtherUser) {
+                            newTitle = data.full_name || conv.title;
+                            newAvatarUrl = data.avatar_url || conv.avatar_url;
+                        }
                     }
-                    return conv;
+
+                    // Cập nhật participants cho TẤT CẢ loại nhóm chat thay vì chỉ nhóm 'direct'
+                    let newParticipants = conv.participants;
+                    if (conv.participants) {
+                        newParticipants = conv.participants.map((p: any) => 
+                            String(p.user_id) === String(data.id) ? { ...p, ...data } : p
+                        );
+                    }
+                    
+                    return { ...conv, participants: newParticipants, title: newTitle, avatar_url: newAvatarUrl };
                 });
                 return {
                     ...cur,
