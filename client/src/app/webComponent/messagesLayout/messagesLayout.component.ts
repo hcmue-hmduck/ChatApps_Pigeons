@@ -1299,8 +1299,8 @@ export class MessagesLayoutComponent
 
                         const realMessage = {
                             ...savedMessage,
-                            sender_name: currentUser.full_name,
-                            sender_avatar: currentUser.avatar_url,
+                            sender_name: authUser.full_name || currentUser.full_name,
+                            sender_avatar: authUser.avatar_url || currentUser.avatar_url,
                         };
 
                         this.conversationService.putConversation(this.conversationId(), {

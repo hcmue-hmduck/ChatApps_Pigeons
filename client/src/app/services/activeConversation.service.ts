@@ -196,12 +196,19 @@ export class ActiveConversationService implements OnDestroy {
         // Clean up previous listeners if any
         this.removeSocketListeners();
 
-        // 1. updateProfile
         this.onUpdateProfileSocket = (data: any) => {
             this.conversations.update(cur => {
                 if (!cur?.homeConversationData?.joinedConversations) return cur;
+                
+                // Update userInfo if it is the current user
+                let updatedUserInfo = cur.homeConversationData.userInfo;
+                if (updatedUserInfo && updatedUserInfo.id === data.id) {
+                    updatedUserInfo = { ...updatedUserInfo, ...data };
+                }
+
                 const updated = cur.homeConversationData.joinedConversations.map((conv: any) => {
-                    if (conv.type === 'direct') {
+                    // Cập nhật participants cho TẤT CẢ loại nhóm chat thay vì chỉ nhóm 'direct'
+                    if (conv.participants) {
                         const participants = conv.participants.map((p: any) => 
                             p.user_id === data.id ? { ...p, ...data } : p
                         );
@@ -211,7 +218,11 @@ export class ActiveConversationService implements OnDestroy {
                 });
                 return {
                     ...cur,
-                    homeConversationData: { ...cur.homeConversationData, joinedConversations: updated }
+                    homeConversationData: { 
+                        ...cur.homeConversationData, 
+                        userInfo: updatedUserInfo,
+                        joinedConversations: updated 
+                    }
                 };
             });
         };
