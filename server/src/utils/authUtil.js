@@ -35,7 +35,7 @@ const isDev = process.env.RENDER === 'true';
 const COOKIE_TOKENS_OPTIONS = {
     httpOnly: true,      // Ngăn XSS
     secure: true,        // HTTPS only (Bắt buộc khi dùng SameSite=None)
-    sameSite: isDev ? 'lax' : 'none', // 'lax' cho proxy local, 'none' cho deploy (khác domain)
+    sameSite: 'none', // 'lax' cho proxy local, 'none' cho deploy (khác domain)
     path: '/',
 };
 
