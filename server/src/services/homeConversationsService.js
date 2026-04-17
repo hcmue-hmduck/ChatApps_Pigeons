@@ -184,10 +184,27 @@ class HomeConversationService {
         
         const you = await participantsService.createParticipant(conv.id, { user_id: created_by, role: 'owner' });
 
+        // Enrich participants with user details (full_name, avatar_url)
+        const allUserIds = [created_by];
+        if (participants_id) allUserIds.push(participants_id);
+
+        const users = await usersService.getAllUsers({ id: allUserIds });
+        const usersMap = new Map(users.map(u => [String(u.id), u]));
+
+        const enrich = (p) => {
+            const user = usersMap.get(String(p.user_id));
+            return user ? {
+                ...p.toJSON ? p.toJSON() : p,
+                full_name: user.full_name,
+                avatar_url: user.avatar_url,
+                last_online_at: user.last_online_at
+            } : p;
+        };
+
         return {
             conv,
-            participants,
-            you
+            participants: participants.map(enrich),
+            you: enrich(you)
         };
     }
 }

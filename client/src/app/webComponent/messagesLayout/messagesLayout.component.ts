@@ -1077,24 +1077,39 @@ export class MessagesLayoutComponent
     loadMessages(conversationId: string) {
         if (!conversationId) return;
 
+        const isVirtual = conversationId.startsWith('conv_');
+
         // 1. Kiểm tra Cache trước
         const cache = this.messageStore.getConversationState(conversationId);
         if (cache.isLoaded) {
             this.getMessagesData.set(cache.getMessagesData);
             this.pinnedMessages.set(cache.pinnedMessages);
-            // Re-sync reactions from cache to global service if needed, 
-            // but global service might already have them. 
-            // In any case, we don't set a local messageReactions signal anymore.
             this.lastMessageId = cache.lastMessageId;
             this.loading = false;
             this.isLoaded = true;
-            this.pendingScroll = true; // Kích hoạt scroll cho cache hit
+            this.pendingScroll = true;
         } else {
             this.isLoaded = false;
             this.loading = true;
         }
 
         this.reactionPickerMessageId = null;
+
+        // --- NEW: Skip API call for virtual conversations ---
+        if (isVirtual) {
+            console.log('[LOAD] Virtual conversation detected, skipping API fetch:', conversationId);
+            this.getMessagesData.set({
+                homeMessagesData: {
+                    messages: [],
+                    conversation_type: 'direct',
+                    pinnedMessages: [],
+                },
+            });
+            this.loading = false;
+            this.isLoaded = true;
+            this.pendingScroll = true;
+            return;
+        }
 
         this.messagesService.getMessages(conversationId).subscribe({
             next: (response) => {
@@ -1111,13 +1126,10 @@ export class MessagesLayoutComponent
 
                 // 2. Check if the conversation actually exists on the server
                 if (data.is_not_found) {
-                    const isVirtual = conversationId.startsWith('conv_');
-                    if (!isVirtual) {
-                        console.warn('[REDRECT] Invalid conversation ID detected, clearing state and navigating away:', conversationId);
-                        this.convStore.setActiveConversationId('');
-                        this.router.navigate(['/conversations']);
-                        return;
-                    }
+                    console.warn('[REDIRECT] Invalid conversation ID detected, clearing state and navigating away:', conversationId);
+                    this.convStore.setActiveConversationId('');
+                    this.router.navigate(['/conversations']);
+                    return;
                 }
 
                 // 2. Cập nhật Cache sau khi load thành công
@@ -1129,14 +1141,13 @@ export class MessagesLayoutComponent
                     isLoaded: true
                 });
 
-                // --- Logic Reactions (Centralized Cache Sync) ---
+                // ... setup reactions etc ...
                 for (const msg of messages) {
                     if (msg.reactions && msg.reactions.length > 0) {
                         this.convStore.syncReactions(msg.id, msg.reactions, msg.countReactionMap);
                     }
                 }
 
-                // --- Logic Pagination & Scroll (Original) ---
                 this.currentOffset = messages.length;
                 this.hasMore = data.homeMessagesData?.hasMore ?? true;
 
@@ -1151,7 +1162,7 @@ export class MessagesLayoutComponent
                 this.error = error.message;
                 this.loading = false;
                 this.isLoaded = true;
-                // Redirect if conversation is truly not found (404/500)
+                // Redirect only if NOT virtual (real ID failed)
                 this.convStore.setActiveConversationId('');
                 this.router.navigate(['/conversations']);
             },
@@ -1532,6 +1543,7 @@ export class MessagesLayoutComponent
         let isNewConversationUpgrade = false;
         if (this.conversationId().startsWith('conv_')) {
             isNewConversationUpgrade = true;
+            const oldId = this.conversationId();
             const response = await firstValueFrom(
                 this.conversationService.postConversation(
                     this.getMessageInfor()?.other_participant?.user_id,
@@ -1540,22 +1552,18 @@ export class MessagesLayoutComponent
             );
             const newConvData = response.metadata?.newConversation;
             if (newConvData) {
-                this.conversationId.set(newConvData.conv?.id);
+                const newId = newConvData.conv?.id;
+                this.conversationId.set(newId);
 
-                // Cập nhật ID thật cho các participants trong getMessageInfor để tránh lỗi 500 khi updateParticipant
+                // Các participants thật từ server (đã được enrich full_name/avatar_url)
                 const realParticipants = [newConvData.you, ...newConvData.participants];
-                if (this.getMessageInfor()?.participants) {
-                    this.getMessageInfor().participants = this.getMessageInfor().participants.map(
-                        (p: any) => {
-                            const realP = realParticipants.find((rp: any) => rp.user_id === p.user_id);
-                            return realP ? { ...p, id: realP.id } : p;
-                        }
-                    );
-                }
 
                 // JOIN SOCKET ROOM MỚI VÀ THÔNG BÁO CHO CHA
-                this.setupSocketListener(this.conversationId());
-                this.convStore.upgradeConversation(this.conversationId(), this.conversationId());
+                this.setupSocketListener(newId);
+                this.convStore.upgradeConversation(oldId, newId, realParticipants);
+
+                // Cập nhật URL để đồng bộ với state mới
+                this.router.navigate(['/conversations', newId], { replaceUrl: true });
             }
         }
 
