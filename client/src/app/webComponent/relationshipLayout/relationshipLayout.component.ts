@@ -375,9 +375,10 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
     }
 
     sendMessage(user: any) {
-        if (!user?.id) return;
+        const targetId = user.friend_id || user.id;
+        if (!targetId) return;
         this.navService.openDirectConversation({
-            id: user.id,
+            id: targetId,
             full_name: user.full_name,
             avatar_url: user.avatar_url,
             last_online_at: user.last_online_at,

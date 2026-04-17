@@ -144,7 +144,7 @@
     <!-- ===================== PANEL 4: INFO SIDEBAR ===================== -->
     @if (convStore.showConversationInfor() && selectedConversationId()) {
     <app-conversation-info-layout (closePanel)="toggleConversationInfor()"
-        [userInfor]="convStore.conversations().homeConversationData?.userInfo" [currentUserId]="currentUserId"
+        [userInfor]="convStore.conversations().homeConversationData?.userInfo" [currentUserId]="currentUserId()"
         [userPresence]="convStore.userPresence()" [conversationAvatar]="getMessageInfor?.avatar_url"
         [conversationInfor]="convStore.getConversationById(selectedConversationId())">
     </app-conversation-info-layout>

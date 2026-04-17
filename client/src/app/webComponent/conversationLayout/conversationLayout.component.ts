@@ -5,6 +5,7 @@ import {
     OnInit,
     OnDestroy,
     signal,
+    computed,
     inject,
     effect,
     ChangeDetectionStrategy,
@@ -70,7 +71,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     onlineUsers = this.convStore.onlineUsers;
     UserPresence = this.convStore.userPresence;
     
-    currentUserId: string = '';
+    currentUserId = computed(() => this.authService.getUserId());
 
     toggleConversationInfor() {
         this.convStore.toggleConversationInfor();
@@ -126,10 +127,8 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         ).subscribe(() => {
             const id = parseUrlId();
             this._convID.set(id);
-            // Lưu lại ID cuối cùng nếu đang ở một hội thoại cụ thể
-            if (id) {
-                this.convStore.setActiveConversationId(id);
-            }
+            // Luôn đồng bộ active ID kể cả khi null để tránh vòng lặp Restore
+            this.convStore.setActiveConversationId(id || '');
         });
 
         effect(() => {
@@ -155,15 +154,12 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
             this.resetToWelcome();
         });
 
-        // Effect mới: Theo dõi danh tính người dùng để tự động tải dữ liệu (Sửa lỗi khi Refresh)
         effect(() => {
             const userId = this.authService.getUserId();
-            // Nếu có ID người dùng và ID này khác với ID hiện tại (hoặc chưa có ID hiện tại)
-            if (userId && userId !== this.currentUserId) {
-                console.log('User detected via effect - Loading data for:', userId);
-                this.currentUserId = userId;
+            if (userId) {
+                console.log('User online detected:', userId);
                 this.loadConversations();
-                this.socketService.emit('userOnline', this.currentUserId);
+                this.socketService.emit('userOnline', userId);
             }
         });
 
@@ -239,8 +235,9 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
 
     // ── Load Data ─────────────────────────────────────────
     loadConversations() {
-        if (this.currentUserId) {
-            this.convStore.loadInitialData(this.currentUserId);
+        const userId = this.currentUserId();
+        if (userId) {
+            this.convStore.loadInitialData(userId);
         }
     }
 
@@ -319,14 +316,14 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
 
         // Logic "Đã đọc": reset count locally và notify server
         if (conv.unread_count > 0 || (conv.lastMessage && conv.last_read_message_id !== conv.lastMessage.id)) {
-            const currentParticipant = conv.participants.find((p: any) => p.user_id === this.currentUserId);
+            const currentParticipant = conv.participants.find((p: any) => p.user_id === this.currentUserId());
 
             if (currentParticipant && conv.lastMessage?.id) {
                 // 1. Reset cục bộ để UI mất badge ngay lập tức
                 conv.unread_count = 0;
                 conv.last_read_message_id = conv.lastMessage.id;
                 conv.participants = conv.participants?.map((p: any) =>
-                    p.user_id === this.currentUserId
+                    p.user_id === this.currentUserId()
                         ? { ...p, last_read_message_id: conv.lastMessage.id }
                         : p
                 );
@@ -349,7 +346,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         this.setAiSummaryTrigger(0, '');
 
         const conversationId = conv?.conversation_id ? String(conv.conversation_id) : '';
-        const userId = String(this.currentUserId || '').trim();
+        const userId = String(this.currentUserId() || '').trim();
         if (!conversationId || !userId) {
             this.setAiSummaryTrigger(unreadCount, localLastReadMessageId);
             return;
@@ -378,7 +375,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     }
 
     private getLastReadMessageIdFromConversation(conv: any): string {
-        const currentParticipant = conv?.participants?.find((p: any) => p.user_id === this.currentUserId);
+        const currentParticipant = conv?.participants?.find((p: any) => p.user_id === this.currentUserId());
         const participantLastReadMessageId = currentParticipant?.last_read_message_id
             ? String(currentParticipant.last_read_message_id)
             : '';
@@ -418,7 +415,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                 next: () => {
                     this.socketService.emit('updateParticipant', {
                         conversation_id: conversationId,
-                        user_id: this.currentUserId,
+                        user_id: this.currentUserId(),
                         last_read_message_id: latestMessageId,
                         participant_id: participantId
                     });
@@ -453,6 +450,8 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         this.selectedConversationType = '';
         this.getMessageInfor = {};
         this.convStore.toggleConversationInfor(false);
+        // Xóa ID hoạt động cuối cùng để tránh vòng lặp khôi phục tự động
+        this.convStore.setActiveConversationId('');
         if (!this.isFirstConversationReady()) {
             this.isFirstConversationReady.set(true);
         }
@@ -476,7 +475,8 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                 this.handleConversationID(found);
             }
         } else {
-            // Chỉ xóa selection và quay về welcome nếu ĐÃ LOAD XONG dữ liệu mà vẫn không thấy hội thoại
+            // Chỉ xóa selection và quay về welcome nếu ĐÃ LOAD XONG dữ liệu mà vẫn không thấy hội thoại thực
+            // Bao gồm cả trường hợp ID ảo (conv_) sau khi reload vì ID này không có trong store mới từ server
             if (this.convStore.isDataLoaded()) {
                 console.warn('Conversation not found after load, resetting to welcome:', this.convID);
                 this.resetToWelcome();
@@ -490,7 +490,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
             this.handleConversationID(found);
             this.navService.pendingConversationId.set(null);
         } else {
-            this.conversationService.getConversations(this.currentUserId).subscribe({
+            this.conversationService.getConversations(this.currentUserId()).subscribe({
                 next: (response: any) => {
                     const metadata = response.metadata || {};
                     this.convStore.conversations.set(metadata);
@@ -518,7 +518,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     // ── Helpers ────────────────────────────────────────────
     getOtherParticipant(conv: any): any {
         if (conv.participants?.length !== 2) return null;
-        return conv.participants.find((p: any) => p.user_id !== this.currentUserId);
+        return conv.participants.find((p: any) => String(p.user_id) !== String(this.currentUserId()));
     }
 
     isUserOnline(userId: string): boolean {
@@ -529,14 +529,14 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
 
     hasOnlineUser(conv: any): boolean {
         if (!conv.participants) return false;
-        return conv.participants.some((p: any) => p.user_id !== this.currentUserId && this.isUserOnline(p.user_id));
+        return conv.participants.some((p: any) => String(p.user_id) !== String(this.currentUserId()) && this.isUserOnline(p.user_id));
     }
 
     getLastMessageSenderName(conv: any): string {
         const { lastMessage, participants } = conv ?? {};
         if (!lastMessage) return '';
         const isSystem = lastMessage.message_type === 'system';
-        const isCurrentUser = lastMessage.sender_id === this.currentUserId;
+        const isCurrentUser = lastMessage.sender_id === this.currentUserId();
         const isDirectChat = participants.length < 3;
         if (isDirectChat && !isCurrentUser) {
             if (!isSystem) return '';
@@ -605,23 +605,25 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         if (existingConv) {
             this.handleConversationID(existingConv);
         } else {
-            const randomId = Math.random().toString(36).substring(2, 15);
+            const randomId1 = Math.random().toString(36).substring(2, 10);
+            const randomId2 = Math.random().toString(36).substring(2, 10);
             const userInfo = this.convStore.conversations()?.homeConversationData?.userInfo;
+
             const newConv = {
-                conversation_id: 'conv_' + randomId,
+                conversation_id: 'conv_' + randomId1,
                 type: 'direct',
                 title: user.full_name,
                 avatar_url: user.avatar_url,
                 participants: [
                     {
-                        id: 'par_' + randomId,
-                        user_id: this.currentUserId,
+                        id: 'par_' + randomId1,
+                        user_id: this.currentUserId(),
                         full_name: userInfo?.full_name,
                         avatar_url: userInfo?.avatar_url,
                         last_online_at: userInfo?.last_online_at,
                     },
                     {
-                        id: 'par_' + randomId,
+                        id: 'par_' + randomId2,
                         user_id: user.id,
                         full_name: user.full_name,
                         avatar_url: user.avatar_url,
@@ -661,7 +663,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         const newPinnedStatus = !conv.is_pinned;
         console.log(newPinnedStatus ? 'Pinning' : 'Unpinning', 'conversation:', conv.conversation_id);
 
-        const currentParticipant = conv.participants?.find((p: any) => p.user_id === this.currentUserId);
+        const currentParticipant = conv.participants?.find((p: any) => p.user_id === this.currentUserId());
         if (!currentParticipant?.id) {
             console.error('Participant ID not found for current user');
             return;
