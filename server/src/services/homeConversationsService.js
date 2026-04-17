@@ -104,7 +104,7 @@ class HomeConversationService {
 
         // 5. Batch count unread messages
         const unreadCountsMap = await messagesService.countUnreadMessages(convReadTimestamps);
-        
+
         // Log results for verification
         if (convReadTimestamps.length > 0) {
             console.log('--- Unread Messages Count ---');
@@ -176,12 +176,12 @@ class HomeConversationService {
 
     async createConversation(participants_id, conversation_type, name, avatar_url, created_by, last_message_id, last_message_at) {
         const conv = await conversationsService.createConversation(conversation_type, name, avatar_url, created_by, last_message_id, last_message_at);
-        
+
         const participants = [];
         if (participants_id) {
             participants.push(await participantsService.createParticipant(conv.id, { user_id: participants_id }));
         }
-        
+
         const you = await participantsService.createParticipant(conv.id, { user_id: created_by, role: 'owner' });
 
         // Enrich participants with user details (full_name, avatar_url)

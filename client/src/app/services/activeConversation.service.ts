@@ -342,14 +342,15 @@ export class ActiveConversationService implements OnDestroy {
     }
 
     syncReactions(msgId: string, reactions: any[], counts: any) {
+        const key = String(msgId);
         this.globalReactions.update(map => {
             const newMap = new Map(map);
-            newMap.set(msgId, reactions);
+            newMap.set(key, reactions);
             return newMap;
         });
         this.globalReactionCounts.update(map => {
             const newMap = new Map(map);
-            newMap.set(msgId, counts);
+            newMap.set(key, counts || {});
             return newMap;
         });
     }

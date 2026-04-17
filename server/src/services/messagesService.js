@@ -61,14 +61,14 @@ class MessagesService {
     }
 
     async getUnreadMessages({ conversation_id, last_read_message_id }, options = {}) {
-        if(!conversation_id) throw new BadRequestError('params invalid')
+        if (!conversation_id) throw new BadRequestError('params invalid')
 
         if (!last_read_message_id) {
             return await messagesModel.findAll({
                 where: {
                     conversation_id,
                     is_deleted: false,
-                    message_type: {[Op.ne]: 'system'}
+                    message_type: { [Op.ne]: 'system' }
                 },
                 limit: 20,
                 ...options
@@ -85,7 +85,7 @@ class MessagesService {
                 conversation_id,
                 created_at: { [Op.gt]: lastReadCreatedAtSubQuery },
                 is_deleted: false,
-                message_type: {[Op.ne]: 'system'}
+                message_type: { [Op.ne]: 'system' }
             },
             ...options
         });

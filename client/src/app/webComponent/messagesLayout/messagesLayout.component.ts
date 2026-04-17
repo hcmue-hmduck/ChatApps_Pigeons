@@ -1193,6 +1193,13 @@ export class MessagesLayoutComponent
                     },
                 }));
 
+                // Đồng bộ reaction map cho batch vừa load thêm để UI hiển thị chính xác.
+                for (const msg of olderMessages) {
+                    if (msg.reactions && msg.reactions.length > 0) {
+                        this.convStore.syncReactions(msg.id, msg.reactions, msg.countReactionMap || {});
+                    }
+                }
+
                 this.currentOffset += olderMessages.length;
                 this.hasMore = response.metadata?.homeMessagesData?.hasMore ?? false;
                 this.isLoadingMore = false;
@@ -1924,7 +1931,8 @@ export class MessagesLayoutComponent
     getMessageReactions(message: any): any {
         if (!message?.id) return { emoji_char: '', count: 0 };
         const key = this.messageKey(message.id);
-        const counts = (this.convStore.globalReactionCounts().get(key) || {}) as Record<string, number>;
+        const globalCounts = this.convStore.globalReactionCounts().get(key);
+        const counts = (globalCounts || message.countReactionMap || {}) as Record<string, number>;
 
         let allEmoji = '';
         let allCount = 0;
@@ -1990,7 +1998,7 @@ export class MessagesLayoutComponent
         event.stopPropagation();
         if (!message?.id) return;
         const key = this.messageKey(message.id);
-        const details = this.convStore.globalReactions().get(key) || [];
+        const details = (this.convStore.globalReactions().get(key) || message.reactions || []).map((r: any) => ({ ...r }));
         const participants = this.convStore.joinedConversations().find((conv: any) => conv.conversation_id === this.conversationId())?.participants || [];
         details.forEach((reaction: any) => {
             const user = participants.find((p: any) => p.user_id === reaction.user_id);
@@ -2015,11 +2023,14 @@ export class MessagesLayoutComponent
         const messageId = this.messageKey(message.id);
         const userId = this.currentUserId();
 
-        // 1. Get raw reactions for toggle logic
-        const rawReactions = (this.convStore.globalReactions().get(messageId) || []).map(r => ({ ...r }));
-        const counts = { ...(this.convStore.globalReactionCounts().get(messageId) || {}) } as Record<string, number>;
+        // 1. Seed reactions from global cache; fallback to message payload when cache is not ready.
+        const baseReactions: any[] = this.convStore.globalReactions().get(messageId) || message.reactions || [];
+        const rawReactions: any[] = baseReactions.map((r: any) => ({ ...r }));
 
-        const existingIdx = rawReactions.findIndex(r => r.user_id === userId);
+        const baseCounts = this.convStore.globalReactionCounts().get(messageId) || message.countReactionMap || {};
+        const counts = { ...baseCounts } as Record<string, number>;
+
+        const existingIdx = rawReactions.findIndex((r: any) => r.user_id === userId);
 
         const isRemoving = existingIdx >= 0;
         const reactIndex = rawReactions[existingIdx];

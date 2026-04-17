@@ -181,10 +181,10 @@ class HomeMessagesService {
                 content: content,
             }
 
-            if(file_name) result['file_name'] = file_name
-            if(link_description) result['file_desc'] = link_description
-            if(parent_message_id) result['reply_to'] = messageIdsMap[parent_message_id]
-        
+            if (file_name) result['file_name'] = file_name
+            if (link_description) result['file_desc'] = link_description
+            if (parent_message_id) result['reply_to'] = messageIdsMap[parent_message_id]
+
             return result
         })
 

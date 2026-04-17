@@ -24,7 +24,7 @@ const Message = sequelize.define('Message', {
         defaultValue: 'text',
         field: 'message_type',
         validate: {
-            isIn: [['text', 'image', 'file', 'audio', 'video', 'sticker', 'call','system']]
+            isIn: [['text', 'image', 'file', 'audio', 'video', 'sticker', 'call', 'system']]
         }
     },
     content: {
