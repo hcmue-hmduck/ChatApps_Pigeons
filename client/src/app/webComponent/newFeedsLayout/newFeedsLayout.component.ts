@@ -185,7 +185,9 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
 
     ngOnInit() {
         this.feedStore.loadFeeds();
-        this.loadMetadata();
+        if (!this.feedStore.isDataLoaded()) {
+            this.loadMetadata();
+        }
         this.setupSocketListener();
 
         // Local realtime updates tick every 60s
@@ -227,7 +229,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         }
         this.clearSelectedMedia(false);
         this.clearEditNewMedia(false);
-        if (this.onUpdateProfileSocket) this.socketService.off('updateProfile', this.onUpdateProfileSocket);
+        // Only clean up component-specific internal listeners
         if (this.onUserStatusChangedSocket) this.socketService.off('userStatusChanged', this.onUserStatusChangedSocket);
         if (this.onOnlineUsersListSocket) this.socketService.off('onlineUsersList', this.onOnlineUsersListSocket);
     }
@@ -241,23 +243,17 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
     }
 
     setupSocketListener() {
-        if (this.onUpdateProfileSocket) this.socketService.off('updateProfile', this.onUpdateProfileSocket);
+        // Shared listeners like 'updateProfile' are now handled globally in FeedStoreService
+        // to avoid duplicate work and state inconsistency.
+
         if (this.onUserStatusChangedSocket) this.socketService.off('userStatusChanged', this.onUserStatusChangedSocket);
         if (this.onOnlineUsersListSocket) this.socketService.off('onlineUsersList', this.onOnlineUsersListSocket);
 
-        this.onUpdateProfileSocket = (data: any) => {
-            this.feedStore.updatePostAuthorInfo(data);
-        };
-        this.socketService.on('updateProfile', this.onUpdateProfileSocket);
-
         this.onUserStatusChangedSocket = (data: { userId: string, status: string }) => {
-            // Update Sidebar
+            // Update Sidebar friends list specifically for this component
             this.onlineNodes.update(nodes => nodes.map(node =>
                 node.id === data.userId ? { ...node, status: data.status } : node
             ));
-
-            // Update Feed Authors status
-            this.feedStore.updatePostAuthorInfo({ id: data.userId, status: data.status });
         };
         this.socketService.on('userStatusChanged', this.onUserStatusChangedSocket);
 

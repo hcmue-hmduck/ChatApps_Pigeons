@@ -25,6 +25,7 @@ export class FeedStoreService {
     offset = signal(0);
     limit = 10;
     error = signal<string | null>(null);
+    isDataLoaded = signal(false);
 
     // --- Socket Callbacks ---
     private onNewPostSocket?: (data: any) => void;
@@ -32,6 +33,8 @@ export class FeedStoreService {
     private onDeletePostSocket?: (data: any) => void;
     private onNewCommentSocket?: (data: any) => void;
     private onPostReactSocket?: (data: any) => void;
+    private onUpdateProfileSocket?: (data: any) => void;
+    private onUserStatusChangedSocket?: (data: any) => void;
 
     constructor() {
         this.setupSocketListeners();
@@ -42,6 +45,11 @@ export class FeedStoreService {
             if (!this.hasMore() || this.loadingMore() || this.loading()) return;
             this.loadingMore.set(true);
         } else {
+            // Caching check: Skip initial load if data already exists
+            if (this.isDataLoaded()) {
+                console.log('[FeedStore] Data already loaded, skipping initial API call.');
+                return;
+            }
             this.loading.set(true);
             this.offset.set(0);
             this.hasMore.set(true);
@@ -69,6 +77,7 @@ export class FeedStoreService {
                 } else {
                     this.posts.set(homePosts);
                     this.loading.set(false);
+                    this.isDataLoaded.set(true);
                 }
 
                 this.offset.update((old: number) => old + homePosts.length);
@@ -162,6 +171,18 @@ export class FeedStoreService {
             }));
         };
         this.socketService.on('PostReact', this.onPostReactSocket);
+
+        // --- User Sync Listeners ---
+        this.onUpdateProfileSocket = (data: any) => {
+            this.updatePostAuthorInfo(data);
+        };
+        this.socketService.on('updateProfile', this.onUpdateProfileSocket);
+
+        this.onUserStatusChangedSocket = (data: { userId: string, status: string }) => {
+            this.updatePostAuthorInfo({ id: data.userId, status: data.status });
+        };
+        this.socketService.on('userStatusChanged', this.onUserStatusChangedSocket);
+
     }
 
     // --- Actions ---

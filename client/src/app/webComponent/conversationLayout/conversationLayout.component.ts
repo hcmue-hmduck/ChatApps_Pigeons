@@ -18,7 +18,7 @@ import {
 import { ActiveConversationService } from '../../services/activeConversation.service';
 import { RouterOutlet, Router, ActivatedRoute, NavigationEnd } from '@angular/router';
 import { Subject, of } from 'rxjs';
-import { debounceTime, distinctUntilChanged, switchMap, filter } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, switchMap, filter, takeUntil } from 'rxjs/operators';
 import { NavigationService, DirectConversationTarget } from '../../services/navigation';
 import { Conversation } from '../../services/conversation';
 import { Participant } from '../../services/participant';
@@ -103,6 +103,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     private hasInitWelcomeResetEffect = false;
     private aiSummaryTriggerRequestToken = 0;
     activeConvMenuId: string | null = null;
+    private destroy$ = new Subject<void>();
 
     constructor(
         private socketService: SocketService,
@@ -123,7 +124,8 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
 
         // Theo dõi sự thay đổi URL để cập nhật signal
         this.router.events.pipe(
-            filter(e => e instanceof NavigationEnd)
+            filter(e => e instanceof NavigationEnd),
+            takeUntil(this.destroy$)
         ).subscribe(() => {
             const id = parseUrlId();
             this._convID.set(id);
@@ -154,14 +156,9 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
             this.resetToWelcome();
         });
 
-        effect(() => {
-            const userId = this.authService.getUserId();
-            if (userId) {
-                console.log('User online detected:', userId);
-                this.loadConversations();
-                this.socketService.emit('userOnline', userId);
-            }
-        });
+        // Optimization: Đã xóa loadConversations effect ở đây vì ActiveConversationService 
+        // là một Singleton đã tự động handle việc load data dựa trên userId.
+        // Việc component gọi lại sẽ gây ra duplicate API calls khi refresh/login.
 
         // Effect mới: Tự động chọn hội thoại từ URL khi dữ liệu đã tải xong (Sửa lỗi khi Refresh)
         effect(() => {
@@ -210,7 +207,8 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                 }
                 this.isSearching.set(true);
                 return this.searchService.searchUsers(term);
-            })
+            }),
+            takeUntil(this.destroy$)
         ).subscribe({
             next: (response: any) => {
                 this.searchResults.set(response.metadata?.users || []);
@@ -229,17 +227,14 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
 
 
     ngOnDestroy() {
+        this.destroy$.next();
+        this.destroy$.complete();
         if (this.onUpdateParticipantSocket) this.socketService.off('updateParticipant', this.onUpdateParticipantSocket);
         if (this.onAddMemberSocket) this.socketService.off('addMember', this.onAddMemberSocket);
     }
 
     // ── Load Data ─────────────────────────────────────────
-    loadConversations() {
-        const userId = this.currentUserId();
-        if (userId) {
-            this.convStore.loadInitialData(userId);
-        }
-    }
+    // Đã loại bỏ loadConversations() redundant. Dùng loadInitialData của store trực tiếp.
 
     // Socket listeners moved to ActiveConversationService
 
@@ -475,12 +470,21 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
                 this.handleConversationID(found);
             }
         } else {
+            // Chỉ xử lý tiếp nếu Store đã thực sự tải xong dữ liệu
+            if (!this.convStore.isDataLoaded()) return;
+
+            // Không reset nếu là ID ảo (đang chờ gởi tin nhắn đầu tiên)
+            if (this.convID.startsWith('conv_')) {
+                if (this.selectedConversationId() !== this.convID) {
+                    this.selectedConversationId.set(this.convID);
+                }
+                return;
+            }
+
             // Chỉ xóa selection và quay về welcome nếu ĐÃ LOAD XONG dữ liệu mà vẫn không thấy hội thoại thực
             // Bao gồm cả trường hợp ID ảo (conv_) sau khi reload vì ID này không có trong store mới từ server
-            if (this.convStore.isDataLoaded()) {
-                console.warn('Conversation not found after load, resetting to welcome:', this.convID);
-                this.resetToWelcome();
-            }
+            console.warn('Conversation not found after load, resetting to welcome:', this.convID);
+            this.resetToWelcome();
         }
     }
 

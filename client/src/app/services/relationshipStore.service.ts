@@ -26,6 +26,7 @@ export class RelationshipStoreService {
     friendRequests = signal<any[]>([]);
     sentRequests = signal<any[]>([]);
     suggestions = signal<any[]>([]);
+    isDataLoaded = signal(false);
     
     loading = signal(false);
     isSearching = signal(false);
@@ -42,6 +43,13 @@ export class RelationshipStoreService {
 
     loadAllData(currentUserId: string) {
         if (!currentUserId) return;
+        
+        // Caching: Không load lại nếu đã có dữ liệu
+        if (this.isDataLoaded()) {
+            console.log('[RelationshipStore] Data already loaded, skipping API call.');
+            return;
+        }
+
         this.loading.set(true);
         this.isSearching.set(true);
 
@@ -137,6 +145,7 @@ export class RelationshipStoreService {
 
                 this.loading.set(false);
                 this.isSearching.set(false);
+                this.isDataLoaded.set(true);
             },
             error: (err) => {
                 console.error('[RelationshipStore] Error:', err);

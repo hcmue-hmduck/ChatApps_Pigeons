@@ -1,7 +1,7 @@
 import { Component, signal, computed, effect, OnChanges, SimpleChanges, Input, ChangeDetectorRef, HostListener, ViewChild, OnInit, OnDestroy, ChangeDetectionStrategy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { forkJoin, Subject, debounceTime, distinctUntilChanged } from 'rxjs';
+import { forkJoin, Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
 import { Friend } from '../../services/friend';
 import { FriendRequest } from '../../services/friendrequest';
@@ -69,6 +69,7 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
     searchResults = signal<any[]>([]);
     isSearching = signal(false);
     private searchSubject = new Subject<string>();
+    private destroy$ = new Subject<void>();
 
     // Tự động chuyển đổi thông minh và cập nhật trạng thái Online/Offline thời gian thực
     displayedSuggestions = computed(() => {
@@ -140,13 +141,16 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
         // Thiết lập auto-search với debounce
         this.searchSubject.pipe(
             debounceTime(300),
-            distinctUntilChanged()
+            distinctUntilChanged(),
+            takeUntil(this.destroy$)
         ).subscribe((kw) => {
             this.onSearch(kw);
         });
     }
 
     ngOnDestroy() {
+        this.destroy$.next();
+        this.destroy$.complete();
         this.searchSubject.complete();
         if (this.updateProfileListener) {
             this.convStore['socketService'].off('updateProfile', this.updateProfileListener);
