@@ -10,6 +10,7 @@ import { FileUtils } from '../../utils/FileUtils/fileUltils';
 import { ImgVidUtils } from '../../utils/img_vidUtils/img_vidUtils';
 import { forkJoin, lastValueFrom } from 'rxjs';
 import { Messages } from '../../services/messages';
+import { ActiveConversationService } from '../../services/activeConversation.service';
 
 @Component({
     selector: 'app-conversation-info-layout',
@@ -49,6 +50,7 @@ export class ConversationInfoLayoutComponent implements OnInit, OnDestroy, OnCha
     socketService = inject(SocketService);
     messagesService = inject(Messages);
     fileUtils = inject(FileUtils);
+    activeConversationService = inject(ActiveConversationService);
     private cdr = inject(ChangeDetectorRef);
     private onUpdateConversationInfoSocket?: (data: any) => void;
 
@@ -87,7 +89,12 @@ export class ConversationInfoLayoutComponent implements OnInit, OnDestroy, OnCha
         }
 
         this.onUpdateConversationInfoSocket = (data: any) => {
-            if (data.conversation_id === this.conversationInfor?.conversation_id && data.upload_file) {
+            const currentActiveId = this.activeConversationService.activeConversationId() || 
+                                    this.conversationInfor?.conversation_id;
+                                    
+            // So sánh linh hoạt hơn: Kiểm tra ID thật hoặc ID đang active trên store
+            if ((data.conversation_id === this.conversationInfor?.conversation_id || 
+                 data.conversation_id === currentActiveId) && data.upload_file) {
                 const newFiles = Array.isArray(data.upload_file) ? data.upload_file : [data.upload_file];
                 newFiles.forEach((file: any) => {
                     const mType = file.message_type || file.resource_type;

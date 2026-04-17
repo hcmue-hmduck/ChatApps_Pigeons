@@ -1400,8 +1400,8 @@ export class MessagesLayoutComponent
                         }));
                         
                         // Luôn đồng bộ vào Update Cache cho conversation hiện tại
-                        // Dù là ID ảo hay thật, local state vừa được thay đổi thì Cache phải được đồng bộ.
-                        this.messageStore.updateState(this.conversationId(), {
+                        // Dù là ID ảo hay thật, local state vừa được thay đổi thì Cache phải được đồng bộ vào đúng ID cuối cùng.
+                        this.messageStore.updateState(finalConvId, {
                             getMessagesData: this.getMessagesData(),
                             lastMessageId: realId
                         });
