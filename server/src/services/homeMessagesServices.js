@@ -11,12 +11,14 @@ const openAiService = require('../services/openAiService.js')
 class HomeMessagesService {
     async getMessagesByConversation(conversationId, limit = 100, offset = 0) {
         // 1. Song song hóa queries ban đầu
-        const [conversation, messages, pinnedMessages, messageReactions] = await Promise.all([
+        const [conversation, messages, pinnedMessages] = await Promise.all([
             conversationsService.getConversationById(conversationId),
             messagesService.getAllMessagesByConversationId(conversationId, limit, offset),
             pinnedmessagesService.getPinnedMessagesByConversationId(conversationId),
-            messageReactionService.getMessageReactions(conversationId),
         ]);
+
+        const messageIds = (messages || []).map((m) => m.id);
+        const messageReactions = await messageReactionService.getMessageReactionsByMessageIds(messageIds);
 
         if (!conversation) {
             // Virtual conversation or non-existent — return empty skeleton instead of 500 error

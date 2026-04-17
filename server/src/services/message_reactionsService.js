@@ -26,6 +26,19 @@ class MessageReactionService {
             },
         });
     }
+
+    async getMessageReactionsByMessageIds(messageIds = []) {
+        const uniqueIds = [...new Set((messageIds || []).filter(Boolean))];
+        if (uniqueIds.length === 0) return [];
+
+        return await messageReactionModel.findAll({
+            where: {
+                message_id: {
+                    [Op.in]: uniqueIds,
+                },
+            },
+        });
+    }
 }
 
 module.exports = new MessageReactionService();
