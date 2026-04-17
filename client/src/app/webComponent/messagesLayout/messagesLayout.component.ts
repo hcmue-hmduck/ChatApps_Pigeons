@@ -1303,7 +1303,8 @@ export class MessagesLayoutComponent
                     next: (response) => {
                         this.loading = false;
                         const savedMessage = response.metadata?.newMessage;
-                        const realId = savedMessage?.id;
+                        const realId = savedMessage?.id; // MESSAGE ID
+                        const realConvId = savedMessage?.conversation_id; // CONVERSATION ID
 
                         this.lastMessageId = realId;
                         this.messageStatus.set('Đã gửi');
@@ -1314,24 +1315,58 @@ export class MessagesLayoutComponent
                             sender_avatar: authUser.avatar_url || currentUser.avatar_url,
                         };
 
-                        this.conversationService.putConversation(this.conversationId(), {
-                            last_message_id: realId
-                        }).subscribe();
+                        // --- NEW: Nâng cấp hội thoại ảo lên thật cho chính người gửi ---
+                        const oldId = this.conversationId();
+                        if (oldId && oldId.startsWith('conv_')) {
+                            console.log('[UPGRADE] Upgrading virtual conversation to real:', oldId, '->', realConvId);
+                            const realParticipants = response.metadata?.newMessage?.conversation_info?.participants || 
+                                                     this.getMessageInfor()?.participants;
+                            
+                            // 1. Đồng bộ dữ liệu hiện tại (có tin nhắn vừa gửi) vào Store trước khi migrate
+                            this.messageStore.setConversationState(oldId, {
+                                getMessagesData: this.getMessagesData(),
+                                pinnedMessages: this.pinnedMessages(),
+                                messageReactions: this.convStore.globalReactions(),
+                                lastMessageId: realId,
+                                isLoaded: true
+                            });
 
-                        this.broadcastMessage(realMessage);
+                            // 2. Migrate cache sang ID mới
+                            this.messageStore.migrateCache(oldId, realConvId);
+
+                            // 3. Nâng cấp Sidebar (Store)
+                            this.convStore.upgradeConversation(oldId, realConvId, realParticipants, realMessage);
+                            
+                            // 4. Cập nhật Active ID và URL (Navigation)
+                            // Quan trọng: Gọi setActiveConversationId TRƯỚC navigate để effect loadMessages thấy cache mới ngay
+                            this.convStore.setActiveConversationId(realConvId);
+                            this.router.navigate(['/conversations', realConvId], { replaceUrl: true });
+                            
+                            // 5. Ép người gửi Join vào Room Socket THẬT ngay lập tức
+                            this.socketService.emit('joinConversation', realConvId);
+                        } else {
+                            // Nếu là hội thoại thực rồi thì mới cần gọi API update last_message_id
+                            this.conversationService.putConversation(this.conversationId(), {
+                                last_message_id: realId
+                            }).subscribe();
+                        }
+
+                        // Cập nhật ID thật cho tất cả các thông báo socket tiếp theo
+                        const finalConvId = realConvId || this.conversationId();
+
+                        this.broadcastMessage({ ...realMessage, conversation_id: finalConvId });
 
                         // Cập nhật media sidebar (nếu là media message)
                         if (realMessage.message_type !== 'text') {
                             this.socketService.emit('updateConversationInfo', {
-                                conversation_id: this.conversationId(),
-                                upload_file: realMessage // Emit nguyên object tin nhắn như yêu cầu của user
+                                conversation_id: finalConvId,
+                                upload_file: realMessage 
                             });
                         }
 
                         // Chỉ notify khi conversation chưa có trong danh sách local (thường là cuộc trò chuyện mới tạo)
-                        // HOẶC nếu đây là một cuộc nâng cấp từ ảo lên thật (vô hiệu hóa guard isKnownConversation vì lúc này message list đã được cập nhật ID thật rồi)
                         const isKnownConversation = (this.convStore.joinedConversations() || [])
-                            .some((conv: any) => conv.conversation_id === this.conversationId());
+                            .some((conv: any) => String(conv.conversation_id) === String(finalConvId));
 
                         
                         if (!isKnownConversation || isNewConversationUpgrade) {
@@ -1341,9 +1376,10 @@ export class MessagesLayoutComponent
 
                             
                             if (receiverIds.length > 0) {
+                                // QUAN TRỌNG: Gửi ID THẬT cho người nhận để họ join đúng room
                                 this.socketService.emit('notifyNewConversation', {
                                     receiverIds,
-                                    conversationId: this.conversationId(),
+                                    conversation_id: finalConvId, // Đổi thành snake_case để match với receiver
                                     senderId: this.currentUserId(),
                                     participants: this.getMessageInfor()?.participants
                                 });
@@ -1362,6 +1398,13 @@ export class MessagesLayoutComponent
                                 ),
                             },
                         }));
+                        
+                        // Luôn đồng bộ vào Update Cache cho conversation hiện tại
+                        // Dù là ID ảo hay thật, local state vừa được thay đổi thì Cache phải được đồng bộ.
+                        this.messageStore.updateState(this.conversationId(), {
+                            getMessagesData: this.getMessagesData(),
+                            lastMessageId: realId
+                        });
 
                         const participantId = this.getMessageInfor()?.participants.find((p: any) => p.user_id === this.currentUserId())?.id;
 
@@ -1404,13 +1447,18 @@ export class MessagesLayoutComponent
                     pinnedMessages: [],
                     conversation_type: '',
                 };
-                return {
+                const newState = {
                     ...old,
                     homeMessagesData: {
                         ...homeMessagesData,
                         messages: [...(homeMessagesData.messages || []), newMessage],
                     },
                 };
+
+                // Đồng bộ luôn vào Store cache để tránh mất dữ liệu khi chuyển hướng
+                this.messageStore.updateState(conversationId, { getMessagesData: newState });
+                
+                return newState;
             });
         }
     }

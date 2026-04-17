@@ -369,7 +369,7 @@ export class ActiveConversationService implements OnDestroy {
             if (!cur?.homeConversationData?.joinedConversations) return cur;
             
             const convList = [...cur.homeConversationData.joinedConversations];
-            const index = convList.findIndex((c: any) => c.conversation_id === data.conversation_id);
+            const index = convList.findIndex((c: any) => String(c.conversation_id) === String(data.conversation_id));
             const currentUserId = this.authService.getUserId();
 
             if (index !== -1) {
@@ -420,18 +420,37 @@ export class ActiveConversationService implements OnDestroy {
         return this.joinedConversations().find((c: any) => String(c.conversation_id) === String(id));
     }
 
-    upgradeConversation(oldId: string, newId: string, realParticipants?: any[]) {
+    upgradeConversation(oldId: string, newId: string, realParticipants?: any[], lastMessageData?: any) {
         this.conversations.update(current => {
             const joined = current.homeConversationData?.joinedConversations || [];
             const index = joined.findIndex((c: any) => String(c.conversation_id) === String(oldId));
             
             if (index !== -1) {
                 const updatedJoined = [...joined];
-                updatedJoined[index] = {
+                const upgradedConv = {
                     ...updatedJoined[index],
                     conversation_id: newId,
-                    participants: realParticipants || updatedJoined[index].participants
+                    participants: realParticipants || updatedJoined[index].participants,
+                    lastMessage: lastMessageData ? {
+                        sender_id: lastMessageData.sender_id,
+                        content: lastMessageData.content,
+                        created_at: lastMessageData.created_at,
+                        message_type: lastMessageData.message_type,
+                        id: lastMessageData.id
+                    } : updatedJoined[index].lastMessage
                 };
+
+                // Xóa cũ, thêm mới vào vị trí ưu tiên (đầu danh sách hoặc sau pinned)
+                updatedJoined.splice(index, 1);
+                
+                if (upgradedConv.is_pinned) {
+                    updatedJoined.unshift(upgradedConv);
+                } else {
+                    const firstUnpinnedIndex = updatedJoined.findIndex((c: any) => !c.is_pinned);
+                    if (firstUnpinnedIndex === -1) updatedJoined.push(upgradedConv);
+                    else updatedJoined.splice(firstUnpinnedIndex, 0, upgradedConv);
+                }
+
                 return {
                     ...current,
                     homeConversationData: {

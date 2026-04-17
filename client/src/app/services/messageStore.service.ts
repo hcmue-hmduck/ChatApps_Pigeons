@@ -117,6 +117,21 @@ export class MessageStoreService {
     }
 
     /**
+     * Di chuyển dữ liệu từ ID cũ sang ID mới (dùng khi nâng cấp hội thoại ảo)
+     */
+    migrateCache(oldId: string, newId: string) {
+        this.cache.update(map => {
+            const currentData = map.get(oldId);
+            if (!currentData) return map;
+
+            const newMap = new Map(map);
+            newMap.set(newId, currentData);
+            newMap.delete(oldId);
+            return newMap;
+        });
+    }
+
+    /**
      * Xóa cache nếu cần (ví dụ khi logout)
      */
     clearAll() {

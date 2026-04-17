@@ -129,8 +129,11 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         ).subscribe(() => {
             const id = parseUrlId();
             this._convID.set(id);
-            // Luôn đồng bộ active ID kể cả khi null để tránh vòng lặp Restore
-            this.convStore.setActiveConversationId(id || '');
+            // Chỉ cập nhật active ID nếu có ID thực tế trong URL. 
+            // Nếu không có (về route gốc), ta giữ nguyên lastId để logic Restore có thể hoạt động.
+            if (id) {
+                this.convStore.setActiveConversationId(id);
+            }
         });
 
         effect(() => {
@@ -182,6 +185,9 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
             
             // Nếu truy cập vào /conversations (không ID) mà trước đó đã có hội thoại active
             if (!routeId && lastId && this.router.url === '/conversations') {
+                // Chỉ xử lý tiếp nếu Store đã tải xong để có thể kiểm tra tồn tại của ID
+                if (!this.convStore.isDataLoaded()) return;
+
                 // Kiểm tra xem ID này có thực sự tồn tại trong danh sách (hoặc là ID ảo hợp lệ)
                 const exists = this.convStore.getConversationById(lastId) || lastId.startsWith('conv_');
                 if (exists) {
@@ -473,12 +479,16 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
             // Chỉ xử lý tiếp nếu Store đã thực sự tải xong dữ liệu
             if (!this.convStore.isDataLoaded()) return;
 
-            // Không reset nếu là ID ảo (đang chờ gởi tin nhắn đầu tiên)
+            // Duy trì ID ảo (đang chờ gởi tin nhắn đầu tiên) NẾU nó có trong RAM (Navigation nội bộ)
+            // Nếu Reload trang, dữ liệu ảo mất đi -> getConversationById sẽ trả về null -> redirect về welcome.
             if (this.convID.startsWith('conv_')) {
-                if (this.selectedConversationId() !== this.convID) {
-                    this.selectedConversationId.set(this.convID);
+                const virtualExists = this.convStore.getConversationById(this.convID);
+                if (virtualExists) {
+                    if (this.selectedConversationId() !== this.convID) {
+                        this.selectedConversationId.set(this.convID);
+                    }
+                    return;
                 }
-                return;
             }
 
             // Chỉ xóa selection và quay về welcome nếu ĐÃ LOAD XONG dữ liệu mà vẫn không thấy hội thoại thực
