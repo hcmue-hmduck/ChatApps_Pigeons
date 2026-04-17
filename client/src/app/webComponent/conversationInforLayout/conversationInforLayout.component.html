@@ -52,36 +52,36 @@
 
         <!-- Accordion Sections -->
         <div class="accordion-list">
-            <!-- Customization -->
+            <!-- Tùy chỉnh -->
             <div class="accordion-item">
                 <button class="accordion-header" (click)="toggleSection('customization')">
-                    <span>Customization</span>
+                    <span>Tùy chỉnh</span>
                     <i class="bi" [class.bi-chevron-up]="sections().customization"
                         [class.bi-chevron-down]="!sections().customization"></i>
                 </button>
                 <div class="accordion-content" [class.open]="sections().customization">
                     <div class="content-padding">
                         <div class="list-item">
-                            <span>Change Theme</span>
+                            <span>Thay đổi chủ đề</span>
                             <div class="theme-dot"></div>
                         </div>
                         <div class="list-item">
-                            <span>Edit Emoji</span>
+                            <span>Chỉnh sửa biểu tượng</span>
                             <span class="emoji">⚡</span>
                         </div>
                         <div class="list-item">
-                            <span>Edit Nickname</span>
-                            <span class="muted-text">Alex</span>
+                            <span>Chỉnh sửa biệt danh</span>
+                            <span class="muted-text">Pigeons</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Members -->
+            <!-- Thành viên -->
             @if (isGroupConversation) {
             <div class="accordion-item">
                 <button class="accordion-header" (click)="toggleSection('members')">
-                    <span>Members</span>
+                    <span>Thành viên</span>
                     <i class="bi" [class.bi-chevron-up]="sections().members"
                         [class.bi-chevron-down]="!sections().members"></i>
                 </button>
@@ -92,14 +92,14 @@
                             <img [src]="member.avatar_url" [alt]="member.full_name" class="member-avatar">
                             <div class="member-info">
                                 <p class="member-name">{{ member.full_name }}</p>
-                                <p class="member-role accent-text">{{ member.role || 'Member' }}</p>
+                                <p class="member-role accent-text">{{ member.role === 'admin' ? 'Quản trị viên' : 'Thành viên' }}</p>
                             </div>
                         </div>
                         }
                         @if (isGroupConversation) {
-                        <button class="add-people-btn">
+                        <button class="add-people-btn" (click)="handleAddMember()">
                             <i class="bi bi-person-plus"></i>
-                            Add People
+                            Thêm thành viên
                         </button>
                         }
                     </div>
@@ -118,19 +118,23 @@
                     <div class="content-padding">
                         @if (imgData().length > 0) {
                         <div class="media-section">
-                            <div class="section-title">
-                                <button class="see-all">Tất cả</button>
-                            </div>
                             <div class="media-grid">
-                                @for (item of imgData(); track item.id; let i = $index) {
+                                @for (item of (mediaShowAll().image ? imgData() : imgData().slice(0, 3)); track item.id; let i = $index) {
                                 <div class="media-item" (click)="openGallery(i)">
                                     <img [src]="item.file_url" [alt]="item.file_name">
                                 </div>
                                 }
                             </div>
+                            @if (imgData().length > 3) {
+                            <div class="view-more-container">
+                                <button class="see-all" (click)="toggleMediaShowAll('image')">
+                                    {{ mediaShowAll().image ? 'Thu gọn' : 'Xem tất cả (' + imgData().length + ')' }}
+                                </button>
+                            </div>
+                            }
                         </div>
                         } @else {
-                        <p class="muted-text">Chưa có ảnh nào được chia sẻ</p>
+                        <p class="muted-text text-center">Chưa có ảnh nào được chia sẻ</p>
                         }
                     </div>
                 </div>
@@ -147,11 +151,8 @@
                     <div class="content-padding">
                         @if (vidData().length > 0) {
                         <div class="media-section">
-                            <div class="section-title">
-                                <button class="see-all">Tất cả</button>
-                            </div>
                             <div class="media-grid">
-                                @for (item of vidData(); track item.id; let i = $index) {
+                                @for (item of (mediaShowAll().video ? vidData() : vidData().slice(0, 3)); track item.id; let i = $index) {
                                 <div class="media-item video" (click)="openVideoGallery(i)">
                                     @if (item.thumbnail_url) {
                                     <img [src]="item.thumbnail_url" [alt]="item.file_name">
@@ -164,9 +165,16 @@
                                 </div>
                                 }
                             </div>
+                            @if (vidData().length > 3) {
+                            <div class="view-more-container">
+                                <button class="see-all" (click)="toggleMediaShowAll('video')">
+                                    {{ mediaShowAll().video ? 'Thu gọn' : 'Xem tất cả (' + vidData().length + ')' }}
+                                </button>
+                            </div>
+                            }
                         </div>
                         } @else {
-                        <p class="muted-text">Chưa có video nào được chia sẻ</p>
+                        <p class="muted-text text-center">Chưa có video nào được chia sẻ</p>
                         }
                     </div>
                 </div>
@@ -183,7 +191,7 @@
                     <div class="content-padding">
                         @if (linkData().length > 0) {
                         <div class="files-list">
-                            @for (link of linkData(); track link.id) {
+                            @for (link of (mediaShowAll().link ? linkData() : linkData().slice(0, 3)); track link.id) {
                             <div class="file-item group" (click)="openLink(link.file_url)">
                                 <div class="file-icon link-thumb">
                                     @if (link.thumbnail_url) {
@@ -199,8 +207,15 @@
                             </div>
                             }
                         </div>
+                        @if (linkData().length > 3) {
+                        <div class="view-more-container">
+                            <button class="see-all" (click)="toggleMediaShowAll('link')">
+                                {{ mediaShowAll().link ? 'Thu gọn' : 'Xem tất cả (' + linkData().length + ')' }}
+                            </button>
+                        </div>
+                        }
                         } @else {
-                        <p class="muted-text">Chưa có liên kết nào được chia sẻ</p>
+                        <p class="muted-text text-center">Chưa có liên kết nào được chia sẻ</p>
                         }
                     </div>
                 </div>
@@ -217,8 +232,8 @@
                     <div class="content-padding">
                         @if (fileData().length > 0) {
                         <div class="files-list">
-                            @for (file of fileData(); track file.id) {
-                            <div class="file-item group">
+                            @for (file of (mediaShowAll().file ? fileData() : fileData().slice(0, 3)); track file.id) {
+                            <div class="file-item group" (click)="downloadFile(file, $event)">
                                 <div class="file-icon" [class.pdf]="file.file_name?.toLowerCase()?.endsWith('.pdf')">
                                     <i class="bi bi-file-earmark-text"></i>
                                 </div>
@@ -226,21 +241,27 @@
                                     <p class="file-name text-truncate">{{ file.file_name }}</p>
                                     <p class="file-meta">{{ file.created_at | date:'dd/MM/yyyy' }}</p>
                                 </div>
-                                <i class="bi bi-download download-icon"></i>
                             </div>
                             }
                         </div>
+                        @if (fileData().length > 3) {
+                        <div class="view-more-container">
+                            <button class="see-all" (click)="toggleMediaShowAll('file')">
+                                {{ mediaShowAll().file ? 'Thu gọn' : 'Xem tất cả (' + fileData().length + ')' }}
+                            </button>
+                        </div>
+                        }
                         } @else {
-                        <p class="muted-text">Chưa có tệp tin nào được chia sẻ</p>
+                        <p class="muted-text text-center">Chưa có tệp tin nào được chia sẻ</p>
                         }
                     </div>
                 </div>
             </div>
 
-            <!-- Privacy & Support -->
+            <!-- Quyền riêng tư & Hỗ trợ -->
             <div class="accordion-item">
                 <button class="accordion-header" (click)="toggleSection('privacy')">
-                    <span>Privacy & Support</span>
+                    <span>Quyền riêng tư & Hỗ trợ</span>
                     <i class="bi" [class.bi-chevron-up]="sections().privacy"
                         [class.bi-chevron-down]="!sections().privacy"></i>
                 </button>
@@ -249,22 +270,22 @@
                         <button class="action-row group">
                             <i class="bi bi-slash-circle"></i>
                             <div class="action-body">
-                                <p class="action-title">Mute notifications</p>
-                                <p class="action-status">Off</p>
+                                <p class="action-title">Tắt thông báo</p>
+                                <p class="action-status">Mặc định</p>
                             </div>
                         </button>
                         <button class="action-row group">
                             <i class="bi bi-eye"></i>
                             <div class="action-body">
-                                <p class="action-title">Read receipts</p>
-                                <p class="action-status">On</p>
+                                <p class="action-title">Thông báo đã đọc</p>
+                                <p class="action-status">Đang bật</p>
                             </div>
                         </button>
                         <button class="action-row group">
                             <i class="bi bi-clock-history"></i>
                             <div class="action-body">
-                                <p class="action-title">Disappearing messages</p>
-                                <p class="action-status">24 hours</p>
+                                <p class="action-title">Tin nhắn tự xóa</p>
+                                <p class="action-status">Tắt</p>
                             </div>
                         </button>
 
@@ -273,30 +294,23 @@
                         <button class="action-row danger group">
                             <i class="bi bi-exclamation-triangle"></i>
                             <div class="action-body">
-                                <p class="action-title">Report</p>
-                                <p class="action-status">Provide feedback and report</p>
+                                <p class="action-title">Báo cáo</p>
+                                <p class="action-status">Báo cáo vi phạm nội dung</p>
                             </div>
                         </button>
                         <button class="action-row danger group">
                             <i class="bi bi-shield-slash"></i>
-                            <span>Block Contact</span>
+                            <span>Chặn liên hệ</span>
                         </button>
                         <button class="action-row danger group">
                             <i class="bi bi-box-arrow-right"></i>
-                            <span>Leave Chat</span>
+                            <span>Rời khỏi cuộc trò chuyện</span>
                         </button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Bottom Action -->
-        <div class="bottom-action">
-            <button class="more-actions-btn">
-                <i class="bi bi-three-dots"></i>
-                More Actions
-            </button>
-        </div>
     </div>
 </aside>
 

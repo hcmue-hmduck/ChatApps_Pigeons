@@ -137,12 +137,12 @@
     </section>
 
     <!-- ===================== PANEL 3: CHAT AREA ===================== -->
-    <main class="chat-area" [class.with-sidebar]="showConversationInfor()">
+    <main class="chat-area" [class.with-sidebar]="convStore.showConversationInfor()">
         <router-outlet></router-outlet>
     </main>
 
     <!-- ===================== PANEL 4: INFO SIDEBAR ===================== -->
-    @if (showConversationInfor() && selectedConversationId()) {
+    @if (convStore.showConversationInfor() && selectedConversationId()) {
     <app-conversation-info-layout (closePanel)="toggleConversationInfor()"
         [userInfor]="convStore.conversations().homeConversationData?.userInfo" [currentUserId]="currentUserId"
         [userPresence]="convStore.userPresence()" [conversationAvatar]="getMessageInfor?.avatar_url"

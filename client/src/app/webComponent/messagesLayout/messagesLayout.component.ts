@@ -2800,6 +2800,7 @@ export class MessagesLayoutComponent
     }
 
     handleInfo() {
+        this.convStore.toggleConversationInfor();
         this.toggleDetails.emit();
     }
 

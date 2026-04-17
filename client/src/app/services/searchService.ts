@@ -14,6 +14,7 @@ export class SearchService {
 
   // Tìm kiếm users
   searchUsers(keyword: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}?keyword=${keyword}`);
+    const encodedKeyword = encodeURIComponent(keyword);
+    return this.http.get(`${this.apiUrl}?keyword=${encodedKeyword}`);
   }
 }

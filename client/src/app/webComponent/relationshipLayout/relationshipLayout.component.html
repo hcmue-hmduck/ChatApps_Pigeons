@@ -26,8 +26,8 @@
 
           <button class="tab-btn" [class.active]="currentTab === 'friend_requests'" (click)="setTab('friend_requests')">
             YÊU CẦU
-            @if (friendRequests().length > 0) {
-            <span class="tab-count">{{ friendRequests().length }}</span>
+            @if (relStore.friendRequests().length > 0) {
+            <span class="tab-count">{{ relStore.friendRequests().length }}</span>
             }
             @if (currentTab === 'friend_requests') {
             <span class="active-bar"></span>
@@ -36,8 +36,8 @@
 
           <button class="tab-btn" [class.active]="currentTab === 'sent_requests'" (click)="setTab('sent_requests')">
             LỜI MỜI
-            @if (sentRequests().length > 0) {
-            <span class="tab-count">{{ sentRequests().length }}</span>
+            @if (relStore.sentRequests().length > 0) {
+            <span class="tab-count">{{ relStore.sentRequests().length }}</span>
             }
             @if (currentTab === 'sent_requests') {
             <span class="active-bar"></span>
@@ -75,13 +75,9 @@
                 <div class="search-icon-box">
                   <i class="bi bi-search search-icon"></i>
                 </div>
-                <input type="text" [(ngModel)]="searchKeyword" (keyup.enter)="onSearch()" class="search-input-field" placeholder="Tìm kiếm theo tên, biệt danh hoặc ID..." />
-                <button class="search-submit-btn" (click)="onSearch()" [disabled]="isSearching()">
-                  @if (!isSearching()) {
+                <input type="text" [(ngModel)]="searchKeyword" (input)="onSearchInput()" (keyup.enter)="onSearch()" class="search-input-field" placeholder="Tìm kiếm theo tên, biệt danh hoặc ID..." />
+                <button class="search-submit-btn" [disabled]="relStore.isSearching()">
                   <span>Tìm kiếm</span>
-                  } @else {
-                  <div class="spinner-border spinner-border-sm" role="status"></div>
-                  }
                 </button>
               </div>
             </div>
@@ -90,14 +86,14 @@
               <div class="results-header">
                 <h3 class="results-title">
                   <i class="bi bi-person-plus title-icon"></i>
-                  <span>Gợi ý kết bạn ({{ searchResults().length }})</span>
+                  <span>Gợi ý kết bạn ({{ displayedSuggestions().length }})</span>
                 </h3>
                 <button class="reset-search-btn">
                   Xóa bộ lọc
                 </button>
               </div>
 
-              @if (isSearching() && searchResults().length === 0) {
+              @if (relStore.isSearching() && displayedSuggestions().length === 0) {
               <div class="search-results-grid skeleton-mode">
                 @for (i of [1,2,3,4,5,6]; track i) {
                 <div class="skeleton-card">
@@ -110,7 +106,7 @@
               </div>
               }
 
-              @if (!isSearching() && searchResults().length === 0) {
+              @if (!relStore.isSearching() && displayedSuggestions().length === 0) {
               <div class="empty-results-state">
                 <i class="bi bi-person-x empty-state-icon"></i>
                 <h4 class="empty-state-title">Không tìm thấy người dùng</h4>
@@ -121,9 +117,9 @@
               </div>
               }
 
-              @if (searchResults().length > 0) {
+              @if (displayedSuggestions().length > 0) {
               <div class="search-results-grid">
-                @for (user of searchResults(); track user.id) {
+                @for (user of displayedSuggestions(); track user.id) {
                 <div class="search-profile-card animate-card-up">
                   <div class="profile-card-header">
                     <div class="card-avatar-container" [class.is-online]="user.status === 'online'">
@@ -175,7 +171,7 @@
               </div>
               }
 
-              @if (searchResults().length > 0) {
+              @if (displayedSuggestions().length > 0) {
               <div class="pagination-footer">
                 <button class="load-more-btn">
                   Tải thêm gợi ý
@@ -191,14 +187,14 @@
         <!-- Friends Tab -->
         @if (currentTab === 'friends') {
         <!-- Loading -->
-        @if (loading) {
+        @if (relStore.loading()) {
         <div class="loading-state">
           <div class="spinner"></div>
         </div>
         }
 
         <!-- Empty -->
-        @if (!loading && friends().length === 0) {
+        @if (!relStore.loading() && relStore.friends().length === 0) {
         <div class="empty-state">
           <i class="bi bi-people"></i>
           <p>Không tìm thấy kết nối nào khớp với tìm kiếm của bạn.</p>
@@ -206,7 +202,7 @@
         }
 
         <!-- List -->
-        @if (!loading && friends().length > 0) {
+        @if (!relStore.loading() && relStore.friends().length > 0) {
         <div class="friends-list">
           @for (group of groupedFriends(); track group.letter) {
           <div class="list-group-header">{{ group.letter }}</div>
@@ -245,16 +241,16 @@
 
         <!-- Requests Tab -->
         @if (currentTab === 'friend_requests') {
-        @if (!loading && friendRequests().length === 0) {
+        @if (!relStore.loading() && relStore.friendRequests().length === 0) {
         <div class="empty-state">
           <i class="bi bi-person-plus"></i>
           <p>Hiện không có yêu cầu kết nối nào.</p>
         </div>
         }
 
-        @if (!loading && friendRequests().length > 0) {
+        @if (!relStore.loading() && relStore.friendRequests().length > 0) {
         <div class="requests-list">
-          @for (request of friendRequests(); track request.id) {
+          @for (request of relStore.friendRequests(); track request.id) {
           <div class="friend-row" [class.online]="request.status === 'online'" [class.offline]="request.status !== 'online'">
             <div class="user-cell">
               <div class="avatar-wrapper">
@@ -285,16 +281,16 @@
 
         <!-- Sent Requests Tab -->
         @if (currentTab === 'sent_requests') {
-        @if (!loading && sentRequests().length === 0) {
+        @if (!relStore.loading() && relStore.sentRequests().length === 0) {
         <div class="empty-state">
           <i class="bi bi-send-check"></i>
           <p>Bạn chưa gửi yêu cầu kết nối nào.</p>
         </div>
         }
 
-        @if (!loading && sentRequests().length > 0) {
+        @if (!relStore.loading() && relStore.sentRequests().length > 0) {
         <div class="requests-list">
-          @for (request of sentRequests(); track request.id) {
+          @for (request of relStore.sentRequests(); track request.id) {
           <div class="friend-row" [class.online]="request.status === 'online'" [class.offline]="request.status !== 'online'">
             <div class="user-cell">
               <div class="avatar-wrapper">
@@ -320,16 +316,16 @@
 
         <!-- Blocked Tab -->
         @if (currentTab === 'blocked') {
-        @if (!loading && blockedUser().length === 0) {
+        @if (!relStore.loading() && relStore.blockedUser().length === 0) {
         <div class="empty-state">
           <i class="bi bi-shield-slash"></i>
           <p>Danh sách chặn của bạn đang trống.</p>
         </div>
         }
 
-        @if (!loading && blockedUser().length > 0) {
+        @if (!relStore.loading() && relStore.blockedUser().length > 0) {
         <div class="blocked-list">
-          @for (user of blockedUser(); track user.block_id) {
+          @for (user of relStore.blockedUser(); track user.block_id) {
           <div class="friend-row offline">
             <div class="user-cell">
               <div class="avatar-wrapper">
@@ -360,11 +356,11 @@
         <div class="footer-stats">
           <div class="stat-item">
             <span class="pulse-dot"></span>
-            <span class="stat-label-online">{{ friends().filter(f => f.status === 'online').length }} ĐANG HOẠT ĐỘNG</span>
+            <span class="stat-label-online">{{ relStore.friends().filter(f => f.status === 'online').length }} ĐANG HOẠT ĐỘNG</span>
           </div>
           <div class="stat-item total">
             <span class="stat-dot-gray"></span>
-            <span>TỔNG CỘNG: {{ friends().length + blockedUser().length }}</span>
+            <span>TỔNG CỘNG: {{ relStore.friends().length + relStore.blockedUser().length }}</span>
           </div>
         </div>
         <div class="encryption-status">

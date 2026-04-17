@@ -72,11 +72,8 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     
     currentUserId: string = '';
 
-    // Sidebar toggle state
-    showConversationInfor = signal(false);
-
     toggleConversationInfor() {
-        this.showConversationInfor.update(v => !v);
+        this.convStore.toggleConversationInfor();
     }
 
     userBlock = signal<any[]>([]);
@@ -455,7 +452,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         this.selectedConversationId.set('');
         this.selectedConversationType = '';
         this.getMessageInfor = {};
-        this.showConversationInfor.set(false);
+        this.convStore.toggleConversationInfor(false);
         if (!this.isFirstConversationReady()) {
             this.isFirstConversationReady.set(true);
         }

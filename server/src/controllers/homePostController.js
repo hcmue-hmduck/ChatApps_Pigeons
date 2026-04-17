@@ -52,12 +52,12 @@ class HomePostController {
         const postId = req.params.postID;
         const { postData, mediaData } = req.body;
 
-        await homePostsService.updatePostById(postId, postData, mediaData);
+        const updatedPost = await homePostsService.updatePostById(postId, postData, mediaData);
 
         new SuccessResponse({
             message: 'Update post successfully',
             metadata: {
-                postId,
+                updatedFeed: updatedPost,
             },
         }).send(res);
     }

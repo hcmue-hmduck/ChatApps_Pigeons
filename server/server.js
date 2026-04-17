@@ -263,47 +263,47 @@ io.on('connection', (socket) => {
 
     socket.on('newPost', (data) => {
         console.log('Received newPost event on server:', data);
-        socket.broadcast.emit('newPost', data);
+        io.emit('newPost', data);
     })
 
     socket.on('updatePost', (data) => {
         console.log('Received updatePost event on server:', data);
-        socket.broadcast.emit('updatePost', data);
+        io.emit('updatePost', data);
     })
 
     socket.on('deletePost', (data) => {
         console.log('Received deletePost event on server:', data);
-        socket.broadcast.emit('deletePost', data);
+        io.emit('deletePost', data);
     })
 
     socket.on('newComment', (data) => {
         console.log('Received newComment event on server:', data);
-        socket.broadcast.emit('newComment', data);
+        io.emit('newComment', data);
     })
 
     socket.on('deleteComment', (data) => {
         console.log('Received deleteComment event on server:', data);
-        socket.broadcast.emit('deleteComment', data);
+        io.emit('deleteComment', data);
     })
 
     socket.on('deleteReply', (data) => {
         console.log('Received deleteReply event on server:', data);
-        socket.broadcast.emit('deleteReply', data);
+        io.emit('deleteReply', data);
     })
 
     socket.on('newReaction', (data) => {
         console.log('Received newReaction event on server:', data);
-        socket.broadcast.emit('newReaction', data);
+        io.emit('newReaction', data);
     })
 
     socket.on('deleteReaction', (data) => {
         console.log('Received deleteReaction event on server:', data);
-        socket.broadcast.emit('deleteReaction', data);
+        io.emit('deleteReaction', data);
     })
 
     socket.on('PostReact', (data) => {
         console.log('Received PostReact event on server:', data);
-        socket.broadcast.emit('PostReact', data);
+        io.emit('PostReact', data);
     })
 
     socket.on('updateConversationInfo', (data) => {

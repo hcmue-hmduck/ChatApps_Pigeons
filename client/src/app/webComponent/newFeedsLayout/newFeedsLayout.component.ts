@@ -9,9 +9,11 @@ import { Comment } from '../../services/comment';
 import { UploadService } from '../../services/uploadService';
 import { FileUtils } from '../../utils/FileUtils/fileUltils';
 import { DateTimeUtils } from '../../utils/DateTimeUtils/datetimeUtils';
-import { SocketService } from '../../services/socket';
-import { Friend } from '../../services/friend';
 import { LinkPreviewUtils } from '../../utils/LinkUtils/linkPreviewUtils';
+import { FeedStoreService } from '../../services/feedStore.service';
+import { ActiveConversationService } from '../../services/activeConversation.service';
+import { Friend } from '../../services/friend';
+import { SocketService } from '../../services/socket';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -38,37 +40,31 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         }
     }
 
+    feedStore = inject(FeedStoreService);
+    convStore = inject(ActiveConversationService);
+
     constructor(
-        private feedsService: Feeds,
         private emojisService: Emojis,
-        private commentService: Comment,
-        private feedReaction: FeedReactions,
         private uploadService: UploadService,
         public fileUtils: FileUtils,
         public dateTimeUtils: DateTimeUtils,
-        private socketService: SocketService,
         private linkPreviewUtils: LinkPreviewUtils,
         private friendService: Friend,
+        private feedsService: Feeds,
+        private feedReaction: FeedReactions,
+        private socketService: SocketService,
         private cdr: ChangeDetectorRef
     ) { }
 
-    private _userInfor: any;
     @Input() set userInfor(value: any) {
         if (value) {
-            console.log('Dữ liệu User đã về:', value);
-            this._userInfor = value;
-            // Cập nhật avatar cho creator từ dữ liệu thật
-            this.currentUser.avatar = value.avatar_url || this.currentUser.avatar;
             this.loadOnlineFriends();
         }
     }
-    get userInfor(): any {
-        return this._userInfor;
-    }
 
-    posts = signal<any[]>([]);
     emojis = signal<any[]>([]);
-    loading = signal(false);
+    error = signal<string | null>(null);
+
     isPosting = signal(false);
     isUpdatingPost = signal(false);
     uploadProgress = signal(0);
@@ -86,11 +82,6 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
     sharePrivacy = signal('public');
     shareLocation = signal('');
     shareFeeling = signal('');
-    error = signal<string | null>(null);
-    offset = signal(0);
-    limit = 10;
-    hasMore = signal(true);
-    loadingMore = signal(false);
     private ngZone = inject(NgZone);
     private timeUpdateInterval: any;
 
@@ -130,10 +121,10 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
     onlineNodes = signal<any[]>([]);
 
     loadOnlineFriends() {
-        if (!this._userInfor?.id) return;
+        if (!this.convStore.currentUserInfo()?.id) return;
 
-        this.friendService.getFriendByUserId(this._userInfor.id).subscribe({
-            next: (data) => {
+        this.friendService.getFriendByUserId(this.convStore.currentUserInfo().id).subscribe({
+            next: (data: any) => {
                 const friends = data.metadata.friends || [];
                 const mappedFriends = friends.map((f: any) => ({
                     id: f.friend.id,
@@ -193,7 +184,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
     currentMediaIndex = 0;
 
     ngOnInit() {
-        this.loadFeeds();
+        this.feedStore.loadFeeds();
         this.loadMetadata();
         this.setupSocketListener();
 
@@ -215,7 +206,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         this.observer = new IntersectionObserver((entries) => {
             if (entries[0].isIntersecting) {
                 this.ngZone.run(() => {
-                    this.loadFeeds(true);
+                    this.feedStore.loadFeeds(true);
                 });
             }
         }, {
@@ -237,11 +228,6 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         this.clearSelectedMedia(false);
         this.clearEditNewMedia(false);
         if (this.onUpdateProfileSocket) this.socketService.off('updateProfile', this.onUpdateProfileSocket);
-        if (this.onNewPostSocket) this.socketService.off('newPost', this.onNewPostSocket);
-        if (this.onUpdatePostSocket) this.socketService.off('updatePost', this.onUpdatePostSocket);
-        if (this.onDeletePostSocket) this.socketService.off('deletePost', this.onDeletePostSocket);
-        if (this.onNewCommentSocket) this.socketService.off('newComment', this.onNewCommentSocket);
-        if (this.onPostReactSocket) this.socketService.off('PostReact', this.onPostReactSocket);
         if (this.onUserStatusChangedSocket) this.socketService.off('userStatusChanged', this.onUserStatusChangedSocket);
         if (this.onOnlineUsersListSocket) this.socketService.off('onlineUsersList', this.onOnlineUsersListSocket);
     }
@@ -256,178 +242,22 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
 
     setupSocketListener() {
         if (this.onUpdateProfileSocket) this.socketService.off('updateProfile', this.onUpdateProfileSocket);
-        if (this.onNewPostSocket) this.socketService.off('newPost', this.onNewPostSocket);
-        if (this.onUpdatePostSocket) this.socketService.off('updatePost', this.onUpdatePostSocket);
-        if (this.onDeletePostSocket) this.socketService.off('deletePost', this.onDeletePostSocket);
-        if (this.onNewCommentSocket) this.socketService.off('newComment', this.onNewCommentSocket);
-        if (this.onPostReactSocket) this.socketService.off('PostReact', this.onPostReactSocket);
         if (this.onUserStatusChangedSocket) this.socketService.off('userStatusChanged', this.onUserStatusChangedSocket);
         if (this.onOnlineUsersListSocket) this.socketService.off('onlineUsersList', this.onOnlineUsersListSocket);
 
         this.onUpdateProfileSocket = (data: any) => {
-            // Update local user info if it's the current user
-            if (this._userInfor?.id === data.id) {
-                this.userInfor = data;
-            }
-
-            // Update all posts and comments metadata real-time
-            this.posts.update(posts => posts.map(post => {
-                let hasChanges = false;
-                let updatedPost = { ...post };
-
-                // 1. Update post author
-                if (post.user_id === data.id) {
-                    updatedPost.user_infor = { ...post.user_infor, ...data };
-                    hasChanges = true;
-                }
-
-                // 2. Update all comments by this user
-                if (Array.isArray(post.comments)) {
-                    const originalComments = post.comments;
-                    const updatedComments = originalComments.map((c: any) =>
-                        c.user_id === data.id
-                            ? { ...c, user_infor: { ...c.user_infor, ...data } }
-                            : c
-                    );
-
-                    if (updatedComments !== originalComments) {
-                        updatedPost.comments = updatedComments;
-                        hasChanges = true;
-                    }
-                }
-
-                return hasChanges ? updatedPost : post;
-            }));
+            this.feedStore.updatePostAuthorInfo(data);
         };
         this.socketService.on('updateProfile', this.onUpdateProfileSocket);
 
-        this.onNewPostSocket = (data: any) => {
-            console.log('Received newPost event on server:', data);
-            if (data.shared_post) {
-                this.posts.update(posts => posts.map(post => {
-                    if (post.id === data.shared_post.id) {
-                        console.log('update share count', post);
-                        return { ...post, shares_count: data.shared_post.shares_count };
-                    }
-                    return post;
-                }));
-            }
-
-            this.posts.update(posts => {
-                if (posts.some(p => p.id === data.id)) {
-                    return posts;
-                }
-                return [data, ...posts];
-            });
-        };
-        this.socketService.on('newPost', this.onNewPostSocket);
-
-        this.onUpdatePostSocket = (data: any) => {
-            console.log('Received updatePost event on server:', data);
-            this.posts.update(posts => {
-                return posts.map(post => {
-                    if (post.id === data.id) return data;
-                    if (post.shared_post && post.shared_post.id === data.id) {
-                        return { ...post, shared_post: data };
-                    }
-                    return post;
-                });
-            });
-        };
-        this.socketService.on('updatePost', this.onUpdatePostSocket);
-
-        this.onDeletePostSocket = (data: any) => {
-            this.posts.update(posts => {
-                return posts.filter(post => post.id !== data.id).map(post => {
-                    if (post.shared_post && post.shared_post.id === data.id) {
-                        return {
-                            ...post,
-                            shared_post: { ...post.shared_post, is_deleted: true }
-                        };
-                    }
-                    return post;
-                });
-            });
-        };
-        this.socketService.on('deletePost', this.onDeletePostSocket);
-
-        this.onNewCommentSocket = (data: any) => {
-            console.log('Received newComment event on server:', data);
-            this.posts.update(posts => posts.map(post => {
-                if (post.id === data.post_id) {
-                    post.comments_count++;
-                    return { ...post, comments: [...post.comments, data] };
-                }
-                return post;
-            }));
-        };
-        this.socketService.on('newComment', this.onNewCommentSocket);
-
-        this.onPostReactSocket = (data: any) => {
-            console.log('Received PostReact event from socket:', data);
-            const { type, postId, userId, reaction, reactionId } = data;
-
-            this.posts.update(prev => prev.map(p => {
-                if (p.id !== postId) return p;
-
-                if (type === 'add') {
-                    // Prevent duplicate if already added via local optimistic update
-                    if (p.reactions?.some((r: any) => r.id === reaction.id)) return p;
-                    return {
-                        ...p,
-                        reactions: [...(p.reactions || []), reaction],
-                        likes_count: (p.likes_count || 0) + 1
-                    };
-                } else if (type === 'remove') {
-                    return {
-                        ...p,
-                        reactions: p.reactions.filter((r: any) => r.id !== reactionId && r.user_id !== userId),
-                        likes_count: Math.max(0, (p.likes_count || 0) - 1)
-                    };
-                }
-                return p;
-            }));
-        };
-        this.socketService.on('PostReact', this.onPostReactSocket);
-
         this.onUserStatusChangedSocket = (data: { userId: string, status: string }) => {
-            // 1. Update Sidebar
+            // Update Sidebar
             this.onlineNodes.update(nodes => nodes.map(node =>
                 node.id === data.userId ? { ...node, status: data.status } : node
             ));
 
-            // 2. Update Feed Authors status
-            this.posts.update(posts => posts.map(post => {
-                let updatedPost = { ...post };
-                let hasChanges = false;
-
-                if (post.user_id === data.userId) {
-                    updatedPost.user_infor = { ...post.user_infor, status: data.status };
-                    hasChanges = true;
-                }
-
-                if (Array.isArray(post.comments)) {
-                    const updatedComments = post.comments.map((c: any) =>
-                        c.user_id === data.userId
-                            ? { ...c, user_infor: { ...c.user_infor, status: data.status } }
-                            : c
-                    );
-                    if (updatedComments !== post.comments) {
-                        updatedPost.comments = updatedComments;
-                        hasChanges = true;
-                    }
-                }
-
-                if (post.shared_post && post.shared_post.user_id === data.userId) {
-                    updatedPost.shared_post = {
-                        ...post.shared_post,
-                        user_infor: { ...post.shared_post.user_infor, status: data.status }
-                    };
-                    hasChanges = true;
-                }
-
-                return hasChanges ? updatedPost : post;
-            }));
+            // Update Feed Authors status
+            this.feedStore.updatePostAuthorInfo({ id: data.userId, status: data.status });
         };
         this.socketService.on('userStatusChanged', this.onUserStatusChangedSocket);
 
@@ -675,7 +505,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
     loadMetadata() {
         // Load Emojis
         this.emojisService.getEmojis().subscribe({
-            next: (data) => {
+            next: (data: any) => {
                 const emojisList = data.metadata?.emojis || [];
                 this.emojis.set(emojisList);
                 console.log('Emojis loaded:', emojisList);
@@ -685,7 +515,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
 
         // Load Provinces
         this.feedsService.getProvinces().subscribe({
-            next: (data) => {
+            next: (data: any) => {
                 this.provinces.set(data);
                 console.log('Provinces loaded:', data.length);
             },
@@ -726,47 +556,13 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         return content.length > 300;
     }
 
-    loadFeeds(isLoadMore: boolean = false) {
-        if (isLoadMore) {
-            if (!this.hasMore() || this.loadingMore() || this.loading()) return;
-            this.loadingMore.set(true);
-        } else {
-            this.loading.set(true);
-            this.offset.set(0);
-            this.hasMore.set(true);
-        }
-        this.error.set(null);
+    // handlePostFeed removed as it was redundant with version at line 967
 
-        this.feedsService.getFeeds(this.limit, this.offset()).subscribe({
-            next: (data) => {
-                const homePosts = data.metadata.homePosts || [];
-                if (isLoadMore) {
-                    this.posts.update(prev => [...prev, ...homePosts]);
-                    this.loadingMore.set(false);
-                } else {
-                    this.posts.set(homePosts);
-                    this.loading.set(false);
-                    // Scroll to top only on initial load
-                    setTimeout(() => {
-                        if (this.feedGrid) {
-                            this.feedGrid.nativeElement.scrollTo({ top: 0, behavior: 'smooth' });
-                        }
-                    });
-                }
 
-                this.offset.update(old => old + homePosts.length);
-                if (homePosts.length < this.limit) {
-                    this.hasMore.set(false);
-                }
-            },
-            error: (err) => {
-                console.error('Error loading feeds:', err);
-                this.error.set('Failed to load feeds. Please try again later.');
-                this.loading.set(false);
-                this.loadingMore.set(false);
-            }
-        });
-    }
+
+    onlineFriends = signal<any[]>([]);
+
+    // loadFeeds local was replaced by feedStore.loadFeeds()
 
     parseContent(content: string | null | undefined): string[] {
         return (content || '').split(/\s+/).filter(Boolean);
@@ -826,8 +622,8 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         return null;
     }
 
-    closedNewPreviewUrls = new Set<string>();
-    closedEditPreviewUrls = new Set<string>();
+    lastRemovedEditUrl: string | null = null;
+    lastRemovedNewUrl: string | null = null;
 
     getLinkPreview(content: string, type: 'new' | 'edit' | 'share' = 'new'): any | null {
         if (!content) {
@@ -841,27 +637,38 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         let isHidden = false;
 
         if (url) {
-            const targetSet = type === 'new' ? this.closedNewPreviewUrls :
-                type === 'edit' ? this.closedEditPreviewUrls : null;
+            const lastRemoved = type === 'new' ? this.lastRemovedNewUrl :
+                type === 'edit' ? this.lastRemovedEditUrl : null;
 
-            if (targetSet) {
-                for (const closedUrl of targetSet) {
-                    if (closedUrl.includes(url) || url.includes(closedUrl)) {
-                        isHidden = true;
-                        break;
-                    }
-                }
+            if (lastRemoved === url) {
+                isHidden = true;
+            } else if (lastRemoved !== null) {
+                // Nếu URL đã thay đổi khác với URL vừa xóa, thì reset trạng thái xóa
+                if (type === 'new') this.lastRemovedNewUrl = null;
+                else if (type === 'edit') this.lastRemovedEditUrl = null;
             }
         }
 
         const previewData = this.linkPreviewUtils.getLinkPreview(content, (preview) => {
+            if (isHidden) {
+                if (type === 'new') this.activeLinkPreview = null;
+                else if (type === 'edit') this.editLinkPreview = null;
+                else if (type === 'share') this.shareLinkPreview = null;
+                return;
+            }
+
             if (type === 'new') this.activeLinkPreview = preview;
             else if (type === 'edit') this.editLinkPreview = preview;
             else if (type === 'share') this.shareLinkPreview = preview;
             this.cdr.markForCheck();
         });
 
-        if (isHidden) return null;
+        if (isHidden) {
+            if (type === 'new') this.activeLinkPreview = null;
+            else if (type === 'edit') this.editLinkPreview = null;
+            else if (type === 'share') this.shareLinkPreview = null;
+            return null;
+        }
 
         return previewData;
     }
@@ -869,7 +676,8 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
     clearLinkPreview() {
         const url = this.linkPreviewUtils.extractFirstUrl(this.newPostContent);
         if (url) {
-            this.closedNewPreviewUrls.add(url);
+            this.lastRemovedNewUrl = url;
+            this.activeLinkPreview = null;
             this.cdr.markForCheck();
         }
     }
@@ -877,9 +685,10 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
     clearEditLinkPreview() {
         const url = this.linkPreviewUtils.extractFirstUrl(this.editPostContent);
         if (url) {
-            this.closedEditPreviewUrls.add(url);
-            this.cdr.markForCheck();
+            this.lastRemovedEditUrl = url;
         }
+        this.editLinkPreview = null;
+        this.cdr.markForCheck();
     }
 
     clearShareLinkPreview() {
@@ -958,7 +767,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
     }
 
     isUserPost(post_user: string): boolean {
-        return post_user === this._userInfor?.id;
+        return post_user === this.convStore.currentUserInfo()?.id;
     }
 
     toggleMenu(post: any, event: Event) {
@@ -983,6 +792,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         this.editPostExistingMedia = Array.isArray(post.post_media) ? [...post.post_media] : [];
         this.editPostNewMediaFiles = [];
         this.editPostNewMediaPreviews = [];
+        this.lastRemovedEditUrl = null; // Reset trạng thái xóa link cho phiên sửa mới
         const preview = this.getStoredLinkPreview(post);
         this.editLinkPreview = preview;
         this.isEditModalOpen.set(true);
@@ -998,7 +808,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         this.editPostExistingMedia = [];
         this.clearEditNewMedia();
         this.isUpdatingPost.set(false);
-        this.closedEditPreviewUrls.clear();
+        this.lastRemovedEditUrl = null;
     }
 
     normalizeUploadedMediaItem(media: any): any {
@@ -1035,34 +845,21 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         const current = this.editingPost();
         if (!current || this.isUpdatingPost()) return;
 
-        const previousPost = {
-            ...current,
-            post_media: Array.isArray(current.post_media) ? [...current.post_media] : []
+        const updatedPayload = {
+            postData: {
+                content: this.editPostContent.trim(),
+                privacy: this.editPostPrivacy,
+                feeling: this.editPostFeeling,
+                location: this.editPostLocation,
+                post_type: (this.editLinkPreview) ? 'link' : (this.editPostContent ? 'text' : 'media'),
+            },
+            mediaData: this.editPostExistingMedia
+                .filter(media => media.media_type !== 'link')
+                .map(media => this.mapExistingMediaToUpdatePayload(media))
         };
-
-        const updatedPost = {
-            ...current,
-            content: this.editPostContent.trim(),
-            privacy: this.editPostPrivacy,
-            feeling: this.editPostFeeling,
-            location: this.editPostLocation,
-            updated_at: new Date().toISOString()
-        };
-
-        const postData = {
-            content: updatedPost.content,
-            privacy: updatedPost.privacy,
-            feeling: updatedPost.feeling,
-            location: updatedPost.location,
-            post_type: (this.editLinkPreview) ? 'link' : (updatedPost.content ? 'text' : 'media')
-        };
-
-        const existingPayload = this.editPostExistingMedia
-            .filter(media => media.media_type !== 'link') // Remove old link preview from existing media if present
-            .map(media => this.mapExistingMediaToUpdatePayload(media));
 
         if (this.editLinkPreview) {
-            existingPayload.push({
+            updatedPayload.mediaData.push({
                 resource_type: 'link',
                 url: this.editLinkPreview.url,
                 thumbnail_url: this.editLinkPreview.image,
@@ -1071,80 +868,17 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                 link_site_name: this.editLinkPreview.siteName
             });
         }
-        const savePostUpdate = (mediaPayload: any[], finalPostMedia: any[]) => {
-            const optimisticPost = {
-                ...updatedPost,
-                post_media: finalPostMedia
-            };
-
-            this.posts.update(prev => prev.map(post => post.id === current.id ? optimisticPost : post));
-            this.isUpdatingPost.set(true);
-
-            this.feedsService.updatePost(current.id, { postData, mediaData: mediaPayload }).subscribe({
-                next: () => {
-                    this.closeEditPostModal();
-                    this.socketService.emit('updatePost', optimisticPost);
-                },
-                error: (err) => {
-                    this.posts.update(prev => prev.map(post => post.id === current.id ? previousPost : post));
-                    this.isUpdatingPost.set(false);
-                    console.error('Error updating post:', err);
-                    this.error.set('Cập nhật bài viết thất bại. Vui lòng thử lại.');
-                }
-            });
-        };
-
-        if (this.editPostNewMediaFiles.length === 0) {
-            const finalPostMedia = [...this.editPostExistingMedia].filter(m => m.media_type !== 'link');
-            if (this.editLinkPreview) {
-                finalPostMedia.push({
-                    media_type: 'link',
-                    media_url: this.editLinkPreview.url,
-                    thumbnail_url: this.editLinkPreview.image,
-                    file_name: this.editLinkPreview.title,
-                    link_description: this.editLinkPreview.description,
-                    link_site_name: this.editLinkPreview.siteName
-                });
-            }
-            savePostUpdate(existingPayload, finalPostMedia);
-            return;
-        }
-
-        const formData = new FormData();
-        for (const file of this.editPostNewMediaFiles) {
-            formData.append('files', file);
-        }
 
         this.isUpdatingPost.set(true);
-        this.uploadService.uploadFileFeedsWithProgress(current.id, formData).subscribe({
-            next: (event) => {
-                if (event.type !== HttpEventType.Response) return;
-
-                const uploadedFiles = event.body?.metadata?.files || [];
-                const uploadedPostMedia = uploadedFiles.map((item: any) => this.normalizeUploadedMediaItem(item));
-                const finalMediaPayload = [...existingPayload, ...uploadedFiles];
-                const finalPostMedia = [
-                    ...this.editPostExistingMedia.filter(m => m.media_type !== 'link'),
-                    ...uploadedPostMedia
-                ];
-
-                if (this.editLinkPreview) {
-                    finalPostMedia.push({
-                        media_type: 'link',
-                        media_url: this.editLinkPreview.url,
-                        thumbnail_url: this.editLinkPreview.image,
-                        file_name: this.editLinkPreview.title,
-                        link_description: this.editLinkPreview.description,
-                        link_site_name: this.editLinkPreview.siteName
-                    });
-                }
-
-                savePostUpdate(finalMediaPayload, finalPostMedia);
-            },
-            error: (err) => {
+        this.feedStore.updatePost(this.editingPost().id, updatedPayload).subscribe({
+            next: (res: any) => {
                 this.isUpdatingPost.set(false);
-                console.error('Error uploading files for post update:', err);
-                this.error.set('Upload file khi chỉnh sửa thất bại. Vui lòng thử lại.');
+                this.isEditModalOpen.set(false);
+                this.feedStore.emitSocket('updatePost', res.metadata.updatedFeed);
+            },
+            error: (err: any) => {
+                this.isUpdatingPost.set(false);
+                Swal.fire('Lỗi', 'Không thể cập nhật bài viết.', 'error');
             }
         });
     }
@@ -1166,7 +900,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                 this.feedsService.deletePost(postId).subscribe({
                     next: () => {
                         this.socketService.emit('deletePost', { id: postId });
-                        this.posts.update(prev => prev.filter(p => p.id !== postId).map(post => {
+                        this.feedStore.posts.update((prev: any[]) => prev.filter((p: any) => p.id !== postId).map((post: any) => {
                             if (post.shared_post && post.shared_post.id === postId) {
                                 return { ...post, shared_post: { ...post.shared_post, is_deleted: true } };
                             }
@@ -1175,7 +909,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                         this.activeMenuPostId.set(null);
                         console.log('Post deleted successfully:', postId);
                     },
-                    error: (err) => {
+                    error: (err: any) => {
                         console.error('Error deleting post:', err);
                         this.error.set('Xóa bài viết thất bại. Vui lòng thử lại.');
                     }
@@ -1191,7 +925,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         if (!content && !hasFiles) return;
         if (this.isPosting()) return;
 
-        const userId = this._userInfor?.id;
+        const userId = this.convStore.currentUserInfo()?.id;
         if (!userId) return;
 
         this.isPosting.set(true);
@@ -1218,7 +952,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
             this.clearSelectedMedia();
             this.clearSelectedAttachments();
             this.activeLinkPreview = null;
-            this.closedNewPreviewUrls.clear();
+            this.lastRemovedNewUrl = null;
         };
 
         const finishPosting = (shouldReset: boolean) => {
@@ -1229,9 +963,9 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         };
 
         this.feedsService.createNewPost(postData).subscribe({
-            next: (data) => {
+            next: (data: any) => {
                 const newPost = data.metadata.newPost;
-                newPost.user_infor = this._userInfor;
+                newPost.user_infor = this.convStore.currentUserInfo();
 
                 const rollbackCreatedPost = () => {
                     this.feedsService.deletePost(newPost.id).subscribe({
@@ -1249,7 +983,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                         likes_count: 0,
                         shares_count: 0
                     };
-                    this.posts.update(prev => [enrichedPost, ...prev]);
+                    this.feedStore.posts.update((prev: any[]) => [enrichedPost, ...prev]);
                     this.socketService.emit('newPost', enrichedPost);
                     this.uploadProgress.set(100);
                     finishPosting(true);
@@ -1270,7 +1004,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                     if (mediaToSave.length > 0) {
                         this.feedsService.createNewMediaPost(newPost.id, mediaToSave).subscribe({
                             next: (res) => finalizePost(res.metadata.newMediaPost),
-                            error: (err) => {
+                            error: (err: any) => {
                                 console.error('Media error:', err);
                                 rollbackCreatedPost();
                                 finishPosting(false);
@@ -1288,7 +1022,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
 
                     this.uploadStage.set('uploading');
                     this.uploadService.uploadFileFeedsWithProgress(newPost.id, formData).subscribe({
-                        next: (event) => {
+                        next: (event: any) => {
                             if (event.type === HttpEventType.UploadProgress) {
                                 const progress = Math.round(((event.loaded || 0) / (event.total || 1)) * 100);
                                 this.uploadProgress.set(Math.min(progress, 97));
@@ -1298,7 +1032,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                                 saveMediaAndFinish([...event.body.metadata.files]);
                             }
                         },
-                        error: (err) => {
+                        error: (err: any) => {
                             console.error('Upload error:', err);
                             rollbackCreatedPost();
                             finishPosting(false);
@@ -1308,7 +1042,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                     saveMediaAndFinish([]);
                 }
             },
-            error: (err) => {
+            error: (err: any) => {
                 console.error('Post error:', err);
                 this.error.set('Tạo bài viết thất bại. Vui lòng thử lại.');
                 finishPosting(false);
@@ -1342,7 +1076,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         const sharedPostId = postToShare.shared_post_id || postToShare.id;
 
         const shareData = {
-            user_id: this._userInfor?.id,
+            user_id: this.convStore.currentUserInfo()?.id,
             content: this.shareContent() || null,
             post_type: 'share',
             privacy: this.sharePrivacy(),
@@ -1371,7 +1105,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
 
                     const targetPostId = originalPost.shared_post_id || originalPost.id;
 
-                    this.posts.update(prev => prev.map(post => {
+                    this.feedStore.posts.update((prev: any[]) => prev.map((post: any) => {
                         if (post.id === originalPost.id || post.id === targetPostId) {
                             return {
                                 ...post,
@@ -1391,7 +1125,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
 
                     const sharedPostWithDetails = {
                         ...response.metadata.newPost,
-                        user_infor: this._userInfor,
+                        user_infor: this.convStore.currentUserInfo(),
                         comments: [],
                         post_media: mediaData,
                         comments_count: 0,
@@ -1399,7 +1133,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                         shares_count: 0,
                         shared_post: originalPost.shared_post || originalPost
                     };
-                    this.posts.update(prev => [sharedPostWithDetails, ...prev]);
+                    this.feedStore.posts.update((prev: any[]) => [sharedPostWithDetails, ...prev]);
                     this.socketService.emit('newPost', sharedPostWithDetails);
                     this.shareLinkPreview = null;
                 };
@@ -1414,7 +1148,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                         link_site_name: this.shareLinkPreview.siteName
                     }];
                     this.feedsService.createNewMediaPost(newPostId, linkMedia).subscribe({
-                        next: (mediaResponse) => completeShare(mediaResponse.metadata.newMediaPost),
+                        next: (mediaResponse: any) => completeShare(mediaResponse.metadata.newMediaPost),
                         error: () => completeShare([])
                     });
                 } else {
@@ -1440,48 +1174,28 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
 
         const commentData = {
             content: content,
-            user_id: this._userInfor?.id,
+            user_id: this.convStore.currentUserInfo()?.id,
             post_id: postId,
             parent_comment_id: parentCommentId || null
         };
 
-        console.log('Sending comment:', commentData);
-
-        this.commentService.createComment(postId, commentData).subscribe({
+        this.feedStore.commentOnPost(commentData).subscribe({
             next: (data: any) => {
-                console.log('Comment created successfully:', data.metadata.newComment);
-                data.metadata.newComment.user_infor = this._userInfor;
-
-                this.posts.update(prev => prev.map(post => {
-                    if (post.id === postId) {
-                        post.comments_count++;
-                        return { ...post, comments: [...(post.comments || []), data.metadata.newComment] };
-                    }
-                    return post;
-                }));
-
-                this.socketService.emit('newComment', data.metadata.newComment);
-
-                if (parentCommentId) {
-                    this.newReplyContent = '';
-                    this.replyToCommentId = null;
-                } else {
-                    this.newCommentContent = '';
-                }
-            },
-            error: (err: any) => {
-                console.error('Error creating comment:', err);
+                this.feedStore.emitSocket('newComment', data.metadata.newComment);
+                this.newCommentContent = '';
+                this.replyToCommentId = null;
+                this.newReplyContent = '';
             }
         });
     }
 
 
     handleReaction(reaction: any, post: any) {
-        const userId = this._userInfor?.id;
+        const userId = this.convStore.currentUserInfo()?.id;
         if (!userId) return;
 
-        const currentPosts = this.posts();
-        const targetPost = currentPosts.find(p => p.id === post.id);
+        const currentPosts = this.feedStore.posts();
+        const targetPost = currentPosts.find((p: any) => p.id === post.id);
         if (!targetPost) return;
 
         const userReaction = targetPost.reactions?.find((r: any) => r.user_id === userId);
@@ -1490,7 +1204,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         if (userReaction) {
             // Case: Already reacted
             // 1. Remove UI first (Optimistic)
-            this.posts.update(prev => prev.map(p => {
+            this.feedStore.posts.update((prev: any[]) => prev.map((p: any) => {
                 if (p.id !== post.id) return p;
                 return {
                     ...p,
@@ -1528,42 +1242,36 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
 
     private addReactionOptimistically(postId: string, userId: string, reaction: any) {
         const tempID = `temp-${Math.random().toString(36).substring(2, 15)}`;
-        const reactData = {
-            id: tempID,
+        const reactionData = {
             post_id: postId,
             user_id: userId,
-            emoji_char: reaction.icon,
             reaction_type: reaction.id,
-            created_at: new Date().toISOString(),
-            user_infor: this._userInfor
+            emoji_char: reaction.icon
         };
 
         // 1. Update UI (Optimistic add)
-        this.posts.update(prev => prev.map(p => {
+        this.feedStore.posts.update((prev: any[]) => prev.map((p: any) => {
             if (p.id !== postId) return p;
             return {
                 ...p,
-                reactions: [...(p.reactions || []), reactData],
+                reactions: [...(p.reactions || []), { ...reactionData, id: tempID, user_infor: this.convStore.currentUserInfo() }],
                 likes_count: (p.likes_count || 0) + 1
             };
         }));
 
         // 2. Add to DB
-        this.feedReaction.addPostReaction(postId, userId, reaction.id, reaction.icon).subscribe({
+        this.feedStore.reactToPost(postId, reactionData).subscribe({
             next: (data: any) => {
                 const realReaction = data.metadata.newReaction;
-                console.log('Reaction added successfully:', realReaction);
-
-                // Emit socket with real data
-                this.socketService.emit('PostReact', {
+                this.feedStore.emitSocket('PostReact', {
                     type: 'add',
                     postId: postId,
                     userId: userId,
-                    reaction: { ...realReaction, user_infor: this._userInfor }
+                    reaction: { ...realReaction, user_infor: this.convStore.currentUserInfo() }
                 });
 
                 // 3. Update temp ID with real ID from server
-                this.posts.update(prev => prev.map(p => {
+                this.feedStore.posts.update((prev: any[]) => prev.map((p: any) => {
                     if (p.id !== postId) return p;
                     return {
                         ...p,
@@ -1576,7 +1284,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
             error: (err: any) => {
                 console.error('Error adding reaction:', err);
                 // Rollback UI update
-                this.posts.update(prev => prev.map(p => {
+                this.feedStore.posts.update((prev: any[]) => prev.map((p: any) => {
                     if (p.id !== postId) return p;
                     return {
                         ...p,

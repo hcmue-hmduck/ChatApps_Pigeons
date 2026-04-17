@@ -26,4 +26,16 @@ const sequelize = new Sequelize(
     }
 );
 
+// Tự động kích hoạt extension unaccent khi khởi động
+sequelize.authenticate()
+    .then(() => {
+        return sequelize.query('CREATE EXTENSION IF NOT EXISTS unaccent;');
+    })
+    .then(() => {
+        console.log('PostgreSQL: Connection established and unaccent extension ensured.');
+    })
+    .catch(err => {
+        console.error('PostgreSQL: Unable to connect or enable extension:', err);
+    });
+
 module.exports = { sequelize };

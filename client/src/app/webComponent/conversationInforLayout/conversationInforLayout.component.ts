@@ -1,4 +1,4 @@
-import { Component, signal, Output, EventEmitter, Input, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, signal, Output, EventEmitter, Input, OnInit, OnDestroy, inject, ChangeDetectorRef, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GroupAvatarLayoutComponent } from '../groupAvatarLayout/groupAvatarLayout.component';
 import { MediaService } from '../../services/media';
@@ -18,7 +18,7 @@ import { Messages } from '../../services/messages';
     templateUrl: './conversationInforLayout.component.html',
     styleUrls: ['./conversationInforLayout.component.css']
 })
-export class ConversationInfoLayoutComponent implements OnInit, OnDestroy {
+export class ConversationInfoLayoutComponent implements OnInit, OnDestroy, OnChanges {
     @Output() closePanel = new EventEmitter<void>();
 
     @Input() userInfor: any;
@@ -64,6 +64,23 @@ export class ConversationInfoLayoutComponent implements OnInit, OnDestroy {
         }
     }
 
+    ngOnChanges(changes: SimpleChanges): void {
+        if (changes['conversationInfor'] && !changes['conversationInfor'].isFirstChange()) {
+            this.loadMediaData();
+            // Reset UI states for the new conversation
+            this.mediaShowAll.set({
+                image: false,
+                video: false,
+                file: false,
+                link: false
+            });
+        }
+
+        if (changes['currentUserId'] && !changes['currentUserId'].isFirstChange()) {
+            this.loadFriends();
+        }
+    }
+
     socketEmitListener() {
         if (this.onUpdateConversationInfoSocket) {
             this.socketService.off('updateConversationInfo', this.onUpdateConversationInfoSocket);
@@ -102,10 +119,25 @@ export class ConversationInfoLayoutComponent implements OnInit, OnDestroy {
         this.mediaService.getMedia(convID).subscribe((res: any) => {
             const data = res?.metadata?.mediaMesssage;
             if (data) {
-                this.imgData.set(data.image || []);
-                this.vidData.set(data.video || []);
-                this.fileData.set(data.file || []);
-                this.linkData.set(data.link || []);
+                const images = data.image || [];
+                const videos = data.video || [];
+                const files = data.file || [];
+                const links = data.link || [];
+
+                this.imgData.set(images);
+                this.vidData.set(videos);
+                this.fileData.set(files);
+                this.linkData.set(links);
+
+                // Auto open sections with data
+                this.sections.update(prev => ({
+                    ...prev,
+                    image: images.length > 0,
+                    video: videos.length > 0,
+                    file: files.length > 0,
+                    link: links.length > 0,
+                    members: this.isGroupConversation
+                }));
             }
         });
     }
@@ -138,11 +170,18 @@ export class ConversationInfoLayoutComponent implements OnInit, OnDestroy {
         chatInfo: false,
         customization: false,
         members: false,
-        image: true,
+        image: false,
         video: false,
         file: false,
         link: false,
         privacy: false
+    });
+
+    mediaShowAll = signal({
+        image: false,
+        video: false,
+        file: false,
+        link: false
     });
 
     toggleSection(sectionName: keyof ReturnType<typeof this.sections>) {
@@ -150,6 +189,14 @@ export class ConversationInfoLayoutComponent implements OnInit, OnDestroy {
         this.sections.set({
             ...current,
             [sectionName]: !current[sectionName]
+        });
+    }
+
+    toggleMediaShowAll(type: keyof ReturnType<typeof this.mediaShowAll>) {
+        const current = this.mediaShowAll();
+        this.mediaShowAll.set({
+            ...current,
+            [type]: !current[type]
         });
     }
 
@@ -263,6 +310,10 @@ export class ConversationInfoLayoutComponent implements OnInit, OnDestroy {
         if (link) {
             window.open(link, '_blank');
         }
+    }
+
+    downloadFile(file: any, event?: MouseEvent) {
+        this.fileUtils.downloadFile(file, event);
     }
 
     handleAddMember() {

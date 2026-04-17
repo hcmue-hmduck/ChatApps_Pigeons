@@ -19,7 +19,7 @@
                     <span class="notif-dot"></span>
                 </button>
                 <div class="avatar-shell">
-                    <img [src]="currentUser.avatar" alt="User avatar" class="avatar-m" referrerPolicy="no-referrer"
+                    <img [src]="convStore.currentUserAvatar()" alt="User avatar" class="avatar-m" referrerPolicy="no-referrer"
                         loading="lazy">
                 </div>
             </div>
@@ -32,11 +32,11 @@
                         <div class="create-grid">
                             <div class="create-body">
                                 <div class="create-header-info">
-                                    <img [src]="currentUser.avatar" alt="Avatar" class="avatar-s create-avatar"
+                                    <img [src]="convStore.currentUserAvatar()" alt="Avatar" class="avatar-s create-avatar"
                                         referrerPolicy="no-referrer" loading="lazy">
                                     <div class="create-header-meta">
                                         <div class="create-meta-top-row">
-                                            <span class="user-name">{{ userInfor?.full_name || 'User' }}</span>
+                                            <span class="user-name">{{ convStore.currentUserInfo()?.full_name || 'User' }}</span>
                                             <span class="activity-label">đang cảm thấy</span>
                                             <div class="feeling-selector-wrap inline-selector">
                                                 <select class="cyber-select-subtle" [(ngModel)]="newPostFeeling">
@@ -72,12 +72,10 @@
                                     placeholder="Có gì mới không?"></textarea>
 
                                 <div class="preview-container">
-                                    @let editPrev = getLinkPreview(editPostContent, 'edit');
                                     @let newPrev = getLinkPreview(newPostContent, 'new');
 
                                     @if (selectedMediaPreviews.length > 0 || selectedAttachmentFiles.length > 0 ||
-                                    editPrev
-                                    || newPrev) {
+                                    newPrev) {
                                     <div class="create-preview-list">
                                         @if (selectedMediaPreviews.length > 0) {
                                         <div class="create-preview-card image-preview-card">
@@ -138,39 +136,7 @@
                                             (click)="clearSelectedAttachments()">Xóa tất cả tệp</button>
                                         }
 
-                                        <!-- Link Previews should be independent of media but part of the same list -->
-                                        @if (editPrev) {
-                                        <div class="link-preview-card composer-preview"
-                                            [class.is-loading]="editPrev.loading">
-                                            @if (!editPrev.loading) {
-                                            <button class="remove-preview-btn" type="button"
-                                                (click)="clearEditLinkPreview()">
-                                                <i class="bi bi-x"></i>
-                                            </button>
-                                            @if (editPrev.image) {
-                                            <div class="preview-image-wrap">
-                                                <img [src]="editPrev.image" alt="Preview Image"
-                                                    referrerPolicy="no-referrer">
-                                            </div>
-                                            }
-                                            <div class="preview-content">
-                                                <div class="preview-title">{{ editPrev.title }}</div>
-                                                @if (editPrev.description) {
-                                                <div class="preview-description">{{ editPrev.description }}</div>
-                                                }
-                                                <div class="preview-host">{{ editPrev.hostname || editPrev.siteName }}
-                                                </div>
-                                            </div>
-                                            } @else {
-                                            <div class="preview-skeleton-image"></div>
-                                            <div class="preview-content">
-                                                <div class="skeleton-line skeleton-host"></div>
-                                                <div class="skeleton-line skeleton-title"></div>
-                                                <div class="skeleton-line skeleton-desc"></div>
-                                            </div>
-                                            }
-                                        </div>
-                                        }
+
 
                                         @if (newPrev) {
                                         <div class="link-preview-card composer-preview"
@@ -240,19 +206,19 @@
                     </section>
 
                     <div class="posts-list">
-                        @if (loading()) {
+                        @if (feedStore.loading()) {
                         <article class="cyber-glass post-card">
                             <p class="post-text">Đang tải bài viết...</p>
                         </article>
                         }
 
-                        @if (error()) {
+                        @if (feedStore.error()) {
                         <article class="cyber-glass post-card">
-                            <p class="post-text">{{ error() }}</p>
+                            <p class="post-text">{{ feedStore.error() }}</p>
                         </article>
                         }
 
-                        @for (post of posts(); track post.id) {
+                        @for (post of feedStore.posts(); track post.id) {
                         <ng-container
                             *ngTemplateOutlet="postCard; context: { post: post, isNested: false }"></ng-container>
                         }
@@ -542,7 +508,7 @@
 
                                                             @if (replyToCommentId === reply.id) {
                                                             <div class="comment-input-wrap">
-                                                                <img [src]="currentUser.avatar" alt="My avatar"
+                                                                <img [src]="convStore.currentUserAvatar()" alt="My avatar"
                                                                     class="avatar-xs" referrerPolicy="no-referrer">
                                                                 <div class="input-pill">
                                                                     <input type="text" placeholder="Replying..."
@@ -574,7 +540,7 @@
                                                 @if (replyToCommentId === comment.id) {
                                                 <div class="comment-wrapper">
                                                     <div class="comment-input-wrap">
-                                                        <img [src]="currentUser.avatar" alt="My avatar"
+                                                        <img [src]="convStore.currentUserAvatar()" alt="My avatar"
                                                             class="avatar-xs" referrerPolicy="no-referrer">
                                                         <div class="input-pill">
                                                             <input type="text" placeholder="Replying..."
@@ -605,7 +571,7 @@
                                     </div>
 
                                     <div class="comment-input-wrap">
-                                        <img [src]="currentUser.avatar" alt="My avatar" class="avatar-s"
+                                        <img [src]="convStore.currentUserAvatar()" alt="My avatar" class="avatar-s"
                                             referrerPolicy="no-referrer">
                                         <div class="input-pill">
                                             <input type="text" placeholder="Transmit a thought..." class="comment-input"
@@ -628,14 +594,14 @@
                             </article>
                         </ng-template>
 
-                        @if (loadingMore()) {
+                        @if (feedStore.loadingMore()) {
                         <div class="loading-more-spinner">
                             <div class="cyber-spinner"></div>
                             <span>Đang tải thêm...</span>
                         </div>
                         }
 
-                        @if (!loading() && !error() && posts().length === 0) {
+                        @if (!feedStore.loading() && !feedStore.error() && feedStore.posts().length === 0) {
                         <article class="cyber-glass post-card">
                             <p class="post-text">Chưa có bài viết nào để hiển thị.</p>
                         </article>
@@ -751,6 +717,7 @@
         </div>
 
         <div class="edit-modal-body">
+            @let editPrev = getLinkPreview(editPostContent, 'edit');
             <textarea class="edit-textarea" [(ngModel)]="editPostContent"
                 placeholder="Chỉnh sửa nội dung bài viết..."></textarea>
 
@@ -840,21 +807,21 @@
             }
 
             <div class="edit-media-preview-scroll">
-                @if (editLinkPreview) {
+                @if (editPrev) {
                 <div class="link-preview-card composer-preview">
                     <button class="remove-preview-btn" type="button" (click)="clearEditLinkPreview()">
                         <i class="bi bi-x-lg"></i>
                     </button>
-                    @if (editLinkPreview.image) {
+                    @if (editPrev.image) {
                     <div class="preview-image-wrap">
-                        <img [src]="editLinkPreview.image" alt="Preview Image" referrerPolicy="no-referrer">
+                        <img [src]="editPrev.image" alt="Preview Image" referrerPolicy="no-referrer">
                     </div>
                     }
                     <div class="preview-content">
-                        <div class="preview-host">{{ editLinkPreview.hostname || editLinkPreview.siteName }}</div>
-                        <div class="preview-title">{{ editLinkPreview.title }}</div>
-                        @if (editLinkPreview.description) {
-                        <div class="preview-description">{{ editLinkPreview.description }}</div>
+                        <div class="preview-host">{{ editPrev.hostname || editPrev.siteName }}</div>
+                        <div class="preview-title">{{ editPrev.title }}</div>
+                        @if (editPrev.description) {
+                        <div class="preview-description">{{ editPrev.description }}</div>
                         }
                     </div>
                 </div>
@@ -939,10 +906,10 @@
 
         <div class="modal-body share-modal-body">
             <div class="share-user-section">
-                <img [src]="currentUser.avatar" alt="Avatar" class="share-avatar" referrerPolicy="no-referrer">
+                <img [src]="convStore.currentUserAvatar()" alt="Avatar" class="share-avatar" referrerPolicy="no-referrer">
                 <div class="share-user-info">
                     <div class="share-name-feeling">
-                        <span class="share-user-name">{{ userInfor?.full_name || 'User' }}</span>
+                        <span class="share-user-name">{{ convStore.currentUserInfo()?.full_name || 'User' }}</span>
                         @if (shareFeeling()) {
                         <div class="share-feeling-container">
                             <span class="share-feeling-label">đang cảm thấy</span>

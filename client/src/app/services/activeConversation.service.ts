@@ -26,6 +26,16 @@ export class ActiveConversationService implements OnDestroy {
     friendRequestCount = signal(0);
     isDataLoaded = signal(false);
     activeConversationId = signal<string | null>(null);
+    showConversationInfor = signal(false);
+
+    toggleConversationInfor(force?: boolean) {
+        if (force !== undefined) {
+            this.showConversationInfor.set(force);
+        } else {
+            this.showConversationInfor.update(v => !v);
+        }
+    }
+
     timeTick = signal(0);
     private globalInterval: any;
     
@@ -43,13 +53,16 @@ export class ActiveConversationService implements OnDestroy {
     private onAcceptFriendRequestSocketGlobal?: (data: any) => void;
     private onReactionMessageSocket?: (data: any) => void;
 
-    // --- Derived State ---
     joinedConversations = computed(() => 
         this.conversations()?.homeConversationData?.joinedConversations || []
     );
 
+    currentUserInfo = computed(() => 
+        this.conversations()?.homeConversationData?.userInfo
+    );
+
     currentUserAvatar = computed(() => 
-        this.conversations()?.homeConversationData?.userInfo?.avatar_url || ''
+        this.currentUserInfo()?.avatar_url || ''
     );
     
     totalUnreadCount = computed(() => {

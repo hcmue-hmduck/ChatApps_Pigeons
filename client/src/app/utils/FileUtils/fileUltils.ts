@@ -199,6 +199,25 @@ export class FileUtils {
         window.open(resolved, '_blank', 'noopener,noreferrer');
     }
 
+    downloadFile(input: any, event?: MouseEvent) {
+        event?.preventDefault();
+        event?.stopPropagation();
+
+        const resolved = this.resolveMediaUrl(input);
+        if (!resolved) return;
+
+        const fileName = this.getAttachmentDisplayName(input);
+
+        // Tạo một thẻ link tạm thời để kích hoạt tải xuống
+        const link = document.createElement('a');
+        link.href = resolved;
+        link.download = fileName;
+        link.target = '_blank'; // Dự phòng cho một số trình duyệt
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
     getFileName(url: string | undefined | null): string {
         if (!url) return 'file';
         const decoded = decodeURIComponent(url);
