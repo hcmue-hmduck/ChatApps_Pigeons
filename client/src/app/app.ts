@@ -1,11 +1,10 @@
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Component, inject, OnInit, PLATFORM_ID, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { AuthService } from './services/authService';
 import { CallBroadcastService } from './services/callBroadcastService';
 import { CallService } from './services/callService';
 import { IncommingCallLayout } from './webComponent/incommingCallLayout/incommingCallLayout';
-import { SidebarComponent } from './webComponent/sidebarComponent/sidebarComponent.component';
-import { AuthService } from './services/authService';
 
 @Component({
     selector: 'app-root',
@@ -27,7 +26,7 @@ export class App implements OnInit {
         // => 2 request refresh-token trong < 5 giây => Server chặn 429.
         // isPlatformBrowser đảm bảo chỉ gọi trên Browser thực sự.
         if (isPlatformBrowser(this.platformId)) {
-            this.authService.refreshToken().subscribe({
+            this.authService.getMe().subscribe({
                 next: () => {
                     console.log('Phiên đăng nhập đã được khôi phục thành công.');
                 },
@@ -40,7 +39,7 @@ export class App implements OnInit {
                 },
             });
         }
-        
+
         this.callBroadcastService.listenEvents((event) => {
             console.log(`callBroadcastService.listenEvents:::`, event);
 

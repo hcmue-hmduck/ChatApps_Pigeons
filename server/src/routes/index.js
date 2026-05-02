@@ -7,7 +7,7 @@ const { authentication } = require('../middlewares/authMiddleware.js');
 
 function route(app) {
     app.use('/access', accessRouter);
-    // app.use(authentication);
+    app.use(authentication);
     app.use('/admin', adminRouter);
     app.use('/home', homeRouter);
     app.use('/livekit', livekitRouter);

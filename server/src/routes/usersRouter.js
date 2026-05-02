@@ -4,6 +4,7 @@ const usersController = require('../controllers/usersController');
 
 // Định nghĩa các routes cho users
 router.get('/', usersController.getAllUsers);
+router.get('/me', usersController.getMe);
 router.get('/:id', usersController.getUserById);
 router.post('/', usersController.createUser);
 router.put('/:id', usersController.updateUser);

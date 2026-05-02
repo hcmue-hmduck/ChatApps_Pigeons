@@ -30,6 +30,27 @@ class UsersController {
         }).send(res)
     }
 
+    // GET /home/userinfo/me
+    async getMe(req, res, next) {
+        const id = req?.user?.id;
+        
+        const user = await usersService.getUserById(id);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+        
+        new SuccessResponse({
+            message: 'Get me successfully',
+            metadata: {
+                // user,
+                userInfor: user,
+            },
+        }).send(res)
+    }
+
     // POST /admin/users - Tạo user mới
     async createUser(req, res) {
         const newUser = await usersService.createUser(req.body);

@@ -49,6 +49,7 @@ export class AuthService {
         updated_at: '',
     });
     private apiUrl = `${environment.apiUrl}/access`;
+    private rootApiUrl = `${environment.apiUrl}`;
 
     userService = inject(User);
     httpClient = inject(HttpClient);
@@ -176,6 +177,40 @@ export class AuthService {
         );
     }
 
+    
+    getMe(): Observable<any> {
+        return this.httpClient.get(`${this.rootApiUrl}/home/userinfor/me`).pipe(
+            tap((res: any) => {
+                // Server trả về metadata.userInfor (không phải metadata.user)
+                // Xem: usersController.js → getMe() → metadata: { userInfor: user }
+                const user = res.metadata?.userInfor;
+                if (user && user.id) {
+                    this.user.set({
+                        id: user.id,
+                        full_name: user.full_name,
+                        avatar_url: user.avatar_url,
+                        role: user.role,
+                        email: user.email,
+                        bio: user.bio,
+                        phone_number: user.phone_number,
+                        birthday: user.birthday,
+                        gender: user.gender,
+                        is_email_verified: user.is_email_verified,
+                        is_phone_verified: user.is_phone_verified,
+                        last_online_at: user.last_online_at,
+                        created_at: user.created_at,
+                        updated_at: user.updated_at,
+                    });
+                    console.log('GetMe success - User set:', user.id);
+                }
+            }),
+            catchError((err) => {
+                this.clearLocalUser();
+                throw err;
+            })
+        );
+    }
+
     /**
      * Checks if a session is currently active. 
      * If memory is empty, attempts to re-authenticate via backend cookies.
@@ -186,7 +221,7 @@ export class AuthService {
         }
         
         // If memory is empty (e.g. after refresh), try to re-auth using cookies
-        return this.refreshToken().pipe(
+        return this.getMe().pipe(
             map(() => true),
             catchError(() => of(false))
         );
