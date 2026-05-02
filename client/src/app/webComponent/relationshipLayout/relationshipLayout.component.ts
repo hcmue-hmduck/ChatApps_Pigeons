@@ -1,19 +1,13 @@
-import { Component, signal, computed, effect, OnChanges, SimpleChanges, Input, ChangeDetectorRef, HostListener, ViewChild, OnInit, OnDestroy, ChangeDetectionStrategy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, computed, effect, HostListener, inject, OnChanges, OnDestroy, OnInit, signal, SimpleChanges, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { forkJoin, Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
+import { debounceTime, distinctUntilChanged, Subject, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
-import { Friend } from '../../services/friend';
-import { FriendRequest } from '../../services/friendrequest';
-import { User } from '../../services/user';
-import { UserBlock } from '../../services/userBlock';
-import { SocketService } from '../../services/socket';
-import { UserInforModel } from '../userinforModel/userinforModel.component';
-import { FileUtils } from '../../utils/FileUtils/fileUltils';
-import { RelationshipStoreService } from '../../services/relationshipStore.service';
-import { FeedStoreService } from '../../services/feedStore.service';
 import { ActiveConversationService } from '../../services/activeConversation.service';
-import { NavigationService, FriendsTab } from '../../services/navigation';
+import { FriendsTab, NavigationService } from '../../services/navigation';
+import { RelationshipStoreService } from '../../services/relationshipStore.service';
+import { FileUtils } from '../../utils/FileUtils/fileUltils';
+import { UserInforModel } from '../userinforModel/userinforModel.component';
 
 @Component({
     selector: 'relationship-layout',
@@ -209,7 +203,7 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
 
         this.relStore.isSearching.set(true);
         console.log('[RelationshipLayout] Searching for:', kw);
-        
+
         this.relStore.searchUsers(kw).subscribe({
             next: (res: any) => {
                 const users = (res.metadata?.users || []).filter((u: any) => u.id !== this.userId());

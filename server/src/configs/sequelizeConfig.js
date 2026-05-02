@@ -1,6 +1,8 @@
 const { Sequelize } = require('sequelize');
 require('dotenv').config();
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 // Cấu hình Sequelize cho SQL Server
 const sequelize = new Sequelize(
     process.env.POSTGRES_URL,
@@ -14,12 +16,14 @@ const sequelize = new Sequelize(
             acquire: 30000,
             idle: 10000
         },
-        dialectOptions: {
-            ssl: {
-                require: true,
-                rejectUnauthorized: false
-            },
-        },
+        dialectOptions: isProduction
+            ? {
+                ssl: {
+                    require: true,
+                    rejectUnauthorized: false
+                },
+            }
+            : {},
         define: {
             schema: 'ChatPigeons'  // Mặc định tất cả model sẽ dùng schema này
         }

@@ -65,7 +65,6 @@
 
       <!-- Scrollable List -->
       <div class="list-container">
-
         <!-- Suggestions Tab -->
         @if (currentTab === 'friends_suggestions') {
         <div class="conv-root search-conv-root">
@@ -155,7 +154,7 @@
                       Đã gửi yêu cầu
                     </button>
                     } @else {
-                    <button class="btn-primary-neon" (click)="sendFriendRequest(user)">
+                    <button class="btn-primary-neon" (click)="sendFriendRequest(user.id)">
                       <i class="bi bi-person-plus-fill"></i>
                       Thêm bạn bè
                     </button>
