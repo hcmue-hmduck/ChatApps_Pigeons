@@ -21,6 +21,7 @@ interface UserInfor {
     last_online_at: string;
     created_at: string;
     updated_at: string;
+    hasPassword: boolean;
 }
 
 interface SendOtpPayload {
@@ -47,6 +48,7 @@ export class AuthService {
         last_online_at: '',
         created_at: '',
         updated_at: '',
+        hasPassword: false,
     });
     private apiUrl = `${environment.apiUrl}/access`;
     private rootApiUrl = `${environment.apiUrl}`;
@@ -57,7 +59,7 @@ export class AuthService {
     async setUserInfo(userId: string) {
         try {
             const { metadata } = await firstValueFrom(this.userService.getUserById(userId));
-            const { id, full_name, avatar_url, role, email, bio, phone_number, birthday, gender, is_email_verified, is_phone_verified, last_online_at, created_at, updated_at } = metadata.userInfor;
+            const { id, full_name, avatar_url, role, email, bio, phone_number, birthday, gender, is_email_verified, is_phone_verified, last_online_at, created_at, updated_at, hasPassword } = metadata.userInfor;
             this.user.set({
                 id,
                 full_name: full_name,
@@ -73,6 +75,7 @@ export class AuthService {
                 last_online_at,
                 created_at,
                 updated_at,
+                hasPassword
             });
             console.log('Đã setUserInfor: ', { id, full_name, avatar_url, role, email });
         } catch (error) {
@@ -117,6 +120,7 @@ export class AuthService {
                         last_online_at: res.metadata.last_online_at,
                         created_at: res.metadata.created_at,
                         updated_at: res.metadata.updated_at,
+                        hasPassword: res.metadata.hasPassword
                     });
                 }
             })
@@ -143,7 +147,7 @@ export class AuthService {
 
     // Xóa trạng thái local khi đăng xuất (dùng khi server lỗi)
     clearLocalUser() {
-        this.user.set({ id: '', full_name: '', avatar_url: '', email: '', role: '', bio: '', phone_number: '', birthday: '', gender: '', is_email_verified: false, is_phone_verified: false, last_online_at: '', created_at: '', updated_at: '' });
+        this.user.set({ id: '', full_name: '', avatar_url: '', email: '', role: '', bio: '', phone_number: '', birthday: '', gender: '', is_email_verified: false, is_phone_verified: false, last_online_at: '', created_at: '', updated_at: '', hasPassword: false });
     }
 
     refreshToken(): Observable<any> {
@@ -166,6 +170,7 @@ export class AuthService {
                         last_online_at: user.last_online_at,
                         created_at: user.created_at,
                         updated_at: user.updated_at,
+                        hasPassword: user.hasPassword
                     });
                     console.log('Refresh success - User set:', user.id);
                 }
@@ -177,7 +182,7 @@ export class AuthService {
         );
     }
 
-    
+
     getMe(): Observable<any> {
         return this.httpClient.get(`${this.rootApiUrl}/home/userinfor/me`).pipe(
             tap((res: any) => {
@@ -200,9 +205,11 @@ export class AuthService {
                         last_online_at: user.last_online_at,
                         created_at: user.created_at,
                         updated_at: user.updated_at,
+                        hasPassword: user.hasPassword
                     });
-                    console.log('GetMe success - User set:', user.id);
+                    console.log('GetMe success - User set:', this.user());
                 }
+
             }),
             catchError((err) => {
                 this.clearLocalUser();
@@ -219,7 +226,7 @@ export class AuthService {
         if (this.getUserId()) {
             return of(true);
         }
-        
+
         // If memory is empty (e.g. after refresh), try to re-auth using cookies
         return this.getMe().pipe(
             map(() => true),
@@ -230,5 +237,19 @@ export class AuthService {
 
     googleLogin(): Observable<any> {
         return this.httpClient.get(`${this.apiUrl}/google`);
+    }
+
+    setPassword(password: string) {
+        return this.httpClient.patch(`${this.rootApiUrl}/home/userinfor/me/password-setup`, { password }).pipe(
+            tap(() => {
+                // Cập nhật state local ngay khi API trả về thành công
+                this.updateLocalUser({ hasPassword: true });
+            })
+        );
+    }
+
+    changePassword(oldPassword: string, newPassword: string) {
+        return this.httpClient.patch(`${this.rootApiUrl}/home/userinfor/me/password-change`,
+            { oldPassword, newPassword })
     }
 }

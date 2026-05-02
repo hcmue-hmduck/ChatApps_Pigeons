@@ -13,16 +13,19 @@ import {
     ChangeDetectorRef,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormBuilder, FormsModule, NonNullableFormBuilder, Validators, ReactiveFormsModule, AbstractControl, ValidationErrors } from '@angular/forms';
 import { AuthService } from '../../services/authService';
 import { User } from '../../services/user';
 import { SocketService } from '../../services/socket';
 import { UploadService } from '../../services/uploadService';
+import { error } from 'node:console';
+import Swal from 'sweetalert2';
+import { matchFieldsValidator } from '../../utils/validators';
 
 @Component({
     selector: 'user-infor-modal',
     standalone: true,
-    imports: [CommonModule, FormsModule],
+    imports: [CommonModule, FormsModule, ReactiveFormsModule],
     templateUrl: './userinforModel.component.html',
     styleUrls: ['./userinforModel.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -41,12 +44,38 @@ export class UserInforModel {
     showProfileModal = signal(false);
     isEditingProfile = signal(false);
     showChangePassword = signal(false);
+    showSetPassword = signal(false);
     loadingUser = signal(false);
     uploadingAvatar = signal(false);
     isProcessing = signal(false);
     editForm: any = {};
     changePassForm = { oldPass: '', newPass: '', confirmPass: '' };
     private onUpdateProfileSocket?: (data: any) => void;
+
+    private fb = inject(NonNullableFormBuilder);
+    setPasswordForm = this.fb.group({
+        password: [
+            '',
+            [
+                Validators.required,
+                Validators.minLength(6),
+                Validators.pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/),
+            ],
+        ],
+        confirm_password: ['', [Validators.required]],
+    }, { validators: matchFieldsValidator('password', 'confirm_password') });
+
+    changePasswordForm = this.fb.group({
+        oldPassword: ['', [Validators.required]],
+        newPassword: [
+            '',
+            [
+                Validators.required,
+                Validators.minLength(6),
+                Validators.pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/),
+            ]],
+        confirmPassword: ['', [Validators.required]],
+    }, { validators: matchFieldsValidator('newPassword', 'confirmPassword') });
 
     constructor(
         private userService: User,
@@ -128,6 +157,31 @@ export class UserInforModel {
         this.showChangePassword.update(v => !v);
     }
 
+    toggleSetPassword() {
+        this.showSetPassword.update(v => !v);
+    }
+
+    setPassword() {
+        if (this.setPasswordForm.invalid) return
+        const { password } = this.setPasswordForm.value
+        this.authService.setPassword(password as string).subscribe({
+            next: () => {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Thành công!',
+                    text: 'Thiết lập mật khẩu thành công',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+                this.toggleSetPassword(); // Đóng form lại
+                this.setPasswordForm.reset();
+            },
+            error: (error) => {
+                console.error(error);
+            }
+        })
+    }
+
     saveProfile() {
         this.isProcessing.set(true);
         this.userService.updateUser(this.currentUserId, this.editForm).subscribe({
@@ -137,7 +191,7 @@ export class UserInforModel {
 
                 // Emit to parent (Sidebar) to refresh the UI immediately
                 this.profileUpdated.emit(updatedData);
-                
+
                 // Cập nhật state trung tâm để toàn ứng dụng nhận dữ liệu mới mà không cần gọi API
                 this.authService.updateLocalUser(updatedData);
 
@@ -155,15 +209,35 @@ export class UserInforModel {
     }
 
     saveChangePassword() {
+        if (this.changePasswordForm.invalid) return;
+
         this.isProcessing.set(true);
-        console.log('Changing password:', this.changePassForm);
-        // Giả lập delay vì chưa có API đổi mật khẩu thật hoặc API chạy quá nhanh
-        setTimeout(() => {
-            this.showChangePassword.set(false);
-            this.isProcessing.set(false);
-            this.changePassForm = { oldPass: '', newPass: '', confirmPass: '' };
-            this.cdr.markForCheck();
-        }, 1000);
+        const { oldPassword, newPassword } = this.changePasswordForm.value;
+
+        this.authService.changePassword(oldPassword as string, newPassword as string).subscribe({
+            next: () => {
+                this.isProcessing.set(false);
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Thành công!',
+                    text: 'Thay đổi mật khẩu thành công.',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+                this.changePasswordForm.reset();
+                this.toggleChangePassword();
+                this.cdr.markForCheck();
+            },
+            error: (error) => {
+                this.isProcessing.set(false);
+
+                // Bắt lỗi 400 (Bad Request) do sai mật khẩu cũ
+                if (error.status === 400) {
+                    this.changePasswordForm.get('oldPassword')?.setErrors({ incorrect: true });
+                } else
+                    console.error(error);
+            }
+        });
     }
 
     changeAvatar() {
@@ -190,7 +264,7 @@ export class UserInforModel {
                             const updated = { ...this.userInfo(), avatar_url: avatarUrl };
                             this.userInfo.set(updated);
                             this.profileUpdated.emit(updated);
-                            
+
                             // Cập nhật state trung tâm
                             this.authService.updateLocalUser(updated);
 

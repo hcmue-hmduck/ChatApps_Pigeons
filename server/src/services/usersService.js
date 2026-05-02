@@ -1,7 +1,7 @@
 const { Op } = require('sequelize');
 const usersModel = require('../models/usersModel');
-const { comparePassword } = require('../utils/authUtil.js');
-const { BadRequestError, UnauthorizedError } = require('../core/errorResponse.js');
+const { comparePassword, hashPassword } = require('../utils/authUtil.js');
+const { BadRequestError, UnauthorizedError, ConflictResqueseError } = require('../core/errorResponse.js');
 
 class UsersService {
     // Lấy users theo điều kiện filter
@@ -71,9 +71,36 @@ class UsersService {
         const user = await usersModel.findByPk(userId);
         userData.updated_at = new Date().toISOString();
         if (user) {
-            return await user.update(userData);
+            await user.update(userData);
+            return await user.save();
         }
         return null;
+    }
+
+    async setPassword(userId, password) {
+        const password_hash = await hashPassword(password);
+        console.log(`password_hash`, password_hash)
+        return this.updateUser(userId, {password_hash});
+    }
+
+    async changePassword(userId, oldPassword, newPassword) {
+        console.log(`changePassword:::`, {userId, oldPassword, newPassword})
+        const user = await this.getUserById(userId);
+        if (!user) throw new BadRequestError('User not found');
+
+        const {password_hash} = user;
+
+        // Xử lý trường hợp người dùng chưa từng có mật khẩu (vd: đăng nhập bằng Google)
+        if (!password_hash) {
+            throw new BadRequestError('User has no password set. Please use set password API instead.');
+        }
+
+        const ok = await comparePassword(oldPassword, password_hash);
+        // Dùng BadRequestError (400) thay vì UnauthorizedError (401) để tránh Interceptor hiểu nhầm là hết token và logout
+        if(!ok) throw new BadRequestError('Mật khẩu hiện tại không chính xác');
+
+        user.password_hash = await hashPassword(newPassword);
+        return await user.save();
     }
 
     // Xóa user (Soft Delete)

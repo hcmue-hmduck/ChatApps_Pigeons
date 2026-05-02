@@ -20,7 +20,7 @@ class UsersController {
                 message: 'User not found'
             });
         }
-        
+
         new SuccessResponse({
             message: 'Get user successfully',
             metadata: {
@@ -33,7 +33,7 @@ class UsersController {
     // GET /home/userinfo/me
     async getMe(req, res, next) {
         const id = req?.user?.id;
-        
+
         const user = await usersService.getUserById(id);
         if (!user) {
             return res.status(404).json({
@@ -41,7 +41,7 @@ class UsersController {
                 message: 'User not found'
             });
         }
-        
+
         new SuccessResponse({
             message: 'Get me successfully',
             metadata: {
@@ -85,12 +85,32 @@ class UsersController {
                 },
             });
         } catch (error) {
-            res.status(500) .json({
+            res.status(500).json({
                 success: false,
                 message: 'Error updating user',
                 error: error.message
             });
         }
+    }
+
+    // PATCH /home/userinfo/me/password-setup
+    async setPassword(req, res, next) {
+        const password = req.body.password;
+        const { id } = req.user
+        new SuccessResponse({
+            message: 'set password successfully',
+            metadata: await usersService.setPassword(id, password)
+        }).send(res)
+    }
+
+    // PATCH /home/userinfo/me/password-change
+    async changePassword(req, res, next) {
+        const { oldPassword, newPassword } = req.body;
+        const { id } = req.user
+        new SuccessResponse({
+            message: 'change password successfully',
+            metadata: await usersService.changePassword(id, oldPassword, newPassword)
+        }).send(res)
     }
 
     // DELETE /admin/users/:id - Xóa user

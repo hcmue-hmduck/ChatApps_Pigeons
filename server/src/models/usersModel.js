@@ -149,6 +149,7 @@ const User = sequelize.define('User', {
 // Instance methods
 User.prototype.toJSON = function () {
     const values = { ...this.get() };
+    values.hasPassword = !!values.password_hash; // true nếu có password_hash, ngược lại false
     delete values.password_hash;  // Không trả về password
     return values;
 };
