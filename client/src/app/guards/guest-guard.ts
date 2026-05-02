@@ -1,16 +1,15 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { map, tap } from 'rxjs/operators';
 import { AuthService } from '../services/authService';
 
-export const authGuard: CanActivateFn = () => {
+export const guestGuard: CanActivateFn = (route, state) => {
     const authService = inject(AuthService);
     const router = inject(Router);
 
     if (authService.checkSession()) {
-        return true;
+        // Nếu đã đăng nhập -> không cho vào trang chủ, đá sang trang trong
+        return router.createUrlTree(['/conversations']);
     }
 
-    console.warn('[AuthGuard] Unauthorized access blocked. Redirecting to home...');
-    return router.createUrlTree(['/']);
+    return true;
 };

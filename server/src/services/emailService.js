@@ -5,8 +5,8 @@ const {
 const { BadRequestError } = require('../core/errorResponse.js');
 
 class EmailService {
-    async sendSignupOTP(email, name, otp) {
-        if (!email || !name || !otp) throw new BadRequestError('missing parameters');
+    async sendOTPToYourEmail(email, otp) {
+        if (!email || !otp) throw new BadRequestError('missing parameters');
 
         const { data, error } = await resend.emails.send({
             from: `${fromName} <${fromAddress}>`,
@@ -18,7 +18,6 @@ class EmailService {
                     <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Mã xác thực OTP</h1>
                 </div>
                 <div style="padding: 30px; color: #333; line-height: 1.6;">
-                    <p style="font-size: 16px;">Xin chào <strong>${name}</strong>,</p>
                     <p>Mã OTP để xác thực email của bạn là:</p>
                     <div style="text-align: center; margin: 30px 0;">
                         <span style="display: inline-block; background-color: #f4f4f4; padding: 15px 30px; font-size: 32px; font-weight: bold; color: #dd1b5c; letter-spacing: 5px; border-radius: 5px; border: 1px dashed #dd1b5c;">

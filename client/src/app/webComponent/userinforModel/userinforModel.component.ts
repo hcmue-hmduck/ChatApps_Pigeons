@@ -210,7 +210,7 @@ export class UserInforModel {
 
     saveChangePassword() {
         if (this.changePasswordForm.invalid) return;
-
+        
         this.isProcessing.set(true);
         const { oldPassword, newPassword } = this.changePasswordForm.value;
 

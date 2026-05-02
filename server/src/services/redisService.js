@@ -70,20 +70,20 @@ class RedisService {
         return await redis.hgetall(key);
     }
 
-    async setOTP(email, otp) {
+    async setOTP(email, otp, type = 'signup') {
         if (!email || !otp) throw new BadRequestError('missing parameters');
-        const key = `auth:otp:${email}`;
+        const key = `auth:${type}-otp:${email}`;
         return await redis.set(key, otp, 'EX', 60 * 5);
     }
 
-    async getOTP(email) {
+    async getOTP(email, type = 'signup') {
         if (!email) throw new BadRequestError('missing parameters');
-        const key = `auth:otp:${email}`;
+        const key = `auth:${type}-otp:${email}`;
         return await redis.get(key);
     }
 
-    async deleteOTP(email) {
-        const key = `auth:otp:${email}`;
+    async deleteOTP(email, type = 'signup') {
+        const key = `auth:${type}-otp:${email}`;
         return (await redis.del(key)) > 0;
     }
 }

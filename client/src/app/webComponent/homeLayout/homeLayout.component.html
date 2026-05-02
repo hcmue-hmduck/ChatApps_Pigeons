@@ -20,7 +20,7 @@
             </div>
 
             <div class="nav-links">
-                @for (item of ['Network', 'Protocol', 'Nodes', 'Pricing']; track item) {
+                @for (item of ['Tính năng', 'Giao thức', 'Mạng lưới', 'Bảng giá']; track item) {
                     <a href="#" class="nav-link">{{ item }}</a>
                 }
             </div>
@@ -37,7 +37,7 @@
                     onmouseout="this.style.color = 'var(--slate-400)'"
                     (click)="goToLogin()"
                 >
-                    Log In
+                    Đăng nhập
                 </button>
                 <button
                     class="bubble-me text-slate-900 px-6 py-2.5 rounded-xl font-black transition-all"
@@ -50,7 +50,7 @@
                     "
                     (click)="goToSignup()"
                 >
-                    Get Started
+                    Bắt đầu ngay
                 </button>
             </div>
         </div>
@@ -65,22 +65,22 @@
                         <span class="ping-animate"></span>
                         <span class="ping-dot"></span>
                     </span>
-                    Next-Gen Encryption Live
+                    Mã hóa thế hệ mới đã sẵn sàng
                 </div>
 
                 <h1 class="hero-title">
-                    The Future of <br />
-                    <span class="text-gradient neon-glow">Secure</span> Chat
+                    Tương lai của <br />
+                    Trò chuyện <span class="text-gradient neon-glow">Bảo mật</span>
                 </h1>
 
                 <p class="hero-p">
-                    Experience a premium, high-tech interface with advanced glassmorphism and
-                    military-grade privacy. Built for the modern web with unparalleled speed.
+                    Trải nghiệm giao diện cao cấp, công nghệ cao với hiệu ứng kính mờ (glassmorphism) 
+                    và quyền riêng tư cấp quân đội. Được xây dựng cho web hiện đại với tốc độ vô song.
                 </p>
 
                 <div class="hero-btns">
-                    <button class="bubble-me btn-primary">Create Private Vault</button>
-                    <button class="glass-card btn-secondary">View Protocol</button>
+                    <button class="bubble-me btn-primary">Tạo Kho lưu trữ Riêng tư</button>
+                    <button class="glass-card btn-secondary">Xem Giao thức</button>
                 </div>
 
                 <div class="hero-stats">
@@ -93,7 +93,7 @@
                         }
                     </div>
                     <p class="stats-text">
-                        Trusted by <span style="color: white">2M+ developers</span>
+                        Được tin dùng bởi hơn <span style="color: white">2 triệu nhà phát triển</span>
                     </p>
                 </div>
             </div>
@@ -125,21 +125,18 @@
                 feature of [
                     {
                         icon: 'bi-zap',
-                        title: 'Crystal Clear UI',
-                        desc: 'An interface that breathes. High-performance
-            glassmorphism effects for a focused, distraction-free experience.',
+                        title: 'Giao diện Tinh khiết',
+                        desc: 'Một giao diện đầy sức sống. Hiệu ứng kính mờ hiệu suất cao mang lại trải nghiệm tập trung, không gây xao nhãng.',
                     },
                     {
                         icon: 'bi-lock',
-                        title: 'AES-256 Vault',
-                        desc: 'Your messages are yours alone. End-to-end encryption
-            ensures that not even we can read your private data.',
+                        title: 'Kho lưu trữ AES-256',
+                        desc: 'Tin nhắn là của riêng bạn. Mã hóa đầu cuối đảm bảo rằng ngay cả chúng tôi cũng không thể đọc dữ liệu riêng tư của bạn.',
                     },
                     {
                         icon: 'bi-lightning-fill',
-                        title: 'Hyper-Fast Sync',
-                        desc: 'Built on low-latency protocols. Instant
-            message delivery across all your devices in mere milliseconds.',
+                        title: 'Đồng bộ Siêu tốc',
+                        desc: 'Xây dựng trên các giao thức độ trễ thấp. Truyền tin nhắn tức thời trên tất cả các thiết bị của bạn chỉ trong vài mili giây.',
                     },
                 ];
                 track feature.title
@@ -165,9 +162,9 @@
                             alt="Secure Background"
                         />
                         <div class="auth-visual-content">
-                            <h4 class="auth-visual-h">Secure Entry</h4>
+                            <h4 class="auth-visual-h">Truy cập Bảo mật</h4>
                             <p class="auth-visual-p">
-                                Access your encrypted workspace with hardware-level biometric keys.
+                                Truy cập không gian làm việc được mã hóa của bạn với các khóa sinh trắc học cấp độ phần cứng.
                             </p>
                         </div>
                     </div>
@@ -180,7 +177,7 @@
                                 [class.inactive]="!isLogin()"
                                 (click)="goToLogin({ isScroll: false })"
                             >
-                                Log In
+                                Đăng nhập
                             </button>
                             <button
                                 class="auth-tab"
@@ -188,7 +185,7 @@
                                 [class.inactive]="isLogin()"
                                 (click)="goToSignup({ isScroll: false })"
                             >
-                                Register
+                                Đăng ký
                             </button>
                         </div>
 
@@ -222,7 +219,7 @@
                                 </div>
 
                                 <div class="form-group">
-                                    <label class="form-label">Password</label>
+                                    <label class="form-label">Mật khẩu</label>
                                     <div class="input-wrap">
                                         <i class="bi bi-lock input-icon"></i>
                                         <input
@@ -255,15 +252,15 @@
                                 </div>
 
                                 <div class="auth-options">
-                                    <label class="remember-me">
+                                    <!-- <label class="remember-me">
                                         <input type="checkbox" formControlName="remember" />
                                         <span>Remember Node</span>
-                                    </label>
-                                    <a href="#" class="lost-key">Lost Key?</a>
+                                    </label> -->
+                                    <button class="lost-key" type="button" (click)="showForgotModal.set(true)">Quên mật khẩu?</button>
                                 </div>
 
                                 <button type="submit" class="bubble-me btn-auth">
-                                    AUTHORIZE ACCESS
+                                    XÁC THỰC TRUY CẬP
                                     <i
                                         class="bi bi-box-arrow-in-right"
                                         style="font-size: 1.25rem"
@@ -281,7 +278,7 @@
                                 (submit)="handleSignup($event)"
                             >
                                 <div class="form-group">
-                                    <label class="form-label">Name</label>
+                                    <label class="form-label">Họ và tên</label>
                                     <div class="input-wrap">
                                         <i class="bi bi-person input-icon"></i>
                                         <input
@@ -334,7 +331,7 @@
                                 </div>
 
                                 <div class="form-group">
-                                    <label class="form-label">Password</label>
+                                    <label class="form-label">Mật khẩu</label>
                                     <div class="input-wrap">
                                         <i class="bi bi-lock input-icon"></i>
                                         <input
@@ -367,7 +364,7 @@
                                 </div>
 
                                 <div class="form-group">
-                                    <label class="form-label">Confirm password</label>
+                                    <label class="form-label">Xác nhận mật khẩu</label>
                                     <div class="input-wrap">
                                         <i class="bi bi-shield-check input-icon"></i>
                                         <input
@@ -410,7 +407,7 @@
                                     class="bubble-me btn-auth"
                                     style="margin-top: 0.5rem"
                                 >
-                                    INITIALIZE IDENTITY
+                                    KHỞI TẠO DANH TÍNH
                                     <i class="bi bi-plus-circle" style="font-size: 1.125rem"></i>
                                 </button>
                                 @if (signupErrorMessage() !== '') {
@@ -420,7 +417,7 @@
                         }
 
                         <div class="external-auth">
-                            <p class="external-label">External Protocols</p>
+                            <p class="external-label">Giao thức bên thứ ba</p>
                             <div class="external-grid">
                                 <a class="glass-card btn-external" [href]="apiUrl + '/google'">
                                     <i class="bi bi-google" style="font-size: 1rem"></i>
@@ -454,7 +451,7 @@
             </div>
 
             <div class="footer-links">
-                @for (item of ['Privacy', 'Transparency', 'API Keys', 'Status']; track item) {
+                @for (item of ['Bảo mật', 'Minh bạch', 'Mã API', 'Trạng thái']; track item) {
                     <a href="#" class="footer-link">{{ item }}</a>
                 }
             </div>
@@ -469,7 +466,7 @@
             </div>
         </div>
         <div class="footer-bottom">
-            © 2024 v=spf1 include:amazonses.com ~all Encrypted Systems • Built for a secure tomorrow
+            © 2024 Pigeons • Hệ thống Mã hóa • Được xây dựng cho một tương lai an toàn
         </div>
     </footer>
 
@@ -491,10 +488,10 @@
 
                 <div class="verify-content">
                     <div class="verify-title-wrap">
-                        <h3>VERIFY <span>EMAIL</span></h3>
-                        <p>Identity check</p>
+                        <h3>XÁC THỰC <span>EMAIL</span></h3>
+                        <p>Kiểm tra danh tính</p>
                         <p class="verify-subtitle">
-                            Enter the 6-digit code sent to {{ verifyEmail() || 'your email' }}
+                            Nhập mã gồm 6 chữ số đã được gửi đến {{ verifyEmail() || 'email của bạn' }}
                         </p>
                     </div>
 
@@ -517,15 +514,15 @@
 
                     <div class="verify-meta-row">
                         <div class="verify-meta-block">
-                            <span class="verify-meta-label">Status</span>
+                            <span class="verify-meta-label">Trạng thái</span>
                             <div class="verify-status-live">
                                 <span class="verify-ping"></span>
-                                <span>{{ isAuthenticating() ? 'VALIDATING...' : 'AWAITING SYNC' }}</span>
+                                <span>{{ isAuthenticating() ? 'ĐANG XÁC THỰC...' : 'ĐANG ĐỢI ĐỒNG BỘ' }}</span>
                             </div>
                         </div>
                         <div class="verify-divider"></div>
                         <div class="verify-meta-block">
-                            <span class="verify-meta-label">Re-syncing in</span>
+                            <span class="verify-meta-label">Gửi lại sau</span>
                             <span class="verify-countdown">{{ getCountdownDisplay() }}</span>
                         </div>
                     </div>
@@ -537,7 +534,7 @@
                         (click)="sendOtp()"
                     >
                         <i class="bi bi-arrow-clockwise" style="font-size: 0.75rem"></i>
-                        Request New Token
+                        Yêu cầu mã mới
                     </button>
 
                     @if (verifyErrorMessage() !== '') {
@@ -550,5 +547,9 @@
                 </button>
             </div>
         </div>
+    }
+
+    @if (showForgotModal()) {
+        <forgot-password-modal (close)="showForgotModal.set(false)"></forgot-password-modal>
     }
 </div>

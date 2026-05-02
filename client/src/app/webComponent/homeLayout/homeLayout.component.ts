@@ -1,9 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import {
     AbstractControl,
     FormBuilder,
     FormGroup,
+    FormsModule,
     ReactiveFormsModule,
     ValidationErrors,
     Validators,
@@ -13,11 +14,12 @@ import { Router } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import { LoginPayload, SignupPayload } from '../../models/authData';
 import { AuthService } from '../../services/authService';
+import { ForgotPasswordModalComponent } from '../forgotPasswordModal/forgotPasswordModal.component';
 
 @Component({
     selector: 'home-layout',
     standalone: true,
-    imports: [CommonModule, ɵInternalFormsSharedModule, ReactiveFormsModule],
+    imports: [CommonModule, FormsModule, ɵInternalFormsSharedModule, ReactiveFormsModule, ForgotPasswordModalComponent],
     templateUrl: './homeLayout.component.html',
     styleUrls: ['./homeLayout.component.css'],
 })
@@ -32,6 +34,7 @@ export class HomeLayoutComponent implements OnInit {
     protected loginErrorMessage = signal('');
     protected signupErrorMessage = signal('');
     protected showVerifyModal = signal(false);
+    protected showForgotModal = signal(false);
     protected verifyEmail = signal('');
     protected verifyName = signal('');
     protected verifyCode = signal<string[]>(['', '', '', '', '', '']);
@@ -159,10 +162,9 @@ export class HomeLayoutComponent implements OnInit {
 
         // Countdown = 0, gửi OTP mới
         this.isAuthenticating.set(true);
-        this.authService.requestSignupOTP({
-            email: payload.email!,
-            name: payload.full_name!
-        }).subscribe({
+        this.authService.requestSignupOTP(
+            payload.email!
+        ).subscribe({
             next: () => {
                 this.isAuthenticating.set(false);
                 this.verifyEmail.set(payload.email!);
@@ -243,14 +245,13 @@ export class HomeLayoutComponent implements OnInit {
 
     protected sendOtp() {
         const email = this.verifyEmail();
-        const name = this.verifyName() || 'Cyber Operative';
         if (!email || this.isResendingOtp() || this.countdown() > 0) {
             return;
         }
 
         this.isResendingOtp.set(true);
         this.verifyErrorMessage.set('');
-        this.authService.requestSignupOTP({ email, name }).subscribe({
+        this.authService.requestSignupOTP(email).subscribe({
             next: () => {
                 this.startCountdown(59);
                 this.isResendingOtp.set(false);
@@ -289,7 +290,7 @@ export class HomeLayoutComponent implements OnInit {
                         const { id } = signupRes?.metadata;
                         this.isAuthenticating.set(false);
                         this.closeVerifyModal();
-                            this.router.navigate(['/conversations']);
+                        this.router.navigate(['/conversations']);
                     },
                     error: (signupError) => {
                         this.isAuthenticating.set(false);

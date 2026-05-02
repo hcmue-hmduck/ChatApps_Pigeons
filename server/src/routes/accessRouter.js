@@ -6,11 +6,16 @@ const { authentication, refreshAuthentication } = require('../middlewares/authMi
 const {
     app: { frontendUrl },
 } = require('../configs/index.js');
+const usersController = require('../controllers/usersController.js');
 const router = express.Router();
 
 router.post('/signup', accessController.signup);
-router.post('/otp/send-signup', accessController.requestSignupOTP);
+router.post('/otp/request-signup', accessController.requestSignupOTP);
 router.post('/otp/verify-signup', accessController.verifySignupOTP);
+
+router.post('/otp/request-forgot-password', accessController.requestForgotPasswordOTP);
+router.post('/otp/verify-forgot-password', accessController.verifyForgotPasswordOTP);
+
 
 router.post('/refresh-token', refreshAuthentication, accessController.refreshToken);
 router.post('/logout', authentication, accessController.logout);
@@ -30,5 +35,7 @@ router.get(
     passport.authenticate('github', { session: false, failureRedirect: `${frontendUrl}` }),
     accessController.loginSocial,
 );
+
+router.post('/reset-password', accessController.resetPassword)
 
 module.exports = router;

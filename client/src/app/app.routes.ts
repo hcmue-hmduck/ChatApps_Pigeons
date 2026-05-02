@@ -9,11 +9,13 @@ import { MainLayoutComponent } from './webComponent/mainLayout/mainLayout.compon
 import { IntroLayoutComponent } from './webComponent/introLayout/introLayout.component';
 import { MessagesLayoutComponent } from './webComponent/messagesLayout/messagesLayout.component';
 import { authGuard } from './guards/auth.guard';
+import { guestGuard } from './guards/guest-guard';
 
 export const routes: Routes = [
     {
         path: '',
         component: HomeLayoutComponent,
+        canActivate: [guestGuard],
         pathMatch: 'full'
     },
     {

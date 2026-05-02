@@ -111,6 +111,7 @@ class UsersController {
             message: 'change password successfully',
             metadata: await usersService.changePassword(id, oldPassword, newPassword)
         }).send(res)
+        
     }
 
     // DELETE /admin/users/:id - Xóa user

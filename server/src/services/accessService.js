@@ -45,7 +45,7 @@ class AccessService {
     async refreshToken({ userId, userRole, sid, rt_secret, rt_cookie }) {
         if (!userId || !userRole || !sid || !rt_secret || !rt_cookie) throw new BadRequestError('missing parameters');
         const foundUser = await userService.getUserById(userId);
-        
+
         // DO NOT rotate refresh token! Just issue new access token.
         const timeToLiveSecond = 60 * 60 * 24 * 7;
         const secretKey1 = createKey();
@@ -60,9 +60,9 @@ class AccessService {
         });
 
         const tokens = { accessToken, refreshToken: rt_cookie };
-        
+
         return {
-            user: { 
+            user: {
                 id: userId,
                 role: userRole,
                 full_name: foundUser.full_name,
@@ -82,15 +82,15 @@ class AccessService {
         };
     }
 
-    async requestSignupOTP({ email, name }) {
-        if (!email || !name) throw new BadRequestError('missing parameters');
+    async requestSignupOTP({ email }) {
+        if (!email) throw new BadRequestError('missing parameters');
 
         const foundUser = await userService.getUserByEmail(email);
         if (foundUser) throw new ConflictResqueseError('email has already');
 
         const otp = String(crypto.randomInt(100000, 1000000));
-        const data = await emailService.sendSignupOTP(email, name, otp);
-        await redisService.setOTP(email, otp);
+        const data = await emailService.sendOTPToYourEmail(email, otp);
+        await redisService.setOTP(email, otp, 'signup');
 
         return data;
     }
@@ -98,15 +98,52 @@ class AccessService {
     async verifySignupOTP({ email, otp }) {
         if (!email || !otp) throw new BadRequestError('missing parameters');
 
-        const code = await redisService.getOTP(email);
+        const code = await redisService.getOTP(email, 'signup');
         if (!code) throw new NotFoundError('not found otp');
 
         const isMatch = code === String(otp);
         if (!isMatch) throw new BadRequestError('otp mismatch');
 
-        await redisService.deleteOTP(email);
+        await redisService.deleteOTP(email, 'signup');
 
         return isMatch;
+    }
+
+    async requestForgotPasswordOTP({ email }) {
+        if (!email) throw new BadRequestError('missing parameters');
+
+        const foundUser = await userService.getUserByEmail(email);
+        if (!foundUser) throw new BadRequestError('user not found');
+
+        const otp = String(crypto.randomInt(100000, 1000000));
+        const data = await emailService.sendOTPToYourEmail(email, otp);
+        await redisService.setOTP(email, otp, 'forgot-password');
+
+        return data;
+    }
+
+    async verifyForgotPasswordOTP({ email, otp }) {
+        if (!email || !otp) throw new BadRequestError('missing parameters');
+
+        const code = await redisService.getOTP(email, 'forgot-password');
+        if (!code) throw new NotFoundError('not found otp');
+
+        const isMatch = code === String(otp);
+        if (!isMatch) throw new BadRequestError('otp mismatch');
+
+        await redisService.deleteOTP(email, 'forgot-password');
+
+        return isMatch;
+    }
+
+    async resetPassword(password, email) {
+        if (!password || !email) throw BadRequestError('missing parameters');
+        const foundUser = await userService.getUserByEmail(email);
+        if (!foundUser) throw BadRequestError('user not found');
+
+        const password_hash = await hashPassword(password);
+        foundUser.password_hash = password_hash;
+        return await foundUser.save();
     }
 
     async #createSession(userId, userRole) {

@@ -21,25 +21,7 @@ export class App implements OnInit {
     platformId = inject(PLATFORM_ID);
 
     ngOnInit() {
-        // Angular SSR gọi ngOnInit từ Node.js server (KHÔNG có Cookie)
-        // sau đó Browser cũng gọi ngOnInit khi hydrate.
-        // => 2 request refresh-token trong < 5 giây => Server chặn 429.
-        // isPlatformBrowser đảm bảo chỉ gọi trên Browser thực sự.
-        if (isPlatformBrowser(this.platformId)) {
-            this.authService.getMe().subscribe({
-                next: () => {
-                    console.log('Phiên đăng nhập đã được khôi phục thành công.');
-                },
-                error: (error) => {
-                    if (error.status === 401) {
-                        console.log('Chưa đăng nhập (Phiên hết hạn).');
-                    } else {
-                        console.error('Lỗi khi kiểm tra phiên đăng nhập:', error);
-                    }
-                },
-            });
-        }
-
+      
         this.callBroadcastService.listenEvents((event) => {
             console.log(`callBroadcastService.listenEvents:::`, event);
 

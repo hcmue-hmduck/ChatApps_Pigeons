@@ -131,12 +131,22 @@ export class AuthService {
         return this.httpClient.post(`${this.apiUrl}/signup`, payload);
     }
 
-    requestSignupOTP(payload: SendOtpPayload): Observable<any> {
-        return this.httpClient.post(`${this.apiUrl}/otp/send-signup`, payload);
+    requestSignupOTP(email: string): Observable<any> {
+        console.log(`requestOTP:`, email);
+        return this.httpClient.post(`${this.apiUrl}/otp/request-signup`, { email });
     }
 
     verifySignupOTP(payload: { email: string; otp: string }): Observable<any> {
         return this.httpClient.post(`${this.apiUrl}/otp/verify-signup`, payload);
+    }
+
+    requestForgotPasswordOTP(email: string): Observable<any> {
+        console.log(`requestOTP:`, email);
+        return this.httpClient.post(`${this.apiUrl}/otp/request-forgot-password`, { email });
+    }
+
+    verifyForgotPasswordOTP(payload: { email: string; otp: string }): Observable<any> {
+        return this.httpClient.post(`${this.apiUrl}/otp/verify-forgot-password`, payload);
     }
 
     logout(): Observable<any> {
@@ -219,19 +229,22 @@ export class AuthService {
     }
 
     /**
-     * Checks if a session is currently active. 
-     * If memory is empty, attempts to re-authenticate via backend cookies.
+     * Kiểm tra phiên đăng nhập hiện tại trong bộ nhớ.
+     * Hàm này đồng bộ, không gọi API để tránh vòng lặp điều hướng.
      */
-    checkSession(): Observable<boolean> {
-        if (this.getUserId()) {
-            return of(true);
-        }
+    checkSession(): boolean {
+        return !!this.getUserId();
+    }
 
-        // If memory is empty (e.g. after refresh), try to re-auth using cookies
-        return this.getMe().pipe(
-            map(() => true),
-            catchError(() => of(false))
-        );
+    /**
+     * Khôi phục session từ server. Trả về Promise để APP_INITIALIZER có thể đợi.
+     */
+    async restoreSession(): Promise<void> {
+        try {
+            await firstValueFrom(this.getMe());
+        } catch (err) {
+            console.warn('Chưa đăng nhập');
+        }
     }
 
 
@@ -251,5 +264,9 @@ export class AuthService {
     changePassword(oldPassword: string, newPassword: string) {
         return this.httpClient.patch(`${this.rootApiUrl}/home/userinfor/me/password-change`,
             { oldPassword, newPassword })
+    }
+
+    resetPassword(password: string, email: string): Observable<any> {
+        return this.httpClient.post(`${this.apiUrl}/reset-password`, {password, email});
     }
 }

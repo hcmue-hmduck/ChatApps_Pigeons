@@ -33,7 +33,7 @@ class AccessController {
         const results = await accessService.login(req.user);
         const { accessToken, refreshToken } = results.tokens;
         setCookieTokens(res, accessToken, refreshToken);
-        return res.redirect(`${frontendUrl}/conversations/${results.user.id}`);
+        return res.redirect(`${frontendUrl}/conversations`);
     }
 
     // [POST] /access/logout
@@ -59,13 +59,13 @@ class AccessController {
         }).send(res);
     }
 
-    // [POST] /access/otp/send-signup
+    // [POST] /access/otp/request-signup
     async requestSignupOTP(req, res, next) {
-        const { email, name } = req.body;
+        const { email } = req.body;
 
         return new SuccessResponse({
             message: 'send otp successfully',
-            metadata: await accessService.requestSignupOTP({ email, name }),
+            metadata: await accessService.requestSignupOTP({ email }),
         }).send(res);
     }
 
@@ -76,6 +76,35 @@ class AccessController {
         return new SuccessResponse({
             message: 'verify otp successfully',
             metadata: await accessService.verifySignupOTP({ email, otp }),
+        }).send(res);
+    }
+
+    // [POST] /access/otp/request-forgot-password
+    async requestForgotPasswordOTP(req, res, next) {
+        const { email } = req.body;
+
+        return new SuccessResponse({
+            message: 'send otp successfully',
+            metadata: await accessService.requestForgotPasswordOTP({ email }),
+        }).send(res);
+    }
+
+    // [POST] /access/otp/verify-forgot-password
+    async verifyForgotPasswordOTP(req, res, next) {
+        const { email, otp } = req.body;
+
+        return new SuccessResponse({
+            message: 'verify otp successfully',
+            metadata: await accessService.verifyForgotPasswordOTP({ email, otp }),
+        }).send(res);
+    }
+
+    // [POST] /access/reset-password
+    async resetPassword(req, res, next) {
+        const {password, email} = req.body;
+        return new SuccessResponse({
+            message: 'reset password successfully',
+            metadata: await accessService.resetPassword(password, email)
         }).send(res);
     }
 }
