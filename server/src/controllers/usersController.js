@@ -68,29 +68,11 @@ class UsersController {
 
     // PUT /admin/users/:id - Cập nhật user
     async updateUser(req, res) {
-        try {
-            const updatedUser = await usersService.updateUser(req.params.id, req.body);
-            if (!updatedUser) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'User not found'
-                });
-            }
-            res.status(200).json({
-                success: true,
-                message: 'User updated successfully',
-                data: updatedUser,
-                metadata: {
-                    updatedUserInfor: updatedUser,
-                },
-            });
-        } catch (error) {
-            res.status(500).json({
-                success: false,
-                message: 'Error updating user',
-                error: error.message
-            });
-        }
+        const updatedUser = await usersService.updateUser(req.params.id, req.body);
+        return new SuccessResponse({
+            message: 'updated user successfully',
+            metadata: updatedUser
+        }).send(res);
     }
 
     // PATCH /home/userinfo/me/password-setup
@@ -111,7 +93,7 @@ class UsersController {
             message: 'change password successfully',
             metadata: await usersService.changePassword(id, oldPassword, newPassword)
         }).send(res)
-        
+
     }
 
     // DELETE /admin/users/:id - Xóa user

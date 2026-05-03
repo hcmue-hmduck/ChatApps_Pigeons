@@ -1,12 +1,12 @@
 const redis = require('../configs/redisConfig.js');
 const { InternalServerError } = require('../core/errorResponse.js');
-const { ConflictResqueseError, BadRequestError } = require('../core/errorResponse.js');
+const { ConflictRequestError, BadRequestError } = require('../core/errorResponse.js');
 
 class RedisService {
     async setUserSession({ userId, sid, accessTokenSecret, refreshTokenSecret, timeToLiveSecond }) {
         if (!userId || !sid || !accessTokenSecret || !refreshTokenSecret || !timeToLiveSecond)
             throw new BadRequestError('missing parameters');
-        if (isNaN(timeToLiveSecond)) throw new ConflictResqueseError('invalid parameters');
+        if (isNaN(timeToLiveSecond)) throw new ConflictRequestError('invalid parameters');
 
         const key = `auth:session:${userId}:${sid}`;
         const results = await redis
@@ -31,7 +31,7 @@ class RedisService {
     async updateUserSession({ userId, sid, accessTokenSecret, refreshTokenSecret, timeToLiveSecond }) {
         if (!userId || !sid || !accessTokenSecret || !refreshTokenSecret || !timeToLiveSecond)
             throw new BadRequestError('missing parameters');
-        if (isNaN(timeToLiveSecond)) throw new ConflictResqueseError('invalid parameters');
+        if (isNaN(timeToLiveSecond)) throw new ConflictRequestError('invalid parameters');
 
         const key = `auth:session:${userId}:${sid}`;
         const results = await redis

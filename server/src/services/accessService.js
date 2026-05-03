@@ -1,7 +1,7 @@
 const userService = require('./usersService.js');
 const redisService = require('./redisService.js');
 const emailService = require('./emailService.js');
-const { BadRequestError, ConflictResqueseError, NotFoundError } = require('../core/errorResponse.js');
+const { BadRequestError, ConflictRequestError, NotFoundError } = require('../core/errorResponse.js');
 const { hashPassword, createKey, signJWT } = require('../utils/authUtil.js');
 const crypto = require('crypto');
 
@@ -10,7 +10,7 @@ class AccessService {
         if (!full_name || !email || !password) throw new BadRequestError('missing parameters');
 
         const foundUser = await userService.getUserByEmail(email);
-        if (foundUser) throw new ConflictResqueseError('Email has already');
+        if (foundUser) throw new ConflictRequestError('Email has already');
 
         const password_hash = await hashPassword(password);
         const newUser = await userService.createUser({ full_name, email, password_hash, is_email_verified: true });
@@ -86,7 +86,7 @@ class AccessService {
         if (!email) throw new BadRequestError('missing parameters');
 
         const foundUser = await userService.getUserByEmail(email);
-        if (foundUser) throw new ConflictResqueseError('email has already');
+        if (foundUser) throw new ConflictRequestError('email has already');
 
         const otp = String(crypto.randomInt(100000, 1000000));
         const data = await emailService.sendOTPToYourEmail(email, otp);

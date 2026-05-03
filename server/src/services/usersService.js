@@ -1,7 +1,8 @@
-const { Op } = require('sequelize');
+const { Op, where } = require('sequelize');
 const usersModel = require('../models/usersModel');
 const { comparePassword, hashPassword } = require('../utils/authUtil.js');
-const { BadRequestError, UnauthorizedError, ConflictResqueseError } = require('../core/errorResponse.js');
+const { BadRequestError, UnauthorizedError, ConflictRequestError } = require('../core/errorResponse.js');
+const { getUpdateData } = require('../utils/dataUtil.js');
 
 class UsersService {
     // Lấy users theo điều kiện filter
@@ -68,27 +69,27 @@ class UsersService {
 
     // Cập nhật user
     async updateUser(userId, userData) {
+
         const user = await usersModel.findByPk(userId);
-        userData.updated_at = new Date().toISOString();
-        if (user) {
-            await user.update(userData);
-            return await user.save();
-        }
-        return null;
+        if (!user) throw new BadRequestError('User not found');
+
+        const updateData = getUpdateData(userData);
+
+        return await user.update(updateData);
     }
 
     async setPassword(userId, password) {
         const password_hash = await hashPassword(password);
         console.log(`password_hash`, password_hash)
-        return this.updateUser(userId, {password_hash});
+        return this.updateUser(userId, { password_hash });
     }
 
     async changePassword(userId, oldPassword, newPassword) {
-        console.log(`changePassword:::`, {userId, oldPassword, newPassword})
+        console.log(`changePassword:::`, { userId, oldPassword, newPassword })
         const user = await this.getUserById(userId);
         if (!user) throw new BadRequestError('User not found');
 
-        const {password_hash} = user;
+        const { password_hash } = user;
 
         // Xử lý trường hợp người dùng chưa từng có mật khẩu (vd: đăng nhập bằng Google)
         if (!password_hash) {
@@ -97,7 +98,7 @@ class UsersService {
 
         const ok = await comparePassword(oldPassword, password_hash);
         // Dùng BadRequestError (400) thay vì UnauthorizedError (401) để tránh Interceptor hiểu nhầm là hết token và logout
-        if(!ok) throw new BadRequestError('Mật khẩu hiện tại không chính xác');
+        if (!ok) throw new BadRequestError('Mật khẩu hiện tại không chính xác');
 
         user.password_hash = await hashPassword(newPassword);
         return await user.save();

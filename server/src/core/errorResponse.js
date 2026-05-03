@@ -9,7 +9,7 @@ class ErrorResponse extends Error {
 }
 
 // xung đột (vi phạm một quy tắc dữ liệu)
-class ConflictResqueseError extends ErrorResponse {
+class ConflictRequestError extends ErrorResponse {
     constructor(message = reasonPhrases.CONFLICT, status = statusCodes.CONFLICT) {
         super(message, status);
     }
@@ -57,7 +57,7 @@ class TooManyRequestError extends ErrorResponse {
 }
 
 module.exports = {
-    ConflictResqueseError,
+    ConflictRequestError,
     UnauthorizedError,
     ForbiddenError,
     NotFoundError,
