@@ -43,6 +43,8 @@ import { GroupAvatarLayoutComponent } from '../groupAvatarLayout/groupAvatarLayo
 import { MessageReactions } from '../../services/messagereactions';
 import { ActiveConversationService } from '../../services/activeConversation.service';
 import { MessageStoreService } from '../../services/messageStore.service';
+import { BotMessages } from '../../services/botMessage';
+import { SheetService } from '../../services/sheetService';
 import { Router } from '@angular/router';
 
 export interface UserPresence {
@@ -168,7 +170,7 @@ export class MessagesLayoutComponent
         this.pendingScroll = true; // Ensure next cycle cleans up any remaining offsets
 
         // Cố định scroll về đáy ngay lập tức để tránh jitter của đoạn chat cũ
-        if (this.messagesContent?.nativeElement) {
+        if (this.messagesContent) {
             this.messagesContent.nativeElement.scrollTop = 0;
         }
     }
@@ -327,6 +329,16 @@ export class MessagesLayoutComponent
         this.cdr.markForCheck();
     }
 
+    quickAppend(text: string) {
+        this.newMessage = text;
+        // Focus the input area
+        setTimeout(() => {
+            if (this.messageInput?.nativeElement) {
+                this.messageInput.nativeElement.focus();
+            }
+        }, 0);
+    }
+
     isLoaded = false;
     hasNewMessage = false; // Track new messages when scrolled up
 
@@ -392,6 +404,8 @@ export class MessagesLayoutComponent
     private highlightTimeout: any;
 
     mediaViewer!: ImgVidUtils;
+
+    isChat = true;
 
     // Forward modal state
     showForwardModal = false;
@@ -578,6 +592,8 @@ export class MessagesLayoutComponent
         private uploadService: UploadService,
         private messageReactionsService: MessageReactions,
         private pinMessageService: PinMessages,
+        private botMessageService: BotMessages,
+        private sheetService: SheetService,
         public fileUtils: FileUtils,
         private socketService: SocketService,
     ) {
@@ -1315,6 +1331,144 @@ export class MessagesLayoutComponent
 
                         this.lastMessageId = realId;
                         this.messageStatus.set('Đã gửi');
+
+                        // Detect slash command to create sheet/table: '/create_table <table_name>'
+                        try {
+                            const sentContent = savedMessage?.content?.toString().trim();
+                            if (sentContent && sentContent.startsWith('/create_table ')) {
+                                this.isChat = false; // Tạm thời tắt chế độ chat nếu phát hiện lệnh tạo bảng để tránh loop bot
+                                const parts = sentContent.split(/\s+/);
+                                const tableName = parts[1];
+                                if (tableName) {
+                                    this.sheetService.createSheet({ type: 'create_table', table_name: tableName }).subscribe({
+                                        next: (res) => {
+                                            console.log('Sheet create_table response:', res);
+                                        },
+                                        error: (err) => {
+                                            console.error('Error creating sheet table:', err);
+                                        }
+                                    });
+                                }
+                            } else {
+                                this.isChat = true; // Reset lại chế độ chat nếu không phải lệnh tạo bảng
+                            }
+                        } catch (e) {
+                            console.error('Error handling create_table command:', e);
+                        }
+
+                        if (this.getMessageInfor().other_participant.is_bot && this.isChat) {
+                            const botParticipant = this.getMessageInfor().other_participant;
+                            const typingTempId = `bot-typing-${Date.now()}`;
+                            const tempTypingMessage = {
+                                id: typingTempId,
+                                _trackId: typingTempId,
+                                sender_id: botParticipant?.user_id,
+                                sender_name: botParticipant?.nick_name || botParticipant?.full_name || 'Bot',
+                                sender_avatar: botParticipant?.avatar_url || '',
+                                content: '',
+                                message_type: 'text',
+                                created_at: new Date().toISOString(),
+                                _isTyping: true,
+                            };
+
+                            // show typing placeholder in UI
+                            this.updateUIWithNewMessage(tempTypingMessage, this.conversationId());
+
+                            this.botMessageService.getAnsMessages(content).subscribe({
+                                next: (res) => {
+                                    const botResponse = res?.metadata?.answer || 'Xin lỗi, tôi không thể trả lời câu hỏi này.';
+                                    console.log('Bot', botResponse);
+                                    this.messagesService.postMessage(
+                                        this.conversationId(),
+                                        botParticipant.user_id,
+                                        botResponse,
+                                        undefined, // replyTo
+                                        'text' // message_type
+                                    ).subscribe({
+                                        next: (response) => {
+                                            const botMessage = response.metadata?.newMessage;
+                                            console.log('Bot message saved:', botMessage);
+
+                                            if (botMessage) {
+                                                const enrichedBotMessage = {
+                                                    ...botMessage,
+                                                    sender_name: botParticipant?.nick_name || botParticipant?.full_name || 'Bot',
+                                                    sender_avatar: botParticipant?.avatar_url || '',
+                                                };
+                                                const botConversationId = botMessage.conversation_id || this.conversationId();
+
+                                                this.lastMessageId = botMessage.id;
+
+                                                // replace typing placeholder with real message
+                                                this.getMessagesData.update((old) => ({
+                                                    ...old,
+                                                    homeMessagesData: {
+                                                        ...old.homeMessagesData,
+                                                        messages: [
+                                                            ...(old.homeMessagesData?.messages || []).filter((m: any) => m.id !== typingTempId),
+                                                            enrichedBotMessage,
+                                                        ],
+                                                    },
+                                                }));
+
+                                                // Sync conversation preview + last message immediately
+                                                if (botConversationId) {
+                                                    this.messageStore.updateState(botConversationId, {
+                                                        getMessagesData: this.getMessagesData(),
+                                                        lastMessageId: botMessage.id,
+                                                    });
+
+                                                    this.convStore.updateConversationList(enrichedBotMessage);
+
+                                                    if (!String(botConversationId).startsWith('conv_')) {
+                                                        this.conversationService.putConversation(botConversationId, {
+                                                            last_message_id: botMessage.id,
+                                                        }).subscribe({
+                                                            error: (err: any) => console.error('Error updating bot last_message_id:', err),
+                                                        });
+                                                    }
+                                                }
+
+                                                // Broadcast real message via socket
+                                                this.socketService.emit('newMessage', enrichedBotMessage);
+                                                this.socketService.emit('updateConversation', enrichedBotMessage);
+                                            } else {
+                                                // remove typing placeholder if no real message
+                                                this.getMessagesData.update((old) => ({
+                                                    ...old,
+                                                    homeMessagesData: {
+                                                        ...old.homeMessagesData,
+                                                        messages: (old.homeMessagesData?.messages || []).filter((m: any) => m.id !== typingTempId),
+                                                    },
+                                                }));
+                                            }
+                                        },
+                                        error: (err) => {
+                                            console.error('Error saving bot message:', err);
+                                            // remove typing placeholder on error
+                                            this.getMessagesData.update((old) => ({
+                                                ...old,
+                                                homeMessagesData: {
+                                                    ...old.homeMessagesData,
+                                                    messages: (old.homeMessagesData?.messages || []).filter((m: any) => m.id !== typingTempId),
+                                                },
+                                            }));
+                                        }
+                                    });
+                                },
+                                error: (err) => {
+                                    console.error('Error fetching bot response:', err);
+                                    // remove typing placeholder on error
+                                    this.getMessagesData.update((old) => ({
+                                        ...old,
+                                        homeMessagesData: {
+                                            ...old.homeMessagesData,
+                                            messages: (old.homeMessagesData?.messages || []).filter((m: any) => m.id !== typingTempId),
+                                        },
+                                    }));
+                                }
+                            });
+                        }
 
                         const realMessage = {
                             ...savedMessage,
@@ -3378,23 +3532,114 @@ export class MessagesLayoutComponent
 
         switch (event.key) {
             case 'ArrowDown':
-                event.preventDefault();
-                this.mentionSelectedIndex.set((this.mentionSelectedIndex() + 1) % participants.length);
+                if (event) event.preventDefault();
+                const currentIdxDown = this.mentionSelectedIndex?.() ?? 0;
+                this.mentionSelectedIndex?.set((currentIdxDown + 1) % participants.length);
                 return true;
             case 'ArrowUp':
-                event.preventDefault();
-                this.mentionSelectedIndex.set((this.mentionSelectedIndex() - 1 + participants.length) % participants.length);
+                if (event) event.preventDefault();
+                const currentIdxUp = this.mentionSelectedIndex?.() ?? 0;
+                this.mentionSelectedIndex?.set((currentIdxUp - 1 + participants.length) % participants.length);
                 return true;
             case 'Enter':
             case 'Tab':
-                event.preventDefault();
-                this.selectMention(participants[this.mentionSelectedIndex()]);
+                if (event) event.preventDefault();
+                const selIdx = this.mentionSelectedIndex?.() ?? 0;
+                this.selectMention(participants[selIdx]);
                 return true;
             case 'Escape':
-                event.preventDefault();
+                if (event) event.preventDefault();
                 this.closeMentionList();
                 return true;
         }
         return false;
+    }
+
+    handleSheet() {
+        const text = `📊 **Chào mừng bạn đến với Hệ thống Bảng tính & Thống kê!**  
+
+                    Bot hỗ trợ bạn tạo các bảng dữ liệu linh hoạt như Excel, nhập liệu nhanh và thực hiện thống kê nhóm, tổng hợp ngay trên Telegram.
+
+                    **Các lệnh cơ bản:**
+
+                    🔹 **Quản lý bảng**  
+                    \`/create_table <tên_bảng> <cột1,cột2,...>\`  
+                    → Tạo bảng mới với danh sách cột (phân cách bằng dấu phẩy).  
+                    _Ví dụ:_ \`/create_table doanhthu ngay, tenhang, soluong, dongia\`
+
+                    \`/add_row <tên_bảng> <giá_trị_cách_nhau_bởi_dấu_phẩy>\`  
+                    → Thêm một dòng dữ liệu vào bảng theo đúng thứ tự cột.  
+                    _Ví dụ:_ \`/add_row doanhthu 2026-04-29, Bút bi, 10, 5000\`
+
+                    \`/view_table <tên_bảng> [số_dòng]\` *(mặc định 10 dòng gần nhất)*  
+                    → Xem dữ liệu trong bảng.
+
+                    🔹 **Thống kê**  
+                    \`/stats <tên_bảng> group by <cột> sum <cột>\`  
+                    → Tính tổng giá trị của một cột số theo từng nhóm.  
+                    _Ví dụ:_ \`/stats doanhthu group by tenhang sum soluong\`  
+
+                    *(Hỗ trợ thêm \`count\`, \`avg\`, \`min\`, \`max\` – sắp ra mắt)*
+
+                    🔹 **Chỉnh sửa**  
+                    \`/delete_row <tên_bảng> <id_dòng>\`  
+                    → Xoá một dòng (ID hiển thị trong \`/view_table\`).  
+
+                    \`/edit_row <tên_bảng> <id_dòng> <cột=giá_trị,...>\`  
+                    → Sửa giá trị của các cột trong dòng.  
+                    _Ví dụ:_ \`/edit_row doanhthu 660a... soluong=15, dongia=5500\`
+
+                    🔹 **Tiện ích**  
+                    \`/list_tables\` – Xem tất cả các bảng bạn đã tạo.
+
+                    ---
+
+                    💡 **Mẹo:** Nhập dữ liệu nhớ đúng thứ tự cột đã khai báo khi tạo bảng. Nếu cần xem lại cấu trúc bảng, dùng \`/view_table <tên_bảng> 0\` để hiển thị tiêu đề.
+
+                    Hãy bắt đầu tạo bảng đầu tiên của bạn ngay nhé! Nếu cần trợ giúp thêm, gõ \`/help\`.`;
+        
+        this.messagesService.postMessage(
+            this.conversationId(),
+            this.getMessageInfor().other_participant.user_id,
+            text,
+            undefined, // replyTo
+            'text' // message_type
+        ).subscribe({
+            next: (response) => {
+                const botMessage = response.metadata?.newMessage;
+                console.log('Bot message saved:', botMessage);
+
+                // Thêm tin nhắn bot vào UI ngay lập tức
+                if (botMessage) {
+                    const botParticipant = this.getMessageInfor().other_participant;
+                    const enrichedBotMessage = {
+                        ...botMessage,
+                        sender_name: botParticipant?.nick_name || botParticipant?.full_name || 'Bot',
+                        sender_avatar: botParticipant?.avatar_url || '',
+                    };
+
+                    this.getMessagesData.update((old) => ({
+                        ...old,
+                        homeMessagesData: {
+                            ...old.homeMessagesData,
+                            messages: [...(old.homeMessagesData?.messages || []), enrichedBotMessage],
+                        },
+                    }));
+
+                    // Broadcast qua socket để người khác (nếu có) nhìn thấy
+                    this.socketService.emit('newMessage', enrichedBotMessage);
+                }
+            },
+            error: (err) => {
+                console.error('Error saving bot message:', err);
+            }
+        });
+    
+        
+        this.sheetService.getSheet().subscribe({
+            next: (response) => {
+                console.log('Sheet data:', response);
+            }
+        });
     }
 }

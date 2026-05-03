@@ -1,3 +1,11 @@
+const dotenv = require('dotenv');
+dotenv.config();
+
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const OPENROUTER_URL = process.env.OPENROUTER_URL;
+const CHAT_MODEL = process.env.CHAT_MODEL;
+
+
 const OpenAI = require('openai');
 const {
     openAI: { modelAI, openRouterApiKey },
@@ -83,11 +91,56 @@ class OpenAiService {
 
             for await (const churn of stream) {
                 const content = churn?.choices?.[0]?.delta?.content
-                if(content) yield content
+                if (content) yield content
             }
         } catch (error) {
             throw error;
         }
+    }
+    async chatWithBot(userMessage) {
+        try {
+            const completion = await this.#openai.chat.completions.create({
+                model: modelAI,
+                messages: [
+                    {
+                        role: 'user',
+                        content: `[Trả lời ngắn gọn bằng tiếng Việt] ${userMessage}`,
+                    },
+                ],
+                max_tokens: 512,
+            });
+            return completion.choices[0]?.message?.content || 'Xin lỗi, tôi không thể trả lời lúc này.';
+        } catch (error) {
+            console.error('❌ OpenRouter chatWithBot error:', error.message);
+            return 'Xin lỗi, tôi đang gặp sự cố. Vui lòng thử lại sau.';
+        }
+    }
+
+
+    async askAI(message) {
+        console.log('Message', message);
+        const res = await fetch(OPENROUTER_URL, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                model: CHAT_MODEL,
+                messages: [
+                    { role: "user", content: `[Trả lời ngắn gọn bằng tiếng Việt] ${message}` }
+                ],
+                max_tokens: 300,
+            })
+        });
+
+        if (!res.ok) {
+            const err = await res.text();
+            throw new Error(`OpenRouter lỗi ${res.status}: ${err}`);
+        }
+
+        const data = await res.json();
+        return data.choices[0].message.content;
     }
 }
 

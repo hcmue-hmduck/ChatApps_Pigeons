@@ -1,5 +1,6 @@
 const multer = require('multer');
 const fs = require('fs');
+const crypto = require('crypto');
 
 // Đảm bảo thư mục uploads tồn tại trên server (Render)
 const uploadDir = 'uploads/';
@@ -13,8 +14,10 @@ const storage = multer.diskStorage({
         cb(null, uploadDir) // Thư mục tạm
     },
     filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + '-' + file.originalname);
+        const ext = file.originalname.split('.').pop() || 'bin';
+        const hash = crypto.randomBytes(8).toString('hex');
+        const filename = `${hash}.${ext}`;
+        cb(null, filename);
     }
 });
 

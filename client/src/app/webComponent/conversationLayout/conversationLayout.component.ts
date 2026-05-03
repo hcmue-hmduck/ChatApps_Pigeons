@@ -56,6 +56,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     dateTimeUtils = inject(DateTimeUtils);
     private timeUpdateInterval: any;
 
+
     @ViewChild('searchInput') searchInput!: ElementRef;
 
     set convID(val: string) {

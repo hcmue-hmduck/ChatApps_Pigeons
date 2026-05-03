@@ -5,3 +5,5 @@ SeedDB_ChatPigeons.sql
 uploads
 ./src/views/
 .DS_Store
+
+test_vision.js

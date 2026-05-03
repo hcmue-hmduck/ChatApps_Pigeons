@@ -13,7 +13,7 @@ const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const passport = require('./src/configs/passportConfig.js')
 
-const { model } = require('./src/configs/geminiConfig.js');
+const { connectToDB } = require('./src/configs/dbConfig');
 
 const http = require('http');
 const https = require('https');
@@ -425,6 +425,13 @@ app.use((error, req, res, next) => {
     });
 });
 
-server.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
+connectToDB()
+    .then(() => {
+        server.listen(PORT, () => {
+            console.log(`Server is running on port ${PORT}`);
+        });
+    })
+    .catch((err) => {
+        console.error('Failed to connect to databases:', err);
+        process.exit(1);
+    });

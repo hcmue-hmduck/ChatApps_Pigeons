@@ -45,17 +45,26 @@
                             } @else if (conv.type === 'direct' && getOtherParticipant(conv); as other) {
                             <div class="avatar-wrapper">
                                 <img [src]="other.avatar_url" [alt]="other.full_name" class="avatar-img">
-                                @if (convStore.onlineUsers().has(other.user_id)) {
-                                <span class="status-dot online"></span>
-                                } @else {
-                                <span class="status-dot offline"></span>
+                                @if (other.is_bot) {
+                                    <span class="status-dot online"></span>
+                                }
+                                @else {
+                                    @if (convStore.onlineUsers().has(other.user_id)) {
+                                    <span class="status-dot online"></span>
+                                    } @else {
+                                    <span class="status-dot offline"></span>
+                                    }
                                 }
                             </div>
                             }
                         </div>
                         <div class="conv-info">
                             <div class="conv-info-top">
-                                <span class="conv-name">{{ conv.title }}</span>
+                                @if (getOtherParticipant(conv)?.is_bot) {
+                                    <span class="conv-name"><i class="bi bi-robot me-1"></i>{{ conv.title }}</span>
+                                } @else {
+                                    <span class="conv-name">{{ conv.title }}</span>
+                                }
                                 <div class="conv-time-actions-wrap">
                                     @if (conv.lastMessage) {
                                     <span class="conv-time" [class.hidden]="activeConvMenuId === conv.conversation_id">
@@ -127,7 +136,11 @@
                             <span class="status-dot" [class.online]="convStore.onlineUsers().has(user.id)"></span>
                         </div>
                         <div class="search-info">
+                            @if (user.is_bot) {
+                            <div class="search-name"><i class="bi bi-robot me-1"></i>{{user.full_name}}</div>
+                            } @else {
                             <div class="search-name">{{user.full_name}}</div>
+                            }
                             <div class="search-email">{{user.email}}</div>
                         </div>
                     </div>

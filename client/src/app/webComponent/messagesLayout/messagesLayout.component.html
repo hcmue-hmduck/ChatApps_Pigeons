@@ -18,8 +18,8 @@
                 <img [src]="getMessageInfor().other_participant.avatar_url"
                     [alt]="getMessageInfor().other_participant.full_name" class="header-avatar">
                 <span class="header-status-dot"
-                    [class.online]="isUserOnline(getMessageInfor().other_participant.user_id)"
-                    [class.offline]="!isUserOnline(getMessageInfor().other_participant.user_id)">
+                    [class.online]="getMessageInfor().other_participant.is_bot || isUserOnline(getMessageInfor().other_participant.user_id)"
+                    [class.offline]="!getMessageInfor().other_participant.is_bot && !isUserOnline(getMessageInfor().other_participant.user_id)">
                 </span>
             </div>
             }
@@ -29,15 +29,22 @@
 
         <!-- Title & sub -->
         <div class="chat-header-info">
+            @if (getMessageInfor().type === 'direct' && getMessageInfor().other_participant?.is_bot) {
+            <p class="chat-header-title"><i class="bi bi-robot me-1"></i>{{ getMessageInfor().title || 'Conversation' }}
+            </p>
+            } @else {
             <p class="chat-header-title">{{ getMessageInfor().title || 'Conversation' }}</p>
+            }
             @if (getMessageInfor().type === 'group') {
             <p class="chat-header-sub">
                 {{ getMessageInfor().participants?.length || 0 }} thành viên
             </p>
             }
             @if (getMessageInfor().type === 'direct' && getMessageInfor().other_participant) {
-            <p class="chat-header-sub" [class.online]="isUserOnline(getMessageInfor().other_participant.user_id)">
-                @if (isUserOnline(getMessageInfor().other_participant.user_id)) {
+            <p class="chat-header-sub"
+                [class.online]="getMessageInfor().other_participant.is_bot || isUserOnline(getMessageInfor().other_participant.user_id)">
+                @if (getMessageInfor().other_participant.is_bot ||
+                isUserOnline(getMessageInfor().other_participant.user_id)) {
                 Đang hoạt động
                 } @else {
                 @if (getUserLastOnlineAt(getMessageInfor().other_participant)) {
@@ -571,7 +578,17 @@
                                     }
                                 </div>
 
-                                <div class="bubble-other" [class.bubble-image]="msg.message_type === 'image'">
+                                <div class="bubble-other" [class.bubble-image]="msg.message_type === 'image'"
+                                    [class.bot-typing-bubble]="msg._isTyping">
+                                    @if (msg._isTyping) {
+                                    <div class="bot-typing-content" aria-label="Bot đang soạn tin" role="status">
+                                        <div class="bot-typing-dots">
+                                            <span></span>
+                                            <span></span>
+                                            <span></span>
+                                        </div>
+                                    </div>
+                                    }
                                     @if (msg.message_type === 'image') {
                                     <div class="msg-image-wrap" (click)="openImageViewer(msg.file_url)">
                                         <img [src]="fileUtils.resolveMediaUrl(msg.file_url)" class="msg-image"
@@ -687,6 +704,16 @@
         ============================================================ -->
 @if (!isBlocked()) {
 <div class="input-area">
+    <!-- Bot Quick Tags (Minimalist like Zalo/Facebook) -->
+    @if (getMessageInfor().type === 'direct' && getMessageInfor().other_participant?.is_bot) {
+    <div class="bot-quick-tags">
+        <button class="bot-tag" type="button" (click)="quickAppend('Tóm tắt nội dung hội thoại')">✨ Tóm tắt</button>
+        <button class="bot-tag" type="button" (click)="handleSheet()">Thống kê</button>
+        <button class="bot-tag" type="button" (click)="quickAppend('Gợi ý trả lời: ')">💡 Gợi ý</button>
+        <button class="bot-tag" type="button" (click)="quickAppend('Công thức nấu món: ')">🍳 Nấu ăn</button>
+        <button class="bot-tag" type="button" (click)="quickAppend('Giải toán: ')">🔢 Toán học</button>
+    </div>
+    }
     @if (showUnreadSummaryPopup) {
     <div class="unread-summary-popup" role="status" aria-live="polite">
         <span class="unread-summary-count">{{ unreadSummaryCount }} unread messages</span>

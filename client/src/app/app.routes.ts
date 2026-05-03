@@ -49,11 +49,11 @@ export const routes: Routes = [
             {
                 path: 'relationship',
                 component: RelationshipLayoutComponent,
-            },
-            {
-                path: 'admin',
-                component: AdminLayoutComponent,
             }
         ]
+    },
+    {
+        path: 'admin',
+        component: AdminLayoutComponent,
     }
 ];

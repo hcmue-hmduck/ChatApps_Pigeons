@@ -24,7 +24,7 @@ class SearchService {
                 ],
                 is_active: true,
             },
-            attributes: ['id', 'full_name', 'email', 'avatar_url', 'status'],
+            attributes: ['id', 'full_name', 'email', 'avatar_url', 'status', 'is_bot'],
             limit: 10,
         });
         return users;

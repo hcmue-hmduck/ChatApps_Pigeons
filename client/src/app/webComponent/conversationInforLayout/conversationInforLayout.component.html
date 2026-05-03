@@ -16,7 +16,11 @@
                     [alt]="profileName" [size]="112">
                 </app-group-avatar-layout>
             </div>
+            @if (!isGroupConversation && otherParticipant?.is_bot) {
+            <h1 class="profile-name"><i class="bi bi-robot me-1"></i>{{ profileName }}</h1>
+            } @else {
             <h1 class="profile-name">{{ profileName }}</h1>
+            }
 
             <div class="action-buttons">
                 @if (!isGroupConversation) {

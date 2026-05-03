@@ -51,12 +51,12 @@
                     <div class="action-divider"></div>
                     <div class="admin-profile">
                         <div class="profile-text">
-                            <span class="profile-name">Admin_Sys_01</span>
-                            <span class="profile-role">Superuser</span>
+                            <span class="profile-name">{{ adminProfile().full_name || 'Admin' }}</span>
+                            <span class="profile-role">{{ adminProfile().role || 'Superuser' }}</span>
                         </div>
                         <div class="profile-avatar-wrap">
-                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="Admin"
-                                class="profile-avatar" referrerPolicy="no-referrer">
+                            <img [src]="adminProfile().avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix'"
+                                alt="Admin" class="profile-avatar" referrerPolicy="no-referrer">
                         </div>
                     </div>
                 </div>
@@ -69,13 +69,14 @@
             <div class="dashboard-grid">
                 <!-- Stats Cards -->
                 <div class="stats-grid">
-                    @for (stat of stats; track stat.label) {
+                    @for (stat of stats(); track stat.label) {
                     <div class="stat-card">
                         <div class="stat-info">
                             <p class="stat-label">{{ stat.label }}</p>
                             <h3 class="stat-value">{{ stat.value }}</h3>
                             <p class="stat-trend" [ngClass]="{'trend-up': stat.trend.includes('+')}">
-                                <i class="bi" [ngClass]="stat.trend.includes('+') ? 'bi-graph-up' : 'bi-check-circle'"></i>
+                                <i class="bi"
+                                    [ngClass]="stat.trend.includes('+') ? 'bi-graph-up' : 'bi-check-circle'"></i>
                                 {{ stat.trend }}
                             </p>
                         </div>
@@ -133,7 +134,7 @@
                             <div class="map-bg">
                                 <i class="bi bi-globe-central-south-asia"></i>
                             </div>
-                            
+
                             <!-- Glowing Points -->
                             <div class="map-point point-1"></div>
                             <div class="map-point point-2"></div>
@@ -209,6 +210,14 @@
 
             @if (currentTab() === 'Users') {
             <user-admin-layout></user-admin-layout>
+            }
+
+            @if (currentTab() === 'Feeds') {
+            <feeds-admin-layout></feeds-admin-layout>
+            }
+
+            @if (currentTab() === 'Messages') {
+            <app-messages-admin-layout></app-messages-admin-layout>
             }
         </div>
     </main>

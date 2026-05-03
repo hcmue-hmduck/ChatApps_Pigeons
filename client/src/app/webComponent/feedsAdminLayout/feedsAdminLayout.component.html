@@ -1,0 +1,360 @@
+<section class="feeds-admin-shell">
+	<header class="feeds-admin-header">
+		<div>
+			<p class="section-kicker">Content moderation</p>
+			<h2>Quản lý New Feeds</h2>
+			<p class="section-subtitle">Duyệt, sửa và xoá các bài viết đang xuất hiện trong bảng tin.</p>
+		</div>
+
+		<div class="header-actions">
+			<button class="action-chip" type="button" (click)="refresh()">
+				<i class="bi bi-arrow-clockwise"></i>
+				Làm mới
+			</button>
+		</div>
+	</header>
+
+	<div class="feeds-admin-stats">
+		@for (stat of stats(); track stat.label) {
+		<article class="stat-card">
+			<i class="bi" [ngClass]="stat.icon"></i>
+			<div>
+				<p>{{ stat.label }}</p>
+				<h3>{{ stat.value }}</h3>
+			</div>
+		</article>
+		}
+	</div>
+
+	<div class="feeds-toolbar">
+		<div class="toolbar-search">
+			<i class="bi bi-search"></i>
+			<input type="text" placeholder="Tìm theo nội dung, tác giả, email..." [value]="searchTerm()"
+				(input)="onSearchInput($any($event.target).value)">
+		</div>
+
+		<select class="toolbar-select" [value]="typeFilter()" (change)="typeFilter.set($any($event.target).value)">
+			<option value="all">Tất cả loại bài</option>
+			<option value="text">Text</option>
+			<option value="media">Media</option>
+			<option value="link">Link</option>
+			<option value="share">Share</option>
+		</select>
+
+		<select class="toolbar-select" [value]="privacyFilter()" (change)="privacyFilter.set($any($event.target).value)">
+			<option value="all">Tất cả quyền riêng tư</option>
+			<option value="public">Công khai</option>
+			<option value="friends">Bạn bè</option>
+			<option value="only_me">Chỉ mình tôi</option>
+			<option value="custom">Tuỳ chỉnh</option>
+		</select>
+	</div>
+
+	@if (loading()) {
+	<div class="feeds-state-card">
+		<i class="bi bi-arrow-repeat spin"></i>
+		<p>Đang tải dữ liệu bài viết...</p>
+	</div>
+	}
+
+	@if (error()) {
+	<div class="feeds-state-card error">
+		<i class="bi bi-exclamation-triangle"></i>
+		<p>{{ error() }}</p>
+	</div>
+	}
+
+	<div class="feeds-list">
+		@for (post of filteredPosts(); track trackByPostId($index, post)) {
+		<article class="feed-card" [class.deleted]="post.is_deleted">
+			<div class="feed-card-header">
+				<div class="author-block">
+					<img [src]="getAuthorAvatar(post)" [alt]="getAuthorName(post)" class="author-avatar">
+					<div>
+						<div class="author-line">
+							<h3>{{ getAuthorName(post) }}</h3>
+							@if (post?.user_infor?.is_bot) {
+							<span class="bot-badge"><i class="bi bi-robot"></i> Bot</span>
+							}
+						</div>
+						<p class="author-meta">{{ post?.user_infor?.email || 'No email' }}</p>
+					</div>
+				</div>
+
+				<div class="post-meta-stack">
+					<span class="meta-pill">{{ getPostTypeLabel(post.post_type) }}</span>
+					<span class="meta-pill">{{ getPrivacyLabel(post.privacy) }}</span>
+					@if (post.is_deleted) {
+					<span class="meta-pill danger">Đã xoá</span>
+					}
+				</div>
+			</div>
+
+			<div class="feed-content">
+				@if (post.content) {
+				<p class="post-content">{{ post.content }}</p>
+				} @else {
+				<p class="post-content muted">Không có nội dung text</p>
+				}
+
+				@let preview = getStoredLinkPreview(post);
+				@if (preview) {
+				<a class="link-preview-card" [href]="preview.url" target="_blank" rel="noopener noreferrer">
+					@if (preview.image) {
+					<div class="preview-image-wrap">
+						<img [src]="preview.image" alt="Preview Image" referrerPolicy="no-referrer">
+					</div>
+					}
+					<div class="preview-content">
+						<div class="preview-host">{{ preview.hostname || preview.siteName }}</div>
+						<div class="preview-title">{{ preview.title }}</div>
+						@if (preview.description) {
+						<div class="preview-description">{{ preview.description }}</div>
+						}
+					</div>
+				</a>
+				}
+
+				@if (post.feeling || post.location) {
+				<div class="post-tags">
+					@if (post.feeling) {
+					<span>{{ post.feeling }}</span>
+					}
+					@if (post.location) {
+					<span>📍 {{ post.location }}</span>
+					}
+				</div>
+				}
+
+				@if (getMediaItems(post).length > 0) {
+				<div class="media-grid">
+					@for (media of getMediaItems(post).slice(0, 4); track media.id || $index) {
+					<div class="media-tile">
+						@if (media.media_type === 'image') {
+						<img [src]="media.media_url" alt="Post media">
+						} @else if (media.media_type === 'video') {
+						<video [src]="media.media_url"></video>
+						}
+					</div>
+					}
+				</div>
+				}
+
+				@if (getAttachmentItems(post).length > 0) {
+				<div class="attachments-list">
+					@for (attachment of getAttachmentItems(post); track attachment.id || $index) {
+					<a class="attachment-slim-card" [href]="attachment.media_url" target="_blank" rel="noopener noreferrer">
+						<div class="attachment-info-wrap">
+							<div class="attachment-icon-box">
+								<i class="bi bi-paperclip"></i>
+							</div>
+							<div class="attachment-details">
+								<div class="attachment-name">{{ attachment.file_name || 'Tệp đính kèm' }}</div>
+								<div class="attachment-sub">{{ attachment.file_size || 0 }} bytes</div>
+							</div>
+						</div>
+					</a>
+					}
+				</div>
+				}
+
+				@if (post.shared_post) {
+				<div class="shared-post-nest">
+					@if (post.shared_post.is_deleted) {
+					<div class="deleted-post-placeholder">
+						<div class="deleted-icon">
+							<i class="bi bi-exclamation-triangle"></i>
+						</div>
+						<div class="deleted-content">
+							<p class="deleted-title">Nội dung này không còn hiển thị</p>
+							<p class="deleted-text">Người đăng đã thu hồi hoặc xoá nội dung này.</p>
+						</div>
+					</div>
+					} @else {
+					<div class="shared-post-card" [class.deleted]="post.shared_post.is_deleted">
+						<div class="shared-post-head">
+							<img [src]="getAuthorAvatar(post.shared_post)" [alt]="getAuthorName(post.shared_post)" class="author-avatar shared-avatar">
+							<div>
+								<div class="shared-title-row">
+									<strong>{{ getAuthorName(post.shared_post) }}</strong>
+								</div>
+								<p class="author-meta">{{ formatTime(post.shared_post.created_at) }}</p>
+							</div>
+						</div>
+						@if (post.shared_post.content) {
+						<p class="post-content">{{ post.shared_post.content }}</p>
+						}
+						@let sharedPreview = getStoredLinkPreview(post.shared_post);
+						@if (sharedPreview) {
+						<a class="link-preview-card" [href]="sharedPreview.url" target="_blank" rel="noopener noreferrer">
+							@if (sharedPreview.image) {
+							<div class="preview-image-wrap">
+								<img [src]="sharedPreview.image" alt="Shared Preview Image" referrerPolicy="no-referrer">
+							</div>
+							}
+							<div class="preview-content">
+								<div class="preview-host">{{ sharedPreview.hostname || sharedPreview.siteName }}</div>
+								<div class="preview-title">{{ sharedPreview.title }}</div>
+								@if (sharedPreview.description) {
+								<div class="preview-description">{{ sharedPreview.description }}</div>
+								}
+							</div>
+						</a>
+						}
+
+						@if (getMediaItems(post.shared_post).length > 0) {
+						<div class="media-grid">
+							@for (media of getMediaItems(post.shared_post).slice(0, 4); track media.id || $index) {
+							<div class="media-tile">
+								@if (media.media_type === 'image') {
+								<img [src]="media.media_url" alt="Shared post media">
+								} @else if (media.media_type === 'video') {
+								<video [src]="media.media_url"></video>
+								}
+							</div>
+							}
+						</div>
+						}
+
+						@if (getAttachmentItems(post.shared_post).length > 0) {
+						<div class="attachments-list">
+							@for (attachment of getAttachmentItems(post.shared_post); track attachment.id || $index) {
+							<a class="attachment-slim-card" [href]="attachment.media_url" target="_blank" rel="noopener noreferrer">
+								<div class="attachment-info-wrap">
+									<div class="attachment-icon-box">
+										<i class="bi bi-paperclip"></i>
+									</div>
+									<div class="attachment-details">
+										<div class="attachment-name">{{ attachment.file_name || 'Tệp đính kèm' }}</div>
+										<div class="attachment-sub">{{ attachment.file_size || 0 }} bytes</div>
+									</div>
+								</div>
+							</a>
+							}
+						</div>
+						}
+					</div>
+					}
+				</div>
+				}
+			</div>
+
+			<footer class="feed-card-footer">
+				<div class="feed-metrics">
+					<span><i class="bi bi-heart"></i> {{ post.likes_count || 0 }}</span>
+					<span><i class="bi bi-chat-dots"></i> {{ post.comments_count || 0 }}</span>
+					<span><i class="bi bi-share"></i> {{ post.shares_count || 0 }}</span>
+					<span><i class="bi bi-clock"></i> {{ formatTime(post.created_at) }}</span>
+				</div>
+
+				<div class="feed-actions">
+					<button class="btn-secondary" type="button" (click)="toggleComments(post.id)">
+						<i class="bi bi-chat-square-text"></i>
+						{{ isCommentsExpanded(post.id) ? 'Ẩn bình luận' : 'Xem bình luận' }}
+					</button>
+					<button class="btn-secondary" type="button" (click)="openEdit(post)" [disabled]="post.is_deleted">
+						<i class="bi bi-pencil"></i>
+						Sửa
+					</button>
+					<button class="btn-danger" type="button" (click)="deletePost(post)" [disabled]="post.is_deleted">
+						<i class="bi bi-trash"></i>
+						Xoá
+					</button>
+				</div>
+			</footer>
+
+			@if (isCommentsExpanded(post.id)) {
+			<div class="comments-section">
+				@for (comment of getRootComments(post); track comment.id) {
+				<div class="comment-item">
+					<img [src]="getCommentAuthorAvatar(comment)" [alt]="getCommentAuthorName(comment)" class="comment-avatar">
+					<div class="comment-content-wrap">
+						<div class="comment-bubble">
+							<strong class="comment-author">{{ getCommentAuthorName(comment) }}</strong>
+							<p class="comment-text">{{ comment.content }}</p>
+						</div>
+						<div class="comment-time">{{ formatTime(comment.created_at) }}</div>
+
+						@let replies = getReplies(post, comment.id);
+						@if (replies.length > 0) {
+						<div class="replies-container">
+							@for (reply of replies; track reply.id) {
+							<div class="comment-item reply-item">
+								<img [src]="getCommentAuthorAvatar(reply)" [alt]="getCommentAuthorName(reply)" class="comment-avatar reply-avatar">
+								<div class="comment-content-wrap">
+									<div class="comment-bubble">
+										<strong class="comment-author">{{ getCommentAuthorName(reply) }}</strong>
+										<p class="comment-text">{{ reply.content }}</p>
+									</div>
+									<div class="comment-time">{{ formatTime(reply.created_at) }}</div>
+								</div>
+							</div>
+							}
+						</div>
+						}
+					</div>
+				</div>
+				} @empty {
+				<div class="empty-comments">Chưa có bình luận cho bài viết này.</div>
+				}
+			</div>
+			}
+		</article>
+		} @empty {
+		<div class="feeds-state-card empty">
+			<i class="bi bi-inbox"></i>
+			<p>Không tìm thấy bài viết phù hợp.</p>
+		</div>
+		}
+	</div>
+</section>
+
+@if (isEditOpen()) {
+<div class="modal-backdrop" (click)="closeEdit()">
+	<div class="edit-modal" (click)="$event.stopPropagation()">
+		<div class="edit-modal-header">
+			<div>
+				<p class="section-kicker">Edit post</p>
+				<h3>Sửa bài viết</h3>
+			</div>
+			<button class="modal-close" type="button" (click)="closeEdit()"><i class="bi bi-x-lg"></i></button>
+		</div>
+
+		<div class="edit-modal-body">
+			<label>
+				<span>Nội dung</span>
+				<textarea [(ngModel)]="editForm.content" rows="5"></textarea>
+			</label>
+
+			<div class="edit-grid">
+				<label>
+					<span>Quyền riêng tư</span>
+					<select [(ngModel)]="editForm.privacy">
+						<option value="public">Công khai</option>
+						<option value="friends">Bạn bè</option>
+						<option value="only_me">Chỉ mình tôi</option>
+						<option value="custom">Tuỳ chỉnh</option>
+					</select>
+				</label>
+
+				<label>
+					<span>Cảm xúc</span>
+					<input type="text" [(ngModel)]="editForm.feeling">
+				</label>
+
+				<label class="full">
+					<span>Địa điểm</span>
+					<input type="text" [(ngModel)]="editForm.location">
+				</label>
+			</div>
+		</div>
+
+		<div class="edit-modal-footer">
+			<button class="btn-secondary" type="button" (click)="closeEdit()">Huỷ</button>
+			<button class="btn-primary" type="button" (click)="savePost()" [disabled]="isSaving()">
+				{{ isSaving() ? 'Đang lưu...' : 'Lưu thay đổi' }}
+			</button>
+		</div>
+	</div>
+</div>
+}

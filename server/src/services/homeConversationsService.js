@@ -67,6 +67,7 @@ class HomeConversationService {
                     is_muted: p.is_muted,
                     is_pinned: p.is_pinned,
                     last_read_message_id: p.last_read_message_id,
+                    is_bot: user.is_bot
                 }
                 : {
                     user_id: p.user_id,
@@ -136,6 +137,7 @@ class HomeConversationService {
                 birthday: currentUser.birthday,
                 gender: currentUser.gender,
                 last_online_at: currentUser.last_online_at,
+                is_bot: currentUser.is_bot,
             }
             : null;
 

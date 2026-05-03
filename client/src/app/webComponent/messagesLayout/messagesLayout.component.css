@@ -2002,6 +2002,53 @@
     white-space: nowrap;
 }
 
+/* Bot Quick Tags */
+.bot-quick-tags {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 2px 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE/Edge */
+}
+
+.bot-quick-tags::-webkit-scrollbar {
+    display: none;
+    /* Chrome/Safari */
+}
+
+.bot-tag {
+    background: rgba(187, 134, 252, 0.08);
+    border: 1px solid rgba(187, 134, 252, 0.2);
+    color: var(--accent);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.bot-tag:hover {
+    background: rgba(187, 134, 252, 0.15);
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(187, 134, 252, 0.15);
+    color: #eef2ff;
+}
+
+.bot-tag:active {
+    transform: translateY(0) scale(0.96);
+}
+
 /* ============================================================
    INPUT AREA · Dark Glass
    ============================================================ */
@@ -4138,6 +4185,60 @@
     font-weight: 500;
     opacity: 0.85;
     letter-spacing: 0.1px;
+}
+
+.bot-typing-bubble {
+    min-width: 74px;
+}
+
+.bot-typing-content {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 2px;
+}
+
+.bot-typing-label {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.bot-typing-dots {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.bot-typing-dots span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: inline-block;
+    animation: botTypingPulse 1.2s infinite ease-in-out both;
+    box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+.bot-typing-dots span:nth-child(1) {
+    animation-delay: -0.24s;
+}
+
+.bot-typing-dots span:nth-child(2) {
+    animation-delay: -0.12s;
+}
+
+@keyframes botTypingPulse {
+    0%, 80%, 100% {
+        transform: translateY(0) scale(0.75);
+        opacity: 0.45;
+    }
+
+    40% {
+        transform: translateY(-2px) scale(1);
+        opacity: 1;
+    }
 }
 
 /* ============================================================
