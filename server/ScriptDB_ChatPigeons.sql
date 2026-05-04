@@ -461,3 +461,29 @@ CREATE TABLE UserPrivacySettings (
     allow_messages_from VARCHAR(20) DEFAULT 'everyone', -- 'everyone', 'friends', 'no_one'
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+
+-- =============================================
+-- BOT PLATFORM SCHEMA UPDATES
+-- =============================================
+
+-- 1. Cập nhật bảng Users để hỗ trợ Bot
+ALTER TABLE "ChatPigeons"."users" ADD COLUMN IF NOT EXISTS "is_bot" BOOLEAN DEFAULT FALSE;
+ALTER TABLE "ChatPigeons"."users" ADD COLUMN IF NOT EXISTS "bot_name" VARCHAR(255);
+ALTER TABLE "ChatPigeons"."users" ADD CONSTRAINT "users_bot_name_unique" UNIQUE ("bot_name");
+
+-- 2. Tạo bảng Bots để lưu cấu hình
+CREATE TABLE IF NOT EXISTS "ChatPigeons"."bots" (
+    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "bot_user_id" UUID NOT NULL REFERENCES "ChatPigeons"."users"("id") ON DELETE CASCADE,
+    "owner_id" UUID NOT NULL REFERENCES "ChatPigeons"."users"("id") ON DELETE CASCADE,
+    "token_hash" VARCHAR(255) NOT NULL,
+    "webhook_url" VARCHAR(255),
+    "status" VARCHAR(50) DEFAULT 'active',
+    "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 3. Tạo Index để truy vấn nhanh
+CREATE INDEX IF NOT EXISTS "idx_bots_bot_user_id" ON "ChatPigeons"."bots"("bot_user_id");
+CREATE INDEX IF NOT EXISTS "idx_bots_owner_id" ON "ChatPigeons"."bots"("owner_id");
+CREATE INDEX IF NOT EXISTS "idx_users_bot_name" ON "ChatPigeons"."users"("bot_name") WHERE is_bot = TRUE;

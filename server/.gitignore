@@ -1,7 +1,6 @@
 node_modules
 .env
 
-SeedDB_ChatPigeons.sql
 uploads
 ./src/views/
 .DS_Store

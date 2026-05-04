@@ -30,6 +30,13 @@ const User = sequelize.define('User', {
         field: 'bot_name'
     },
 
+    // Is Bot
+    is_bot: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+        field: 'is_bot'
+    },
+
     // Password Hash
     password_hash: {
         type: DataTypes.STRING(250),
