@@ -14,12 +14,20 @@ const User = sequelize.define('User', {
     // Email
     email: {
         type: DataTypes.STRING(100),
-        allowNull: false,
+        allowNull: true,
         unique: true,
         field: 'email',
         validate: {
             isEmail: true
         }
+    },
+
+    // Bot name
+    bot_name: {
+        type: DataTypes.STRING(50),
+        allowNull: true,
+        unique: true,
+        field: 'bot_name'
     },
 
     // Password Hash

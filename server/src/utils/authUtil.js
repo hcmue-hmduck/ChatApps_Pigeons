@@ -2,12 +2,18 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const JWT = require('jsonwebtoken');
 
-const hashPassword = async (password) => {
-    return await bcrypt.hash(password, 10);
+const createTokenHash = async () => {
+    const token = crypto.randomBytes(64).toString('hex');
+    const tokenHash = await hashString(token);
+    return tokenHash;
+}
+
+const hashString = async (string) => {
+    return await bcrypt.hash(string, 10);
 };
 
-const comparePassword = async (passwordInput, passwordHash) => {
-    return await bcrypt.compare(passwordInput, passwordHash);
+const compareHashString = async (stringInput, stringHash) => {
+    return await bcrypt.compare(stringInput, stringHash);
 };
 
 const createHashString = (string) => {
@@ -55,13 +61,14 @@ const clearCookieTokens = (res) => {
 };
 
 module.exports = {
-    hashPassword,
-    comparePassword,
+    hashString,
+    compareHashString,
     createKey,
     signJWT,
     verifyJWT,
     createHashString,
     decodeJWT,
     setCookieTokens,
-    clearCookieTokens
+    clearCookieTokens,
+    createTokenHash
 };
