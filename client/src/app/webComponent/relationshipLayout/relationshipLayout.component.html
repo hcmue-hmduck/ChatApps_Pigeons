@@ -122,7 +122,7 @@
                 <div class="search-profile-card animate-card-up">
                   <div class="profile-card-header">
                     <div class="card-avatar-container" [class.is-online]="user.status === 'online'">
-                      <img [src]="user.avatar_url || 'assets/default-avatar.png'" [alt]="user.full_name" class="card-avatar-img" referrerPolicy="no-referrer" />
+                      <img [src]="user.avatar_url || 'assets/AvatarDefault.jpg'" [alt]="user.full_name" class="card-avatar-img" referrerPolicy="no-referrer" />
                       @if (user.status === 'online') {
                       <span class="online-pulse-dot"></span>
                       }

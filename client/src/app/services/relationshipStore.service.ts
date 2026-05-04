@@ -105,7 +105,7 @@ export class RelationshipStoreService {
                     return {
                         ...f,
                         full_name: profile?.full_name || 'Người dùng Pigeons',
-                        avatar_url: profile?.avatar_url || 'assets/default-avatar.png',
+                        avatar_url: profile?.avatar_url || 'assets/AvatarDefault.jpg',
                         status: currentStatus
                     };
                 });

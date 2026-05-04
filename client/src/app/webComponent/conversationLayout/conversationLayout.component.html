@@ -132,7 +132,7 @@
                 <div class="search-results-items" *ngIf="searchResults().length > 0">
                     <div class="search-item" *ngFor="let user of searchResults()" (click)="selectSearchResult(user)">
                         <div class="search-avatar">
-                            <img [src]="user.avatar_url || 'https://ui-avatars.com/api/?name=' + user.full_name" alt="avatar">
+                            <img [src]="user.avatar_url || 'assets/AvatarDefault.jpg'" alt="avatar">
                             <span class="status-dot" [class.online]="convStore.onlineUsers().has(user.id)"></span>
                         </div>
                         <div class="search-info">

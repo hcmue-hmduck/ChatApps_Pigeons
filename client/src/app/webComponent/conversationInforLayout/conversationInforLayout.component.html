@@ -12,7 +12,7 @@
         <div class="profile-section">
             <div class="avatar-container">
                 <app-group-avatar-layout [members]="participants" [isGroup]="isGroupConversation"
-                    [avatarUrl]="isGroupConversation ? (conversationAvatar || conversationInfor?.avatar_url || null) : profileAvatar"
+                    [avatarUrl]="isGroupConversation ? (conversationAvatar || conversationInfor?.avatar_url || 'assets/AvatarDefault.jpg') : profileAvatar"
                     [alt]="profileName" [size]="112">
                 </app-group-avatar-layout>
             </div>
@@ -437,7 +437,7 @@
                 @for (friend of filteredFriends; track friend.friend_id) {
                 <label class="friend-select-item" [class.selected]="selectedFriendIds.has(friend.friend_id)">
                     <div class="friend-select-info">
-                        <img class="friend-select-avatar" [src]="friend.avatar_url || 'assets/default-avatar.png'"
+                        <img class="friend-select-avatar" [src]="friend.avatar_url || 'assets/AvatarDefault.jpg'"
                             alt="Avatar">
                         <div class="friend-select-meta">
                             <div class="friend-select-name">{{ friend.full_name }}</div>

@@ -24,7 +24,7 @@ export class CallLayoutComponent implements OnInit {
     callBroadcastService = inject(CallBroadcastService);
     avatarWrap: AvatarWrap | null = null;
 
-    readonly avatarUrlDefault = '/assets/AvatarDefault.jpg';
+    readonly avatarUrlDefault = 'assets/AvatarDefault.jpg';
 
     userAvatarUrl = computed<string>(() => {
         return this.authService.getUserInfor()?.avatar_url || this.avatarUrlDefault;

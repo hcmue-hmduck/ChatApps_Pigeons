@@ -168,7 +168,7 @@ export class FeedsAdminLayoutComponent implements OnInit, OnDestroy {
 	}
 
 	getAuthorAvatar(post: any): string {
-		return post?.user_infor?.avatar_url || 'https://ui-avatars.com/api/?name=User';
+		return post?.user_infor?.avatar_url || 'assets/AvatarDefault.jpg';
 	}
 
 	getPostTypeLabel(type: string): string {
@@ -262,6 +262,6 @@ export class FeedsAdminLayoutComponent implements OnInit, OnDestroy {
 	}
 
 	getCommentAuthorAvatar(comment: any): string {
-		return comment?.user_infor?.avatar_url || 'https://ui-avatars.com/api/?name=User';
+		return comment?.user_infor?.avatar_url || 'assets/AvatarDefault.jpg';
 	}
 }

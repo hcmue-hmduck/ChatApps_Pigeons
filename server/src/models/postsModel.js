@@ -66,6 +66,15 @@ const Post = sequelize.define('Post', {
         defaultValue: 0,
         field: 'shares_count'
     },
+    status: {
+        type: DataTypes.STRING(20),
+        allowNull: false,
+        defaultValue: 'pending',
+        field: 'status',
+        validate: {
+            isIn: [['pending', 'approved', 'rejected', 'flagged']]
+        }
+    },
     is_pinned: {
         type: DataTypes.BOOLEAN,
         defaultValue: false,
