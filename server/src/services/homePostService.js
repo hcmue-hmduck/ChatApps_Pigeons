@@ -3,9 +3,60 @@ const postsService = require('./postsService');
 const commentsService = require('./commentsService');
 const postmediaService = require('./postmediaService');
 const postReactionService = require('./post_reactionsService');
+const { moderateTextHF } = require('./huggingfaceApiService');
 const { sequelize } = require('../configs/sequelizeConfig.js');
 
+const APPROVE_SCORE_THRESHOLD = 0.35;
+const REJECT_SCORE_THRESHOLD = 0.85;
+
+function resolvePostStatusFromModeration(moderation) {
+    const score = Number(moderation?.score);
+
+    if (!Number.isFinite(score)) {
+        return 'flagged';
+    }
+
+    if (moderation?.isViolated || score >= REJECT_SCORE_THRESHOLD) {
+        return 'rejected';
+    }
+
+    if (score >= APPROVE_SCORE_THRESHOLD) {
+        return 'flagged';
+    }
+
+    return 'approved';
+}
+
 class HomePostService {
+    async moderateTextAndUpdateStatus(postId, content) {
+        const text = typeof content === 'string' ? content.trim() : '';
+
+        if (!text) {
+            return null;
+        }
+
+        try {
+            const moderation = await moderateTextHF(text);
+            const status = resolvePostStatusFromModeration(moderation);
+
+            console.log('[Post Moderation] AI result:', {
+                postId,
+                moderation,
+                resolvedStatus: status
+            });
+
+            await postsService.updatePost(postId, { status });
+
+            return {
+                status,
+                moderation
+            };
+        } catch (error) {
+            console.error(`Error moderating post ${postId}:`, error);
+            return null;
+        }
+    }
+
     async getHomePosts(limit = 30, offset = 0) {
         const posts = await postsService.getHomePosts(limit, offset);
         if (posts.length === 0) return [];
@@ -94,7 +145,16 @@ class HomePostService {
     }
 
     async createNewPost(newPostData) {
-        return await postsService.createPost(newPostData);
+        const createdPost = await postsService.createPost({
+            ...newPostData,
+            status: newPostData?.status || 'pending'
+        });
+
+        // Wait for AI moderation to complete, update DB status, then return the moderated post
+        await this.moderateTextAndUpdateStatus(createdPost.id, newPostData?.content);
+
+        const refreshedPosts = await postsService.getPostsByIds([createdPost.id]);
+        return refreshedPosts[0] || createdPost;
     }
 
     async createPostMedia(postId, mediaData) {
@@ -114,6 +174,11 @@ class HomePostService {
             }
 
             await transaction.commit();
+
+            if (Object.prototype.hasOwnProperty.call(postData, 'content')) {
+                // Wait for moderation before returning updated post so client receives final status
+                await this.moderateTextAndUpdateStatus(postId, postData.content);
+            }
 
             // Lấy lại bài đăng đã được cập nhật và làm giàu thông tin
             const updatedPosts = await postsService.getPostsByIds([postId]);

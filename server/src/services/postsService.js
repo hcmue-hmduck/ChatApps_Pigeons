@@ -38,9 +38,9 @@ class PostsService {
         }
     }
 
-    async updatePost(postId, data) {
+    async updatePost(postId, data, options = {}) {
         try {
-            return await postsModel.update(data, { where: { id: postId } });
+            return await postsModel.update(data, { where: { id: postId }, ...options });
         } catch (error) {
             console.error('Error updating post:', error);
             throw error;

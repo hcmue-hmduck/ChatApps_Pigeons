@@ -30,7 +30,7 @@ export class IncommingCallLayout {
 
     readonly directCallType = DIRECT_CALL;
     readonly groupCallType = GROUP_CALL;
-    readonly avatarUrlDefault = '/assets/AvatarDefault.jpg';
+    readonly avatarUrlDefault = 'assets/AvatarDefault.jpg';
 
     constructor() {
         if (isPlatformBrowser(this.platformId)) {

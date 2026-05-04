@@ -1,6 +1,6 @@
 const { Op, where } = require('sequelize');
 const usersModel = require('../models/usersModel');
-const { comparePassword, hashPassword } = require('../utils/authUtil.js');
+const { compareHashString, hashString } = require('../utils/authUtil.js');
 const { BadRequestError, UnauthorizedError, ConflictRequestError } = require('../core/errorResponse.js');
 const { getUpdateData } = require('../utils/dataUtil.js');
 
@@ -40,7 +40,10 @@ class UsersService {
         const foundUser = await this.getUserByEmail(email);
         if (!foundUser) throw new UnauthorizedError('invalid email or password');
 
-        const isMatch = await comparePassword(password, foundUser.password_hash);
+        const password_hash = foundUser.password_hash;
+        if(!password_hash) throw new BadRequestError('This account never setup password');
+
+        const isMatch = await compareHashString(password, foundUser.password_hash);
         if (!isMatch) throw new UnauthorizedError('invalid email or password');
 
         return foundUser;
@@ -67,19 +70,51 @@ class UsersService {
         return foundUser;
     }
 
+    // Tạo bot user
+    async createBotUser(full_name, bot_name, options = {}) {
+        if(!full_name || !bot_name) throw new BadRequestError('missing parameters');
+
+        const foundBotUser = await usersModel.findOne({where: {bot_name, is_bot: true}});
+        if(foundBotUser) throw new BadRequestError('bot name has exists');
+
+        return await usersModel.create({
+            full_name,
+            bot_name,
+            is_bot: true
+        }, options);
+    }
+
+    async updateBotUser(bot_user_id, {full_name, bot_name}) {
+        const foundBotUser = await usersModel.findByPk(bot_user_id);
+        if(!foundBotUser) throw new BadRequestError(`bot user doesn't exists`);
+
+        if(bot_name) {
+            const foundBotName = await usersModel.findOne({where: {
+                is_bot: true,
+                bot_name,
+                id: {[Op.ne]: bot_user_id}
+            }})
+            if(foundBotName) throw new BadRequestError('bot name has exists');
+        }
+
+        const updateData = getUpdateData({full_name, bot_name});
+        return await foundBotUser.update(updateData);
+    }
+
+
     // Cập nhật user
-    async updateUser(userId, userData) {
+    async updateUser(userId, userData, options = {}) {
 
         const user = await usersModel.findByPk(userId);
         if (!user) throw new BadRequestError('User not found');
 
         const updateData = getUpdateData(userData);
 
-        return await user.update(updateData);
+        return await user.update(updateData, options);
     }
 
     async setPassword(userId, password) {
-        const password_hash = await hashPassword(password);
+        const password_hash = await hashString(password);
         console.log(`password_hash`, password_hash)
         return this.updateUser(userId, { password_hash });
     }
@@ -96,11 +131,11 @@ class UsersService {
             throw new BadRequestError('User has no password set. Please use set password API instead.');
         }
 
-        const ok = await comparePassword(oldPassword, password_hash);
+        const ok = await compareHashString(oldPassword, password_hash);
         // Dùng BadRequestError (400) thay vì UnauthorizedError (401) để tránh Interceptor hiểu nhầm là hết token và logout
         if (!ok) throw new BadRequestError('Mật khẩu hiện tại không chính xác');
 
-        user.password_hash = await hashPassword(newPassword);
+        user.password_hash = await hashString(newPassword);
         return await user.save();
     }
 

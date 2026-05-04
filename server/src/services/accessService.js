@@ -2,7 +2,7 @@ const userService = require('./usersService.js');
 const redisService = require('./redisService.js');
 const emailService = require('./emailService.js');
 const { BadRequestError, ConflictRequestError, NotFoundError } = require('../core/errorResponse.js');
-const { hashPassword, createKey, signJWT } = require('../utils/authUtil.js');
+const { hashString, createKey, signJWT } = require('../utils/authUtil.js');
 const crypto = require('crypto');
 
 class AccessService {
@@ -12,7 +12,7 @@ class AccessService {
         const foundUser = await userService.getUserByEmail(email);
         if (foundUser) throw new ConflictRequestError('Email has already');
 
-        const password_hash = await hashPassword(password);
+        const password_hash = await hashString(password);
         const newUser = await userService.createUser({ full_name, email, password_hash, is_email_verified: true });
         if (!newUser) return null;
 
@@ -141,7 +141,7 @@ class AccessService {
         const foundUser = await userService.getUserByEmail(email);
         if (!foundUser) throw BadRequestError('user not found');
 
-        const password_hash = await hashPassword(password);
+        const password_hash = await hashString(password);
         foundUser.password_hash = password_hash;
         return await foundUser.save();
     }

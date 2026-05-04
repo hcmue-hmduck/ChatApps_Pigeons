@@ -168,9 +168,9 @@ export class ConversationInfoLayoutComponent implements OnInit, OnDestroy, OnCha
 
     get profileAvatar(): string {
         if (this.isGroupConversation) {
-            return this.conversationAvatar || this.conversationInfor?.avatar_url;
+            return this.conversationAvatar || this.conversationInfor?.avatar_url || 'assets/AvatarDefault.jpg';
         }
-        return this.otherParticipant?.avatar_url;
+        return this.otherParticipant?.avatar_url || 'assets/AvatarDefault.jpg';
     }
 
     sections = signal({
@@ -336,7 +336,7 @@ export class ConversationInfoLayoutComponent implements OnInit, OnDestroy, OnCha
                 this.friends = rawFriends.map((f: any) => ({
                     ...f,
                     full_name: f.friend?.full_name || f.full_name || 'Người dùng',
-                    avatar_url: f.friend?.avatar_url || f.avatar_url || 'assets/default-avatar.png',
+                    avatar_url: f.friend?.avatar_url || f.avatar_url || 'assets/AvatarDefault.jpg',
                     email: f.friend?.email || f.email || '',
                     status: f.friend?.status || f.status || 'offline',
                 }));

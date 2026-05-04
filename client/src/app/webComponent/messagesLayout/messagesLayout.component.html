@@ -882,7 +882,7 @@
                 @for (participant of mentionParticipants(); track participant.user_id; let i = $index) {
                 <div class="mention-item" [class.active]="i === mentionSelectedIndex()"
                     (click)="selectMention(participant)">
-                    <img [src]="participant.avatar_url || 'https://ui-avatars.com/api/?name=' + participant.full_name"
+                    <img [src]="participant.avatar_url || 'assets/AvatarDefault.jpg'"
                         class="mention-avatar">
                     <div class="mention-info">
                         <span class="mention-name">{{ participant.full_name }}</span>
@@ -1162,7 +1162,7 @@
             @for (reaction of reactionDetails(); track $index) {
             <div class="reaction-detail-item">
                 <div class="user-info-flex">
-                    <img [src]="reaction.user?.avatar_url || 'null'" [alt]="reaction.user?.full_name"
+                    <img [src]="reaction.user?.avatar_url || 'assets/AvatarDefault.jpg'" [alt]="reaction.user?.full_name"
                         class="user-avatar-small">
                     <span class="user-name-text">{{ reaction.user?.full_name || 'Người dùng' }}</span>
                 </div>

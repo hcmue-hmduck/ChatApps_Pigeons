@@ -795,6 +795,7 @@ export class MessagesLayoutComponent
                     // Tự động scroll xuống nếu đang ở gần cuối
                     if (this.isUserNearBottom()) {
                         this.pendingScroll = true;
+                        this.persistReadState(data.id);
                     } else {
                         // Hiển thị badge "new" nếu user đang scroll ở trên
                         this.hasNewMessage = true;
@@ -1104,6 +1105,12 @@ export class MessagesLayoutComponent
             this.loading = false;
             this.isLoaded = true;
             this.pendingScroll = true;
+
+            const cachedMessages = cache.getMessagesData?.homeMessagesData?.messages || [];
+            const cachedLatestMessage = [...cachedMessages].reverse().find((msg: any) => msg?.id);
+            if (cachedLatestMessage) {
+                queueMicrotask(() => this.persistReadState(cachedLatestMessage.id));
+            }
         } else {
             this.isLoaded = false;
             this.loading = true;
@@ -1139,6 +1146,11 @@ export class MessagesLayoutComponent
                 this.pinnedMessages.set(pinned);
                 this.loading = false;
                 this.isLoaded = true;
+
+                const latestLoadedMessage = [...messages].reverse().find((msg: any) => msg?.id);
+                if (latestLoadedMessage) {
+                    queueMicrotask(() => this.persistReadState(latestLoadedMessage.id));
+                }
 
                 // 2. Check if the conversation actually exists on the server
                 if (data.is_not_found) {
@@ -1309,7 +1321,7 @@ export class MessagesLayoutComponent
         const newMessage = {
             ...messageToAdd,
             sender_name: authUser.full_name || currentUser.full_name,
-            sender_avatar: authUser.avatar_url || currentUser.avatar_url,
+            sender_avatar: authUser.avatar_url || currentUser.avatar_url || 'assets/AvatarDefault.jpg',
         };
 
         this.messageStatus.set('Đang gửi');
@@ -1364,7 +1376,7 @@ export class MessagesLayoutComponent
                                 _trackId: typingTempId,
                                 sender_id: botParticipant?.user_id,
                                 sender_name: botParticipant?.nick_name || botParticipant?.full_name || 'Bot',
-                                sender_avatar: botParticipant?.avatar_url || '',
+                                sender_avatar: botParticipant?.avatar_url || 'assets/AvatarDefault.jpg',
                                 content: '',
                                 message_type: 'text',
                                 created_at: new Date().toISOString(),
@@ -1393,7 +1405,7 @@ export class MessagesLayoutComponent
                                                 const enrichedBotMessage = {
                                                     ...botMessage,
                                                     sender_name: botParticipant?.nick_name || botParticipant?.full_name || 'Bot',
-                                                    sender_avatar: botParticipant?.avatar_url || '',
+                                                    sender_avatar: botParticipant?.avatar_url || 'assets/AvatarDefault.jpg',
                                                 };
                                                 const botConversationId = botMessage.conversation_id || this.conversationId();
 
@@ -1473,7 +1485,7 @@ export class MessagesLayoutComponent
                         const realMessage = {
                             ...savedMessage,
                             sender_name: authUser.full_name || currentUser.full_name,
-                            sender_avatar: authUser.avatar_url || currentUser.avatar_url,
+                            sender_avatar: authUser.avatar_url || currentUser.avatar_url || 'assets/AvatarDefault.jpg',
                         };
 
                         // --- NEW: Nâng cấp hội thoại ảo lên thật cho chính người gửi ---
@@ -1884,7 +1896,7 @@ export class MessagesLayoutComponent
                 _uploading: true,  // hiện progress bar
                 sender_id: this.currentUserId(),
                 sender_name: authUser.full_name || currentUser.full_name,
-                sender_avatar: authUser.avatar_url || currentUser.avatar_url,
+                sender_avatar: authUser.avatar_url || currentUser.avatar_url || 'assets/AvatarDefault.jpg',
                 content: file.name,
                 conversation_id: this.conversationId(),
                 created_at: new Date().toISOString(),
@@ -2557,7 +2569,7 @@ export class MessagesLayoutComponent
                         const messageWithSender = {
                             ...savedMessage,
                             sender_name: savedMessage.sender_name || parentUserInfo.full_name || 'Bạn',
-                            sender_avatar: savedMessage.sender_avatar || parentUserInfo.avatar_url || null,
+                                    sender_avatar: savedMessage.sender_avatar || parentUserInfo.avatar_url || 'assets/AvatarDefault.jpg',
                         };
 
                         this.broadcastMessage(messageWithSender);
@@ -2733,6 +2745,14 @@ export class MessagesLayoutComponent
         if (this.isNearBottom) {
             this.autoScroll = true;
             this.hasNewMessage = false; // Clear new message flag khi scroll xuống cuối
+
+            const latestIncomingMessage = [...(this.getMessagesData().homeMessagesData?.messages || [])]
+                .reverse()
+                .find((msg: any) => String(msg.sender_id) !== String(this.currentUserId()) && msg.id);
+
+            if (latestIncomingMessage?.id) {
+                this.persistReadState(latestIncomingMessage.id);
+            }
         }
 
         // Detect scroll to top (với column-reverse, scrollTop rất âm là đang ở trên cùng)
@@ -2759,6 +2779,40 @@ export class MessagesLayoutComponent
                 behavior: 'smooth',
             });
         }
+
+        const latestIncomingMessage = [...(this.getMessagesData().homeMessagesData?.messages || [])]
+            .reverse()
+            .find((msg: any) => String(msg.sender_id) !== String(this.currentUserId()) && msg.id);
+
+        if (latestIncomingMessage?.id) {
+            this.persistReadState(latestIncomingMessage.id);
+        }
+    }
+
+    private persistReadState(lastReadMessageId: string) {
+        const conversationId = this.conversationId();
+        const currentParticipant = this.getMessageInfor()?.participants?.find((p: any) => p.user_id === this.currentUserId());
+
+        if (!conversationId || !lastReadMessageId || !currentParticipant?.id || String(currentParticipant.id).startsWith('par_')) {
+            return;
+        }
+
+        this.participantService.putParticipant({
+            id: currentParticipant.id,
+            last_read_message_id: lastReadMessageId,
+        }).subscribe({
+            next: () => {
+                this.socketService.emit('updateParticipant', {
+                    conversation_id: conversationId,
+                    user_id: this.currentUserId(),
+                    last_read_message_id: lastReadMessageId,
+                    participant_id: currentParticipant.id,
+                });
+            },
+            error: (err: any) => {
+                console.error('Error persisting read state:', err);
+            },
+        });
     }
 
     // Emoji picker state
@@ -3615,7 +3669,7 @@ export class MessagesLayoutComponent
                     const enrichedBotMessage = {
                         ...botMessage,
                         sender_name: botParticipant?.nick_name || botParticipant?.full_name || 'Bot',
-                        sender_avatar: botParticipant?.avatar_url || '',
+                        sender_avatar: botParticipant?.avatar_url || 'assets/AvatarDefault.jpg',
                     };
 
                     this.getMessagesData.update((old) => ({
