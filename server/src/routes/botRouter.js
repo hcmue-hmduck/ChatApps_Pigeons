@@ -6,6 +6,9 @@ const {authentication} = require('../middlewares/authMiddleware.js');
 // trên đây kh cần check auth, api dành cho bot server gọi
 
 router.use(authentication);
+router.get('/', botController.get);
+router.get('/:bot_user_id', botController.getBotByUserId);
+router.post('/:bot_user_id/webhook', botController.callWebhook);
 router.post('/', botController.create);
 router.put('/:bot_id', botController.update);
 

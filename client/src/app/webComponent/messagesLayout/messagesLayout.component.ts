@@ -44,8 +44,9 @@ import { MessageReactions } from '../../services/messagereactions';
 import { ActiveConversationService } from '../../services/activeConversation.service';
 import { MessageStoreService } from '../../services/messageStore.service';
 import { BotMessages } from '../../services/botMessage';
-import { SheetService } from '../../services/sheetService';
+import { BotServices } from '../../services/botServices';
 import { Router } from '@angular/router';
+import { BotInteractionService } from '../../services/botInteraction.service';
 
 export interface UserPresence {
     status: string;
@@ -421,6 +422,9 @@ export class MessagesLayoutComponent
     preUploadFiles = signal<StagedFile[]>([]);
     showPinnedDropdown = false;
     openPinnedMenuId: string | null = null;
+
+    private botInteractionService = inject(BotInteractionService);
+
     private onTypingSocket?: (data: any) => void;
     private onStopTypingSocket?: (data: any) => void;
     private onNewMessageSocket?: (data: any) => void;
@@ -593,7 +597,8 @@ export class MessagesLayoutComponent
         private messageReactionsService: MessageReactions,
         private pinMessageService: PinMessages,
         private botMessageService: BotMessages,
-        private sheetService: SheetService,
+        private botServices: BotServices,
+
         public fileUtils: FileUtils,
         private socketService: SocketService,
     ) {
@@ -1047,6 +1052,12 @@ export class MessagesLayoutComponent
     }
 
     ngOnInit() {
+        this.botInteractionService.registerCallbacks({
+            sendBotMessage: (convId, botPart, msg, id) => this.sendBotMessage(convId, botPart, msg, id),
+            showBotTyping: (convId, botPart) => this.showBotTyping(convId, botPart),
+            removeBotTyping: (convId, id) => this.removeBotTyping(convId, id)
+        });
+
         console.log('Online User', this.onlineUsers);
         // Optimization: Không gọi loadMessages ở đây nữa vì @Input convID đã handle việc này 
         // ngay khi component được khởi tạo nếu có giá trị.
@@ -1344,143 +1355,20 @@ export class MessagesLayoutComponent
                         this.lastMessageId = realId;
                         this.messageStatus.set('Đã gửi');
 
-                        // Detect slash command to create sheet/table: '/create_table <table_name>'
-                        try {
-                            const sentContent = savedMessage?.content?.toString().trim();
-                            if (sentContent && sentContent.startsWith('/create_table ')) {
-                                this.isChat = false; // Tạm thời tắt chế độ chat nếu phát hiện lệnh tạo bảng để tránh loop bot
-                                const parts = sentContent.split(/\s+/);
-                                const tableName = parts[1];
-                                if (tableName) {
-                                    this.sheetService.createSheet({ type: 'create_table', table_name: tableName }).subscribe({
-                                        next: (res) => {
-                                            console.log('Sheet create_table response:', res);
-                                        },
-                                        error: (err) => {
-                                            console.error('Error creating sheet table:', err);
-                                        }
-                                    });
-                                }
-                            } else {
-                                this.isChat = true; // Reset lại chế độ chat nếu không phải lệnh tạo bảng
-                            }
-                        } catch (e) {
-                            console.error('Error handling create_table command:', e);
-                        }
 
-                        if (this.getMessageInfor().other_participant.is_bot && this.isChat) {
-                            const botParticipant = this.getMessageInfor().other_participant;
-                            const typingTempId = `bot-typing-${Date.now()}`;
-                            const tempTypingMessage = {
-                                id: typingTempId,
-                                _trackId: typingTempId,
-                                sender_id: botParticipant?.user_id,
-                                sender_name: botParticipant?.nick_name || botParticipant?.full_name || 'Bot',
-                                sender_avatar: botParticipant?.avatar_url || 'assets/AvatarDefault.jpg',
-                                content: '',
-                                message_type: 'text',
-                                created_at: new Date().toISOString(),
-                                _isTyping: true,
-                            };
-
-                            // show typing placeholder in UI
-                            this.updateUIWithNewMessage(tempTypingMessage, this.conversationId());
-
-                            this.botMessageService.getAnsMessages(content).subscribe({
-                                next: (res) => {
-                                    const botResponse = res?.metadata?.answer || 'Xin lỗi, tôi không thể trả lời câu hỏi này.';
-                                    console.log('Bot', botResponse);
-                                    this.messagesService.postMessage(
-                                        this.conversationId(),
-                                        botParticipant.user_id,
-                                        botResponse,
-                                        undefined, // replyTo
-                                        'text' // message_type
-                                    ).subscribe({
-                                        next: (response) => {
-                                            const botMessage = response.metadata?.newMessage;
-                                            console.log('Bot message saved:', botMessage);
-
-                                            if (botMessage) {
-                                                const enrichedBotMessage = {
-                                                    ...botMessage,
-                                                    sender_name: botParticipant?.nick_name || botParticipant?.full_name || 'Bot',
-                                                    sender_avatar: botParticipant?.avatar_url || 'assets/AvatarDefault.jpg',
-                                                };
-                                                const botConversationId = botMessage.conversation_id || this.conversationId();
-
-                                                this.lastMessageId = botMessage.id;
-
-                                                // replace typing placeholder with real message
-                                                this.getMessagesData.update((old) => ({
-                                                    ...old,
-                                                    homeMessagesData: {
-                                                        ...old.homeMessagesData,
-                                                        messages: [
-                                                            ...(old.homeMessagesData?.messages || []).filter((m: any) => m.id !== typingTempId),
-                                                            enrichedBotMessage,
-                                                        ],
-                                                    },
-                                                }));
-
-                                                // Sync conversation preview + last message immediately
-                                                if (botConversationId) {
-                                                    this.messageStore.updateState(botConversationId, {
-                                                        getMessagesData: this.getMessagesData(),
-                                                        lastMessageId: botMessage.id,
-                                                    });
-
-                                                    this.convStore.updateConversationList(enrichedBotMessage);
-
-                                                    if (!String(botConversationId).startsWith('conv_')) {
-                                                        this.conversationService.putConversation(botConversationId, {
-                                                            last_message_id: botMessage.id,
-                                                        }).subscribe({
-                                                            error: (err: any) => console.error('Error updating bot last_message_id:', err),
-                                                        });
-                                                    }
-                                                }
-
-                                                // Broadcast real message via socket
-                                                this.socketService.emit('newMessage', enrichedBotMessage);
-                                                this.socketService.emit('updateConversation', enrichedBotMessage);
-                                            } else {
-                                                // remove typing placeholder if no real message
-                                                this.getMessagesData.update((old) => ({
-                                                    ...old,
-                                                    homeMessagesData: {
-                                                        ...old.homeMessagesData,
-                                                        messages: (old.homeMessagesData?.messages || []).filter((m: any) => m.id !== typingTempId),
-                                                    },
-                                                }));
-                                            }
-                                        },
-                                        error: (err) => {
-                                            console.error('Error saving bot message:', err);
-                                            // remove typing placeholder on error
-                                            this.getMessagesData.update((old) => ({
-                                                ...old,
-                                                homeMessagesData: {
-                                                    ...old.homeMessagesData,
-                                                    messages: (old.homeMessagesData?.messages || []).filter((m: any) => m.id !== typingTempId),
-                                                },
-                                            }));
-                                        }
-                                    });
-                                },
-                                error: (err) => {
-                                    console.error('Error fetching bot response:', err);
-                                    // remove typing placeholder on error
-                                    this.getMessagesData.update((old) => ({
-                                        ...old,
-                                        homeMessagesData: {
-                                            ...old.homeMessagesData,
-                                            messages: (old.homeMessagesData?.messages || []).filter((m: any) => m.id !== typingTempId),
-                                        },
-                                    }));
-                                }
-                            });
-                        }
+                        // if (this.getMessageInfor().other_participant.is_bot && this.isChat) {
+                        //     const typingId = this.showBotTyping();
+                        //     this.botMessageService.getAnsMessages(content).subscribe({
+                        //         next: (res) => {
+                        //             const botResponse = res?.metadata?.answer || 'Xin lỗi, tôi không thể trả lời câu hỏi này.';
+                        //             this.sendBotMessage(botResponse, typingId);
+                        //         },
+                        //         error: (err) => {
+                        //             console.error('Error fetching bot response:', err);
+                        //             this.removeBotTyping(typingId);
+                        //         }
+                        //     });
+                        // }
 
                         const realMessage = {
                             ...savedMessage,
@@ -1723,11 +1611,31 @@ export class MessagesLayoutComponent
         this.stopTyping();
         const el = this.messageInput.nativeElement;
         const markupContent = this.getMarkupContent(el).trim();
+
+        if (this.botInteractionService.state !== 'IDLE') {
+            const botParticipant = this.getMessageInfor()?.other_participant;
+            const botName = botParticipant?.bot_name?.toLowerCase();
+            const isBotFather = botName === '@botfather';
+
+            if (isBotFather) {
+                // Lưu tin nhắn vào DB trước khi xử lý logic Bot
+                await firstValueFrom(this.postMessage$(markupContent, 'text'));
+                this.botInteractionService.handleInteraction(markupContent, this.conversationId(), botParticipant);
+                el.innerHTML = '';
+                this.newMessage = '';
+                return;
+            } else {
+                // Nếu người dùng đã chuyển sang đoạn chat khác, hủy trạng thái tạo bot
+                this.botInteractionService.resetState();
+            }
+        }
+
         const stagedFiles = this.preUploadFiles().map(f => f.file);
         const replyTo = this.replyToMessage ? this.replyToMessage.id : undefined;
         const replyToMessageObj = this.replyToMessage;
 
         if (!markupContent && stagedFiles.length === 0) return;
+
 
         let optimisticTextTempId: string | undefined;
         const isVirtualConversation = this.conversationId().startsWith('conv_');
@@ -1759,6 +1667,78 @@ export class MessagesLayoutComponent
                     parent_message_thumbnail_url: replyToMessageObj.thumbnail_url || null,
                 } : null,
             }, this.conversationId());
+        }
+
+        // Handle bot commands
+        const botParticipant = this.getMessageInfor()?.other_participant;
+        if (markupContent.startsWith('/') && botParticipant?.is_bot) {
+            const botName = botParticipant.bot_name?.toLowerCase();
+            
+            if (botName === '@botfather') {
+                // Giao mọi lệnh hệ thống cho BotInteractionService xử lý
+                await firstValueFrom(this.postMessage$(markupContent, 'text', replyTo, undefined, undefined, replyToMessageObj, optimisticTextTempId));
+                this.botInteractionService.handleCommand(markupContent, this.conversationId(), botParticipant);
+                el.innerHTML = '';
+                this.newMessage = '';
+                return; 
+            } else {
+                if (markupContent.startsWith('/newbot') || markupContent.startsWith('/mybots')) {
+                    // Từ chối tạo bot hoặc xem danh sách bot nếu gửi cho bot con
+                    await firstValueFrom(this.postMessage$(markupContent, 'text', replyTo, undefined, undefined, replyToMessageObj, optimisticTextTempId));
+                    this.sendBotMessage(this.conversationId(), botParticipant, "I am sorry, but only BotFather can process this command. Please find @botfather to do this.");
+                    el.innerHTML = '';
+                    this.newMessage = '';
+                    return;
+                }
+                try {
+                    // 1. Lưu tin nhắn người dùng vào DB TRƯỚC
+                    await firstValueFrom(this.postMessage$(markupContent, 'text', replyTo, undefined, undefined, replyToMessageObj, optimisticTextTempId));
+                    
+                    const res: any = await firstValueFrom(this.botServices.getBotById(botParticipant.user_id));
+                    const botInfo = res.metadata;
+                    
+                    if (botInfo && botInfo.webhook_url) {
+                        // 2. Sau khi lưu xong, tin nhắn đã hiện trên UI -> Hiện typing
+                        const typingId = this.showBotTyping(this.conversationId(), botParticipant);
+                        
+                        const currentUser = this.getMessageInfor()?.participants
+                            ?.find((p: any) => p.user_id === this.currentUserId());
+                        
+                        const payload = {
+                            chat_id: this.conversationId(),
+                            text: markupContent,
+                            from: {
+                                id: this.currentUserId(),
+                                display_name: currentUser?.nick_name || currentUser?.full_name || 'Unknown'
+                            }
+                        };
+
+                        // 3. Gọi webhook
+                        this.botServices.postMessageToWebhook(botInfo.bot_user_id, payload).subscribe({
+                            next: (res: any) => {
+                                const currentConvId = this.conversationId();
+                                this.removeBotTyping(currentConvId, typingId);
+                                const webhookRes = res?.metadata;
+                                if (webhookRes && webhookRes.reply) {
+                                    this.sendBotMessage(currentConvId, botParticipant, webhookRes.reply);
+                                }
+                            },
+                            error: (err) => {
+                                console.error("Webhook error:", err);
+                                this.removeBotTyping(this.conversationId(), typingId);
+                            }
+                        });
+                    }
+                    
+                    // 4. Xóa input và thoát (để không bị lưu tin nhắn lần 2 ở code bên dưới)
+                    el.innerHTML = '';
+                    this.newMessage = '';
+                    return;
+
+                } catch (error) {
+                    console.error("error processing bot webhook flow:", error);
+                }
+            }
         }
 
         let isNewConversationUpgrade = false;
@@ -1846,6 +1826,138 @@ export class MessagesLayoutComponent
         this.aiSummaryDone = false;
         this.cdr.markForCheck();
     }
+
+
+    /**
+     * Reusable method to send a message from the current bot participant.
+     * Updates DB and UI.
+     */
+    private sendBotMessage(convId: string, botParticipant: any, botResponse: string, existingTypingId?: string) {
+        if (!botParticipant || !botParticipant.is_bot) return;
+
+        const typingTempId = existingTypingId || `bot-typing-${Date.now()}`;
+        
+        if (!existingTypingId) {
+            const tempTypingMessage = {
+                id: typingTempId,
+                _trackId: typingTempId,
+                sender_id: botParticipant?.user_id,
+                sender_name: botParticipant?.nick_name || botParticipant?.full_name || 'Bot',
+                sender_avatar: botParticipant?.avatar_url || 'assets/AvatarDefault.jpg',
+                content: '',
+                message_type: 'text',
+                created_at: new Date().toISOString(),
+                _isTyping: true,
+            };
+            this.updateUIWithNewMessage(tempTypingMessage, convId);
+        }
+
+        // Post to DB and broadcast
+        this.messagesService.postMessage(
+            convId,
+            botParticipant.user_id,
+            botResponse,
+            undefined, // replyTo
+            'text' // message_type
+        ).subscribe({
+            next: (response) => {
+                const botMessage = response.metadata?.newMessage;
+                if (botMessage) {
+                    const enrichedBotMessage = {
+                        ...botMessage,
+                        sender_name: botParticipant?.nick_name || botParticipant?.full_name || 'Bot',
+                        sender_avatar: botParticipant?.avatar_url || 'assets/AvatarDefault.jpg',
+                    };
+                    const botConversationId = botMessage.conversation_id || convId;
+
+                    // 1. Cập nhật ID tin nhắn cuối cùng cho component
+                    this.lastMessageId = botMessage.id;
+                    
+                    // 2. Cập nhật last_read_message_id cho user hiện tại vì họ đang xem trực tiếp tin nhắn phản hồi của bot
+                    this.persistReadState(botMessage.id);
+
+                    // 3. Thay thế placeholder "..." bằng tin nhắn thật trong UI
+                    this.getMessagesData.update((old) => ({
+                        ...old,
+                        homeMessagesData: {
+                            ...old.homeMessagesData,
+                            messages: [
+                                ...(old.homeMessagesData?.messages || []).filter((m: any) => m.id !== typingTempId),
+                                enrichedBotMessage,
+                            ],
+                        },
+                    }));
+
+                    // 3. Đồng bộ vào Store và cập nhật thanh Sidebar
+                    if (botConversationId) {
+                        this.messageStore.updateState(botConversationId, {
+                            getMessagesData: this.getMessagesData(),
+                            lastMessageId: botMessage.id,
+                        });
+                        
+                        // Cập nhật tin nhắn mới nhất ở danh sách bên trái (Sidebar)
+                        this.convStore.updateConversationList(enrichedBotMessage);
+
+                        // 4. Lưu last_message_id vào Database cho conversation
+                        if (!String(botConversationId).startsWith('conv_')) {
+                            this.conversationService.putConversation(botConversationId, {
+                                last_message_id: botMessage.id,
+                            }).subscribe();
+                        }
+                    }
+
+                    // 5. Phát tín hiệu qua Socket
+                    this.socketService.emit('newMessage', enrichedBotMessage);
+                    this.socketService.emit('updateConversation', enrichedBotMessage);
+                }
+            },
+            error: (err) => {
+                console.error('Error in sendBotMessage:', err);
+                // Remove placeholder on error
+                this.getMessagesData.update((old) => ({
+                    ...old,
+                    homeMessagesData: {
+                        ...old.homeMessagesData,
+                        messages: old.homeMessagesData.messages.filter((m: any) => m.id !== typingTempId),
+                    },
+                }));
+            }
+        });
+    }
+
+    private showBotTyping(convId: string, botParticipant: any): string {
+        const typingId = `bot-typing-${Date.now()}`;
+        if (!botParticipant || !botParticipant.is_bot) return typingId;
+
+        const tempMessage = {
+            id: typingId,
+            _trackId: typingId,
+            sender_id: botParticipant.user_id,
+            sender_name: botParticipant.nick_name || botParticipant.full_name || 'Bot',
+            sender_avatar: botParticipant.avatar_url || 'assets/AvatarDefault.jpg',
+            content: '',
+            message_type: 'text',
+            created_at: new Date().toISOString(),
+            _isTyping: true,
+        };
+        this.updateUIWithNewMessage(tempMessage, convId);
+        return typingId;
+    }
+
+    private removeBotTyping(convId: string, typingId: string) {
+        // Chỉ xóa nếu UI đang hiển thị conversation này
+        if (this.conversationId() === convId) {
+            this.getMessagesData.update((old) => ({
+                ...old,
+                homeMessagesData: {
+                    ...old.homeMessagesData,
+                    messages: (old.homeMessagesData?.messages || []).filter((m: any) => m.id !== typingId),
+                },
+            }));
+        }
+    }
+
+
 
     uploadFileAttachment(
         files: File[],
@@ -3652,48 +3764,8 @@ export class MessagesLayoutComponent
 
                     Hãy bắt đầu tạo bảng đầu tiên của bạn ngay nhé! Nếu cần trợ giúp thêm, gõ \`/help\`.`;
         
-        this.messagesService.postMessage(
-            this.conversationId(),
-            this.getMessageInfor().other_participant.user_id,
-            text,
-            undefined, // replyTo
-            'text' // message_type
-        ).subscribe({
-            next: (response) => {
-                const botMessage = response.metadata?.newMessage;
-                console.log('Bot message saved:', botMessage);
-
-                // Thêm tin nhắn bot vào UI ngay lập tức
-                if (botMessage) {
-                    const botParticipant = this.getMessageInfor().other_participant;
-                    const enrichedBotMessage = {
-                        ...botMessage,
-                        sender_name: botParticipant?.nick_name || botParticipant?.full_name || 'Bot',
-                        sender_avatar: botParticipant?.avatar_url || 'assets/AvatarDefault.jpg',
-                    };
-
-                    this.getMessagesData.update((old) => ({
-                        ...old,
-                        homeMessagesData: {
-                            ...old.homeMessagesData,
-                            messages: [...(old.homeMessagesData?.messages || []), enrichedBotMessage],
-                        },
-                    }));
-
-                    // Broadcast qua socket để người khác (nếu có) nhìn thấy
-                    this.socketService.emit('newMessage', enrichedBotMessage);
-                }
-            },
-            error: (err) => {
-                console.error('Error saving bot message:', err);
-            }
-        });
+        const botParticipant = this.getMessageInfor()?.other_participant;
+        this.sendBotMessage(this.conversationId(), botParticipant, text);
     
-        
-        this.sheetService.getSheet().subscribe({
-            next: (response) => {
-                console.log('Sheet data:', response);
-            }
-        });
     }
 }

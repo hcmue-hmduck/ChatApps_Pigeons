@@ -41,7 +41,7 @@ class UsersService {
         if (!foundUser) throw new UnauthorizedError('invalid email or password');
 
         const password_hash = foundUser.password_hash;
-        if(!password_hash) throw new BadRequestError('This account never setup password');
+        if (!password_hash) throw new BadRequestError('This account never setup password');
 
         const isMatch = await compareHashString(password, foundUser.password_hash);
         if (!isMatch) throw new UnauthorizedError('invalid email or password');
@@ -72,10 +72,10 @@ class UsersService {
 
     // Tạo bot user
     async createBotUser(full_name, bot_name, options = {}) {
-        if(!full_name || !bot_name) throw new BadRequestError('missing parameters');
+        if (!full_name || !bot_name) throw new BadRequestError('missing parameters');
 
-        const foundBotUser = await usersModel.findOne({where: {bot_name, is_bot: true}});
-        if(foundBotUser) throw new BadRequestError('bot name has exists');
+        const foundBotUser = await usersModel.findOne({ where: { bot_name, is_bot: true } });
+        if (foundBotUser) throw new BadRequestError('bot username has exists');
 
         return await usersModel.create({
             full_name,
@@ -84,20 +84,22 @@ class UsersService {
         }, options);
     }
 
-    async updateBotUser(bot_user_id, {full_name, bot_name}) {
+    async updateBotUser(bot_user_id, { full_name, bot_name }) {
         const foundBotUser = await usersModel.findByPk(bot_user_id);
-        if(!foundBotUser) throw new BadRequestError(`bot user doesn't exists`);
+        if (!foundBotUser) throw new BadRequestError(`bot user doesn't exists`);
 
-        if(bot_name) {
-            const foundBotName = await usersModel.findOne({where: {
-                is_bot: true,
-                bot_name,
-                id: {[Op.ne]: bot_user_id}
-            }})
-            if(foundBotName) throw new BadRequestError('bot name has exists');
+        if (bot_name) {
+            const foundBotName = await usersModel.findOne({
+                where: {
+                    is_bot: true,
+                    bot_name,
+                    id: { [Op.ne]: bot_user_id }
+                }
+            })
+            if (foundBotName) throw new BadRequestError('bot name has exists');
         }
 
-        const updateData = getUpdateData({full_name, bot_name});
+        const updateData = getUpdateData({ full_name, bot_name });
         return await foundBotUser.update(updateData);
     }
 

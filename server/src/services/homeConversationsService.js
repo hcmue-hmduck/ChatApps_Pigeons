@@ -67,7 +67,8 @@ class HomeConversationService {
                     is_muted: p.is_muted,
                     is_pinned: p.is_pinned,
                     last_read_message_id: p.last_read_message_id,
-                    is_bot: user.is_bot
+                    is_bot: user.is_bot,
+                    bot_name: user.bot_name
                 }
                 : {
                     user_id: p.user_id,
@@ -199,7 +200,9 @@ class HomeConversationService {
                 ...p.toJSON ? p.toJSON() : p,
                 full_name: user.full_name,
                 avatar_url: user.avatar_url,
-                last_online_at: user.last_online_at
+                last_online_at: user.last_online_at,
+                is_bot: user.is_bot,
+                bot_name: user.bot_name
             } : p;
         };
 
