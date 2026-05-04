@@ -62,7 +62,7 @@ export class ActiveConversationService implements OnDestroy {
     );
 
     currentUserAvatar = computed(() => 
-        this.currentUserInfo()?.avatar_url || ''
+        this.currentUserInfo()?.avatar_url || 'assets/AvatarDefault.jpg'
     );
     
     totalUnreadCount = computed(() => {
@@ -225,7 +225,7 @@ export class ActiveConversationService implements OnDestroy {
                         const hasOtherUser = conv.participants?.some((p: any) => String(p.user_id) === String(data.id));
                         if (hasOtherUser) {
                             newTitle = data.full_name || conv.title;
-                            newAvatarUrl = data.avatar_url || conv.avatar_url;
+                            newAvatarUrl = data.avatar_url || conv.avatar_url || 'assets/AvatarDefault.jpg';
                         }
                     }
 

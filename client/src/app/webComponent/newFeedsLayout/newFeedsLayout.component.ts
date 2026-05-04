@@ -110,7 +110,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
     }
 
     currentUser = {
-        avatar: 'https://ui-avatars.com/api/?name=Chat+Pigeons&background=06131f&color=00f2ff'
+        avatar: 'assets/AvatarDefault.jpg'
     };
     trending: Array<{ tag: string; cat: string; count: string }> = [
         { tag: '#NeuralLink', cat: 'Tech', count: '12.4k transmissions' },
@@ -552,10 +552,6 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         return content.length > 300;
     }
 
-    // handlePostFeed removed as it was redundant with version at line 967
-
-
-
     onlineFriends = signal<any[]>([]);
 
     // loadFeeds local was replaced by feedStore.loadFeeds()
@@ -973,6 +969,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                 const finalizePost = (media: any[] = []) => {
                     const enrichedPost = {
                         ...newPost,
+                        status: newPost.status || 'pending',
                         comments: [],
                         post_media: media,
                         comments_count: 0,
@@ -1121,6 +1118,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
 
                     const sharedPostWithDetails = {
                         ...response.metadata.newPost,
+                        status: response.metadata.newPost.status || 'pending',
                         user_infor: this.convStore.currentUserInfo(),
                         comments: [],
                         post_media: mediaData,
