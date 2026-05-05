@@ -127,6 +127,19 @@ class BotService {
             return result;
         })
     }
+
+    async delete(botId) {
+        const foundBot = await botModel.findByPk(botId);
+        if (!foundBot) throw new BadRequestError(`Bot doesn't exist`);
+
+        return await sequelize.transaction(async (t) => {
+            // Xóa tài khoản user bot
+            await userService.deleteUser(foundBot.bot_user_id, { transaction: t });
+            // Xóa config bot
+            await foundBot.destroy({ transaction: t });
+            return { deleted: true, id: botId };
+        });
+    }
 }
 
 module.exports = new BotService();

@@ -20,6 +20,14 @@ class BotController {
         }).send(res);
     }
 
+    async delete(req, res, next) {
+        const botId = req.params.bot_id;
+        return new SuccessResponse({
+            message: 'delete bot successfully',
+            metadata: await botService.delete(botId)
+        }).send(res);
+    }
+
     async get(req, res) {
         const {id} = req.user;
         return new SuccessResponse({

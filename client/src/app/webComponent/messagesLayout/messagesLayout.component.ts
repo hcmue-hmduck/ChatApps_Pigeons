@@ -1,3 +1,4 @@
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { CommonModule } from '@angular/common';
 import {
     AfterViewChecked,
@@ -89,6 +90,7 @@ export class MessagesLayoutComponent
     linkPreviewUtils = inject(LinkPreviewUtils);
     dateTimeUtils = inject(DateTimeUtils);
     private cdr = inject(ChangeDetectorRef);
+    private sanitizer = inject(DomSanitizer);
     private ngZone = inject(NgZone);
     private router = inject(Router);
     private timeUpdateInterval: any;
@@ -248,10 +250,15 @@ export class MessagesLayoutComponent
         return this.dateTimeUtils.relativeTime(dateInput);
     }
 
-    formatMessageText(content: string | null | undefined): string {
+    formatMessageText(content: string | null | undefined): string | SafeHtml {
         if (!content) return '';
-        // Lấy danh sách thành viên từ conversation hiện tại
         const participants = this.getMessageInfor()?.participants || [];
+        
+        // Cho phép render HTML nếu chứa các class đặc thù của bot message
+        if (content.includes('bot-inline-keyboard') || content.includes('bot-keyboard-header')) {
+            return this.sanitizer.bypassSecurityTrustHtml(content);
+        }
+
         return this.linkPreviewUtils.formatMessageText(content, participants);
     }
 
@@ -330,15 +337,6 @@ export class MessagesLayoutComponent
         this.cdr.markForCheck();
     }
 
-    quickAppend(text: string) {
-        this.newMessage = text;
-        // Focus the input area
-        setTimeout(() => {
-            if (this.messageInput?.nativeElement) {
-                this.messageInput.nativeElement.focus();
-            }
-        }, 0);
-    }
 
     isLoaded = false;
     hasNewMessage = false; // Track new messages when scrolled up
@@ -1055,12 +1053,19 @@ export class MessagesLayoutComponent
         this.botInteractionService.registerCallbacks({
             sendBotMessage: (convId, botPart, msg, id) => this.sendBotMessage(convId, botPart, msg, id),
             showBotTyping: (convId, botPart) => this.showBotTyping(convId, botPart),
-            removeBotTyping: (convId, id) => this.removeBotTyping(convId, id)
+            removeBotTyping: (convId, id) => this.removeBotTyping(convId, id),
+            // TELEGRAM APPROACH: edit tin nhắn tại chỗ
+            editLastBotMessage: (newContent) => this.editLastBotMessage(newContent),
+            // Emit updateProfile đúng format để cập nhật tên bot ở tất cả client
+            emitBotProfileUpdate: (botUserId, updatedFields) => {
+                this.socketService.emit('updateProfile', {
+                    id: botUserId,
+                    ...updatedFields
+                });
+            }
         });
 
         console.log('Online User', this.onlineUsers);
-        // Optimization: Không gọi loadMessages ở đây nữa vì @Input convID đã handle việc này 
-        // ngay khi component được khởi tạo nếu có giá trị.
     }
 
 
@@ -2414,9 +2419,79 @@ export class MessagesLayoutComponent
 
 
 
+    /**
+     * TELEGRAM APPROACH: Edit nội dung tin nhắn bot cuối cùng tại chỗ.
+     * Gọi PUT /messages/:id với nội dung mới → emit socket 'updateMessage' →
+     * tất cả client cập nhật smooth mà không có hiệu ứng flash/xóa/gửi mới.
+     */
+    private editLastBotMessage(newContent: string): Promise<void> {
+        return new Promise((resolve) => {
+            const messages = this.getMessagesData()?.homeMessagesData?.messages || [];
+            // Tìm tin nhắn bot cuối cùng chưa xóa, không phải typing indicator
+            const lastBotMsg = [...messages]
+                .reverse()
+                .find((m: any) => !m.is_deleted && !m._isTyping &&
+                    m.sender_id !== this.currentUserId());
+
+            if (!lastBotMsg) {
+                resolve();
+                return;
+            }
+
+            const updatedMsg = {
+                ...lastBotMsg,
+                content: newContent,
+                conversation_id: lastBotMsg.conversation_id || this.conversationId()
+            };
+
+            // ✅ Cập nhật UI ngay lập tức (optimistic update)
+            this.getMessagesData.update((old) => ({
+                ...old,
+                homeMessagesData: {
+                    ...old.homeMessagesData,
+                    messages: old.homeMessagesData.messages.map((m: any) =>
+                        m.id === lastBotMsg.id ? { ...m, content: newContent } : m
+                    ),
+                },
+            }));
+
+            // ✅ Emit socket 'updateMessage' để broadcast tới tất cả client
+            this.socketService.emit('updateMessage', updatedMsg);
+
+            // ✅ Nếu đây là tin nhắn cuối → cập nhật luôn lastMessage ở sidebar
+            if (lastBotMsg.id === this.lastMessageId) {
+                this.socketService.emit('updateConversation', updatedMsg);
+            }
+
+            // 🔥 Fire-and-forget: lưu vào DB
+            this.messagesService.putMessage(lastBotMsg.id, newContent).subscribe({
+                error: () => {} // Bỏ qua lỗi auth — UI đã cập nhật rồi
+            });
+
+            resolve();
+        });
+    }
+
     @HostListener('document:click', ['$event'])
     onDocumentClick(event: MouseEvent) {
         const target = event.target as HTMLElement;
+
+        // Xử lý click vào nút của Bot (phong cách Telegram)
+        if (target.classList.contains('bot-mention-btn')) {
+            const action = target.getAttribute('data-action');
+            const payload = target.getAttribute('data-payload') || '';
+            if (action) {
+                const botParticipant = this.getMessageInfor()?.participants
+                    ?.find((p: any) => p.is_bot);
+                if (botParticipant) {
+                    this.botInteractionService.handleButtonClick(
+                        action, payload, this.conversationId(), botParticipant
+                    );
+                }
+                return;
+            }
+        }
+
         if (
             !target.closest('.message-actions') &&
             !target.closest('.emoji-picker-wrap') &&
@@ -3721,51 +3796,4 @@ export class MessagesLayoutComponent
         return false;
     }
 
-    handleSheet() {
-        const text = `📊 **Chào mừng bạn đến với Hệ thống Bảng tính & Thống kê!**  
-
-                    Bot hỗ trợ bạn tạo các bảng dữ liệu linh hoạt như Excel, nhập liệu nhanh và thực hiện thống kê nhóm, tổng hợp ngay trên Telegram.
-
-                    **Các lệnh cơ bản:**
-
-                    🔹 **Quản lý bảng**  
-                    \`/create_table <tên_bảng> <cột1,cột2,...>\`  
-                    → Tạo bảng mới với danh sách cột (phân cách bằng dấu phẩy).  
-                    _Ví dụ:_ \`/create_table doanhthu ngay, tenhang, soluong, dongia\`
-
-                    \`/add_row <tên_bảng> <giá_trị_cách_nhau_bởi_dấu_phẩy>\`  
-                    → Thêm một dòng dữ liệu vào bảng theo đúng thứ tự cột.  
-                    _Ví dụ:_ \`/add_row doanhthu 2026-04-29, Bút bi, 10, 5000\`
-
-                    \`/view_table <tên_bảng> [số_dòng]\` *(mặc định 10 dòng gần nhất)*  
-                    → Xem dữ liệu trong bảng.
-
-                    🔹 **Thống kê**  
-                    \`/stats <tên_bảng> group by <cột> sum <cột>\`  
-                    → Tính tổng giá trị của một cột số theo từng nhóm.  
-                    _Ví dụ:_ \`/stats doanhthu group by tenhang sum soluong\`  
-
-                    *(Hỗ trợ thêm \`count\`, \`avg\`, \`min\`, \`max\` – sắp ra mắt)*
-
-                    🔹 **Chỉnh sửa**  
-                    \`/delete_row <tên_bảng> <id_dòng>\`  
-                    → Xoá một dòng (ID hiển thị trong \`/view_table\`).  
-
-                    \`/edit_row <tên_bảng> <id_dòng> <cột=giá_trị,...>\`  
-                    → Sửa giá trị của các cột trong dòng.  
-                    _Ví dụ:_ \`/edit_row doanhthu 660a... soluong=15, dongia=5500\`
-
-                    🔹 **Tiện ích**  
-                    \`/list_tables\` – Xem tất cả các bảng bạn đã tạo.
-
-                    ---
-
-                    💡 **Mẹo:** Nhập dữ liệu nhớ đúng thứ tự cột đã khai báo khi tạo bảng. Nếu cần xem lại cấu trúc bảng, dùng \`/view_table <tên_bảng> 0\` để hiển thị tiêu đề.
-
-                    Hãy bắt đầu tạo bảng đầu tiên của bạn ngay nhé! Nếu cần trợ giúp thêm, gõ \`/help\`.`;
-        
-        const botParticipant = this.getMessageInfor()?.other_participant;
-        this.sendBotMessage(this.conversationId(), botParticipant, text);
-    
-    }
 }

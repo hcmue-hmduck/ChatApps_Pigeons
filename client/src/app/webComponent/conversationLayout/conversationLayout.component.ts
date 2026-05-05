@@ -566,9 +566,17 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
 
     formatMessageText(content: string | null | undefined, participants?: any[], isHtml: boolean = false): string {
         if (!content) return '';
-        // Nếu content đã là HTML (ví dụ system message với <i> icon), trả về trực tiếp
-        if (isHtml || /<[a-z][\s\S]*>/i.test(content)) return content;
-        // Replace newlines with spaces for single-line sidebar preview
+
+        // Nếu content chứa HTML (bot message, system message...) → strip tags, collapse whitespace
+        if (isHtml || /<[a-z][\s\S]*>/i.test(content)) {
+            const stripped = content
+                .replace(/<[^>]+>/g, ' ')   // bỏ tất cả HTML tags
+                .replace(/\s+/g, ' ')        // collapse whitespace/newlines thành 1 khoảng trắng
+                .trim();
+            return stripped;
+        }
+
+        // Plain text: collapse newlines thành space cho sidebar preview
         const singleLineContent = content.replace(/\n/g, ' ');
         return this.linkPreviewUtils.formatMessageText(singleLineContent, participants || []);
     }

@@ -951,6 +951,86 @@
     position: relative;
 }
 
+/* Bot List Styling (Sửa lỗi CSS không nhận bằng ng-deep) */
+:host ::ng-deep .bot-inline-keyboard {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+    padding-top: 5px;
+}
+
+:host ::ng-deep .bot-mention-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #e0e0e0;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    outline: none;
+}
+
+:host ::ng-deep .bot-mention-btn:hover {
+    background: rgba(187, 134, 252, 0.15);
+    border-color: var(--accent);
+    color: var(--accent);
+    transform: translateY(-1px);
+}
+
+:host ::ng-deep .bot-mention-btn:active {
+    transform: scale(0.96);
+}
+
+/* Thêm một chút nhấn nhá cho text "Choose a bot..." */
+:host ::ng-deep .bot-keyboard-header {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+    margin-bottom: 5px;
+    display: block;
+}
+
+/* Nút Xóa - màu đỏ */
+:host ::ng-deep .bot-mention-btn--danger {
+    background: rgba(255, 70, 70, 0.08);
+    border-color: rgba(255, 70, 70, 0.25);
+    color: #ff9090;
+}
+
+:host ::ng-deep .bot-mention-btn--danger:hover {
+    background: rgba(220, 50, 50, 0.75);
+    border-color: transparent;
+    color: #fff;
+    box-shadow: 0 6px 18px rgba(220, 50, 50, 0.35);
+}
+
+/* Nút Back - mờ, nhỏ hơn */
+:host ::ng-deep .bot-mention-btn--ghost {
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 12px;
+    padding: 6px 14px;
+}
+
+:host ::ng-deep .bot-mention-btn--ghost:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.7);
+    transform: none;
+}
+
+/* Hàng Back có khoảng cách phía trên */
+:host ::ng-deep .bot-inline-keyboard--back {
+    margin-top: 4px;
+}
+
 .upload-progress-bar::after {
     content: '';
     position: absolute;
@@ -2003,51 +2083,7 @@
 }
 
 /* Bot Quick Tags */
-.bot-quick-tags {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 4px 2px 12px;
-    overflow-x: auto;
-    scrollbar-width: none;
-    /* Firefox */
-    -ms-overflow-style: none;
-    /* IE/Edge */
-}
 
-.bot-quick-tags::-webkit-scrollbar {
-    display: none;
-    /* Chrome/Safari */
-}
-
-.bot-tag {
-    background: rgba(187, 134, 252, 0.08);
-    border: 1px solid rgba(187, 134, 252, 0.2);
-    color: var(--accent);
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 13px;
-    font-weight: 600;
-    white-space: nowrap;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    backdrop-filter: blur(4px);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.bot-tag:hover {
-    background: rgba(187, 134, 252, 0.15);
-    border-color: var(--accent);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(187, 134, 252, 0.15);
-    color: #eef2ff;
-}
-
-.bot-tag:active {
-    transform: translateY(0) scale(0.96);
-}
 
 /* ============================================================
    INPUT AREA · Dark Glass
@@ -4230,7 +4266,10 @@
 }
 
 @keyframes botTypingPulse {
-    0%, 80%, 100% {
+
+    0%,
+    80%,
+    100% {
         transform: translateY(0) scale(0.75);
         opacity: 0.45;
     }
@@ -4687,6 +4726,32 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.mention-email {
+    font-size: 11px;
+    color: var(--msg-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+
+/* Mention Pill in Editor */
+.mention-pill {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(187, 134, 252, 0.15);
+    color: var(--accent);
+    padding: 0 6px;
+    border-radius: 6px;
+    font-weight: 600;
+    margin: 0 2px;
+    border: 1px solid rgba(187, 134, 252, 0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    vertical-align: baseline;
+    cursor: default;
+    user-select: none;
 }
 
 .mention-email {
