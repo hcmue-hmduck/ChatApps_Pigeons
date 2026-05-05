@@ -88,9 +88,8 @@ const Bot = sequelize.define('Bot', {
     ]
 });
 
-// Định nghĩa associations nếu cần (tuỳ thuộc vào thiết kế hệ thống)
-// Lưu ý: Có thể định nghĩa ở file index.js của models để tránh vòng lặp dependencies
-// Bot.belongsTo(User, { as: 'BotAccount', foreignKey: 'bot_user_id' });
-// Bot.belongsTo(User, { as: 'Owner', foreignKey: 'owner_id' });
+// Định nghĩa associations
+Bot.belongsTo(User, { as: 'BotAccount', foreignKey: 'bot_user_id' });
+Bot.belongsTo(User, { as: 'Owner', foreignKey: 'owner_id' });
 
 module.exports = Bot;

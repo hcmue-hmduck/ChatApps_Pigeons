@@ -133,12 +133,6 @@ const User = sequelize.define('User', {
         field: 'last_online_at'
     },
 
-    is_bot: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: false,
-        field: 'is_bot'
-    },
-
     // Created At
     created_at: {
         type: DataTypes.DATE,

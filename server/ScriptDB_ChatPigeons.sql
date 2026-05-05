@@ -5,7 +5,7 @@
 CREATE SCHEMA IF NOT EXISTS "ChatPigeons"
     AUTHORIZATION neondb_owner;
 
-ALTER DATABASE neondb SET search_path TO "ChatPigeons", public;
+ALTER DATABASE postgres SET search_path TO "ChatPigeons", public;
 SET search_path TO "ChatPigeons", public;
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" SCHEMA "ChatPigeons";
