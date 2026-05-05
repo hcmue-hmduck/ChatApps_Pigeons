@@ -1643,6 +1643,7 @@ export class MessagesLayoutComponent
 
 
         let optimisticTextTempId: string | undefined;
+        let isNewConversationUpgrade = false;
         const isVirtualConversation = this.conversationId().startsWith('conv_');
 
         // Optimistic UI: luôn hiển thị text ngay khi bấm gửi, trước cả bước tạo conversation thật.
@@ -1672,6 +1673,37 @@ export class MessagesLayoutComponent
                     parent_message_thumbnail_url: replyToMessageObj.thumbnail_url || null,
                 } : null,
             }, this.conversationId());
+
+        // Nếu đang ở conversation ảo thì tạo conversation thật NGAY trước khi xử lý lệnh/bot
+        if (this.conversationId().startsWith('conv_')) {
+            isNewConversationUpgrade = true;
+            const oldId = this.conversationId();
+            try {
+                const response = await firstValueFrom(
+                    this.conversationService.postConversation(
+                        this.getMessageInfor()?.other_participant?.user_id,
+                        this.getMessageInfor()?.user_info?.id
+                    )
+                );
+                const newConvData = response.metadata?.newConversation;
+                if (newConvData) {
+                    const newId = newConvData.conv?.id;
+                    this.conversationId.set(newId);
+
+                    // Các participants thật từ server (đã được enrich full_name/avatar_url)
+                    const realParticipants = [newConvData.you, ...newConvData.participants];
+
+                    // JOIN SOCKET ROOM MỚI VÀ THÔNG BÁO CHO CHA
+                    this.setupSocketListener(newId);
+                    this.convStore.upgradeConversation(oldId, newId, realParticipants);
+
+                    // Cập nhật URL để đồng bộ với state mới
+                    this.router.navigate(['/conversations', newId], { replaceUrl: true });
+                }
+            } catch (err) {
+                console.error('Error creating conversation before send:', err);
+            }
+        }
         }
 
         // Handle bot commands
@@ -1743,33 +1775,6 @@ export class MessagesLayoutComponent
                 } catch (error) {
                     console.error("error processing bot webhook flow:", error);
                 }
-            }
-        }
-
-        let isNewConversationUpgrade = false;
-        if (this.conversationId().startsWith('conv_')) {
-            isNewConversationUpgrade = true;
-            const oldId = this.conversationId();
-            const response = await firstValueFrom(
-                this.conversationService.postConversation(
-                    this.getMessageInfor()?.other_participant?.user_id,
-                    this.getMessageInfor()?.user_info?.id
-                )
-            );
-            const newConvData = response.metadata?.newConversation;
-            if (newConvData) {
-                const newId = newConvData.conv?.id;
-                this.conversationId.set(newId);
-
-                // Các participants thật từ server (đã được enrich full_name/avatar_url)
-                const realParticipants = [newConvData.you, ...newConvData.participants];
-
-                // JOIN SOCKET ROOM MỚI VÀ THÔNG BÁO CHO CHA
-                this.setupSocketListener(newId);
-                this.convStore.upgradeConversation(oldId, newId, realParticipants);
-
-                // Cập nhật URL để đồng bộ với state mới
-                this.router.navigate(['/conversations', newId], { replaceUrl: true });
             }
         }
 
