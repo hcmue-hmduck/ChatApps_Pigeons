@@ -8,6 +8,7 @@ export interface OwnKey {
     userId: string; // FK
     publicKeyBase64: Base64String; // Base64
     privateKeyObj: CryptoKey;
+    pinHash: Base64String
 }
 
 // 2. Lưu lịch sử Shared Keys
@@ -16,7 +17,6 @@ export interface ConversationKey {
     conversationId: string;
     keyVersion: number;
     sharedKeyObj: CryptoKey;
-    createdAt: number;
 }
 
 // 3. Lưu tin nhắn Plaintext
@@ -67,14 +67,14 @@ export class LocalDatabaseService {
     constructor(private authService: AuthService) {
         //test
         if (typeof window !== 'undefined') {
-			(window as any).TestLocalDB = this;
+            (window as any).TestLocalDB = this;
             const userId = authService.getUserId();
-			this.initDb(userId);
-		}
+            this.initDb(userId);
+        }
     }
 
     async initDb(userId: string) {
-		if(typeof window === 'undefined' || !window.indexedDB) return;
+        if (typeof window === 'undefined' || !window.indexedDB) return;
         if (this.db) this.db.close();
 
         this.db = new PigeonsDatabase(userId);
@@ -83,8 +83,12 @@ export class LocalDatabaseService {
 
     async saveOwnKey(keys: OwnKey) {
         if (!this.db) throw new Error('Database not initialized');
-        console.log(`saveOwnKey:`, keys);
         return await this.db.ownKeys.put(keys);
+    }
+
+    async updateOwnKey(userId: string, data: Partial<OwnKey>) {
+        if(!this.db) throw new Error('Database not initialized');
+        return await this.db.ownKeys.update(userId, data)
     }
 
     async getOwnKey(userId: string) {
@@ -111,10 +115,10 @@ export class LocalDatabaseService {
         if (!this.db) throw new Error('Database not initialized');
         return await this.db.messages
             .where('[conversationId+createdAt]')
-			.between([conversationId, Dexie.minKey], [conversationId, Dexie.maxKey])
-			.reverse() // lấy tin nhắn mới nhất trước
-			.offset(offset)
+            .between([conversationId, Dexie.minKey], [conversationId, Dexie.maxKey])
+            .reverse() // lấy tin nhắn mới nhất trước
+            .offset(offset)
             .limit(limit)
-			.toArray()
+            .toArray();
     }
 }

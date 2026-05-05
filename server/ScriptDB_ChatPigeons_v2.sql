@@ -4,6 +4,7 @@
 
 CREATE SCHEMA IF NOT EXISTS "ChatPigeons";
 
+ALTER DATABASE pigeonsv2 SET search_path TO "ChatPigeons", public;
 SET search_path TO "ChatPigeons", public;
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" SCHEMA "ChatPigeons";

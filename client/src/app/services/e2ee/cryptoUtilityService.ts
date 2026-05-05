@@ -83,6 +83,18 @@ export class CryptoUtilityService {
         };
     }
 
+    async importPublicKey(publickeyBase64: Base64String) {
+        const publicKeyBuffer = this.base64ToArrayBuffer(publickeyBase64);
+        let algorithm: RsaHashedImportParams = {
+            name: 'RSA-OAEP',
+            hash: 'SHA-256',
+        };
+
+        return await window.crypto.subtle.importKey('spki', publicKeyBuffer, algorithm, true, [
+            'wrapKey',
+        ]);
+    }
+
     async generateSharedKey(): Promise<CryptoKey> {
         const algorithms: AesKeyGenParams = {
             name: 'AES-GCM',
@@ -232,6 +244,12 @@ export class CryptoUtilityService {
             true, // extractable
             usages,
         );
+    }
+
+    async hashString(str: string) {
+        const buffer = this.stringToArrayBuffer(str);
+        const hashBuffer = await window.crypto.subtle.digest({ name: 'SHA-256' }, buffer);
+        return this.arrayBufferToBase64(hashBuffer);
     }
 }
 
