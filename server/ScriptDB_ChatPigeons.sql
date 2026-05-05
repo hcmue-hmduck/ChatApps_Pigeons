@@ -2,7 +2,7 @@
 -- SCHEMA: ChatPigeons
 -- =====================================================
 
-CREATE SCHEMA IF NOT EXISTS "ChatPigeons"
+CREATE SCHEMA IF NOT EXISTS "ChatPigeons";
     AUTHORIZATION neondb_owner;
 
 ALTER DATABASE postgres SET search_path TO "ChatPigeons", public;

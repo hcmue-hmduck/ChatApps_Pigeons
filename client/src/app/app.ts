@@ -5,6 +5,7 @@ import { AuthService } from './services/authService';
 import { CallBroadcastService } from './services/callBroadcastService';
 import { CallService } from './services/callService';
 import { IncommingCallLayout } from './webComponent/incommingCallLayout/incommingCallLayout';
+import { CryptoUtilityService } from './services/e2ee/cryptoUtilityService';
 
 @Component({
     selector: 'app-root',
@@ -19,6 +20,9 @@ export class App implements OnInit {
     callService = inject(CallService);
     authService = inject(AuthService);
     platformId = inject(PLATFORM_ID);
+
+    // test service
+    cryptoService = inject(CryptoUtilityService);
 
     ngOnInit() {
       

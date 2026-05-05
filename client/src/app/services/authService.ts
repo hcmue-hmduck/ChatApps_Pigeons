@@ -243,7 +243,7 @@ export class AuthService {
         try {
             await firstValueFrom(this.getMe());
         } catch (err) {
-            console.warn('Chưa đăng nhập');
+            console.log('Chưa đăng nhập');
         }
     }
 

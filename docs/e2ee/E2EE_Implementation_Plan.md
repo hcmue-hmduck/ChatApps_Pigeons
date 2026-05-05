@@ -9,8 +9,8 @@ The system uses a **Unified Random Key Model**: both 1-1 and group conversations
 ## 2. Cryptographic Specifications
 
 - **Identity Key Pair**: RSA-OAEP (2048-bit) — used to **wrap/unwrap `shared_key` vault entries** via `crypto.subtle.wrapKey()` / `crypto.subtle.unwrapKey()`.
-- **Conversation Key (`shared_key`)**: AES-GCM 256-bit, randomly generated per conversation (or per rotation).
-- **Key Derivation (for PIN)**: PBKDF2 with **SHA-256**, 100,000 iterations → produces `KEK` (Key Encryption Key).
+- **Conversation Key (`shared_key`)**: AES-GCM 256-bit, randomly generated per conversation (or per rotation). (IV: 12 bytes).
+- **Key Derivation (for PIN)**: PBKDF2 with **SHA-256**, 100,000 iterations → produces `KEK` (Key Encryption Key). (Salt: 16 bytes).
 - **Data Formats**: RSA public keys in **SPKI** (Base64); encrypted private key in **JWK** wrapped by KEK.
 
 
@@ -28,10 +28,10 @@ The schema for each user's database is as follows:
 - **Table: `own_keys`** (Stores current user's identity keys)
     - `user_id`: Primary Key
     - `public_key_spki`: RSA-OAEP public key, SPKI Base64 string
-    - `private_key_obj`: RSA-OAEP private key, CryptoKey (non-extractable)
+    - `private_key_obj`: RSA-OAEP private key, CryptoKey (extractable: true)
 - **Table: `conversation_keys`** (Stores shared AES keys per conversation per version)
     - `conversation_id`: Foreign Key (Index)
-    - `shared_key`: CryptoKey object (AES-GCM 256-bit, non-extractable)
+    - `shared_key`: CryptoKey object (AES-GCM 256-bit, extractable: true)
     - `key_version`: Primary Key (Integer)
 - **Table: `messages`** (Standard message table with E2EE fields)
     - `id`: Primary Key (from server)
@@ -52,20 +52,19 @@ The following tables are required on the server:
 
 - **`Users` Table Updates**:
     - `public_key`: RSA-OAEP public key, SPKI Base64 string.
-    - `encrypted_private_key`: Base64 string.
+    - `wrapped_private_key`: The RSA private key wrapped with KEK (AES-GCM).
     - `kek_iv`: Base64 string (The 12-byte random IV used for the private key).
-    - `pin_salt`: Random salt for PBKDF2.
+    - `pin_salt`: Base64 string, Random salt for PBKDF2 (16 bytes).
 - **`Messages` Table Updates**:
     - `is_e2ee`: Boolean.
     - `key_version`: Integer (the version of `shared_key` used to encrypt this message).
-    - `encrypted_content`: TEXT/BLOB (AES-GCM ciphertext).
-    - `iv`: Base64 string (random Initialization Vector per message).
+    - `iv`: Base64 string (random 12-byte Initialization Vector per message).
 - **`ConversationKeysVault` Table**:
     - `id`: Primary Key.
     - `user_id`: The owner of this vault entry.
     - `conversation_id`: Foreign Key.
     - `key_version`: Integer.
-    - `encrypted_key`: The `shared_key` wrapped with the **owner's RSA-OAEP public key**.
+    - `wrapped_shared_key`: The `shared_key` wrapped with the **owner's RSA-OAEP public key**.
 - **Server-side Security**:
     - **PIN Rate Limiting**: Backend must implement account lock after 5 consecutive failed PIN attempts to prevent brute-force attacks.
 
@@ -79,15 +78,15 @@ The following tables are required on the server:
     - Client derives `KEK` (Key Encryption Key) from PIN + `pin_salt` via PBKDF2.
     - Client generates RSA-OAEP key pair.
     - Client generates `kek_iv` 12 bytes
-    - Client wraps the private key with `KEK` + `kek_iv` → `encrypted_private_key`.
-    - Client uploads `public_key`, `encrypted_private_key`, `kek_iv` and `pin_salt` to server.
+    - Client wraps the private key with `KEK` + `kek_iv` → `wrapped_private_key`.
+    - Client uploads `public_key`, `wrapped_private_key`, `kek_iv` and `pin_salt` to server.
 2. **Recovery (New Device)**:
     - User logs in and enters PIN.
-    - Client fetches `encrypted_private_key`, `kek_iv`, and `pin_salt` from server.
+    - Client fetches `wrapped_private_key`, `kek_iv`, and `pin_salt` from server.
     - Client derives `KEK` from PIN + `pin_salt`.
     - Client unwraps private key using `KEK` + `kek_iv` and stores it in `IndexedDB`.
     - **Bulk Sync**: Client fetches the entire `ConversationKeysVault`.
-    - Client unwraps all `encrypted_key` entries using its private key and populates the local `conversation_keys` table to enable immediate message preview and history access.
+    - Client unwraps all `wrapped_shared_key` entries using its private key and populates the local `conversation_keys` table to enable immediate message preview and history access.
 3. **PIN Change**:
     - Unwrap private key with old KEK → Re-wrap with new KEK → Upload to server.
 
@@ -112,9 +111,9 @@ Both 1-1 and group conversations follow the **identical flow**:
     - Initiating client generates a random `shared_key` (AES-GCM 256-bit).
     - For **each participant** (including self), fetch their `public_key` from server, then:
         ```
-        encrypted_key = wrapKey(shared_key, participant_public_key, "RSA-OAEP")
+        wrapped_shared_key = wrapKey(shared_key, participant_public_key, "RSA-OAEP")
         ```
-    - Upload `{ user_id, conversation_id, key_version, encrypted_key }` to `ConversationKeysVault` for each participant.
+    - Upload `{ user_id, conversation_id, key_version, wrapped_shared_key }` to `ConversationKeysVault` for each participant.
 
 2. **Sending a Message**:
     - Retrieve `shared_key` from in-memory cache (or IndexedDB fallback).
@@ -165,6 +164,7 @@ Since the private key is backed up via PIN and synced to all devices, every devi
 - **2026-05-03**: **Dropped ECDH Key Agreement** in favor of Unified Random Key Model. ECDH's zero-server-knowledge property was already negated by the vault. Pure ECDH could still support multi-device (devices share the same key pair and recompute independently), but group keys still require the vault — creating two divergent code paths with no benefit.
 - **2026-05-03**: **Chose RSA-OAEP over EC P-256** for identity key pair. EC P-256 keys in Web Crypto cannot directly encrypt data (only `deriveBits`/`deriveKey`), so direct vault key wrapping requires RSA-OAEP (`wrapKey(shared_key, rsa_public_key, "RSA-OAEP")`). This eliminates the need for ECIES and any ephemeral key fields in the vault schema.
 - **2026-05-04**: **PIN Lockout Strategy**: Decided on temporary time-based backoff (e.g., lock for 15 mins) after 5 failed attempts, rather than permanent data loss, balancing security with UX.
+- **2026-05-05**: **Key Extractability**: Updated both RSA Private Key and AES Shared Key to `extractable: true`. This is technically required for the `wrapKey()` operation to function when syncing keys to the server vault or sharing conversation keys with participants.
 - **2026-05-04**: **Race Condition Mitigation**: Handled via Server-side validation (Server rejects invalid `key_version` uploads) and Client-side Fail-Soft (UI gracefully displays "cannot decrypt" without crashing).
 - **2026-05-04**: **Forward Secrecy**: Opted out of time/message-based auto-rotation for simplicity. Keys only rotate on membership changes.
 - **2026-05-04**: **Zero-Trust Signatures**: Deferred digital signatures for key distribution to v2. V1 will rely on Server API security (JWT/Role validation) to prevent unauthorized vault uploads.

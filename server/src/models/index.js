@@ -3,6 +3,7 @@ const Message = require('./messagesModel');
 const Call = require('./callsModel');
 const User = require('./usersModel');
 const Conversation = require('./conversationsModel');
+const ConversationKeysVault = require('./conversationkeysvaultModel');
 const Participant = require('./participantsModel');
 const PinnedMessages = require('./pinnedmessagesModel');
 const Friends = require('./friendsModel');
@@ -18,13 +19,16 @@ const PostTag = require('./posttagsModel');
 const SavedPost = require('./savedpostsModel');
 const Emojis = require('./emojisModel');
 const MessageReaction = require('./messagereactionsModel');
+const Bot = require('./botsModel.js');
 
 // Tổng hợp tất cả models
 const models = {
+    Bot,
     Message,
     Call,
     User,
     Conversation,
+    ConversationKeysVault,
     Participant,
     PinnedMessages,
     Friends,
@@ -39,7 +43,8 @@ const models = {
     PostTag,
     SavedPost,
     Emojis,
-    MessageReaction
+    MessageReaction,
+
 };
 
 // Khởi tạo tất cả associations
