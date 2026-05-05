@@ -11,5 +11,6 @@ router.get('/:bot_user_id', botController.getBotByUserId);
 router.post('/:bot_user_id/webhook', botController.callWebhook);
 router.post('/', botController.create);
 router.put('/:bot_id', botController.update);
+router.delete('/:bot_id', botController.delete);
 
 module.exports = router;

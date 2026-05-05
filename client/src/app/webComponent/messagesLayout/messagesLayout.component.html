@@ -430,7 +430,7 @@
                     </div>
 
                     <!-- Edited badge -->
-                    @if (msg.is_edited && !msg.is_deleted) {
+                    @if (msg.is_edited && !msg.is_deleted && !getMessageInfor().other_participant?.is_bot) {
                     <div class="edited-badge me">Đã chỉnh sửa</div>
                     }
 
@@ -670,7 +670,7 @@
                     </div>
 
                     <!-- Edited badge -->
-                    @if (msg.is_edited && !msg.is_deleted) {
+                    @if (msg.is_edited && !msg.is_deleted && !getMessageInfor().other_participant?.is_bot) {
                     <div class="edited-badge other">Đã chỉnh sửa</div>
                     }
 
@@ -705,15 +705,7 @@
 @if (!isBlocked()) {
 <div class="input-area">
     <!-- Bot Quick Tags (Minimalist like Zalo/Facebook) -->
-    @if (getMessageInfor().type === 'direct' && getMessageInfor().other_participant?.is_bot) {
-    <div class="bot-quick-tags">
-        <button class="bot-tag" type="button" (click)="quickAppend('Tóm tắt nội dung hội thoại')">✨ Tóm tắt</button>
-        <button class="bot-tag" type="button" (click)="handleSheet()">Thống kê</button>
-        <button class="bot-tag" type="button" (click)="quickAppend('Gợi ý trả lời: ')">💡 Gợi ý</button>
-        <button class="bot-tag" type="button" (click)="quickAppend('Công thức nấu món: ')">🍳 Nấu ăn</button>
-        <button class="bot-tag" type="button" (click)="quickAppend('Giải toán: ')">🔢 Toán học</button>
-    </div>
-    }
+
     @if (showUnreadSummaryPopup) {
     <div class="unread-summary-popup" role="status" aria-live="polite">
         <span class="unread-summary-count">{{ unreadSummaryCount }} unread messages</span>

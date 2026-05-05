@@ -18,8 +18,12 @@ export class BotServices {
         return this.http.get(`${this.apiUrl}`);
     }
 
-    updateBot(botId: string, data: { webhook_url?: string }) {
+    updateBot(botId: string, data: Record<string, any>) {
         return this.http.put(`${this.apiUrl}/${botId}`, data);
+    }
+
+    deleteBot(botId: string) {
+        return this.http.delete(`${this.apiUrl}/${botId}`);
     }
 
     getBotById(botId: string) {
