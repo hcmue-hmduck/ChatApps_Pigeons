@@ -11,7 +11,7 @@ The system uses a **Unified Random Key Model**: both 1-1 and group conversations
 - **Identity Key Pair**: RSA-OAEP (2048-bit) — used to **wrap/unwrap `shared_key` vault entries** via `crypto.subtle.wrapKey()` / `crypto.subtle.unwrapKey()`.
 - **Conversation Key (`shared_key`)**: AES-GCM 256-bit, randomly generated per conversation (or per rotation). (IV: 12 bytes).
 - **Key Derivation (for PIN)**: PBKDF2 with **SHA-256**, 100,000 iterations → produces `KEK` (Key Encryption Key). (Salt: 16 bytes).
-- **Data Formats**: RSA public keys in **SPKI** (Base64); encrypted private key in **JWK** wrapped by KEK.
+- **Data Formats**: RSA public keys in **SPKI** (Base64) - stored as `publicKeyBase64`; encrypted private key in **JWK** wrapped by KEK; Salt and IV are **Base64** strings.
 
 
 ## 3. Key Management
@@ -27,7 +27,7 @@ The schema for each user's database is as follows:
 
 - **Table: `own_keys`** (Stores current user's identity keys)
     - `user_id`: Primary Key
-    - `public_key_spki`: RSA-OAEP public key, SPKI Base64 string
+    - `publicKeyBase64`: RSA-OAEP public key, SPKI Base64 string
     - `private_key_obj`: RSA-OAEP private key, CryptoKey (extractable: true)
 - **Table: `conversation_keys`** (Stores shared AES keys per conversation per version)
     - `conversation_id`: Foreign Key (Index)
@@ -51,7 +51,7 @@ The schema for each user's database is as follows:
 The following tables are required on the server:
 
 - **`Users` Table Updates**:
-    - `public_key`: RSA-OAEP public key, SPKI Base64 string.
+    - `publicKeyBase64`: RSA-OAEP public key, SPKI Base64 string.
     - `wrapped_private_key`: The RSA private key wrapped with KEK (AES-GCM).
     - `kek_iv`: Base64 string (The 12-byte random IV used for the private key).
     - `pin_salt`: Base64 string, Random salt for PBKDF2 (16 bytes).

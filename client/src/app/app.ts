@@ -6,6 +6,8 @@ import { CallBroadcastService } from './services/callBroadcastService';
 import { CallService } from './services/callService';
 import { IncommingCallLayout } from './webComponent/incommingCallLayout/incommingCallLayout';
 import { CryptoUtilityService } from './services/e2ee/cryptoUtilityService';
+import { LocalDatabaseService } from './services/e2ee/localDatabaseService';
+import { KeyManagementService } from './services/e2ee/keyManagementService';
 
 @Component({
     selector: 'app-root',
@@ -23,6 +25,8 @@ export class App implements OnInit {
 
     // test service
     cryptoService = inject(CryptoUtilityService);
+    localDBService = inject(LocalDatabaseService);
+    keyMService = inject(KeyManagementService);
 
     ngOnInit() {
       
@@ -36,5 +40,6 @@ export class App implements OnInit {
                 this.callService.updateStatus(call_id, 'ended');
             }
         });
+        
     }
 }

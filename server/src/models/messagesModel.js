@@ -45,7 +45,7 @@ const Message = sequelize.define('Message', {
         field: 'key_version'
     },
     iv: {
-        type: DataTypes.TEXT,
+        type: DataTypes.STRING(64),
         allowNull: true,
         field: 'iv'
     },

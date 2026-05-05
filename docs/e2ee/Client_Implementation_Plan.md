@@ -35,6 +35,7 @@ graph TD
 Chịu trách nhiệm hoàn toàn về các phép toán mã hóa sử dụng `Web Crypto API`. Đây là một service thuần túy (pure functions), không chứa state.
 - **Nhiệm vụ**:
   - `generateIdentityKeyPair()`: Tạo cặp khóa RSA-OAEP.
+  - `exportPublicKey(key)`: Export Public Key sang ArrayBuffer (SPKI).
   - `generateSharedKey()`: Tạo khóa AES-GCM (256-bit).
   - `deriveKEKFromPIN(pin, salt)`: Dùng PBKDF2 biến PIN thành KEK (Salt: 16 byte).
   - `wrapKey() / unwrapKey()`: Bọc/mở khóa private key (bằng KEK) và shared_key (bằng RSA public key).
@@ -52,7 +53,7 @@ Tích hợp **Dexie.js** để quản lý IndexedDB theo mô hình Dynamic Datab
 ### 2.3. `KeyManagementService` (`keyManagement.service.ts`)
 Quản lý luồng nghiệp vụ của Khóa và Vault (phối hợp giữa API Server, LocalDB và CryptoUtility).
 - **Nhiệm vụ**:
-  - `setupNewDevice(pin)`: Gọi Crypto để tạo RSA keypair, tạo KEK từ PIN, wrap private key, gọi API đẩy lên server, lưu vào LocalDB.
+  - `setupNewDevice(pin)`: Gọi Crypto để tạo RSA keypair, tạo KEK từ PIN, wrap private key, gọi API đẩy lên server (gửi `publicKeyBase64`, `wrappedPrivateKey`, `kekIV`, `pinSalt` dưới dạng Base64), lưu vào LocalDB.
   - `recoverDevice(pin)`: Lấy wrapped private key từ server, dùng PIN mở khóa, lưu vào LocalDB, tải toàn bộ `ConversationKeysVault` từ server về unwrap và lưu vào `conversation_keys` table.
   - `getSharedKey(conversationId, keyVersion)`: Lấy `shared_key` từ in-memory cache hoặc LocalDB. Nếu không có, gọi API tải vault entry về, unwrap và lưu cache.
   - `rotateSharedKey(conversationId, participants)`: Tạo `shared_key` version mới, wrap cho từng participant public key và gọi API upload vault.

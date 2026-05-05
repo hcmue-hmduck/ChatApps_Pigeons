@@ -4,6 +4,7 @@ const livekitRouter = require('./livekitRouter.js');
 const uploadRouter = require('./uploadRouter');
 const accessRouter = require('./accessRouter.js');
 const botRouter = require('./botRouter.js');
+const e2eeRouter = require('./E2EERouter.js');
 const { authentication } = require('../middlewares/authMiddleware.js');
 
 function route(app) {
@@ -14,6 +15,7 @@ function route(app) {
     app.use('/home', homeRouter);
     app.use('/livekit', livekitRouter);
     app.use('/upload', uploadRouter);
+    app.use('/e2ee', e2eeRouter);
 }
 
 module.exports = route;

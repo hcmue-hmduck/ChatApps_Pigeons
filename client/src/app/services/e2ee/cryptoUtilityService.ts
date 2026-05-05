@@ -9,19 +9,13 @@ import { inject, Injectable, PLATFORM_ID } from '@angular/core';
  */
 export type Base64String = string & { readonly __brand: 'Base64String' };
 
-declare global {
-    interface Window {
-        TestCryptoUtilityService: any;
-    }
-}
-
 @Injectable({
     providedIn: 'root',
 })
 export class CryptoUtilityService {
-    private platformId = inject(PLATFORM_ID);
     constructor() {
-        if (isPlatformBrowser(this.platformId)) window.TestCryptoUtilityService = this;
+        // test
+        if (typeof window !== 'undefined') (window as any).TestCryptoUtilityService = this;
     }
 
     stringToArrayBuffer(str: string): ArrayBuffer {
@@ -58,7 +52,15 @@ export class CryptoUtilityService {
         return bytes.buffer;
     }
 
-    async generateIdentityKeyPair(): Promise<CryptoKeyPair> {
+    async generateRandomSalt() {
+        return window.crypto.getRandomValues(new Uint8Array(16));
+    }
+
+    async generateRandomIV() {
+        return window.crypto.getRandomValues(new Uint8Array(12));
+    }
+
+    async generateIdentityKeyPair() {
         const algorithms: RsaHashedKeyGenParams = {
             name: 'RSA-OAEP',
             modulusLength: 2048,
@@ -66,11 +68,19 @@ export class CryptoUtilityService {
             hash: 'SHA-256',
         };
 
-        return await window.crypto.subtle.generateKey(
+        const { publicKey, privateKey } = await window.crypto.subtle.generateKey(
             algorithms, // algorithms
             true, // extractable
             ['wrapKey', 'unwrapKey'], // key usages
         );
+
+        const publicKeyBuffer = await window.crypto.subtle.exportKey('spki', publicKey);
+        const publicKeyBase64 = this.arrayBufferToBase64(publicKeyBuffer);
+
+        return {
+            publicKeyBase64,
+            privateKeyObj: privateKey,
+        };
     }
 
     async generateSharedKey(): Promise<CryptoKey> {

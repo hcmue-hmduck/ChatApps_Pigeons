@@ -152,7 +152,7 @@ CREATE TABLE IF NOT EXISTS messages (
     is_e2ee BOOLEAN DEFAULT FALSE,
     key_version INTEGER,
     encrypted_content TEXT,
-    iv VARCHAR(128)
+    iv VARCHAR(64)
 );
 
 CREATE INDEX IF NOT EXISTS idx_messages_conversation_created ON messages(conversation_id, created_at DESC);
