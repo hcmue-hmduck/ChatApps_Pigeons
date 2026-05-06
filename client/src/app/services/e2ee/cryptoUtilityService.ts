@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { E2EEError, E2EEErrorCode } from './E2EEError';
+import { E2EEError, E2EEErrorCode } from './te2eeError';
 
 /**
  * Branded Type: Đại diện cho một chuỗi đã được mã hóa Base64.

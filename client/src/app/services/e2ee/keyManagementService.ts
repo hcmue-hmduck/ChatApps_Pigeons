@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../authService';
 import { CryptoUtilityService } from './cryptoUtilityService';
-import { E2eeApiService, SetupKeysPayload, SharedKeyVaultPayload } from './ApiService';
+import { E2eeApiService, SetupKeysPayload, SharedKeyVaultPayload } from './te2eeApiService';
 import { LocalDatabaseService } from './localDatabaseService';
 
 @Injectable({
