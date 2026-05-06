@@ -96,12 +96,12 @@ export class LocalDatabaseService {
         return await this.db.ownKeys.get(userId);
     }
 
-    async saveSharedKey(keyEntry: ConversationKey) {
+    async saveConversationKey(keyEntry: ConversationKey) {
         if (!this.db) throw new Error('Database not initialized');
         return await this.db.conversationKeys.put(keyEntry);
     }
 
-    async getSharedKey(conversationId: string, keyVersion: number) {
+    async getConversationKey(conversationId: string, keyVersion: number) {
         if (!this.db) throw new Error('Database not initialized');
         return await this.db.conversationKeys.get([conversationId, keyVersion]);
     }
@@ -111,10 +111,10 @@ export class LocalDatabaseService {
         return await this.db.conversationKeys.toArray();
     }
 
-    async getLatestSharedKey(conversationId: string) {
+    async getLatestConversationKey(conversationId: string) {
         if (!this.db) throw new Error('Database not initialized');
         return await this.db.conversationKeys
-            .where('[conversationId+keyVersion')
+            .where('[conversationId+keyVersion]')
             .between([conversationId, Dexie.minKey], [conversationId, Dexie.maxKey])
             .reverse()
             .first();

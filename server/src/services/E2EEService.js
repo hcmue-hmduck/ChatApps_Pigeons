@@ -1,4 +1,4 @@
-const { BadRequestError } = require('../core/errorResponse.js');
+const { BadRequestError, E2EEErrorCode } = require('../core/errorResponse.js');
 const userModel = require('../models/usersModel.js');
 const conversationKeysVaultModel = require('../models/conversationkeysvaultModel.js');
 
@@ -34,23 +34,31 @@ class E2EEService {
         };
     }
 
-    async getPublicKeys(userIds) {
-        if (!userIds || !Array.isArray(userIds) || userIds.length === 0)
+    async getPublicKeys({ participant_ids }) {
+        if (!participant_ids || !Array.isArray(participant_ids) || participant_ids.length === 0)
             throw new BadRequestError('missing parameters');
 
         return await userModel.findAll({
-            where: { id: userIds },
+            where: { id: participant_ids },
             attributes: ['id', 'public_key'],
             raw: true,
         });
     }
 
-    async addSharedKeys({ shared_keys_vault }) {
-        if (!shared_keys_vault || !Array.isArray(shared_keys_vault) || shared_keys_vault.length === 0)
+    async getLatestConversationKey(conversation_id) {
+        if (!conversation_id) throw new BadRequestError('invalid parameters');
+        return await conversationKeysVaultModel.findOne({
+            where: { conversation_id },
+            order: [['key_version', 'DESC']],
+        });
+    }
+
+    async addConversationKeys({ conversation_key_vaults }) {
+        if (!conversation_key_vaults || !Array.isArray(conversation_key_vaults) || conversation_key_vaults.length === 0)
             throw new BadRequestError('invalid parameters');
 
         const validField = ['user_id', 'conversation_id', 'wrapped_shared_key', 'key_version'];
-        shared_keys_vault.forEach((vault) => {
+        conversation_key_vaults.forEach((vault) => {
             const keys = Object.keys(vault);
             if (keys.length !== validField.length) throw new BadRequestError('Invalid number of fields in vault entry');
 
@@ -59,20 +67,24 @@ class E2EEService {
             });
         });
 
-        // Kiểm tra xem Version khóa này đã tồn tại trong phòng này chưa
-        const { conversation_id, key_version } = shared_keys_vault[0];
-        const isExist = await conversationKeysVaultModel.findOne({
-            where: { conversation_id, key_version },
-        });
+        const { conversation_id, key_version } = conversation_key_vaults[0];
 
-        if (isExist) {
-            throw new BadRequestError(`Keys for version ${key_version} already exist in this conversation.`);
+        const latestSharedKey = await this.getLatestConversationKey(conversation_id);
+
+        const latestKeyVersion = latestSharedKey?.key_version ? latestSharedKey.key_version : 0;
+
+        if (key_version !== latestKeyVersion + 1) {
+            throw new BadRequestError(
+                `Keys for version ${key_version} invalid in this conversation.`,
+                undefined,
+                E2EEErrorCode.SERVER_KEY_VERSION_MISMATCH,
+            );
         }
 
-        return await conversationKeysVaultModel.bulkCreate(shared_keys_vault);
+        return await conversationKeysVaultModel.bulkCreate(conversation_key_vaults);
     }
 
-    async getSharedKey(user_id, { conversation_id, key_version }) {
+    async getConversationKey(user_id, conversation_id, key_version) {
         if (!user_id || !conversation_id || !key_version) throw new BadRequestError('invalid parmameters');
 
         const foundKey = await conversationKeysVaultModel.findOne({
@@ -85,7 +97,7 @@ class E2EEService {
         return foundKey;
     }
 
-    async getSharedKeys(user_id) {
+    async getConversationKeys(user_id) {
         if (!user_id) throw new BadRequestError('invalid parameters');
 
         return await conversationKeysVaultModel.findAll({

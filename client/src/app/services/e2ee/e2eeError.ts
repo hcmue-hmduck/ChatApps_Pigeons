@@ -15,6 +15,11 @@ export enum E2EEErrorCode {
     // Lỗi hạ tầng
     DB_OPERATION_FAILED = 'E2EE_DB_OPERATION_FAILED',
     SERVER_SYNC_FAILED = 'E2EE_SERVER_SYNC_FAILED',
+
+    // errorCode response từ BE
+    SERVER_KEY_VERSION_MISMATCH = 'E2EE_SERVER_KEY_VERSION_MISMATCH',
+    SERVER_IDENTITY_KEY_NOT_FOUND = 'E2EE_SERVER_IDENTITY_KEY_NOT_FOUND',
+    SERVER_VAULT_ALREADY_EXISTS = 'E2EE_SERVER_VAULT_ALREADY_EXISTS',
 }
 
 // Chuyển thành const object thay vì enum
@@ -25,10 +30,15 @@ export const E2EEErrorMessage: Record<E2EEErrorCode, string> = {
         'Không tìm thấy thông tin định danh bảo mật trên thiết bị này.',
     [E2EEErrorCode.SHARED_KEY_NOT_FOUND]: 'Cuộc trò chuyện này chưa được thiết lập mã hóa.',
     [E2EEErrorCode.INVALID_KEY]: 'Khóa bảo mật không hợp lệ hoặc đã bị thay đổi.',
-    [E2EEErrorCode.ENCRYPTION_FAILED]: 'Lỗi trong quá trình mã hóa tin nhắn.',
-    [E2EEErrorCode.DECRYPTION_FAILED]: 'Không thể giải mã tin nhắn này.',
+    [E2EEErrorCode.ENCRYPTION_FAILED]: 'Lỗi trong quá trình mã hóa dữ liệu này.',
+    [E2EEErrorCode.DECRYPTION_FAILED]: 'Không thể giải mã dữ liệu này.',
     [E2EEErrorCode.DB_OPERATION_FAILED]: 'Lỗi truy xuất dữ liệu bảo mật cục bộ.',
     [E2EEErrorCode.SERVER_SYNC_FAILED]: 'Không thể đồng bộ dữ liệu bảo mật với máy chủ.',
+    [E2EEErrorCode.SERVER_KEY_VERSION_MISMATCH]:
+        'Phiên bản khóa không đồng bộ với máy chủ. Vui lòng làm mới dữ liệu.',
+    [E2EEErrorCode.SERVER_IDENTITY_KEY_NOT_FOUND]:
+        'Không tìm thấy thông tin bảo mật của thành viên trên hệ thống.',
+    [E2EEErrorCode.SERVER_VAULT_ALREADY_EXISTS]: 'Phiên bản khóa này đã tồn tại trên máy chủ.',
 };
 
 export class E2EEError extends Error {

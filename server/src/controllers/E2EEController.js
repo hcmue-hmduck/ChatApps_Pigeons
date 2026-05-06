@@ -19,33 +19,42 @@ class E2EEController {
     }
 
     async getPublicKeys(req, res, next) {
-        const { participant_ids } = req.body;
         return new SuccessResponse({
             message: 'get public keys successfully',
-            metadata: await e2eeService.getPublicKeys(participant_ids),
+            metadata: await e2eeService.getPublicKeys(req.body),
         }).send(res);
     }
 
-    async addSharedKeys(req, res, next) {
+    async addConversationKeys(req, res, next) {
         return new SuccessResponse({
             message: 'add shared keys successfully',
-            metadata: await e2eeService.addSharedKeys(req.body),
+            metadata: await e2eeService.addConversationKeys(req.body),
         }).send(res);
     }
 
-    async getSharedKey(req, res, next) {
+    async getConversationKey(req, res, next) {
         const { id } = req.user;
+        const conv_id = req.params?.conv_id;
+        const key_version = req.params?.key_version;
         return new SuccessResponse({
             message: 'ger shared key successfully',
-            metadata: await e2eeService.getSharedKey(id, req.body),
+            metadata: await e2eeService.getConversationKey(id, conv_id, key_version),
         }).send(res);
     }
 
-    async getSharedKeys(req, res, next) {
-        const {id} = req.user;
-         return new SuccessResponse({
+    async getConversationKeys(req, res, next) {
+        const { id } = req.user;
+        return new SuccessResponse({
             message: 'ger shared keys successfully',
-            metadata: await e2eeService.getSharedKeys(id),
+            metadata: await e2eeService.getConversationKeys(id),
+        }).send(res);
+    }
+
+    async getLatestConversationKey(req, res, next) {
+        const conv_id = req.params?.conv_id;
+        return new SuccessResponse({
+            message: 'get latest conversation key successfully',
+            metadata: await e2eeService.getLatestConversationKey(conv_id),
         }).send(res);
     }
 }

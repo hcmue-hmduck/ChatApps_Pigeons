@@ -1,7 +1,9 @@
-import { HttpClient } from '@angular/common/http';
+import { Conversation } from './../conversation';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import { Base64String } from './cryptoUtilityService';
+import { url } from 'inspector';
 
 export interface SetupKeysPayload {
     public_key: Base64String;
@@ -10,7 +12,7 @@ export interface SetupKeysPayload {
     pin_salt: Base64String;
 }
 
-export interface SharedKeyVaultPayload {
+export interface ConversationKeyVaultPayload {
     user_id: string;
     conversation_id: string;
     wrapped_shared_key: Base64String;
@@ -29,25 +31,32 @@ export class E2eeApiService {
     }
 
     getMyKeys() {
-        return this.httpClient.get<any>(`${this.apiUrl}/get/keys`);
+        return this.httpClient.get<any>(`${this.apiUrl}/keys`);
     }
 
     getPublicKeys(participant_ids: string[]) {
         return this.httpClient.post<any>(`${this.apiUrl}/get/public-keys`, { participant_ids });
     }
 
-    addSharedKeysVault(shared_keys_vault: SharedKeyVaultPayload[]) {
-        return this.httpClient.post(`${this.apiUrl}/shared-keys`, { shared_keys_vault });
-    }
-
-    getSharedKey(conversation_id: string, key_version: number) {
-        return this.httpClient.post<any>(`${this.apiUrl}/get/shared-key`, {
-            conversation_id,
-            key_version,
+    addConversationKeys(conversation_key_vaults: ConversationKeyVaultPayload[]) {
+        return this.httpClient.post(`${this.apiUrl}/conversation-keys`, {
+            conversation_key_vaults,
         });
     }
 
-    getSharedKeys() {
-        return this.httpClient.get<any>(`${this.apiUrl}/get/shared-keys`);
+    getConversationKey(conversation_id: string, key_version: number) {
+        return this.httpClient.get<any>(
+            `${this.apiUrl}/conversation-key/${conversation_id}/${key_version}`,
+        );
+    }
+
+    getConversationKeys() {
+        return this.httpClient.get<any>(`${this.apiUrl}/conversation-keys`);
+    }
+
+    getLatestConversationKey(conversation_id: string) {
+        return this.httpClient.get<any>(
+            `${this.apiUrl}/latest-conversation-key/${conversation_id}`,
+        );
     }
 }
