@@ -1,14 +1,14 @@
 import { Injectable } from '@angular/core';
-import { Base64String } from './cryptoUtilityService';
 import { Dexie, Table } from 'dexie';
 import { AuthService } from '../authService';
+import { Base64String } from './cryptoUtilityService';
 
 // 1. Lưu bộ khóa cá nhân
 export interface OwnKey {
     userId: string; // FK
     publicKeyBase64: Base64String; // Base64
     privateKeyObj: CryptoKey;
-    pinHash: Base64String
+    pinHash: Base64String;
 }
 
 // 2. Lưu lịch sử Shared Keys
@@ -87,8 +87,8 @@ export class LocalDatabaseService {
     }
 
     async updateOwnKey(userId: string, data: Partial<OwnKey>) {
-        if(!this.db) throw new Error('Database not initialized');
-        return await this.db.ownKeys.update(userId, data)
+        if (!this.db) throw new Error('Database not initialized');
+        return await this.db.ownKeys.update(userId, data);
     }
 
     async getOwnKey(userId: string) {
@@ -96,14 +96,28 @@ export class LocalDatabaseService {
         return await this.db.ownKeys.get(userId);
     }
 
-    async saveConversationKey(keyEntry: ConversationKey) {
+    async saveSharedKey(keyEntry: ConversationKey) {
         if (!this.db) throw new Error('Database not initialized');
         return await this.db.conversationKeys.put(keyEntry);
     }
 
-    async getConversationKey(conversationId: string, keyVersion: number) {
+    async getSharedKey(conversationId: string, keyVersion: number) {
         if (!this.db) throw new Error('Database not initialized');
         return await this.db.conversationKeys.get([conversationId, keyVersion]);
+    }
+
+    async getConversationsKeys() {
+        if (!this.db) throw new Error('Database not initialized');
+        return await this.db.conversationKeys.toArray();
+    }
+
+    async getLatestSharedKey(conversationId: string) {
+        if (!this.db) throw new Error('Database not initialized');
+        return await this.db.conversationKeys
+            .where('[conversationId+keyVersion')
+            .between([conversationId, Dexie.minKey], [conversationId, Dexie.maxKey])
+            .reverse()
+            .first();
     }
 
     async saveMessage(message: LocalMessage) {

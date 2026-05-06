@@ -1,8 +1,8 @@
 import { inject, Injectable } from '@angular/core';
-import { firstValueFrom, shareReplay } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../authService';
-import { Base64String, CryptoUtilityService } from './cryptoUtilityService';
-import { E2eeApiService, SetupKeysPayload, SharedKeyVaultPayload } from './e2eeApiService';
+import { CryptoUtilityService } from './cryptoUtilityService';
+import { E2eeApiService, SetupKeysPayload, SharedKeyVaultPayload } from './ApiService';
 import { LocalDatabaseService } from './localDatabaseService';
 
 @Injectable({
@@ -12,13 +12,28 @@ export class KeyManagementService {
     private cryptoUtil = inject(CryptoUtilityService);
     private localDB = inject(LocalDatabaseService);
     private e2eeApiService = inject(E2eeApiService);
-    private userId: string | null = null;
+
+    private userId = ''
+    private convesationKeys: Map<string, CryptoKey> = new Map();
 
     constructor(private authService: AuthService) {
         if (typeof window !== 'undefined') {
             (window as any).TestKeyMService = this;
         }
         this.userId = authService.getUserId();
+    }
+
+    // async syncKeys() {
+    //     const conversationKeys = await this.localDB.getConversationsKeys();
+    //     for (const c of conversationKeys) {
+    //         const { conversationId, keyVersion, sharedKeyObj } = c;
+    //         this.convesationKeys.set(`${conversationKeys}_${keyVersion}`, sharedKeyObj);
+    //     }
+    // }
+
+    async checkIdentityKeyPair() {
+        const ownKeys = await this.localDB.getOwnKey(this.userId)
+        return !!ownKeys
     }
 
     async setupNewDevice(pin: string) {
@@ -133,7 +148,7 @@ export class KeyManagementService {
                     privateKeyObj,
                 );
                 arrPromise.push(
-                    this.localDB.saveConversationKey({
+                    this.localDB.saveSharedKey({
                         conversationId: conversation_id,
                         keyVersion: key_version,
                         sharedKeyObj,
@@ -155,7 +170,7 @@ export class KeyManagementService {
             const participants = res.metadata;
 
             const sharedKey = await this.cryptoUtil.generateSharedKey();
-            await this.localDB.saveConversationKey({
+            await this.localDB.saveSharedKey({
                 conversationId,
                 sharedKeyObj: sharedKey,
                 keyVersion: 1,
