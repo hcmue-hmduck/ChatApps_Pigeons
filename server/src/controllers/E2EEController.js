@@ -18,17 +18,19 @@ class E2EEController {
         }).send(res);
     }
 
-    async getPublicKeys(req, res, next) {
+    async getConversationMemberKeys(req, res, next) {
+        const conv_id = req.params.conv_id;
         return new SuccessResponse({
-            message: 'get public keys successfully',
-            metadata: await e2eeService.getPublicKeys(req.body),
+            message: 'get conversation members keys successfully',
+            metadata: await e2eeService.getConversationMemberKeys(conv_id),
         }).send(res);
     }
 
     async addConversationKeys(req, res, next) {
+        const {id} = req.user
         return new SuccessResponse({
             message: 'add shared keys successfully',
-            metadata: await e2eeService.addConversationKeys(req.body),
+            metadata: await e2eeService.addConversationKeys(id, req.body),
         }).send(res);
     }
 
@@ -51,10 +53,11 @@ class E2EEController {
     }
 
     async getLatestConversationKey(req, res, next) {
+        const { id } = req.user;
         const conv_id = req.params?.conv_id;
         return new SuccessResponse({
             message: 'get latest conversation key successfully',
-            metadata: await e2eeService.getLatestConversationKey(conv_id),
+            metadata: await e2eeService.getLatestConversationKey(id, conv_id),
         }).send(res);
     }
 }

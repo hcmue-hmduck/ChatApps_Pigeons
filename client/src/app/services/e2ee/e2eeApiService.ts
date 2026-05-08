@@ -34,8 +34,10 @@ export class E2eeApiService {
         return this.httpClient.get<any>(`${this.apiUrl}/keys`);
     }
 
-    getPublicKeys(participant_ids: string[]) {
-        return this.httpClient.post<any>(`${this.apiUrl}/get/public-keys`, { participant_ids });
+    getConversationMemberKeys(conversation_id: string) {
+        return this.httpClient.get<any>(
+            `${this.apiUrl}/conversation-member-keys/${conversation_id}`,
+        );
     }
 
     addConversationKeys(conversation_key_vaults: ConversationKeyVaultPayload[]) {

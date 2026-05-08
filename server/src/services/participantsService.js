@@ -48,6 +48,15 @@ class ParticipantsService {
         });
     }
 
+    async getParticipantIdsByConversationId(conversationId) {
+        if(!conversationId) throw new BadRequestError('invalid params')
+        return await participantsModel.findAll({
+            where: { conversation_id: conversationId },
+            attributes: ['user_id'],
+            raw: true,
+        });
+    }
+
     // Tạo participant mới
     async createParticipant(conversation_id, participantData) {
         const participantsData = {

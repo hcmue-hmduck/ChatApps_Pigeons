@@ -165,23 +165,58 @@ export class KeyManagementService {
         }
     }
 
-    async establishConversationSercurity(
-        conversationId: string,
-        participantIds: string[],
-        keyVersion = 1,
-    ) {
+    // async establishConversationSercurity(
+    //     conversationId: string,
+    //     participantIds: string[],
+    //     keyVersion = 1,
+    // ) {
+    //     try {
+    //         participantIds.push(this.userId!); // thêm id của chính mình
+    //         const res = await firstValueFrom(
+    //             this.e2eeApiService.getConversationMemberKeys(participantIds),
+    //         );
+    //         const participants = res.metadata;
+
+    //         const sharedKey = await this.cryptoUtil.generateSharedKey();
+    //         const payload: ConversationKeyVaultPayload[] = [];
+    //         for (const p of participants) {
+    //             const publicKeyObj = await this.cryptoUtil.importPublicKey(p.public_key);
+    //             const { wrappedKey } = await this.cryptoUtil.wrapKey(sharedKey, publicKeyObj);
+    //             payload.push({
+    //                 user_id: p.id,
+    //                 conversation_id: conversationId,
+    //                 wrapped_shared_key: wrappedKey,
+    //                 key_version: keyVersion,
+    //             });
+    //         }
+
+    //         await firstValueFrom(this.e2eeApiService.addConversationKeys(payload));
+
+    //         return await this.localDB.saveConversationKey({
+    //             conversationId,
+    //             sharedKeyObj: sharedKey,
+    //             keyVersion,
+    //         });
+    //     } catch (error) {
+    //         console.error(`establishConversationSercurity`, error);
+    //         throw error;
+    //     }
+    // }
+
+    async establishConversationSercurity(conversationId: string, keyVersion = 1) {
         try {
-            participantIds.push(this.userId!); // thêm id của chính mình
-            const res = await firstValueFrom(this.e2eeApiService.getPublicKeys(participantIds));
-            const participants = res.metadata;
+            const res = await firstValueFrom(
+                this.e2eeApiService.getConversationMemberKeys(conversationId),
+            );
+            const memberKeys = res.metadata;
 
             const sharedKey = await this.cryptoUtil.generateSharedKey();
             const payload: ConversationKeyVaultPayload[] = [];
-            for (const p of participants) {
-                const publicKeyObj = await this.cryptoUtil.importPublicKey(p.public_key);
+            for (const member of memberKeys) {
+                const publicKeyObj = await this.cryptoUtil.importPublicKey(member.public_key);
                 const { wrappedKey } = await this.cryptoUtil.wrapKey(sharedKey, publicKeyObj);
                 payload.push({
-                    user_id: p.id,
+                    user_id: member.id,
                     conversation_id: conversationId,
                     wrapped_shared_key: wrappedKey,
                     key_version: keyVersion,
@@ -201,21 +236,22 @@ export class KeyManagementService {
         }
     }
 
-    async rotateConversationKey(conversationId: string, participantIds: string[]) {
+    async rotateConversationKey(conversationId: string) {
         try {
-            const latestConvKeys = await this.localDB.getLatestConversationKey(conversationId);
-            if (!latestConvKeys)
-                throw new E2EEError(
-                    E2EEErrorCode.SHARED_KEY_NOT_FOUND,
-                    'latest shared key not found',
-                );
+            const latestConvKeys = await this.getLatestConversationKey(conversationId);
+            if (latestConvKeys) {
+                const keyVersion = latestConvKeys.keyVersion + 1;
 
-            const keyVersion = latestConvKeys.keyVersion + 1;
-            return await this.establishConversationSercurity(
-                conversationId,
-                participantIds,
-                keyVersion,
-            );
+                const result = await this.establishConversationSercurity(
+                    conversationId,
+                    keyVersion,
+                );
+                if (!result) throw new E2EEError(E2EEErrorCode.SETUP_FAILED);
+
+                const { sharedKeyObj } = result;
+                this.updateSharedKeyCache(conversationId, keyVersion, sharedKeyObj);
+                return result;
+            }
         } catch (error: any) {
             console.error(`rotateSharedKey`, error);
 
@@ -228,6 +264,7 @@ export class KeyManagementService {
     }
 
     private async syncLatestConversationKey(conversationId: string) {
+        console.log(`syncLatestConversationKey`);
         try {
             const res = await firstValueFrom(
                 this.e2eeApiService.getLatestConversationKey(conversationId),
@@ -238,10 +275,16 @@ export class KeyManagementService {
             const ownKey = await this.localDB.getOwnKey(this.userId);
             if (!ownKey) throw new E2EEError(E2EEErrorCode.IDENTITY_KEY_NOT_FOUND);
 
+            console.log('User ID:', this.userId);
+            console.log('Wrapped Key:', wrapped_shared_key);
+            console.log('Identity Key:', ownKey.privateKeyObj);
+
             const sharedKeyObj = await this.cryptoUtil.unwrapKey(
                 wrapped_shared_key,
                 ownKey.privateKeyObj,
             );
+
+            this.updateSharedKeyCache(conversationId, key_version, sharedKeyObj)
 
             return await this.localDB.saveConversationKey({
                 conversationId,
@@ -366,9 +409,9 @@ export class KeyManagementService {
                 sharedKeyObj,
             };
         } catch (error: any) {
-            const errorCodeServer =  error.error.errorCode;
-            if(errorCodeServer === E2EEErrorCode.SERVER_VAULT_NOT_FOUND) {
-                console.log('establish');
+            const errorCodeServer = error.error.errorCode;
+            if (errorCodeServer === E2EEErrorCode.SERVER_VAULT_NOT_FOUND) {
+                return await this.establishConversationSercurity(conversationId)
             }
             throw error;
         }
