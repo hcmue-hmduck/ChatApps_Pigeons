@@ -21,7 +21,7 @@ export interface ConversationKey {
 
 // 3. Lưu tin nhắn Plaintext
 export interface LocalMessage {
-    localId: string; // FK: UUID tạo tại Client để track Optimistic UI
+    localId: number; // FK: khóa tạm tại local
     id?: string; // ID từ Server (Chỉ có sau khi gửi thành công)
     conversationId: string;
     senderId: string;
@@ -53,7 +53,7 @@ class PigeonsDatabase extends Dexie {
         this.version(1).stores({
             ownKeys: 'userId',
             conversationKeys: '[conversationId+keyVersion], conversationId',
-            messages: 'localId, id, createdAt, [conversationId+createdAt]',
+            messages: '++localId, id, createdAt, [conversationId+createdAt]', // localId tự tăng
         });
     }
 }
@@ -123,6 +123,11 @@ export class LocalDatabaseService {
     async saveMessage(message: LocalMessage) {
         if (!this.db) throw new Error('Database not initialized');
         return await this.db.messages.put(message);
+    }
+
+    async saveMessages(messages: LocalMessage[]) {
+        if (!this.db) throw new Error('Database not initialized');
+        return await this.db.messages.bulkPut(messages);
     }
 
     async getMessages(conversationId: string, offset = 0, limit = 20) {

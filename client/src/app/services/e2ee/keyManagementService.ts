@@ -1,12 +1,10 @@
-import { error } from 'node:console';
-import { AvatarWrap } from './../../models/callData';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../authService';
 import { CryptoUtilityService } from './cryptoUtilityService';
 import { ConversationKeyVaultPayload, E2eeApiService, SetupKeysPayload } from './e2eeApiService';
 import { E2EEError, E2EEErrorCode } from './e2eeError';
-import { LocalDatabaseService, OwnKey } from './localDatabaseService';
+import { LocalDatabaseService } from './localDatabaseService';
 
 @Injectable({
     providedIn: 'root',
@@ -165,45 +163,13 @@ export class KeyManagementService {
         }
     }
 
-    // async establishConversationSercurity(
-    //     conversationId: string,
-    //     participantIds: string[],
-    //     keyVersion = 1,
-    // ) {
-    //     try {
-    //         participantIds.push(this.userId!); // thêm id của chính mình
-    //         const res = await firstValueFrom(
-    //             this.e2eeApiService.getConversationMemberKeys(participantIds),
-    //         );
-    //         const participants = res.metadata;
-
-    //         const sharedKey = await this.cryptoUtil.generateSharedKey();
-    //         const payload: ConversationKeyVaultPayload[] = [];
-    //         for (const p of participants) {
-    //             const publicKeyObj = await this.cryptoUtil.importPublicKey(p.public_key);
-    //             const { wrappedKey } = await this.cryptoUtil.wrapKey(sharedKey, publicKeyObj);
-    //             payload.push({
-    //                 user_id: p.id,
-    //                 conversation_id: conversationId,
-    //                 wrapped_shared_key: wrappedKey,
-    //                 key_version: keyVersion,
-    //             });
-    //         }
-
-    //         await firstValueFrom(this.e2eeApiService.addConversationKeys(payload));
-
-    //         return await this.localDB.saveConversationKey({
-    //             conversationId,
-    //             sharedKeyObj: sharedKey,
-    //             keyVersion,
-    //         });
-    //     } catch (error) {
-    //         console.error(`establishConversationSercurity`, error);
-    //         throw error;
-    //     }
-    // }
-
-    async establishConversationSercurity(conversationId: string, keyVersion = 1) {
+    private async establishConversationSercurity(
+        conversationId: string,
+        keyVersion = 1,
+    ): Promise<{
+        keyVersion: number;
+        sharedKeyObj: CryptoKey;
+    }> {
         try {
             const res = await firstValueFrom(
                 this.e2eeApiService.getConversationMemberKeys(conversationId),
@@ -225,11 +191,20 @@ export class KeyManagementService {
 
             await firstValueFrom(this.e2eeApiService.addConversationKeys(payload));
 
-            return await this.localDB.saveConversationKey({
+            this.updateSharedKeyCache(conversationId, keyVersion, sharedKey);
+
+            console.log(`establishConversationSercurity`);
+
+            await this.localDB.saveConversationKey({
                 conversationId,
                 sharedKeyObj: sharedKey,
                 keyVersion,
             });
+
+            return {
+                keyVersion,
+                sharedKeyObj: sharedKey,
+            };
         } catch (error) {
             console.error(`establishConversationSercurity`, error);
             throw error;
@@ -242,15 +217,7 @@ export class KeyManagementService {
             if (latestConvKeys) {
                 const keyVersion = latestConvKeys.keyVersion + 1;
 
-                const result = await this.establishConversationSercurity(
-                    conversationId,
-                    keyVersion,
-                );
-                if (!result) throw new E2EEError(E2EEErrorCode.SETUP_FAILED);
-
-                const { sharedKeyObj } = result;
-                this.updateSharedKeyCache(conversationId, keyVersion, sharedKeyObj);
-                return result;
+                return await this.establishConversationSercurity(conversationId, keyVersion);
             }
         } catch (error: any) {
             console.error(`rotateSharedKey`, error);
@@ -275,16 +242,12 @@ export class KeyManagementService {
             const ownKey = await this.localDB.getOwnKey(this.userId);
             if (!ownKey) throw new E2EEError(E2EEErrorCode.IDENTITY_KEY_NOT_FOUND);
 
-            console.log('User ID:', this.userId);
-            console.log('Wrapped Key:', wrapped_shared_key);
-            console.log('Identity Key:', ownKey.privateKeyObj);
-
             const sharedKeyObj = await this.cryptoUtil.unwrapKey(
                 wrapped_shared_key,
                 ownKey.privateKeyObj,
             );
 
-            this.updateSharedKeyCache(conversationId, key_version, sharedKeyObj)
+            this.updateSharedKeyCache(conversationId, key_version, sharedKeyObj);
 
             return await this.localDB.saveConversationKey({
                 conversationId,
@@ -329,7 +292,6 @@ export class KeyManagementService {
             // local db
             const conKey = await this.localDB.getConversationKey(conversationId, keyVersion);
             if (conKey) {
-                console.log('localdb');
                 const { sharedKeyObj } = conKey;
                 this.updateSharedKeyCache(conversationId, keyVersion, sharedKeyObj);
                 return sharedKeyObj;
@@ -411,7 +373,7 @@ export class KeyManagementService {
         } catch (error: any) {
             const errorCodeServer = error.error.errorCode;
             if (errorCodeServer === E2EEErrorCode.SERVER_VAULT_NOT_FOUND) {
-                return await this.establishConversationSercurity(conversationId)
+                return await this.establishConversationSercurity(conversationId);
             }
             throw error;
         }

@@ -152,7 +152,6 @@ CREATE TABLE IF NOT EXISTS messages (
     -- For E2EE: if message is encrypted, `encrypted_content` holds ciphertext and `content` may be NULL (plaintext only stored locally)
     is_e2ee BOOLEAN DEFAULT FALSE,
     key_version INTEGER,
-    encrypted_content TEXT,
     iv VARCHAR(64)
 );
 
