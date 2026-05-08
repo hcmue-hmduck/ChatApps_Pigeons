@@ -126,6 +126,7 @@ export class LocalDatabaseService {
     }
 
     async saveMessages(messages: LocalMessage[]) {
+        console.log(`saveMessages to local db`);
         if (!this.db) throw new Error('Database not initialized');
         return await this.db.messages.bulkPut(messages);
     }

@@ -61,26 +61,36 @@ export class E2EEMessageService {
             console.error(`decryptMessage`, error);
             return {
                 ...encryptPayload,
-                content: `[Nội dung đã được mã hóa - Không thể giải mã trên thiết bị này]`,
+                content: `Nội dung đã được mã hóa`,
                 isDecrypted: false,
             };
         }
     }
 
-    async decryptMessages<T extends EncryptedPayload>(conversationId: string, payloads: T[] = []) {
-        try {
-            return await Promise.all(payloads.map((p) => this.decryptMessage(conversationId, p)));
-        } catch (error) {
-            throw error;
-        }
-    }
+    async processIncomingMessage(conversationId: string, messages: any[] = []) {
+        const decryptedMessages = await Promise.all(
+            messages.map(async (msg) => {
+                if (!msg.is_e2ee || msg.is_deleted || !msg.content) {
+                    return msg;
+                }
 
-    async processIncomingMessage<T extends EncryptedPayload>(
-        conversationId: string,
-        payload: T[] = [],
-    ) {
-        const decryptedMessages = await this.decryptMessages(conversationId, payload);
-        await this.localDB.saveMessages(decryptedMessages as any)
-        return decryptedMessages
+                const encryptedPayload = {
+                    ...msg,
+                    ciphertext: msg.content,
+                    keyVersion: msg.key_version,
+                    iv: msg.iv
+                };
+
+                const decrypted = await this.decryptMessage(conversationId, encryptedPayload);
+                return {
+                    ...msg,
+                    content: decrypted.content,
+                    is_decrypted: true,
+                };
+            }),
+        );
+
+        // await this.localDB.saveMessages(decryptedMessages as any);
+        return decryptedMessages;
     }
 }

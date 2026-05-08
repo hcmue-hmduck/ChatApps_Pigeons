@@ -4,9 +4,10 @@ const pinnedmessagesService = require('./pinnedmessagesService');
 const messageReactionService = require('./message_reactionsService');
 const usersService = require('./usersService');
 const linkpreviewService = require('./linkpreviewService');
-const participantsService = require('./participantsService.js')
-const { BadRequestError } = require('../core/errorResponse.js');
-const openAiService = require('../services/openAiService.js')
+const participantsService = require('./participantsService.js');
+const { BadRequestError, E2EEErrorCode } = require('../core/errorResponse.js');
+const openAiService = require('../services/openAiService.js');
+const e2eeService = require('./E2EEService');
 
 class HomeMessagesService {
     async getMessagesByConversation(conversationId, limit = 100, offset = 0) {
@@ -140,75 +141,80 @@ class HomeMessagesService {
         };
     }
 
-
     async getUnreadMessages({ conversation_id, last_read_message_id }) {
-        if (!conversation_id)
-            throw new BadRequestError('params invalid')
+        if (!conversation_id) throw new BadRequestError('params invalid');
 
         const unreadMessages = await messagesService.getUnreadMessages(
             { conversation_id, last_read_message_id },
             {
-                attributes: ['id', 'sender_id', 'message_type', 'content', 'parent_message_id', 'file_name', 'link_description'],
+                attributes: [
+                    'id',
+                    'sender_id',
+                    'message_type',
+                    'content',
+                    'parent_message_id',
+                    'file_name',
+                    'link_description',
+                ],
                 raw: true,
-                order: [['created_at', 'ASC']]
-            }
-        )
+                order: [['created_at', 'ASC']],
+            },
+        );
 
-        if (unreadMessages.length === 0) return null
+        if (unreadMessages.length === 0) return null;
 
-        const senderIds = Array.from(new Set(unreadMessages.map(m => m.sender_id)))
+        const senderIds = Array.from(new Set(unreadMessages.map((m) => m.sender_id)));
 
         const participants = await participantsService.getParticipantByConversationsAndUserIds(
             conversation_id,
             senderIds,
-            { attributes: ['user_id', 'nick_name'], raw: true }
-        )
+            { attributes: ['user_id', 'nick_name'], raw: true },
+        );
 
         const participantsMap = participants.reduce((acc, p) => {
-            acc[p.user_id] = p.nick_name
-            return acc
-        }, {})
+            acc[p.user_id] = p.nick_name;
+            return acc;
+        }, {});
 
-        const messageIdsMap = {}
+        const messageIdsMap = {};
         unreadMessages.forEach((msg, index) => {
-            messageIdsMap[msg.id] = index
-        })
+            messageIdsMap[msg.id] = index;
+        });
 
-        const updateUnreadMessages = unreadMessages.map(m => {
-            const { id, sender_id, message_type, content, parent_message_id, file_name, link_description } = m
+        const updateUnreadMessages = unreadMessages.map((m) => {
+            const { id, sender_id, message_type, content, parent_message_id, file_name, link_description } = m;
             const result = {
                 msg_no: messageIdsMap[id],
                 sender: participantsMap[sender_id],
                 type: message_type,
                 content: content,
-            }
+            };
 
-            if (file_name) result['file_name'] = file_name
-            if (link_description) result['file_desc'] = link_description
-            if (parent_message_id) result['reply_to'] = messageIdsMap[parent_message_id]
+            if (file_name) result['file_name'] = file_name;
+            if (link_description) result['file_desc'] = link_description;
+            if (parent_message_id) result['reply_to'] = messageIdsMap[parent_message_id];
 
-            return result
-        })
+            return result;
+        });
 
-        return updateUnreadMessages
+        return updateUnreadMessages;
     }
 
     async *getSummaryMessages(conversation_id, last_read_message_id) {
-        if (!conversation_id) throw new BadRequestError('params invalid')
+        if (!conversation_id) throw new BadRequestError('params invalid');
 
         const unreadMessages = await this.getUnreadMessages({
             conversation_id,
             last_read_message_id,
-        })
-
+        });
 
         if (!unreadMessages || unreadMessages.length === 0) {
-            yield 'Hiện chưa có tin nhắn chưa đọc để tóm tắt.'
-            return
+            yield 'Hiện chưa có tin nhắn chưa đọc để tóm tắt.';
+            return;
         }
 
         for await (const content of openAiService.summarizeMessages(unreadMessages)) {
-            yield content
+            yield content;
         }
     }
 
@@ -224,7 +230,10 @@ class HomeMessagesService {
         thumbnail_url = null,
         duration = null,
         link_description = null,
-        has_link = false
+        has_link = false,
+        iv = null,
+        key_version = null,
+        is_e2ee = false,
     ) {
         let resolvedFileUrl = file_url;
         let resolvedFileName = file_name;
@@ -233,6 +242,18 @@ class HomeMessagesService {
         let resolvedDuration = duration;
         let resolvedLinkDescription = link_description;
         let resolvedHasLink = has_link;
+
+        // --- KIỂM TRA KEY VERSION E2EE ---
+        if (is_e2ee && key_version) {
+            const latestVault = await e2eeService.getLatestConversationKey(senderId, conversationId, false);
+            if (latestVault && latestVault.key_version !== key_version) {
+                throw new BadRequestError(
+                    `Key version mismatch. Client: ${key_version}, Server: ${latestVault.key_version}`,
+                    undefined,
+                    E2EEErrorCode.SERVER_KEY_VERSION_MISMATCH,
+                );
+            }
+        }
 
         // Tận dụng các cột media hiện có để lưu link preview cho message text
         if (message_type === 'text' && content) {
@@ -270,6 +291,9 @@ class HomeMessagesService {
                 link_description: resolvedLinkDescription,
                 duration: resolvedDuration,
                 time_sent: new Date(),
+                iv,
+                key_version,
+                is_e2ee,
             }),
             parent_message_id ? messagesService.getMessageById(parent_message_id) : Promise.resolve(null),
         ]);
@@ -296,14 +320,14 @@ class HomeMessagesService {
 
         const parent_message_info = parentMessage
             ? {
-                parent_message_id: parentMessage.id,
-                parent_message_content: parentMessage.content,
-                parent_message_sender_id: parentMessage.sender_id,
-                parent_message_is_deleted: parentMessage.is_deleted,
-                parent_message_name: parentSender ? parentSender.full_name : '',
-                parent_message_type: parentMessage.message_type,
-                parent_message_thumbnail_url: parentMessage.thumbnail_url,
-            }
+                  parent_message_id: parentMessage.id,
+                  parent_message_content: parentMessage.content,
+                  parent_message_sender_id: parentMessage.sender_id,
+                  parent_message_is_deleted: parentMessage.is_deleted,
+                  parent_message_name: parentSender ? parentSender.full_name : '',
+                  parent_message_type: parentMessage.message_type,
+                  parent_message_thumbnail_url: parentMessage.thumbnail_url,
+              }
             : null;
 
         return {

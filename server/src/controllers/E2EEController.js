@@ -10,6 +10,14 @@ class E2EEController {
         }).send(res);
     }
 
+    async checkStatus(req, res, next) {
+        const { id } = req.user;
+        return new SuccessResponse({
+            message: 'check e2ee status successfully',
+            metadata: await e2eeService.checkStatus(id),
+        }).send(res);
+    }
+
     async getKeys(req, res, next) {
         const { id } = req.user;
         return new SuccessResponse({

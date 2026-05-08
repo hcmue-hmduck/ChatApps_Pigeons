@@ -230,7 +230,7 @@ export class KeyManagementService {
         }
     }
 
-    private async syncLatestConversationKey(conversationId: string) {
+    async syncLatestConversationKey(conversationId: string) {
         console.log(`syncLatestConversationKey`);
         try {
             const res = await firstValueFrom(
@@ -371,7 +371,7 @@ export class KeyManagementService {
                 sharedKeyObj,
             };
         } catch (error: any) {
-            const errorCodeServer = error.error.errorCode;
+            const errorCodeServer = error?.error?.errorCode;
             if (errorCodeServer === E2EEErrorCode.SERVER_VAULT_NOT_FOUND) {
                 return await this.establishConversationSercurity(conversationId);
             }

@@ -30,6 +30,10 @@ export class E2eeApiService {
         return this.httpClient.post<any>(`${this.apiUrl}/setup`, setupKeys);
     }
 
+    checkStatus() {
+        return this.httpClient.get<any>(`${this.apiUrl}/status`);
+    }
+
     getMyKeys() {
         return this.httpClient.get<any>(`${this.apiUrl}/keys`);
     }

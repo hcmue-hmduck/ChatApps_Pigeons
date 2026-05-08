@@ -19,6 +19,17 @@ class E2EEService {
         });
     }
 
+    async checkStatus(user_id) {
+        if (!user_id) throw new BadRequestError('missing parameters');
+        const foundUser = await userModel.findByPk(user_id);
+        if (!foundUser) throw new BadRequestError('user not found');
+
+        const { wrapped_private_key, kek_iv, pin_salt, public_key } = foundUser;
+        return {
+            hasSetup: !!(wrapped_private_key && kek_iv && pin_salt && public_key)
+        };
+    }
+
     async getKeys(user_id) {
         if (!user_id) throw new BadRequestError('missing parameters');
         const foundUser = await userModel.findByPk(user_id);

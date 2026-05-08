@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const e2eeController = require('../controllers/E2EEController');
 
+router.get('/status', e2eeController.checkStatus);
 router.get('/keys', e2eeController.getKeys);
 router.get('/conversation-key/:conv_id/:key_version', e2eeController.getConversationKey);
 router.get('/conversation-keys', e2eeController.getConversationKeys);

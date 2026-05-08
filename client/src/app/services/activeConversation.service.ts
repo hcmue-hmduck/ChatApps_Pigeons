@@ -3,6 +3,7 @@ import { Conversation } from './conversation';
 import { UserBlock } from './userBlock';
 import { SocketService } from './socket';
 import { AuthService } from './authService';
+import { E2EEMessageService } from './e2ee/e2eeMessageService';
 
 export interface UserPresence {
     status: string;
@@ -10,13 +11,14 @@ export interface UserPresence {
 }
 
 @Injectable({
-    providedIn: 'root'
+    providedIn: 'root',
 })
 export class ActiveConversationService implements OnDestroy {
     private conversationService = inject(Conversation);
     private userBlockService = inject(UserBlock);
     private socketService = inject(SocketService);
     private authService = inject(AuthService);
+    private e2eeMessageService = inject(E2EEMessageService);
 
     // --- Core State (Signals) ---
     conversations = signal<any>({});
@@ -32,13 +34,13 @@ export class ActiveConversationService implements OnDestroy {
         if (force !== undefined) {
             this.showConversationInfor.set(force);
         } else {
-            this.showConversationInfor.update(v => !v);
+            this.showConversationInfor.update((v) => !v);
         }
     }
 
     timeTick = signal(0);
     private globalInterval: any;
-    
+
     // --- Reaction Cache (Global) ---
     globalReactions = signal<Map<string, any[]>>(new Map());
     globalReactionCounts = signal<Map<string, Record<string, number>>>(new Map());
@@ -53,18 +55,16 @@ export class ActiveConversationService implements OnDestroy {
     private onAcceptFriendRequestSocketGlobal?: (data: any) => void;
     private onReactionMessageSocket?: (data: any) => void;
 
-    joinedConversations = computed(() => 
-        this.conversations()?.homeConversationData?.joinedConversations || []
+    joinedConversations = computed(
+        () => this.conversations()?.homeConversationData?.joinedConversations || [],
     );
 
-    currentUserInfo = computed(() => 
-        this.conversations()?.homeConversationData?.userInfo
+    currentUserInfo = computed(() => this.conversations()?.homeConversationData?.userInfo);
+
+    currentUserAvatar = computed(
+        () => this.currentUserInfo()?.avatar_url || 'assets/AvatarDefault.jpg',
     );
 
-    currentUserAvatar = computed(() => 
-        this.currentUserInfo()?.avatar_url || 'assets/AvatarDefault.jpg'
-    );
-    
     totalUnreadCount = computed(() => {
         const joined = this.joinedConversations();
         return joined.reduce((acc: number, conv: any) => acc + (Number(conv.unread_count) || 0), 0);
@@ -75,14 +75,16 @@ export class ActiveConversationService implements OnDestroy {
         effect(() => {
             const userId = this.authService.getUserId();
             if (userId) {
-                console.log('[ActiveConversationService] User detected, initializing global state...');
+                console.log(
+                    '[ActiveConversationService] User detected, initializing global state...',
+                );
                 this.loadInitialData(userId);
             }
         });
 
         // Start global time tick every 30 seconds
         this.globalInterval = setInterval(() => {
-            this.timeTick.update(v => v + 1);
+            this.timeTick.update((v) => v + 1);
         }, 30000);
     }
 
@@ -102,16 +104,16 @@ export class ActiveConversationService implements OnDestroy {
     }
 
     private resetUnreadCount(conversationId: string) {
-        this.conversations.update(cur => {
+        this.conversations.update((cur) => {
             if (!cur?.homeConversationData?.joinedConversations) return cur;
-            const updated = cur.homeConversationData.joinedConversations.map((c: any) => 
-                String(c.conversation_id) === String(conversationId) 
-                    ? { ...c, unread_count: 0 } 
-                    : c
+            const updated = cur.homeConversationData.joinedConversations.map((c: any) =>
+                String(c.conversation_id) === String(conversationId)
+                    ? { ...c, unread_count: 0 }
+                    : c,
             );
             return {
                 ...cur,
-                homeConversationData: { ...cur.homeConversationData, joinedConversations: updated }
+                homeConversationData: { ...cur.homeConversationData, joinedConversations: updated },
             };
         });
     }
@@ -120,7 +122,7 @@ export class ActiveConversationService implements OnDestroy {
 
     loadInitialData(userId: string) {
         if (!userId) return;
-        
+
         // Tránh load lại nếu đã có dữ liệu (Optimization)
         if (this.isDataLoaded()) {
             console.log('[ActiveConversationService] Data already loaded, skipping API call.');
@@ -130,19 +132,66 @@ export class ActiveConversationService implements OnDestroy {
         }
 
         console.log('[ActiveConversationService] Loading initial data for:', userId);
-        
+
         // Load Conversations
         this.conversationService.getConversations(userId).subscribe({
-            next: (response) => {
+            next: async (response) => {
                 const metadata = response.metadata || {};
-                const joined = metadata.homeConversationData?.joinedConversations || [];
-                
+                let joined = metadata.homeConversationData?.joinedConversations || [];
+
+                // --- GIẢI MÃ TIN NHẮN CUỐI CÙNG TRÊN SIDEBAR ---
+                joined = await Promise.all(
+                    joined.map(async (conv: any) => {
+                        if (
+                            conv.lastMessage &&
+                            conv.lastMessage.is_e2ee &&
+                            conv.lastMessage.content &&
+                            !conv.lastMessage.is_deleted
+                        ) {
+                            try {
+                                const e2eePayload = {
+                                    ciphertext: conv.lastMessage.content,
+                                    iv: conv.lastMessage.iv,
+                                    keyVersion: conv.lastMessage.key_version,
+                                };
+                                const decrypted = await this.e2eeMessageService.decryptMessage(
+                                    conv.conversation_id,
+                                    e2eePayload,
+                                );
+                                return {
+                                    ...conv,
+                                    lastMessage: {
+                                        ...conv.lastMessage,
+                                        content: decrypted.content,
+                                        is_decrypted: true,
+                                    },
+                                };
+                            } catch (e) {
+                                console.error('Sidebar initial decryption failed', e);
+                                return {
+                                    ...conv,
+                                    lastMessage: {
+                                        ...conv.lastMessage,
+                                        content: '[Tin nhắn mã hóa]',
+                                        is_decryption_error: true,
+                                    },
+                                };
+                            }
+                        }
+                        return conv;
+                    }),
+                );
+
                 // Sort
                 const sorted = [...joined].sort((a: any, b: any) => {
                     if (a.is_pinned && !b.is_pinned) return -1;
                     if (!a.is_pinned && b.is_pinned) return 1;
-                    const timeA = new Date(a.lastMessage?.created_at || a.updated_at || 0).getTime();
-                    const timeB = new Date(b.lastMessage?.created_at || b.updated_at || 0).getTime();
+                    const timeA = new Date(
+                        a.lastMessage?.created_at || a.updated_at || 0,
+                    ).getTime();
+                    const timeB = new Date(
+                        b.lastMessage?.created_at || b.updated_at || 0,
+                    ).getTime();
                     return timeB - timeA;
                 });
 
@@ -153,7 +202,7 @@ export class ActiveConversationService implements OnDestroy {
                         if (String(p.user_id) !== String(userId)) {
                             initialPresence.set(String(p.user_id), {
                                 status: p.status || 'offline',
-                                last_online_at: p.last_online_at
+                                last_online_at: p.last_online_at,
                             });
                         }
                     });
@@ -162,12 +211,12 @@ export class ActiveConversationService implements OnDestroy {
 
                 this.conversations.set({
                     ...metadata,
-                    homeConversationData: { 
-                        ...metadata.homeConversationData, 
-                        joinedConversations: sorted 
-                    }
+                    homeConversationData: {
+                        ...metadata.homeConversationData,
+                        joinedConversations: sorted,
+                    },
                 });
-                
+
                 this.isDataLoaded.set(true);
 
                 // --- Emit userOnline immediately ---
@@ -175,26 +224,26 @@ export class ActiveConversationService implements OnDestroy {
 
                 // Join socket rooms
                 sorted.forEach((conv: any) =>
-                    this.socketService.emit('joinConversation', conv.conversation_id)
+                    this.socketService.emit('joinConversation', conv.conversation_id),
                 );
 
                 this.setupSocketListeners();
-            }
+            },
         });
 
         this.userBlockService.getBlockedUserByUserId(userId).subscribe({
             next: (response) => {
                 this.userBlock.set(response.metadata?.userBlocks || []);
-            }
+            },
         });
-
-
 
         // --- NEW: Reconnection support ---
         this.socketService.on('connect', () => {
             const currentUid = this.authService.getUserId();
             if (currentUid) {
-                console.log('[ActiveConversationService] Socket reconnected, re-emitting userOnline');
+                console.log(
+                    '[ActiveConversationService] Socket reconnected, re-emitting userOnline',
+                );
                 this.socketService.emit('userOnline', currentUid);
             }
         });
@@ -205,9 +254,9 @@ export class ActiveConversationService implements OnDestroy {
         this.removeSocketListeners();
 
         this.onUpdateProfileSocket = (data: any) => {
-            this.conversations.update(cur => {
+            this.conversations.update((cur) => {
                 if (!cur?.homeConversationData?.joinedConversations) return cur;
-                
+
                 // Update userInfo if it is the current user
                 let updatedUserInfo = cur.homeConversationData.userInfo;
                 if (updatedUserInfo && updatedUserInfo.id === data.id) {
@@ -222,38 +271,46 @@ export class ActiveConversationService implements OnDestroy {
 
                     // Nếu là chat đơn, và người đổi thông tin KHÔNG phải là mình (tức là đối tác)
                     if (conv.type === 'direct' && String(data.id) !== String(currentUserId)) {
-                        const hasOtherUser = conv.participants?.some((p: any) => String(p.user_id) === String(data.id));
+                        const hasOtherUser = conv.participants?.some(
+                            (p: any) => String(p.user_id) === String(data.id),
+                        );
                         if (hasOtherUser) {
                             newTitle = data.full_name || conv.title;
-                            newAvatarUrl = data.avatar_url || conv.avatar_url || 'assets/AvatarDefault.jpg';
+                            newAvatarUrl =
+                                data.avatar_url || conv.avatar_url || 'assets/AvatarDefault.jpg';
                         }
                     }
 
                     // Cập nhật participants cho TẤT CẢ loại nhóm chat thay vì chỉ nhóm 'direct'
                     let newParticipants = conv.participants;
                     if (conv.participants) {
-                        newParticipants = conv.participants.map((p: any) => 
-                            String(p.user_id) === String(data.id) ? { ...p, ...data } : p
+                        newParticipants = conv.participants.map((p: any) =>
+                            String(p.user_id) === String(data.id) ? { ...p, ...data } : p,
                         );
                     }
-                    
-                    return { ...conv, participants: newParticipants, title: newTitle, avatar_url: newAvatarUrl };
+
+                    return {
+                        ...conv,
+                        participants: newParticipants,
+                        title: newTitle,
+                        avatar_url: newAvatarUrl,
+                    };
                 });
                 return {
                     ...cur,
-                    homeConversationData: { 
-                        ...cur.homeConversationData, 
+                    homeConversationData: {
+                        ...cur.homeConversationData,
                         userInfo: updatedUserInfo,
-                        joinedConversations: updated 
-                    }
+                        joinedConversations: updated,
+                    },
                 };
             });
         };
         this.socketService.on('updateProfile', this.onUpdateProfileSocket);
 
         // 2. updateConversation
-        this.onUpdateConversationSocket = (data: any) => {
-            this.updateConversationList(data);
+        this.onUpdateConversationSocket = async (data: any) => {
+            await this.updateConversationList(data);
         };
         this.socketService.on('updateConversation', this.onUpdateConversationSocket);
 
@@ -269,15 +326,22 @@ export class ActiveConversationService implements OnDestroy {
                     const sorted = [...joined].sort((a: any, b: any) => {
                         if (a.is_pinned && !b.is_pinned) return -1;
                         if (!a.is_pinned && b.is_pinned) return 1;
-                        const timeA = new Date(a.lastMessage?.created_at || a.updated_at || 0).getTime();
-                        const timeB = new Date(b.lastMessage?.created_at || b.updated_at || 0).getTime();
+                        const timeA = new Date(
+                            a.lastMessage?.created_at || a.updated_at || 0,
+                        ).getTime();
+                        const timeB = new Date(
+                            b.lastMessage?.created_at || b.updated_at || 0,
+                        ).getTime();
                         return timeB - timeA;
                     });
                     this.conversations.set({
                         ...metadata,
-                        homeConversationData: { ...metadata.homeConversationData, joinedConversations: sorted }
+                        homeConversationData: {
+                            ...metadata.homeConversationData,
+                            joinedConversations: sorted,
+                        },
                     });
-                }
+                },
             });
         };
         this.socketService.on('newConversation', this.onNewConversationSocket);
@@ -289,13 +353,13 @@ export class ActiveConversationService implements OnDestroy {
             this.onlineUsers.set(onlineSet);
 
             // Update userPresence map
-            this.userPresence.update(map => {
+            this.userPresence.update((map) => {
                 const newMap = new Map(map);
-                userIds.forEach(uid => {
+                userIds.forEach((uid) => {
                     const existing = newMap.get(String(uid));
                     newMap.set(String(uid), {
                         status: 'online',
-                        last_online_at: existing?.last_online_at || new Date()
+                        last_online_at: existing?.last_online_at || new Date(),
                     });
                 });
                 return newMap;
@@ -304,20 +368,28 @@ export class ActiveConversationService implements OnDestroy {
         this.socketService.on('onlineUsersList', this.onOnlineUsersListSocket);
 
         // 5. userStatusChanged (Sync both logic and UI presence)
-        this.onUserStatusChangedSocket = (data: { userId: string, status: string, last_online_at?: string | Date }) => {
+        this.onUserStatusChangedSocket = (data: {
+            userId: string;
+            status: string;
+            last_online_at?: string | Date;
+        }) => {
             const uid = String(data.userId);
-            this.onlineUsers.update(set => {
+            this.onlineUsers.update((set) => {
                 const newSet = new Set(set);
                 if (data.status === 'online') newSet.add(uid);
                 else newSet.delete(uid);
                 return newSet;
             });
 
-            this.userPresence.update(map => {
+            this.userPresence.update((map) => {
                 const newMap = new Map(map);
                 newMap.set(uid, {
                     status: data.status,
-                    last_online_at: data.last_online_at || (data.status === 'offline' ? new Date() : (newMap.get(uid)?.last_online_at || new Date()))
+                    last_online_at:
+                        data.last_online_at ||
+                        (data.status === 'offline'
+                            ? new Date()
+                            : newMap.get(uid)?.last_online_at || new Date()),
                 });
                 return newMap;
             });
@@ -328,7 +400,7 @@ export class ActiveConversationService implements OnDestroy {
         this.onFriendRequestSocket = (data: any) => {
             const currentUserId = this.authService.getUserId();
             if (data.receiver_id === currentUserId) {
-                this.friendRequestCount.update(c => c + 1);
+                this.friendRequestCount.update((c) => c + 1);
             }
         };
         this.socketService.on('sendFriendRequest', this.onFriendRequestSocket);
@@ -343,12 +415,12 @@ export class ActiveConversationService implements OnDestroy {
 
     syncReactions(msgId: string, reactions: any[], counts: any) {
         const key = String(msgId);
-        this.globalReactions.update(map => {
+        this.globalReactions.update((map) => {
             const newMap = new Map(map);
             newMap.set(key, reactions);
             return newMap;
         });
-        this.globalReactionCounts.update(map => {
+        this.globalReactionCounts.update((map) => {
             const newMap = new Map(map);
             newMap.set(key, counts || {});
             return newMap;
@@ -356,33 +428,64 @@ export class ActiveConversationService implements OnDestroy {
     }
 
     private removeSocketListeners() {
-        if (this.onUpdateProfileSocket) this.socketService.off('updateProfile', this.onUpdateProfileSocket);
-        if (this.onUpdateConversationSocket) this.socketService.off('updateConversation', this.onUpdateConversationSocket);
-        if (this.onNewConversationSocket) this.socketService.off('newConversation', this.onNewConversationSocket);
-        if (this.onOnlineUsersListSocket) this.socketService.off('onlineUsersList', this.onOnlineUsersListSocket);
-        if (this.onUserStatusChangedSocket) this.socketService.off('userStatusChanged', this.onUserStatusChangedSocket);
-        if (this.onFriendRequestSocket) this.socketService.off('sendFriendRequest', this.onFriendRequestSocket);
-        if (this.onReactionMessageSocket) this.socketService.off('reactionMessage', this.onReactionMessageSocket);
+        if (this.onUpdateProfileSocket)
+            this.socketService.off('updateProfile', this.onUpdateProfileSocket);
+        if (this.onUpdateConversationSocket)
+            this.socketService.off('updateConversation', this.onUpdateConversationSocket);
+        if (this.onNewConversationSocket)
+            this.socketService.off('newConversation', this.onNewConversationSocket);
+        if (this.onOnlineUsersListSocket)
+            this.socketService.off('onlineUsersList', this.onOnlineUsersListSocket);
+        if (this.onUserStatusChangedSocket)
+            this.socketService.off('userStatusChanged', this.onUserStatusChangedSocket);
+        if (this.onFriendRequestSocket)
+            this.socketService.off('sendFriendRequest', this.onFriendRequestSocket);
+        if (this.onReactionMessageSocket)
+            this.socketService.off('reactionMessage', this.onReactionMessageSocket);
     }
 
-    updateConversationList(data: any) {
-        this.conversations.update(cur => {
+    async updateConversationList(data: any) {
+        let displayContent = data.content;
+
+        // --- GIẢI MÃ TIN NHẮN MỚI CHO SIDEBAR ---
+        if (data.is_e2ee && data.content && !data.is_deleted) {
+            try {
+                const e2eePayload = {
+                    ciphertext: data.content,
+                    iv: data.iv,
+                    keyVersion: data.key_version,
+                };
+                const decrypted = await this.e2eeMessageService.decryptMessage(
+                    data.conversation_id,
+                    e2eePayload,
+                );
+                displayContent = decrypted.content;
+            } catch (e) {
+                console.error('Sidebar real-time decryption failed', e);
+                displayContent = '[Tin nhắn mã hóa]';
+            }
+        }
+
+        this.conversations.update((cur) => {
             if (!cur?.homeConversationData?.joinedConversations) return cur;
-            
+
             const convList = [...cur.homeConversationData.joinedConversations];
-            const index = convList.findIndex((c: any) => String(c.conversation_id) === String(data.conversation_id));
+            const index = convList.findIndex(
+                (c: any) => String(c.conversation_id) === String(data.conversation_id),
+            );
             const currentUserId = this.authService.getUserId();
 
             if (index !== -1) {
                 const conv = { ...convList[index] };
-                
+
                 // --- Increment Unread Count (The missing logic!) ---
                 // Only increment if:
                 // 1. Message is NOT FROM current user
                 // 2. Conversation is NOT CURRENTLY OPEN
                 const isFromOther = String(data.sender_id) !== String(currentUserId);
-                const isNotOpen = String(data.conversation_id) !== String(this.activeConversationId());
-                
+                const isNotOpen =
+                    String(data.conversation_id) !== String(this.activeConversationId());
+
                 if (isFromOther && isNotOpen) {
                     conv.unread_count = (Number(conv.unread_count) || 0) + 1;
                 }
@@ -390,11 +493,14 @@ export class ActiveConversationService implements OnDestroy {
                 conv.lastMessage = {
                     ...(conv.lastMessage || {}),
                     sender_id: data.sender_id,
-                    content: data.content,
+                    content: displayContent,
                     created_at: data.created_at,
                     updated_at: data.updated_at,
                     message_type: data.message_type,
-                    id: data.id || data.message_id || conv.lastMessage?.id
+                    id: data.id || data.message_id || conv.lastMessage?.id,
+                    is_e2ee: data.is_e2ee,
+                    iv: data.iv,
+                    key_version: data.key_version,
                 };
 
                 // Move to top (within pinned/unpinned groups)
@@ -409,7 +515,10 @@ export class ActiveConversationService implements OnDestroy {
 
                 return {
                     ...cur,
-                    homeConversationData: { ...cur.homeConversationData, joinedConversations: convList }
+                    homeConversationData: {
+                        ...cur.homeConversationData,
+                        joinedConversations: convList,
+                    },
                 };
             }
             return cur;
@@ -418,32 +527,41 @@ export class ActiveConversationService implements OnDestroy {
 
     // --- Helper Getters ---
     getConversationById(id: string) {
-        return this.joinedConversations().find((c: any) => String(c.conversation_id) === String(id));
+        return this.joinedConversations().find(
+            (c: any) => String(c.conversation_id) === String(id),
+        );
     }
 
-    upgradeConversation(oldId: string, newId: string, realParticipants?: any[], lastMessageData?: any) {
-        this.conversations.update(current => {
+    upgradeConversation(
+        oldId: string,
+        newId: string,
+        realParticipants?: any[],
+        lastMessageData?: any,
+    ) {
+        this.conversations.update((current) => {
             const joined = current.homeConversationData?.joinedConversations || [];
             const index = joined.findIndex((c: any) => String(c.conversation_id) === String(oldId));
-            
+
             if (index !== -1) {
                 const updatedJoined = [...joined];
                 const upgradedConv = {
                     ...updatedJoined[index],
                     conversation_id: newId,
                     participants: realParticipants || updatedJoined[index].participants,
-                    lastMessage: lastMessageData ? {
-                        sender_id: lastMessageData.sender_id,
-                        content: lastMessageData.content,
-                        created_at: lastMessageData.created_at,
-                        message_type: lastMessageData.message_type,
-                        id: lastMessageData.id
-                    } : updatedJoined[index].lastMessage
+                    lastMessage: lastMessageData
+                        ? {
+                              sender_id: lastMessageData.sender_id,
+                              content: lastMessageData.content,
+                              created_at: lastMessageData.created_at,
+                              message_type: lastMessageData.message_type,
+                              id: lastMessageData.id,
+                          }
+                        : updatedJoined[index].lastMessage,
                 };
 
                 // Xóa cũ, thêm mới vào vị trí ưu tiên (đầu danh sách hoặc sau pinned)
                 updatedJoined.splice(index, 1);
-                
+
                 if (upgradedConv.is_pinned) {
                     updatedJoined.unshift(upgradedConv);
                 } else {
@@ -456,8 +574,8 @@ export class ActiveConversationService implements OnDestroy {
                     ...current,
                     homeConversationData: {
                         ...current.homeConversationData,
-                        joinedConversations: updatedJoined
-                    }
+                        joinedConversations: updatedJoined,
+                    },
                 };
             }
             return current;

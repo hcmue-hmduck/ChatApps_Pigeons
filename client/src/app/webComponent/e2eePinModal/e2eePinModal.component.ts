@@ -1,0 +1,135 @@
+import { Component, inject, OnInit, signal, Output, EventEmitter } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { KeyManagementService } from '../../services/e2ee/keyManagementService';
+import { E2eeApiService } from '../../services/e2ee/e2eeApiService';
+import { LocalDatabaseService } from '../../services/e2ee/localDatabaseService';
+import { AuthService } from '../../services/authService';
+import { firstValueFrom } from 'rxjs';
+
+@Component({
+    selector: 'app-e2ee-pin-modal',
+    standalone: true,
+    imports: [CommonModule, FormsModule],
+    templateUrl: './e2eePinModal.component.html', 
+    styleUrls: ['./e2eePinModal.component.css']
+})
+export class E2eePinModalComponent implements OnInit {
+    keyService = inject(KeyManagementService);
+    apiService = inject(E2eeApiService);
+    localDB = inject(LocalDatabaseService);
+    authService = inject(AuthService);
+    @Output() close = new EventEmitter<void>();
+
+    isVisible = signal(false);
+    mode = signal<'setup' | 'recovery' | 'change'>('setup');
+    pin = signal('');
+    confirmPin = signal('');
+    oldPin = signal('');
+    error = signal('');
+    loading = signal(false);
+
+    async ngOnInit() {
+        await this.checkE2eeState();
+    }
+
+    async checkE2eeState() {
+        try {
+            const user = this.authService.getUserInfor();
+            if (!user) return;
+            
+            const ownKey = await this.localDB.getOwnKey(user.id);
+            if (ownKey) {
+                // Đã có khóa local, không cần nhập PIN
+                this.isVisible.set(false);
+                return;
+            }
+
+            // Gọi API kiểm tra xem người dùng này đã tạo E2EE Vault trên server chưa
+            const statusRes = await firstValueFrom(this.apiService.checkStatus());
+            const hasSetup = statusRes?.metadata?.hasSetup;
+
+            if (hasSetup) {
+                this.mode.set('recovery');
+            } else {
+                this.mode.set('setup');
+            }
+            this.isVisible.set(true);
+
+        } catch (err) {
+            console.error('Lỗi khi kiểm tra trạng thái E2EE:', err);
+        }
+    }
+
+    // Dùng khi người dùng chủ động muốn đổi mã PIN (gọi từ menu/settings)
+    openChangePin() {
+        this.mode.set('change');
+        this.pin.set('');
+        this.confirmPin.set('');
+        this.oldPin.set('');
+        this.error.set('');
+        this.isVisible.set(true);
+    }
+
+    async handleSubmit() {
+        this.error.set('');
+        
+        if (this.mode() === 'setup' || this.mode() === 'change') {
+            if (this.pin() !== this.confirmPin()) {
+                this.error.set('Mã PIN xác nhận không khớp');
+                return;
+            }
+            if (this.pin().length < 6) {
+                this.error.set('Mã PIN phải có ít nhất 6 ký tự');
+                return;
+            }
+        } else if (this.mode() === 'recovery') {
+            if (this.pin().length < 6) {
+                this.error.set('Mã PIN phải có ít nhất 6 ký tự');
+                return;
+            }
+        }
+
+        this.loading.set(true);
+        try {
+            if (this.mode() === 'setup') {
+                await this.keyService.setupNewDevice(this.pin());
+                this.closeModal();
+            } else if (this.mode() === 'recovery') {
+                await this.keyService.recoveryDevice(this.pin());
+                this.closeModal();
+            } else if (this.mode() === 'change') {
+                const isVerify = await this.keyService.verifyPin(this.oldPin());
+                if (!isVerify) {
+                    throw new Error('Mã PIN cũ không chính xác');
+                }
+                await this.keyService.changePin(this.pin());
+                this.closeModal();
+            }
+        } catch (err: any) {
+            this.error.set(err.message || 'Có lỗi xảy ra, vui lòng thử lại');
+        } finally {
+            this.loading.set(false);
+            this.pin.set('');
+            this.confirmPin.set('');
+            this.oldPin.set('');
+        }
+    }
+
+    closeModal() {
+        this.isVisible.set(false);
+        this.pin.set('');
+        this.confirmPin.set('');
+        this.oldPin.set('');
+        this.error.set('');
+        this.close.emit();
+    }
+
+    validateNumeric(event: any, field: 'pin' | 'confirmPin' | 'oldPin') {
+        const val = event.target.value.replace(/[^0-9]/g, '');
+        if (field === 'pin') this.pin.set(val);
+        else if (field === 'confirmPin') this.confirmPin.set(val);
+        else if (field === 'oldPin') this.oldPin.set(val);
+        event.target.value = val;
+    }
+}

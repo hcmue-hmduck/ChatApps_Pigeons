@@ -31,10 +31,16 @@ export class Messages {
             duration?: number;
             link_description?: string;
             has_link?: boolean;
-        }
+        },
+        e2eePayload?: { iv: string; keyVersion: number }
     ): Observable<any> {
         const body: any = { senderId, content, message_type, ...file_metadata };
         if (replyTo) body.parent_message_id = replyTo;
+        if (e2eePayload) {
+            body.iv = e2eePayload.iv;
+            body.key_version = e2eePayload.keyVersion;
+            body.is_e2ee = true;
+        }
         return this.http.post(`${this.apiUrl}/${conversationId}`, body);
     }
 

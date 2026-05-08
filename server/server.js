@@ -158,22 +158,22 @@ io.on('connection', (socket) => {
 
     // Nhận tin nhắn từ client và broadcast cho người khác
     socket.on('sendMessage', (data) => {
-        console.log('Received sendMessage event on server:', data);
+        // console.log('Received sendMessage event on server:', data);
         io.to(data.conversation_id).emit('newMessage', data);
     });
 
     socket.on('typing', (data) => {
-        console.log('Received typing event on server:', data);
+        // console.log('Received typing event on server:', data);
         socket.to(data.conversation_id).emit('typing', data);
     });
 
     socket.on('stopTyping', (data) => {
-        console.log('Received stopTyping event on server:', data);
+        // console.log('Received stopTyping event on server:', data);
         socket.to(data.conversation_id).emit('stopTyping', data);
     });
 
     socket.on('updateConversation', (data) => {
-        console.log('Received updateConversation event on server:', data);
+        // console.log('Received updateConversation event on server:', data);
         io.to(data.conversation_id).emit('updateConversation', data);
     });
 
@@ -210,7 +210,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('updateParticipant', (data) => {
-        console.log('Received updateParticipant event on server:', data);
+       // console.log('Received updateParticipant event on server:', data);
         // Broadcast tới tất cả thành viên trong conversation room
         socket.to(data.conversation_id).emit('updateParticipant', data);
     });
