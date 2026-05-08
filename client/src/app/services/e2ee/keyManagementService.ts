@@ -1,11 +1,12 @@
+import { error } from 'node:console';
+import { AvatarWrap } from './../../models/callData';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../authService';
 import { CryptoUtilityService } from './cryptoUtilityService';
-import { E2eeApiService, SetupKeysPayload, ConversationKeyVaultPayload } from './e2eeApiService';
-import { LocalDatabaseService } from './localDatabaseService';
+import { ConversationKeyVaultPayload, E2eeApiService, SetupKeysPayload } from './e2eeApiService';
 import { E2EEError, E2EEErrorCode } from './e2eeError';
-import { error } from 'node:console';
+import { LocalDatabaseService, OwnKey } from './localDatabaseService';
 
 @Injectable({
     providedIn: 'root',
@@ -16,7 +17,13 @@ export class KeyManagementService {
     private e2eeApiService = inject(E2eeApiService);
 
     private userId = '';
-    private convesationKeys: Map<string, CryptoKey> = new Map();
+    private sharedKeys: Map<
+        string,
+        {
+            latestVersion: number;
+            allVersion: Map<number, CryptoKey>;
+        }
+    > = new Map();
 
     constructor(private authService: AuthService) {
         if (typeof window !== 'undefined') {
@@ -110,6 +117,7 @@ export class KeyManagementService {
         }
     }
 
+    // phục hồi identity key và toàn bộ conversation key
     async recoveryDevice(pin: string) {
         try {
             const res = await firstValueFrom(this.e2eeApiService.getMyKeys());
@@ -213,13 +221,13 @@ export class KeyManagementService {
 
             const serverErrorCode = error.error.errorCode;
             if (serverErrorCode === E2EEErrorCode.SERVER_KEY_VERSION_MISMATCH)
-                return await this.syncLatestSharedKey(conversationId);
+                return await this.syncLatestConversationKey(conversationId);
 
             throw error;
         }
     }
 
-    async syncLatestSharedKey(conversationId: string) {
+    private async syncLatestConversationKey(conversationId: string) {
         try {
             const res = await firstValueFrom(
                 this.e2eeApiService.getLatestConversationKey(conversationId),
@@ -242,6 +250,126 @@ export class KeyManagementService {
             });
         } catch (error) {
             console.error(`syncLatestSharedKey`, error);
+            throw error;
+        }
+    }
+
+    private updateSharedKeyCache(
+        conversationId: string,
+        keyVersion: number,
+        sharedKeyObj: CryptoKey,
+    ) {
+        let convData = this.sharedKeys.get(conversationId);
+
+        if (!convData) {
+            const allVersion = new Map<number, CryptoKey>();
+            allVersion.set(keyVersion, sharedKeyObj);
+
+            this.sharedKeys.set(conversationId, {
+                latestVersion: keyVersion,
+                allVersion: allVersion,
+            });
+        } else {
+            convData.allVersion.set(keyVersion, sharedKeyObj);
+            if (keyVersion > convData.latestVersion) {
+                convData.latestVersion = keyVersion;
+            }
+        }
+    }
+
+    async getSharedKey(conversationId: string, keyVersion: number) {
+        try {
+            // cache
+            const sharedKey = this.sharedKeys.get(conversationId)?.allVersion.get(keyVersion);
+            if (sharedKey) return sharedKey;
+
+            // local db
+            const conKey = await this.localDB.getConversationKey(conversationId, keyVersion);
+            if (conKey) {
+                console.log('localdb');
+                const { sharedKeyObj } = conKey;
+                this.updateSharedKeyCache(conversationId, keyVersion, sharedKeyObj);
+                return sharedKeyObj;
+            }
+
+            // db
+            const res = await firstValueFrom(
+                this.e2eeApiService.getConversationKey(conversationId, keyVersion),
+            );
+            const convKeyServer = res.metadata;
+            const wrappedSharedKey = convKeyServer.wrapped_shared_key;
+            if (!wrappedSharedKey) throw new E2EEError(E2EEErrorCode.SHARED_KEY_NOT_FOUND);
+
+            const ownKey = await this.localDB.getOwnKey(this.userId);
+            if (!ownKey) throw new E2EEError(E2EEErrorCode.IDENTITY_KEY_NOT_FOUND);
+            const { privateKeyObj } = ownKey;
+            const sharedKeyObj = await this.cryptoUtil.unwrapKey(wrappedSharedKey, privateKeyObj);
+
+            await this.localDB.saveConversationKey({ conversationId, keyVersion, sharedKeyObj });
+            this.updateSharedKeyCache(conversationId, keyVersion, sharedKeyObj);
+
+            return sharedKeyObj;
+        } catch (error) {
+            console.error(`getSharedKey`, error);
+            throw error;
+        }
+    }
+
+    async getLatestConversationKey(conversationId: string): Promise<{
+        keyVersion: number;
+        sharedKeyObj: CryptoKey;
+    }> {
+        try {
+            // cache
+            const cache = this.sharedKeys.get(conversationId);
+            if (cache) {
+                const keyVersion = cache.latestVersion;
+                const sharedKeyObj = cache.allVersion.get(keyVersion);
+                if (sharedKeyObj) {
+                    return {
+                        keyVersion,
+                        sharedKeyObj,
+                    };
+                }
+            }
+
+            // local db
+            const convKey = await this.localDB.getLatestConversationKey(conversationId);
+            if (convKey) {
+                const { keyVersion, sharedKeyObj } = convKey;
+                this.updateSharedKeyCache(conversationId, keyVersion, sharedKeyObj);
+                return {
+                    keyVersion,
+                    sharedKeyObj,
+                };
+            }
+
+            // db
+            const res = await firstValueFrom(
+                this.e2eeApiService.getLatestConversationKey(conversationId),
+            );
+            const convKeyFromServer = res.metadata;
+            const wrappedSharedKey = convKeyFromServer.wrapped_shared_key;
+            const keyVersion = convKeyFromServer.key_version;
+
+            const ownKey = await this.localDB.getOwnKey(this.userId);
+            if (!ownKey) throw new E2EEError(E2EEErrorCode.IDENTITY_KEY_NOT_FOUND);
+            const { privateKeyObj } = ownKey;
+
+            const sharedKeyObj = await this.cryptoUtil.unwrapKey(wrappedSharedKey, privateKeyObj);
+
+            await this.localDB.saveConversationKey({ conversationId, keyVersion, sharedKeyObj });
+            this.updateSharedKeyCache(conversationId, keyVersion, sharedKeyObj);
+
+            return {
+                keyVersion,
+                sharedKeyObj,
+            };
+        } catch (error: any) {
+            const errorCodeServer =  error.error.errorCode;
+            if(errorCodeServer === E2EEErrorCode.SERVER_VAULT_NOT_FOUND) {
+                console.log('establish');
+            }
             throw error;
         }
     }

@@ -45,12 +45,17 @@ class E2EEService {
         });
     }
 
-    async getLatestConversationKey(conversation_id) {
+    async getLatestConversationKey(conversation_id, throw_erorr = true) {
         if (!conversation_id) throw new BadRequestError('invalid parameters');
-        return await conversationKeysVaultModel.findOne({
+        const vault = await conversationKeysVaultModel.findOne({
             where: { conversation_id },
             order: [['key_version', 'DESC']],
         });
+
+        if (!vault && throw_erorr)
+            throw new BadRequestError('conversation not establish security', undefined, E2EEErrorCode.SERVER_VAULT_NOT_FOUND);
+
+        return vault;
     }
 
     async addConversationKeys({ conversation_key_vaults }) {
@@ -69,9 +74,9 @@ class E2EEService {
 
         const { conversation_id, key_version } = conversation_key_vaults[0];
 
-        const latestSharedKey = await this.getLatestConversationKey(conversation_id);
+        const latestConvKey = await this.getLatestConversationKey(conversation_id, false);
 
-        const latestKeyVersion = latestSharedKey?.key_version ? latestSharedKey.key_version : 0;
+        const latestKeyVersion = latestConvKey?.key_version ? latestConvKey.key_version : 0;
 
         if (key_version !== latestKeyVersion + 1) {
             throw new BadRequestError(
@@ -93,7 +98,8 @@ class E2EEService {
             raw: true,
         });
 
-        if (!foundKey) throw new BadRequestError('shared key not found');
+        if (!foundKey)
+            throw new BadRequestError('shared key not found', undefined, E2EEErrorCode.SERVER_VAULT_NOT_FOUND);
         return foundKey;
     }
 
