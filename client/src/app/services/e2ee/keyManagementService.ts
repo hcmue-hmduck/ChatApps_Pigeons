@@ -1,4 +1,4 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../authService';
 import { CryptoUtilityService } from './cryptoUtilityService';
@@ -13,6 +13,7 @@ export class KeyManagementService {
     private cryptoUtil = inject(CryptoUtilityService);
     private localDB = inject(LocalDatabaseService);
     private e2eeApiService = inject(E2eeApiService);
+    hasIdentityKey = signal(false);
 
     private userId = '';
     private sharedKeys: Map<
@@ -28,6 +29,7 @@ export class KeyManagementService {
             (window as any).TestKeyMService = this;
         }
         this.userId = authService.getUserId();
+        this.checkIdentityKeyPair().then(res => this.hasIdentityKey.set(res));
     }
 
     async checkIdentityKeyPair() {
@@ -56,12 +58,14 @@ export class KeyManagementService {
 
             await firstValueFrom(this.e2eeApiService.setupKeys(payload));
 
-            return await this.localDB.saveOwnKey({
+            const res = await this.localDB.saveOwnKey({
                 userId: this.userId!,
                 publicKeyBase64,
                 privateKeyObj,
                 pinHash: await this.cryptoUtil.hashString(pin),
             });
+            this.hasIdentityKey.set(true);
+            return res;
         } catch (error) {
             console.error(`setupNewDevice:::`, error);
             throw error;
@@ -156,9 +160,14 @@ export class KeyManagementService {
                 );
             }
 
-            return await Promise.all(arrPromise);
-        } catch (error) {
+            const resFinal = await Promise.all(arrPromise);
+            this.hasIdentityKey.set(true);
+            return resFinal;
+        } catch (error: any) {
             console.error(error);
+            if (error.code === E2EEErrorCode.DECRYPTION_FAILED) {
+                throw new Error('Mã PIN không chính xác');
+            }
             throw error;
         }
     }

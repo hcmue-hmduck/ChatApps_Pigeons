@@ -7,7 +7,7 @@ const { getUpdateData } = require('../utils/dataUtil.js');
 class UsersService {
     // Lấy users theo điều kiện filter
     async getAllUsers(where = {}) {
-        const resolvedWhere = { is_active: true, ...where };
+        const resolvedWhere = { is_active: true, public_key: { [Op.ne]: null }, ...where };
 
         if (where.id) {
             resolvedWhere.id = Array.isArray(where.id) ? { [Op.in]: where.id } : where.id;
@@ -77,11 +77,14 @@ class UsersService {
         const foundBotUser = await usersModel.findOne({ where: { bot_name, is_bot: true } });
         if (foundBotUser) throw new BadRequestError('bot username has exists');
 
-        return await usersModel.create({
-            full_name,
-            bot_name,
-            is_bot: true
-        }, options);
+        return await usersModel.create(
+            {
+                full_name,
+                bot_name,
+                is_bot: true,
+            },
+            options,
+        );
     }
 
     async updateBotUser(bot_user_id, { full_name, bot_name }) {
@@ -93,9 +96,9 @@ class UsersService {
                 where: {
                     is_bot: true,
                     bot_name,
-                    id: { [Op.ne]: bot_user_id }
-                }
-            })
+                    id: { [Op.ne]: bot_user_id },
+                },
+            });
             if (foundBotName) throw new BadRequestError('bot name has exists');
         }
 
@@ -103,10 +106,8 @@ class UsersService {
         return await foundBotUser.update(updateData);
     }
 
-
     // Cập nhật user
     async updateUser(userId, userData, options = {}) {
-
         const user = await usersModel.findByPk(userId);
         if (!user) throw new BadRequestError('User not found');
 
@@ -117,12 +118,12 @@ class UsersService {
 
     async setPassword(userId, password) {
         const password_hash = await hashString(password);
-        console.log(`password_hash`, password_hash)
+        console.log(`password_hash`, password_hash);
         return this.updateUser(userId, { password_hash });
     }
 
     async changePassword(userId, oldPassword, newPassword) {
-        console.log(`changePassword:::`, { userId, oldPassword, newPassword })
+        console.log(`changePassword:::`, { userId, oldPassword, newPassword });
         const user = await this.getUserById(userId);
         if (!user) throw new BadRequestError('User not found');
 

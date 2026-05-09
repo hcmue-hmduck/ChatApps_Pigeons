@@ -1,69 +1,69 @@
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { CommonModule } from '@angular/common';
 import {
     AfterViewChecked,
     AfterViewInit,
+    CUSTOM_ELEMENTS_SCHEMA,
+    ChangeDetectionStrategy,
+    ChangeDetectorRef,
     Component,
     ElementRef,
+    EventEmitter,
     HostBinding,
     HostListener,
     Input,
+    NgZone,
     OnDestroy,
     OnInit,
+    Output,
     ViewChild,
+    computed,
     effect,
     inject,
     signal,
     untracked,
-    computed,
-    ChangeDetectorRef,
-    Output,
-    EventEmitter,
-    ChangeDetectionStrategy,
-    NgZone,
-    CUSTOM_ELEMENTS_SCHEMA,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { Router } from '@angular/router';
 import { PickerModule } from '@ctrl/ngx-emoji-mart';
 import {
-    finalize,
-    forkJoin,
     Observable,
-    from,
-    concatMap,
-    tap,
-    firstValueFrom,
     catchError,
-    throwError,
+    concatMap,
+    finalize,
+    firstValueFrom,
+    forkJoin,
+    from,
     switchMap,
+    tap,
+    throwError,
 } from 'rxjs';
-import { GROUP_CALL, SendCallPayload } from '../../models/callData';
+import Swal from 'sweetalert2';
+import { GROUP_CALL } from '../../models/callData';
+import { ActiveConversationService } from '../../services/activeConversation.service';
 import { AuthService } from '../../services/authService';
+import { BotInteractionService } from '../../services/botInteraction.service';
+import { BotMessages } from '../../services/botMessage';
+import { BotServices } from '../../services/botServices';
 import { CallService } from '../../services/callService';
 import { Conversation } from '../../services/conversation';
+import { E2EEErrorCode } from '../../services/e2ee/e2eeError';
+import { E2EEMessageService } from '../../services/e2ee/e2eeMessageService';
+import { E2eeModalService } from '../../services/e2ee/e2eeModalService';
+import { KeyManagementService } from '../../services/e2ee/keyManagementService';
+import { LocalDatabaseService } from '../../services/e2ee/localDatabaseService';
+import { MessageReactions } from '../../services/messagereactions';
 import { Messages } from '../../services/messages';
+import { MessageStoreService } from '../../services/messageStore.service';
+import { Participant } from '../../services/participant';
 import { PinMessages } from '../../services/pin_message';
 import { SocketService } from '../../services/socket';
-import Swal from 'sweetalert2';
 import { UploadService } from '../../services/uploadService';
-import { Participant } from '../../services/participant';
+import { DateTimeUtils } from '../../utils/DateTimeUtils/datetimeUtils';
 import { FileUtils } from '../../utils/FileUtils/fileUltils';
 import { ImgVidUtils } from '../../utils/img_vidUtils/img_vidUtils';
 import { LinkPreviewUtils } from '../../utils/LinkUtils/linkPreviewUtils';
-import { DateTimeUtils } from '../../utils/DateTimeUtils/datetimeUtils';
 import { GroupAvatarLayoutComponent } from '../groupAvatarLayout/groupAvatarLayout.component';
-import { MessageReactions } from '../../services/messagereactions';
-import { ActiveConversationService } from '../../services/activeConversation.service';
-import { MessageStoreService } from '../../services/messageStore.service';
-import { BotMessages } from '../../services/botMessage';
-import { BotServices } from '../../services/botServices';
-import { Router } from '@angular/router';
-import { BotInteractionService } from '../../services/botInteraction.service';
-import { E2EEErrorCode } from '../../services/e2ee/e2eeError';
-import { E2EEMessageService } from '../../services/e2ee/e2eeMessageService';
-import { LocalDatabaseService } from '../../services/e2ee/localDatabaseService';
-import { KeyManagementService } from '../../services/e2ee/keyManagementService';
-import { E2eePinModalComponent } from '../e2eePinModal/e2eePinModal.component';
 
 export interface UserPresence {
     status: string;
@@ -87,7 +87,6 @@ export interface StagedFile {
         FormsModule,
         PickerModule,
         GroupAvatarLayoutComponent,
-        E2eePinModalComponent,
     ],
     templateUrl: './messagesLayout.component.html',
     styleUrls: ['./messagesLayout.component.css'],
@@ -102,11 +101,12 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
 
     @HostBinding('class.modal-open')
     get isModalOpen(): boolean {
-        return this.showE2eePinModal();
+        return this.e2eeModalService.isVisible();
     }
 
     callService = inject(CallService);
     authService = inject(AuthService);
+    e2eeModalService = inject(E2eeModalService);
     linkPreviewUtils = inject(LinkPreviewUtils);
     dateTimeUtils = inject(DateTimeUtils);
     private cdr = inject(ChangeDetectorRef);
@@ -133,8 +133,7 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
     e2eeMessageService = inject(E2EEMessageService);
     localDB = inject(LocalDatabaseService);
     keyManagementService = inject(KeyManagementService);
-    showWarningE2EE = signal(false);
-    showE2eePinModal = signal(false);
+    showWarningE2EE = computed(() => !this.e2eeModalService.isE2eeReady());
 
     @Input() set convID(val: string) {
         if (val && val !== this.conversationId()) {
@@ -157,9 +156,9 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
         }
     }
 
-    private async checkIdentityKeyPair() {
-        return await this.keyManagementService.checkIdentityKeyPair();
-    }
+    // private async checkIdentityKeyPair() {
+    //     return await this.keyManagementService.checkIdentityKeyPair();
+    // }
 
     private resetComponentState() {
         this.loading = true;
@@ -1172,10 +1171,6 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
     }
 
     ngOnInit() {
-        this.keyManagementService.checkIdentityKeyPair().then((hasKey) => {
-            this.showWarningE2EE.set(!hasKey);
-        });
-
         this.botInteractionService.registerCallbacks({
             sendBotMessage: (convId, botPart, msg, id) =>
                 this.sendBotMessage(convId, botPart, msg, id),

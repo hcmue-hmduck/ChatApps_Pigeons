@@ -5,24 +5,26 @@ import { KeyManagementService } from '../../services/e2ee/keyManagementService';
 import { E2eeApiService } from '../../services/e2ee/e2eeApiService';
 import { LocalDatabaseService } from '../../services/e2ee/localDatabaseService';
 import { AuthService } from '../../services/authService';
+import { E2eeModalService } from '../../services/e2ee/e2eeModalService';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
     selector: 'app-e2ee-pin-modal',
     standalone: true,
     imports: [CommonModule, FormsModule],
-    templateUrl: './e2eePinModal.component.html', 
-    styleUrls: ['./e2eePinModal.component.css']
+    templateUrl: './e2eePinModal.component.html',
+    styleUrls: ['./e2eePinModal.component.css'],
 })
 export class E2eePinModalComponent implements OnInit {
     keyService = inject(KeyManagementService);
     apiService = inject(E2eeApiService);
     localDB = inject(LocalDatabaseService);
     authService = inject(AuthService);
+    modalService = inject(E2eeModalService);
     @Output() close = new EventEmitter<void>();
 
-    isVisible = signal(false);
-    mode = signal<'setup' | 'recovery' | 'change'>('setup');
+    isVisible = this.modalService.isVisible;
+    mode = this.modalService.mode;
     pin = signal('');
     confirmPin = signal('');
     oldPin = signal('');
@@ -37,7 +39,7 @@ export class E2eePinModalComponent implements OnInit {
         try {
             const user = this.authService.getUserInfor();
             if (!user) return;
-            
+
             const ownKey = await this.localDB.getOwnKey(user.id);
             if (ownKey) {
                 // Đã có khóa local, không cần nhập PIN
@@ -50,12 +52,11 @@ export class E2eePinModalComponent implements OnInit {
             const hasSetup = statusRes?.metadata?.hasSetup;
 
             if (hasSetup) {
-                this.mode.set('recovery');
+                this.modalService.mode.set('recovery');
             } else {
-                this.mode.set('setup');
+                this.modalService.mode.set('setup');
             }
-            this.isVisible.set(true);
-
+            this.modalService.isVisible.set(true);
         } catch (err) {
             console.error('Lỗi khi kiểm tra trạng thái E2EE:', err);
         }
@@ -73,19 +74,26 @@ export class E2eePinModalComponent implements OnInit {
 
     async handleSubmit() {
         this.error.set('');
-        
+
+        if (this.mode() === 'change') {
+            if (this.oldPin().length < 6) {
+                this.error.set('Vui lòng nhập đầy đủ 6 chữ số mã PIN cũ');
+                return;
+            }
+        }
+
         if (this.mode() === 'setup' || this.mode() === 'change') {
+            if (this.pin().length < 6) {
+                this.error.set('Vui lòng nhập đầy đủ 6 chữ số mã PIN mới');
+                return;
+            }
             if (this.pin() !== this.confirmPin()) {
                 this.error.set('Mã PIN xác nhận không khớp');
                 return;
             }
-            if (this.pin().length < 6) {
-                this.error.set('Mã PIN phải có ít nhất 6 ký tự');
-                return;
-            }
         } else if (this.mode() === 'recovery') {
             if (this.pin().length < 6) {
-                this.error.set('Mã PIN phải có ít nhất 6 ký tự');
+                this.error.set('Vui lòng nhập đầy đủ 6 chữ số mã PIN');
                 return;
             }
         }
@@ -98,7 +106,7 @@ export class E2eePinModalComponent implements OnInit {
             } else if (this.mode() === 'recovery') {
                 await this.keyService.recoveryDevice(this.pin());
                 this.closeModal();
-                if(typeof window !== 'undefined') window.location.reload()
+                if (typeof window !== 'undefined') window.location.reload();
             } else if (this.mode() === 'change') {
                 const isVerify = await this.keyService.verifyPin(this.oldPin());
                 if (!isVerify) {
@@ -118,12 +126,26 @@ export class E2eePinModalComponent implements OnInit {
     }
 
     closeModal() {
-        this.isVisible.set(false);
+        this.modalService.close();
         this.pin.set('');
         this.confirmPin.set('');
         this.oldPin.set('');
         this.error.set('');
         this.close.emit();
+    }
+
+    handleLogout() {
+        this.authService.logout().subscribe({
+            next: () => {
+                this.closeModal();
+                if (typeof window !== 'undefined') window.location.reload();
+            },
+            error: (err) => {
+                console.error('Lỗi khi đăng xuất:', err);
+                this.closeModal();
+                if (typeof window !== 'undefined') window.location.reload();
+            }
+        });
     }
 
     validateNumeric(event: any, field: 'pin' | 'confirmPin' | 'oldPin') {

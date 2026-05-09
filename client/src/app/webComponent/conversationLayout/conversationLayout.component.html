@@ -44,7 +44,7 @@
                             </div>
                             } @else if (conv.type === 'direct' && getOtherParticipant(conv); as other) {
                             <div class="avatar-wrapper">
-                                <img [src]="other.avatar_url" [alt]="other.full_name" class="avatar-img">
+                                <img [src]="other.avatar_url || 'assets/AvatarDefault.jpg'" [alt]="other.full_name" class="avatar-img">
                                 @if (other.is_bot) {
                                     <span class="status-dot online"></span>
                                 }

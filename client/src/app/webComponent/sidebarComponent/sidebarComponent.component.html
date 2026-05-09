@@ -21,7 +21,7 @@
         <!-- User Avatar & Modal Trigger -->
         <div class="sidebar-bottom">
             <!-- User Avatar if ready -->
-            <img [src]="userInfo()?.avatar_url" alt="avatar" class="sidebar-user-avatar" title="Hồ sơ cá nhân"
+            <img [src]="userInfo()?.avatar_url || 'assets/AvatarDefault.jpg'" alt="avatar" class="sidebar-user-avatar" title="Hồ sơ cá nhân"
                 *ngIf="userInfo()" (click)="userProfileModal.open(userInfo())">
 
             <!-- Placeholder if loading -->

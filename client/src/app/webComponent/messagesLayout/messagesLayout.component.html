@@ -9,7 +9,7 @@
             </div>
             <h2>Yêu cầu khôi phục bảo mật</h2>
             <p>Vui lòng nhập mã PIN để khôi phục các khóa bảo mật và tiếp tục cuộc trò chuyện của bạn.</p>
-            <button class="unlock-btn" (click)="showE2eePinModal.set(true)">
+            <button class="unlock-btn" (click)="e2eeModalService.open('recovery')">
                 Nhập mã PIN ngay
             </button>
         </div>
@@ -31,7 +31,7 @@
             } @else {
             @if (getMessageInfor().other_participant) {
             <div>
-                <img [src]="getMessageInfor().other_participant.avatar_url"
+                <img [src]="getMessageInfor().other_participant.avatar_url || 'assets/AvatarDefault.jpg'"
                     [alt]="getMessageInfor().other_participant.full_name" class="header-avatar" />
                 <span class="header-status-dot" [class.online]="
                                             getMessageInfor().other_participant.is_bot ||
@@ -1628,8 +1628,4 @@
 </div>
 }
 }
-
-<!-- E2EE PIN MODAL -->
-@if (showE2eePinModal()) {
-    <app-e2ee-pin-modal (close)="showE2eePinModal.set(false)"></app-e2ee-pin-modal>
-}
+

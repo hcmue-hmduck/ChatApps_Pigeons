@@ -116,7 +116,7 @@
 .close-btn:hover {
     background: rgba(255, 255, 255, 0.1);
     color: #ffffff;
-    transform: rotate(90deg);
+    transform: translateY(-50%) rotate(90deg);
 }
 
 .modal-body {
@@ -145,6 +145,7 @@
     margin-bottom: 20px;
     border-radius: 8px;
     font-size: 0.9rem;
+    text-align: center;
     animation: slideInError 0.3s ease-out;
 }
 
@@ -330,4 +331,38 @@
     .input-count {
         font-size: 0.75rem;
     }
+}
+
+.modal-footer-actions {
+    margin-top: 16px;
+    display: flex;
+    justify-content: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding-top: 16px;
+}
+
+.logout-link-btn {
+    background: none;
+    border: none;
+    color: #ff6b6b;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    opacity: 0.7;
+    transition: all 0.2s ease;
+    padding: 8px 12px;
+    border-radius: 6px;
+}
+
+.logout-link-btn:hover {
+    opacity: 1;
+    background: rgba(255, 107, 107, 0.1);
+    color: #ff5252;
+}
+
+.logout-link-btn i {
+    font-size: 1rem;
 }

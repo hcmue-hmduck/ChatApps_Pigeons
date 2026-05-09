@@ -41,7 +41,7 @@
                     (change)="onAvatarFileSelected($event)"
                 />
                 <div class="pf-avatar-ring">
-                    <img [src]="user.avatar_url" alt="avatar" class="pf-avatar-img" />
+                    <img [src]="user.avatar_url || 'assets/AvatarDefault.jpg'" alt="avatar" class="pf-avatar-img" />
                     <button
                         class="pf-cam-btn"
                         title="Đổi ảnh đại diện"
@@ -186,6 +186,12 @@
                         } @else {
                             <button class="pf-btn pf-btn-outline" (click)="toggleSetPassword()">
                                 <i class="bi bi-shield-lock-fill"></i> Thiết lập mật khẩu
+                            </button>
+                        }
+                        <!-- Nút đổi PIN E2EE -->
+                        @if (e2eeModalService.isE2eeReady()) {
+                            <button class="pf-btn pf-btn-outline" (click)="changeE2eePin()">
+                                <i class="bi bi-key-fill"></i> Đổi mã PIN
                             </button>
                         }
                     </div>
