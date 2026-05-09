@@ -4,6 +4,7 @@ import { UserBlock } from './userBlock';
 import { SocketService } from './socket';
 import { AuthService } from './authService';
 import { E2EEMessageService } from './e2ee/e2eeMessageService';
+import { KeyManagementService } from './e2ee/keyManagementService';
 
 export interface UserPresence {
     status: string;
@@ -19,6 +20,7 @@ export class ActiveConversationService implements OnDestroy {
     private socketService = inject(SocketService);
     private authService = inject(AuthService);
     private e2eeMessageService = inject(E2EEMessageService);
+    private keyManagementService = inject(KeyManagementService);
 
     // --- Core State (Signals) ---
     conversations = signal<any>({});
@@ -69,6 +71,73 @@ export class ActiveConversationService implements OnDestroy {
         const joined = this.joinedConversations();
         return joined.reduce((acc: number, conv: any) => acc + (Number(conv.unread_count) || 0), 0);
     });
+
+    private async decryptSidebarLastMessages(joined: any[]) {
+        return await Promise.all(
+            joined.map(async (conv: any) => {
+                if (
+                    conv.lastMessage &&
+                    conv.lastMessage.is_e2ee &&
+                    conv.lastMessage.content &&
+                    !conv.lastMessage.is_deleted
+                ) {
+                    try {
+                        const e2eePayload = {
+                            ciphertext: conv.lastMessage.content,
+                            iv: conv.lastMessage.iv,
+                            keyVersion: conv.lastMessage.key_version,
+                        };
+                        const decrypted = await this.e2eeMessageService.decryptMessage(
+                            conv.conversation_id,
+                            e2eePayload,
+                        );
+                        return {
+                            ...conv,
+                            lastMessage: {
+                                ...conv.lastMessage,
+                                content: decrypted.content,
+                                is_decrypted: true,
+                            },
+                        };
+                    } catch (e) {
+                        try {
+                            await this.keyManagementService.syncLatestConversationKey(
+                                conv.conversation_id,
+                            );
+                            const e2eePayload = {
+                                ciphertext: conv.lastMessage.content,
+                                iv: conv.lastMessage.iv,
+                                keyVersion: conv.lastMessage.key_version,
+                            };
+                            const decrypted = await this.e2eeMessageService.decryptMessage(
+                                conv.conversation_id,
+                                e2eePayload,
+                            );
+                            return {
+                                ...conv,
+                                lastMessage: {
+                                    ...conv.lastMessage,
+                                    content: decrypted.content,
+                                    is_decrypted: true,
+                                },
+                            };
+                        } catch (retryError) {
+                            console.error('Sidebar initial decryption failed', retryError);
+                            return {
+                                ...conv,
+                                lastMessage: {
+                                    ...conv.lastMessage,
+                                    content: '[Tin nhắn mã hóa]',
+                                    is_decryption_error: true,
+                                },
+                            };
+                        }
+                    }
+                }
+                return conv;
+            }),
+        );
+    }
 
     constructor() {
         // Self-initialization: load data when user logs in or refreshes
@@ -140,47 +209,7 @@ export class ActiveConversationService implements OnDestroy {
                 let joined = metadata.homeConversationData?.joinedConversations || [];
 
                 // --- GIẢI MÃ TIN NHẮN CUỐI CÙNG TRÊN SIDEBAR ---
-                joined = await Promise.all(
-                    joined.map(async (conv: any) => {
-                        if (
-                            conv.lastMessage &&
-                            conv.lastMessage.is_e2ee &&
-                            conv.lastMessage.content &&
-                            !conv.lastMessage.is_deleted
-                        ) {
-                            try {
-                                const e2eePayload = {
-                                    ciphertext: conv.lastMessage.content,
-                                    iv: conv.lastMessage.iv,
-                                    keyVersion: conv.lastMessage.key_version,
-                                };
-                                const decrypted = await this.e2eeMessageService.decryptMessage(
-                                    conv.conversation_id,
-                                    e2eePayload,
-                                );
-                                return {
-                                    ...conv,
-                                    lastMessage: {
-                                        ...conv.lastMessage,
-                                        content: decrypted.content,
-                                        is_decrypted: true,
-                                    },
-                                };
-                            } catch (e) {
-                                console.error('Sidebar initial decryption failed', e);
-                                return {
-                                    ...conv,
-                                    lastMessage: {
-                                        ...conv.lastMessage,
-                                        content: '[Tin nhắn mã hóa]',
-                                        is_decryption_error: true,
-                                    },
-                                };
-                            }
-                        }
-                        return conv;
-                    }),
-                );
+                joined = await this.decryptSidebarLastMessages(joined);
 
                 // Sort
                 const sorted = [...joined].sort((a: any, b: any) => {
@@ -319,10 +348,11 @@ export class ActiveConversationService implements OnDestroy {
             const userId = this.authService.getUserId();
             if (!userId) return;
             this.conversationService.getConversations(userId).subscribe({
-                next: (response) => {
+                next: async (response) => {
                     const metadata = response.metadata || {};
-                    const joined = metadata.homeConversationData?.joinedConversations || [];
+                    let joined = metadata.homeConversationData?.joinedConversations || [];
                     this.socketService.emit('joinConversation', data.conversation_id);
+                    joined = await this.decryptSidebarLastMessages(joined);
                     const sorted = [...joined].sort((a: any, b: any) => {
                         if (a.is_pinned && !b.is_pinned) return -1;
                         if (!a.is_pinned && b.is_pinned) return 1;
@@ -461,8 +491,24 @@ export class ActiveConversationService implements OnDestroy {
                 );
                 displayContent = decrypted.content;
             } catch (e) {
-                console.error('Sidebar real-time decryption failed', e);
-                displayContent = '[Tin nhắn mã hóa]';
+                try {
+                    await this.keyManagementService.syncLatestConversationKey(
+                        data.conversation_id,
+                    );
+                    const e2eePayload = {
+                        ciphertext: data.content,
+                        iv: data.iv,
+                        keyVersion: data.key_version,
+                    };
+                    const decrypted = await this.e2eeMessageService.decryptMessage(
+                        data.conversation_id,
+                        e2eePayload,
+                    );
+                    displayContent = decrypted.content;
+                } catch (retryError) {
+                    console.error('Sidebar real-time decryption failed', retryError);
+                    displayContent = '[Tin nhắn mã hóa]';
+                }
             }
         }
 

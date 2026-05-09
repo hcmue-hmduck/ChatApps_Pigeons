@@ -854,6 +854,12 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
                             : null,
                     };
 
+                    const hydrated = this.hydrateReplyPreview(
+                        [messageToAdd],
+                        [messageToAdd, ...currentMessages],
+                    );
+                    messageToAdd = hydrated[0];
+
                     this.getMessagesData.update((old) => ({
                         ...old,
                         homeMessagesData: {
@@ -1011,9 +1017,10 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
         this.socketService.on('updateConversation', this.onUpdateConversationSocket);
 
         // Setup listener cho pin tin nhắn
-        this.onPinMessageSocket = (data: any) => {
+        this.onPinMessageSocket = async (data: any) => {
             if (data.conversation_id === conversationId) {
-                this.pinnedMessages.update((prev) => [...prev, data]);
+                const [decryptedPin] = await this.decryptPinnedMessages([data], conversationId);
+                this.pinnedMessages.update((prev) => [...prev, decryptedPin]);
             }
         };
         this.socketService.on('pinMessage', this.onPinMessageSocket);
@@ -1208,6 +1215,67 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
         return await this.e2eeMessageService.processIncomingMessage(currentConvId, messages);
     }
 
+    private async decryptPinnedMessages(pins: any[], conversationId: string): Promise<any[]> {
+        if (!pins || pins.length === 0) return [];
+
+        const results = await Promise.all(
+            pins.map(async (pin) => {
+                if (!pin?.is_e2ee || !pin.content) return pin;
+
+                try {
+                    const e2eePayload = {
+                        ciphertext: pin.content,
+                        iv: pin.iv,
+                        keyVersion: pin.key_version,
+                    };
+                    const decrypted = await this.e2eeMessageService.decryptMessage(
+                        conversationId,
+                        e2eePayload,
+                    );
+                    return { ...pin, content: decrypted.content, is_decrypted: true };
+                } catch (e) {
+                    console.error('Pinned message decryption failed', e);
+                    return { ...pin, content: '[Tin nhắn mã hóa]', is_decryption_error: true };
+                }
+            }),
+        );
+
+        return results;
+    }
+
+    private hydrateReplyPreview(messages: any[], allMessages?: any[]) {
+        if (!messages || messages.length === 0) return messages;
+
+        const source = allMessages ?? messages;
+        const byId = new Map(source.map((msg) => [String(msg?.id), msg]));
+
+        return messages.map((msg) => {
+            const info = msg?.parent_message_info;
+            if (!info?.parent_message_id) return msg;
+
+            const parent = byId.get(String(info.parent_message_id));
+            if (!parent || info.parent_message_is_deleted) return msg;
+
+            const updatedInfo = { ...info };
+            if (parent.message_type) updatedInfo.parent_message_type = parent.message_type;
+            if (parent.sender_id) updatedInfo.parent_message_sender_id = parent.sender_id;
+            if (parent.sender_name) updatedInfo.parent_message_name = parent.sender_name;
+
+            if (parent.message_type === 'text' && parent.content) {
+                updatedInfo.parent_message_content = parent.content;
+            }
+
+            if (
+                (parent.message_type === 'image' || parent.message_type === 'video') &&
+                parent.thumbnail_url
+            ) {
+                updatedInfo.parent_message_thumbnail_url = parent.thumbnail_url;
+            }
+
+            return { ...msg, parent_message_info: updatedInfo };
+        });
+    }
+
     loadMessages(conversationId: string) {
         if (!conversationId) return;
 
@@ -1222,6 +1290,17 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
             this.loading = false;
             this.isLoaded = true;
             this.pendingScroll = true;
+
+            if (cache.pinnedMessages?.length) {
+                this.decryptPinnedMessages(cache.pinnedMessages, conversationId).then(
+                    (decrypted) => {
+                        this.pinnedMessages.set(decrypted);
+                        this.messageStore.updateState(conversationId, {
+                            pinnedMessages: decrypted,
+                        });
+                    },
+                );
+            }
 
             const cachedMessages = cache.getMessagesData?.homeMessagesData?.messages || [];
             const cachedLatestMessage = [...cachedMessages].reverse().find((msg: any) => msg?.id);
@@ -1260,13 +1339,15 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
                 this.lastMessageId = data.homeMessagesData?.last_message_id || '';
 
                 let messages = data.homeMessagesData?.messages || [];
-                const pinned = data.homeMessagesData?.pinnedMessages || [];
+                let pinned = data.homeMessagesData?.pinnedMessages || [];
 
                 // --- GIẢI MÃ TIN NHẮN ---
                 messages = await this.decryptMessages(messages);
+                messages = this.hydrateReplyPreview(messages);
                 data.homeMessagesData.messages = messages;
 
                 this.getMessagesData.set(data);
+                pinned = await this.decryptPinnedMessages(pinned, conversationId);
                 this.pinnedMessages.set(pinned);
                 this.loading = false;
                 this.isLoaded = true;
@@ -1341,6 +1422,11 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
 
                 // --- GIẢI MÃ TIN NHẮN ---
                 olderMessages = await this.decryptMessages(olderMessages);
+                const currentMessages = this.getMessagesData().homeMessagesData?.messages || [];
+                olderMessages = this.hydrateReplyPreview(
+                    olderMessages,
+                    [...olderMessages, ...currentMessages],
+                );
 
                 // Prepend older messages vào đầu danh sách
                 this.getMessagesData.update((old) => ({
@@ -1449,6 +1535,11 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
         };
 
         const messageToAdd = messageTransform ? messageTransform(messageData) : { ...messageData };
+        const currentMessages = this.getMessagesData().homeMessagesData?.messages || [];
+        const hydratedMessageToAdd = this.hydrateReplyPreview(
+            [messageToAdd],
+            currentMessages,
+        )[0];
 
         const currentUser =
             this.getMessageInfor()?.participants.find(
@@ -1456,7 +1547,7 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
             ) || {};
         const authUser = this.authService.getUserInfor() || {};
         const newMessage = {
-            ...messageToAdd,
+            ...hydratedMessageToAdd,
             sender_name: authUser.full_name || currentUser.full_name,
             sender_avatar:
                 authUser.avatar_url || currentUser.avatar_url || 'assets/AvatarDefault.jpg',
@@ -1568,6 +1659,12 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
                         _uploading: false,
                         is_decrypted: true,
                     };
+                    const currentMessages =
+                        this.getMessagesData().homeMessagesData?.messages || [];
+                    const hydratedDisplayMessage = this.hydrateReplyPreview(
+                        [displayMessageForSender],
+                        [displayMessageForSender, ...currentMessages],
+                    )[0];
 
                     // --- NEW: Nâng cấp hội thoại ảo lên thật cho chính người gửi ---
                     const oldId = this.conversationId();
@@ -1658,7 +1755,7 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
                         homeMessagesData: {
                             ...old.homeMessagesData,
                             messages: old.homeMessagesData.messages.map((m: any) =>
-                                m.id === effectiveTempId ? displayMessageForSender : m,
+                                m.id === effectiveTempId ? hydratedDisplayMessage : m,
                             ),
                         },
                     }));
@@ -3140,13 +3237,29 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
         this.editingContent = '';
     }
 
-    saveEditModal() {
+    async saveEditModal() {
         if (this.editingMessage && this.editingContent.trim() !== '') {
             // Lưu vào local variable để tránh bị clear
             const messageId = this.editingMessage;
             const messageContent = this.editingContent;
+            const targetMessage = this.getMessagesData().homeMessagesData?.messages.find(
+                (m: any) => m.id === messageId,
+            );
+            const isE2ee = !!targetMessage?.is_e2ee;
 
-            this.messagesService.putMessage(messageId, messageContent).subscribe({
+            let contentToSend = messageContent;
+            let e2eePayload: { iv: string; keyVersion: number; isE2ee?: boolean } | undefined;
+
+            if (isE2ee) {
+                const encrypted = await this.e2eeMessageService.encryptMessage(
+                    this.conversationId(),
+                    messageContent,
+                );
+                contentToSend = encrypted.ciphertext;
+                e2eePayload = { iv: encrypted.iv, keyVersion: encrypted.keyVersion };
+            }
+
+            this.messagesService.putMessage(messageId, contentToSend, e2eePayload).subscribe({
                 next: (response) => {
                     this.getMessagesData.update((old) => ({
                         ...old,

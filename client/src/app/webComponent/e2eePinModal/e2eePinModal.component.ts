@@ -98,6 +98,7 @@ export class E2eePinModalComponent implements OnInit {
             } else if (this.mode() === 'recovery') {
                 await this.keyService.recoveryDevice(this.pin());
                 this.closeModal();
+                if(typeof window !== 'undefined') window.location.reload()
             } else if (this.mode() === 'change') {
                 const isVerify = await this.keyService.verifyPin(this.oldPin());
                 if (!isVerify) {

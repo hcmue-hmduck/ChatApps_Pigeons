@@ -98,6 +98,10 @@ class HomeMessagesService {
                 sender_name: sender ? sender.full_name : 'Unknown',
                 message_type: targetMsg ? targetMsg.message_type : 'text',
                 file_name: targetMsg ? targetMsg.file_name : null,
+                thumbnail_url: targetMsg ? targetMsg.thumbnail_url : null,
+                is_e2ee: targetMsg ? targetMsg.is_e2ee : false,
+                iv: targetMsg ? targetMsg.iv : null,
+                key_version: targetMsg ? targetMsg.key_version : null,
             };
         });
 

@@ -44,8 +44,18 @@ export class Messages {
         return this.http.post(`${this.apiUrl}/${conversationId}`, body);
     }
 
-    putMessage(messageId: string, content: string): Observable<any> {
-        return this.http.put(`${this.apiUrl}/${messageId}`, { content });
+    putMessage(
+        messageId: string,
+        content: string,
+        e2eePayload?: { iv: string; keyVersion: number; isE2ee?: boolean },
+    ): Observable<any> {
+        const body: any = { content };
+        if (e2eePayload) {
+            body.iv = e2eePayload.iv;
+            body.key_version = e2eePayload.keyVersion;
+            body.is_e2ee = e2eePayload.isE2ee ?? true;
+        }
+        return this.http.put(`${this.apiUrl}/${messageId}`, body);
     }
 
     deleteMessage(messageId: string): Observable<any> {
