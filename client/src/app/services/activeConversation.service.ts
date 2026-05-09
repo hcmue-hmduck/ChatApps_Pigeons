@@ -46,6 +46,7 @@ export class ActiveConversationService implements OnDestroy {
     // Socket Event Callbacks
     private onUpdateProfileSocket?: (data: any) => void;
     private onUpdateConversationSocket?: (data: any) => void;
+    private onUpdateConversationInfoSocket?: (data: any) => void;
     private onNewConversationSocket?: (data: any) => void;
     private onUserStatusChangedSocket?: (data: any) => void;
     private onOnlineUsersListSocket?: (userIds: string[]) => void;
@@ -257,7 +258,41 @@ export class ActiveConversationService implements OnDestroy {
         };
         this.socketService.on('updateConversation', this.onUpdateConversationSocket);
 
-        // 3. newConversation
+        // 2.5 updateConversationInfo
+        this.onUpdateConversationInfoSocket = (data: any) => {
+            this.conversations.update(cur => {
+                if (!cur?.homeConversationData?.joinedConversations) return cur;
+                const convList = [...cur.homeConversationData.joinedConversations];
+                const index = convList.findIndex((c: any) => String(c.conversation_id) === String(data.conversation_id));
+                if (index !== -1) {
+                    const conv = { ...convList[index] };
+                    if (data.title !== undefined) {
+                        conv.title = data.title;
+                    }
+                    if (data.avatar_url !== undefined) {
+                        conv.avatar_url = data.avatar_url;
+                    }
+                    convList[index] = conv;
+                    return {
+                        ...cur,
+                        homeConversationData: { ...cur.homeConversationData, joinedConversations: convList }
+                    };
+                }
+                return cur;
+            });
+        };
+        this.socketService.on('updateConversationInfo', this.onUpdateConversationInfoSocket);
+
+        // blockUser & unblockUser
+        this.socketService.on('blockUser', (data: any) => {
+            this.userBlock.update(list => [...list, data]);
+        });
+        
+        this.socketService.on('unblockUser', (data: any) => {
+            this.userBlock.update(list => list.filter(b => 
+                !(String(b.blocked_id) === String(data.blocked_id) && String(b.blocker_id) === String(data.blocker_id))
+            ));
+        });
         this.onNewConversationSocket = (data: any) => {
             const userId = this.authService.getUserId();
             if (!userId) return;
@@ -358,6 +393,7 @@ export class ActiveConversationService implements OnDestroy {
     private removeSocketListeners() {
         if (this.onUpdateProfileSocket) this.socketService.off('updateProfile', this.onUpdateProfileSocket);
         if (this.onUpdateConversationSocket) this.socketService.off('updateConversation', this.onUpdateConversationSocket);
+        if (this.onUpdateConversationInfoSocket) this.socketService.off('updateConversationInfo', this.onUpdateConversationInfoSocket);
         if (this.onNewConversationSocket) this.socketService.off('newConversation', this.onNewConversationSocket);
         if (this.onOnlineUsersListSocket) this.socketService.off('onlineUsersList', this.onOnlineUsersListSocket);
         if (this.onUserStatusChangedSocket) this.socketService.off('userStatusChanged', this.onUserStatusChangedSocket);
@@ -387,6 +423,13 @@ export class ActiveConversationService implements OnDestroy {
                     conv.unread_count = (Number(conv.unread_count) || 0) + 1;
                 }
 
+                if (data.title !== undefined) {
+                    conv.title = data.title;
+                }
+                if (data.avatar_url !== undefined) {
+                    conv.avatar_url = data.avatar_url;
+                }
+
                 conv.lastMessage = {
                     ...(conv.lastMessage || {}),
                     sender_id: data.sender_id,
@@ -397,14 +440,22 @@ export class ActiveConversationService implements OnDestroy {
                     id: data.id || data.message_id || conv.lastMessage?.id
                 };
 
-                // Move to top (within pinned/unpinned groups)
-                convList.splice(index, 1);
-                if (conv.is_pinned) {
-                    convList.unshift(conv);
+                const me = conv.participants?.find((p: any) => String(p.user_id) === String(currentUserId));
+                const isMuted = me?.is_muted || false;
+
+                if (!isMuted) {
+                    // Move to top (within pinned/unpinned groups)
+                    convList.splice(index, 1);
+                    if (conv.is_pinned) {
+                        convList.unshift(conv);
+                    } else {
+                        const firstUnpinnedIndex = convList.findIndex((c: any) => !c.is_pinned);
+                        if (firstUnpinnedIndex === -1) convList.push(conv);
+                        else convList.splice(firstUnpinnedIndex, 0, conv);
+                    }
                 } else {
-                    const firstUnpinnedIndex = convList.findIndex((c: any) => !c.is_pinned);
-                    if (firstUnpinnedIndex === -1) convList.push(conv);
-                    else convList.splice(firstUnpinnedIndex, 0, conv);
+                    // Nếu bị mute, giữ nguyên vị trí, chỉ cập nhật nội dung
+                    convList[index] = conv;
                 }
 
                 return {
@@ -413,6 +464,28 @@ export class ActiveConversationService implements OnDestroy {
                 };
             }
             return cur;
+        });
+    }
+
+    updateParticipantRoleInSignal(conversationId: string, userId: string, role: string) {
+        this.conversations.update(cur => {
+            if (!cur?.homeConversationData?.joinedConversations) return cur;
+            const updated = cur.homeConversationData.joinedConversations.map((conv: any) => {
+                if (String(conv.conversation_id) === String(conversationId)) {
+                    const updatedParticipants = conv.participants?.map((p: any) => {
+                        if (String(p.user_id) === String(userId)) {
+                            return { ...p, owner: role, role: role };
+                        }
+                        return p;
+                    });
+                    return { ...conv, participants: updatedParticipants };
+                }
+                return conv;
+            });
+            return {
+                ...cur,
+                homeConversationData: { ...cur.homeConversationData, joinedConversations: updated }
+            };
         });
     }
 

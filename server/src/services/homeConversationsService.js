@@ -2,6 +2,7 @@ const usersService = require('./usersService');
 const participantsService = require('./participantsService');
 const messagesService = require('./messagesService');
 const conversationsService = require('./conversationsService');
+const { BadRequestError } = require('../core/errorResponse');
 
 class HomeConversationService {
     // Lấy danh sách conversations của user để hiển thị sidebar
@@ -191,6 +192,43 @@ class HomeConversationService {
         const allUserIds = [created_by];
         if (participants_id) allUserIds.push(participants_id);
 
+        const users = await usersService.getAllUsers({ id: allUserIds });
+        const usersMap = new Map(users.map(u => [String(u.id), u]));
+
+        const enrich = (p) => {
+            const user = usersMap.get(String(p.user_id));
+            return user ? {
+                ...p.toJSON ? p.toJSON() : p,
+                full_name: user.full_name,
+                avatar_url: user.avatar_url,
+                last_online_at: user.last_online_at,
+                is_bot: user.is_bot,
+                bot_name: user.bot_name
+            } : p;
+        };
+
+        return {
+            conv,
+            participants: participants.map(enrich),
+            you: enrich(you)
+        };
+    }
+
+    async createGroup(participants_ids, name, avatar_url, created_by) {
+        if (!participants_ids || !Array.isArray(participants_ids) || participants_ids.length < 2) {
+            throw new BadRequestError('Nhóm phải có ít nhất 3 người (bao gồm cả bạn).');
+        }
+
+        const conv = await conversationsService.createConversation('group', name, avatar_url, created_by);
+
+        const participants = [];
+        for (const user_id of participants_ids) {
+            participants.push(await participantsService.createParticipant(conv.id, { user_id }));
+        }
+
+        const you = await participantsService.createParticipant(conv.id, { user_id: created_by, role: 'owner' });
+
+        const allUserIds = [created_by, ...participants_ids];
         const users = await usersService.getAllUsers({ id: allUserIds });
         const usersMap = new Map(users.map(u => [String(u.id), u]));
 

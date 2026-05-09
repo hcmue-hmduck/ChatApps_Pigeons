@@ -248,7 +248,7 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
         }).then((result) => {
             if (result.isConfirmed) {
                 const blockedUser = this.relStore.blockedUser().find(u => u.block_id === block_id);
-                const blockedUserId = blockedUser?.friend_id || blockedUser?.id;
+                const blockedUserId = blockedUser?.friend_id;
                 const id = this.userId();
                 if (blockedUserId && id) {
                     this.relStore.unblockUser(id, block_id, blockedUserId);

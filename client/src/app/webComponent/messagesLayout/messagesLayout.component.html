@@ -30,10 +30,19 @@
         <!-- Title & sub -->
         <div class="chat-header-info">
             @if (getMessageInfor().type === 'direct' && getMessageInfor().other_participant?.is_bot) {
-            <p class="chat-header-title"><i class="bi bi-robot me-1"></i>{{ getMessageInfor().title || 'Conversation' }}
+            <p class="chat-header-title">
+                @if (isMuted(getMessageInfor())) {
+                    <i class="bi bi-bell-slash me-1" style="font-size: 0.9rem;"></i>
+                }
+                <i class="bi bi-robot me-1"></i>{{ getMessageInfor().title || 'Conversation' }}
             </p>
             } @else {
-            <p class="chat-header-title">{{ getMessageInfor().title || 'Conversation' }}</p>
+            <p class="chat-header-title">
+                @if (isMuted(getMessageInfor())) {
+                    <i class="bi bi-bell-slash me-1" style="font-size: 0.9rem;"></i>
+                }
+                {{ getMessageInfor().title || 'Conversation' }}
+            </p>
             }
             @if (getMessageInfor().type === 'group') {
             <p class="chat-header-sub">
@@ -60,12 +69,14 @@
 
     <!-- Action buttons -->
     <div class="chat-header-actions">
-        <button class="header-action-btn" title="Gọi điện" (click)="handleVoiceCall()">
-            <i class="bi bi-telephone"></i>
-        </button>
-        <button class="header-action-btn" title="Gọi video" (click)="handleVideoCall()">
-            <i class="bi bi-camera-video"></i>
-        </button>
+        @if (!isBlocked()) {
+            <button class="header-action-btn" title="Gọi điện" (click)="handleVoiceCall()">
+                <i class="bi bi-telephone"></i>
+            </button>
+            <button class="header-action-btn" title="Gọi video" (click)="handleVideoCall()">
+                <i class="bi bi-camera-video"></i>
+            </button>
+        }
         <button class="header-action-btn" title="Thông tin" (click)="handleInfo()">
             <i class="bi bi-info-circle"></i>
         </button>
@@ -96,9 +107,8 @@
         <div class="pinned-item-body">
             <div class="pinned-item-title">Tin nhắn</div>
             <div class="pinned-item-preview">
-                <span class="pinned-item-sender">{{ pinnedMessages()[pinnedMessages().length - 1].sender_name || 'Ai
-                    đó'
-                    }}: </span>
+                <span class="pinned-item-sender">{{ getSenderDisplayName(pinnedMessages()[pinnedMessages().length -
+                    1].sender_id, pinnedMessages()[pinnedMessages().length - 1].sender_name) }}: </span>
                 <span class="pinned-item-text"
                     [innerHTML]="formatPinnedMessagePreview(pinnedMessages()[pinnedMessages().length - 1])"></span>
             </div>
@@ -149,7 +159,7 @@
             <div class="pinned-item-body">
                 <div class="pinned-item-title">Tin nhắn</div>
                 <div class="pinned-item-preview">
-                    <span class="pinned-item-sender">{{ pm.sender_name || 'Ai đó' }}: </span>
+                    <span class="pinned-item-sender">{{ getSenderDisplayName(pm.sender_id, pm.sender_name) }}: </span>
                     <span class="pinned-item-text" [innerHTML]="formatPinnedMessagePreview(pm)"></span>
                 </div>
             </div>
@@ -224,8 +234,15 @@
         @if (msg.message_type === 'system') {
         <div class="message-system">
             <span class="system-text">
-                {{ getLastMessageSenderName(msg.sender_id, msg.sender_name) }}
-                <span [innerHTML]="msg.content"></span>
+                @if ((msg.content || '').includes('đã ghim') || (msg.content || '').includes('đã bỏ ghim')) {
+                <i class="bi bi-pin-angle me-1"></i>
+                }
+                @if ((msg.content || '').includes('@[') || (msg.content || '').includes('<i')) { <span
+                    [innerHTML]="formatMessageText(msg.content)"></span>
+            } @else {
+            {{ getLastMessageSenderName(msg.sender_id, msg.sender_name) }}
+            <span [innerHTML]="msg.content"></span>
+            }
             </span>
         </div>
         } @else {
@@ -243,7 +260,7 @@
                         @if (msg.parent_message_info.parent_message_sender_id === currentUserId()) {
                         Bạn đã trả lời chính mình
                         } @else {
-                        Bạn đã trả lời {{ msg.parent_message_info.parent_message_name }}
+                        Bạn đã trả lời {{ getSenderDisplayName(msg.parent_message_info.parent_message_sender_id, msg.parent_message_info.parent_message_name) }}
                         }
                     </div>
                     <div class="reply-info-me" (click)="scrollToMessage(msg.parent_message_info.parent_message_id)">
@@ -469,7 +486,7 @@
             getMessageDate(getMessagesData().homeMessagesData.messages[i-1]?.created_at)) &&
             !msg.parent_message_id) {
             <div class="sender-name">
-                {{ msg.sender_name }}
+                {{ getSenderDisplayName(msg.sender_id, msg.sender_name) }}
             </div>
             }
 
@@ -491,11 +508,13 @@
                     <div class="reply-sender-label other-label">
                         <i class="bi bi-reply me-1"></i>
                         @if (msg.parent_message_info.parent_message_sender_id === currentUserId()) {
-                        {{ msg.sender_name }} đã trả lời bạn
+                        {{ getSenderDisplayName(msg.sender_id, msg.sender_name) }} đã trả lời bạn
                         } @else if (msg.parent_message_info.parent_message_sender_id === msg.sender_id) {
-                        {{ msg.sender_name }} đã trả lời chính mình
+                        {{ getSenderDisplayName(msg.sender_id, msg.sender_name) }} đã trả lời chính mình
                         } @else {
-                        {{ msg.sender_name }} đã trả lời {{ msg.parent_message_info.parent_message_name }}
+                        {{ getSenderDisplayName(msg.sender_id, msg.sender_name) }} đã trả lời {{
+                        getSenderDisplayName(msg.parent_message_info.parent_message_sender_id,
+                        msg.parent_message_info.parent_message_name) }}
                         }
                     </div>
                     <div class="reply-info-other" (click)="scrollToMessage(msg.parent_message_info.parent_message_id)">
@@ -746,8 +765,8 @@
         <div class="reply-preview-content">
             <div class="reply-preview-to">
                 Đang trả lời
-                <strong>{{ replyToMessage.sender_id === currentUserId() ? 'chính mình' : replyToMessage.sender_name
-                    }}</strong>
+                <strong>{{ replyToMessage.sender_id === currentUserId() ? 'chính mình' :
+                    getSenderDisplayName(replyToMessage.sender_id, replyToMessage.sender_name) }}</strong>
             </div>
             <div class="reply-preview-text">
                 @if (replyToMessage.message_type === 'text') {
@@ -874,8 +893,7 @@
                 @for (participant of mentionParticipants(); track participant.user_id; let i = $index) {
                 <div class="mention-item" [class.active]="i === mentionSelectedIndex()"
                     (click)="selectMention(participant)">
-                    <img [src]="participant.avatar_url || 'assets/AvatarDefault.jpg'"
-                        class="mention-avatar">
+                    <img [src]="participant.avatar_url || 'assets/AvatarDefault.jpg'" class="mention-avatar">
                     <div class="mention-info">
                         <span class="mention-name">{{ participant.full_name }}</span>
                         <span class="mention-email">{{ participant.email }}</span>
@@ -917,12 +935,21 @@
 </div>
 }
 @else {
-<div class="blocked-message">
-    <div class="blocked-icon">
-        <i class="bi bi-lock-fill"></i>
-    </div>
-    <div class="blocked-text">
-        <p>Bạn đã bị chặn bởi người này</p>
+<div class="input-area" style="display: flex; justify-content: center; align-items: center; min-height: 120px;">
+    <div class="blocked-message" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; width: 100%;">
+        <div class="blocked-icon" style="font-size: 2.5rem; color: var(--text-color); opacity: 0.5; margin-bottom: 0.5rem;">
+            <i class="bi bi-shield-lock-fill"></i>
+        </div>
+        <div class="blocked-text" style="text-align: center;">
+            @if (iBlockedThem()) {
+                <p style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.2rem; color: #fff;">Bạn đã chặn người dùng này</p>
+                <p style="font-size: 0.9rem; opacity: 0.7; margin-bottom: 1rem; color: #cbd5e1;">Bạn sẽ không thể gửi tin nhắn hoặc gọi điện cho họ.</p>
+                <button class="btn btn-sm btn-primary" (click)="unblockCurrentUser()" style="border-radius: 20px; padding: 0.4rem 1.5rem; cursor: pointer; pointer-events: auto; background-color: var(--accent); border-color: var(--accent);">Bỏ chặn</button>
+            } @else if (theyBlockedMe()) {
+                <p style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.2rem; color: #fff;">Người dùng này đã chặn bạn</p>
+                <p style="font-size: 0.9rem; opacity: 0.7; color: #cbd5e1;">Bạn không thể gửi tin nhắn hoặc gọi điện cho họ.</p>
+            }
+        </div>
     </div>
 </div>
 }
@@ -1154,8 +1181,8 @@
             @for (reaction of reactionDetails(); track $index) {
             <div class="reaction-detail-item">
                 <div class="user-info-flex">
-                    <img [src]="reaction.user?.avatar_url || 'assets/AvatarDefault.jpg'" [alt]="reaction.user?.full_name"
-                        class="user-avatar-small">
+                    <img [src]="reaction.user?.avatar_url || 'assets/AvatarDefault.jpg'"
+                        [alt]="reaction.user?.full_name" class="user-avatar-small">
                     <span class="user-name-text">{{ reaction.user?.full_name || 'Người dùng' }}</span>
                 </div>
                 <div class="emoji-badge">{{ reaction.emoji_char || reaction.emoji }}</div>
