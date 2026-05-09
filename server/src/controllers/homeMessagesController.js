@@ -27,7 +27,8 @@ class HomeMessagesController {
     async getHomeMessages(req, res) {
         const limit = parseInt(req.query.limit) || 100;
         const offset = parseInt(req.query.offset) || 0;
-        const homeMessagesData = await homeMessagesService.getMessagesByConversation(req.params.convID, limit, offset);
+        const userId = req.user.id;
+        const homeMessagesData = await homeMessagesService.getMessagesByConversation(req.params.convID, limit, offset, userId);
         new SuccessResponse({
             message: 'Get home messages successfully',
             metadata: {
@@ -36,21 +37,21 @@ class HomeMessagesController {
         }).send(res);
     }
 
-    // [GET] /home/messages/:convID/summary/:lastRMsgID
-    async getSummaryMessages(req, res) {
+
+    // [POST] /home/messages/:convID/summary
+    async postSummaryMessages(req, res) {
         const conversation_id = req.params?.convID;
-        const rawLastReadMessageId = req.params?.lastRMsgID;
-        const last_read_message_id =
-            !rawLastReadMessageId || rawLastReadMessageId === 'null'
-                ? null
-                : rawLastReadMessageId;
+        const messages = Array.isArray(req.body?.messages) ? req.body.messages : [];
 
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');
 
         try {
-            for await (const content of homeMessagesService.getSummaryMessages(conversation_id, last_read_message_id)) {
+            for await (const content of homeMessagesService.getSummaryFromPayload(
+                conversation_id,
+                messages,
+            )) {
                 res.write(`data: ${JSON.stringify({ content })}\n\n`);
             }
 

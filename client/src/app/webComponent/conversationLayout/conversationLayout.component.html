@@ -151,7 +151,7 @@
 
     <!-- ===================== PANEL 3: CHAT AREA ===================== -->
     <main class="chat-area" [class.with-sidebar]="convStore.showConversationInfor()">
-        <router-outlet></router-outlet>
+        <router-outlet (activate)="onMessagesLayoutActivate($event)"></router-outlet>
     </main>
 
     <!-- ===================== PANEL 4: INFO SIDEBAR ===================== -->

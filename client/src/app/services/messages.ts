@@ -62,9 +62,10 @@ export class Messages {
         return this.http.delete(`${this.apiUrl}/${messageId}`);
     }
 
-    async streamSummaryMessages(
+
+    async streamSummaryMessagesFromPayload(
         conversationId: string,
-        fromLastReadMessageId: string,
+        messages: any[],
         handlers: {
             onChunk: (content: string) => void;
             onDone: () => void;
@@ -72,13 +73,14 @@ export class Messages {
         },
     ): Promise<void> {
         try {
-            const safeLastReadMessageId = encodeURIComponent(fromLastReadMessageId || 'null');
-            const response = await fetch(`${this.apiUrl}/${conversationId}/summary/${safeLastReadMessageId}`, {
-                method: 'GET',
+            const response = await fetch(`${this.apiUrl}/${conversationId}/summary`, {
+                method: 'POST',
                 credentials: 'include',
                 headers: {
                     Accept: 'text/event-stream',
+                    'Content-Type': 'application/json',
                 },
+                body: JSON.stringify({ messages }),
             });
 
             if (!response.ok) {

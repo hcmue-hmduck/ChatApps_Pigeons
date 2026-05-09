@@ -82,7 +82,13 @@ export interface StagedFile {
 @Component({
     selector: 'messages-layout',
     standalone: true,
-    imports: [CommonModule, FormsModule, PickerModule, GroupAvatarLayoutComponent, E2eePinModalComponent],
+    imports: [
+        CommonModule,
+        FormsModule,
+        PickerModule,
+        GroupAvatarLayoutComponent,
+        E2eePinModalComponent,
+    ],
     templateUrl: './messagesLayout.component.html',
     styleUrls: ['./messagesLayout.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -152,7 +158,7 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
     }
 
     private async checkIdentityKeyPair() {
-        return await this.keyManagementService.checkIdentityKeyPair()
+        return await this.keyManagementService.checkIdentityKeyPair();
     }
 
     private resetComponentState() {
@@ -256,6 +262,7 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
     private aiSummaryQueue: string[] = [];
     private aiSummaryTypewriterTimer: any;
     private aiSummaryStreamToken = 0;
+    private aiSummaryTriggerRequestToken = 0;
 
     // Check if a user is online
     isUserOnline(userId: string): boolean {
@@ -671,6 +678,25 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
                 });
             }
         });
+    }
+
+    applySummaryTrigger(unreadCount: number, lastReadMessageId: string) {
+        this.unreadSummaryCount = unreadCount;
+
+        if (unreadCount < 10) {
+            this.summaryTriggerUnreadCount = unreadCount;
+            this.summaryTriggerLastReadMessageId = lastReadMessageId;
+            this.summaryTriggerKey += 1;
+            this.showUnreadSummaryPopup = false;
+            this.cdr.markForCheck();
+            return;
+        }
+
+        this.summaryTriggerUnreadCount = unreadCount;
+        this.summaryTriggerLastReadMessageId = lastReadMessageId;
+        this.summaryTriggerKey += 1;
+        this.showUnreadSummaryPopup = true;
+        this.cdr.markForCheck();
     }
 
     // TrackBy function để tối ưu rendering
@@ -1146,8 +1172,8 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
     }
 
     ngOnInit() {
-        this.keyManagementService.checkIdentityKeyPair().then(hasKey => {
-            this.showWarningE2EE.set(!hasKey)
+        this.keyManagementService.checkIdentityKeyPair().then((hasKey) => {
+            this.showWarningE2EE.set(!hasKey);
         });
 
         this.botInteractionService.registerCallbacks({
@@ -1423,10 +1449,10 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
                 // --- GIẢI MÃ TIN NHẮN ---
                 olderMessages = await this.decryptMessages(olderMessages);
                 const currentMessages = this.getMessagesData().homeMessagesData?.messages || [];
-                olderMessages = this.hydrateReplyPreview(
-                    olderMessages,
-                    [...olderMessages, ...currentMessages],
-                );
+                olderMessages = this.hydrateReplyPreview(olderMessages, [
+                    ...olderMessages,
+                    ...currentMessages,
+                ]);
 
                 // Prepend older messages vào đầu danh sách
                 this.getMessagesData.update((old) => ({
@@ -1536,10 +1562,7 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
 
         const messageToAdd = messageTransform ? messageTransform(messageData) : { ...messageData };
         const currentMessages = this.getMessagesData().homeMessagesData?.messages || [];
-        const hydratedMessageToAdd = this.hydrateReplyPreview(
-            [messageToAdd],
-            currentMessages,
-        )[0];
+        const hydratedMessageToAdd = this.hydrateReplyPreview([messageToAdd], currentMessages)[0];
 
         const currentUser =
             this.getMessageInfor()?.participants.find(
@@ -1560,62 +1583,75 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
             this.updateUIWithNewMessage(newMessage, this.conversationId());
         }
 
-        return from(this.e2eeMessageService.encryptMessage(this.conversationId(), content)).pipe(
-            concatMap((encrypted: any) => {
-                return this.messagesService
-                    .postMessage(
-                        this.conversationId(),
-                        this.currentUserId(),
-                        encrypted.ciphertext,
-                        replyTo,
-                        messageType,
-                        file_metadata,
-                        { iv: encrypted.iv, keyVersion: encrypted.keyVersion },
-                    )
-                    .pipe(
-                        catchError((error) => {
-                            // --- XỬ LÝ RETRY KHI LỆCH KEY VERSION ---
-                            const errorCode = error?.error?.errorCode;
-                            if (errorCode === E2EEErrorCode.SERVER_KEY_VERSION_MISMATCH) {
-                                console.warn(
-                                    '[E2EE] Key version mismatch detected. Syncing and retrying...',
-                                );
+        const isBotConversation = !!this.getMessageInfor()?.other_participant?.is_bot;
+        const sendMessage$ = isBotConversation
+            ? this.messagesService.postMessage(
+                  this.conversationId(),
+                  this.currentUserId(),
+                  content,
+                  replyTo,
+                  messageType,
+                  file_metadata,
+              )
+            : from(this.e2eeMessageService.encryptMessage(this.conversationId(), content)).pipe(
+                  concatMap((encrypted: any) => {
+                      return this.messagesService
+                          .postMessage(
+                              this.conversationId(),
+                              this.currentUserId(),
+                              encrypted.ciphertext,
+                              replyTo,
+                              messageType,
+                              file_metadata,
+                              { iv: encrypted.iv, keyVersion: encrypted.keyVersion },
+                          )
+                          .pipe(
+                              catchError((error) => {
+                                  // --- XỬ LÝ RETRY KHI LỆCH KEY VERSION ---
+                                  const errorCode = error?.error?.errorCode;
+                                  if (errorCode === E2EEErrorCode.SERVER_KEY_VERSION_MISMATCH) {
+                                      console.warn(
+                                          '[E2EE] Key version mismatch detected. Syncing and retrying...',
+                                      );
 
-                                // 1. Đồng bộ khóa mới nhất bằng hàm của bạn
-                                return from(
-                                    this.keyManagementService.syncLatestConversationKey(
-                                        this.conversationId(),
-                                    ),
-                                ).pipe(
-                                    switchMap(() =>
-                                        from(
-                                            this.e2eeMessageService.encryptMessage(
-                                                this.conversationId(),
-                                                content,
-                                            ),
-                                        ),
-                                    ),
-                                    switchMap((newEncrypted: any) => {
-                                        // 2. Gửi lại tin nhắn với khóa vừa đồng bộ
-                                        return this.messagesService.postMessage(
-                                            this.conversationId(),
-                                            this.currentUserId(),
-                                            newEncrypted.ciphertext,
-                                            replyTo,
-                                            messageType,
-                                            file_metadata,
-                                            {
-                                                iv: newEncrypted.iv,
-                                                keyVersion: newEncrypted.keyVersion,
-                                            },
-                                        );
-                                    }),
-                                );
-                            }
-                            return throwError(() => error);
-                        }),
-                    );
-            }),
+                                      // 1. Đồng bộ khóa mới nhất bằng hàm của bạn
+                                      return from(
+                                          this.keyManagementService.syncLatestConversationKey(
+                                              this.conversationId(),
+                                          ),
+                                      ).pipe(
+                                          switchMap(() =>
+                                              from(
+                                                  this.e2eeMessageService.encryptMessage(
+                                                      this.conversationId(),
+                                                      content,
+                                                  ),
+                                              ),
+                                          ),
+                                          switchMap((newEncrypted: any) => {
+                                              // 2. Gửi lại tin nhắn với khóa vừa đồng bộ
+                                              return this.messagesService.postMessage(
+                                                  this.conversationId(),
+                                                  this.currentUserId(),
+                                                  newEncrypted.ciphertext,
+                                                  replyTo,
+                                                  messageType,
+                                                  file_metadata,
+                                                  {
+                                                      iv: newEncrypted.iv,
+                                                      keyVersion: newEncrypted.keyVersion,
+                                                  },
+                                              );
+                                          }),
+                                      );
+                                  }
+                                  return throwError(() => error);
+                              }),
+                          );
+                  }),
+              );
+
+        return sendMessage$.pipe(
             tap({
                 next: (response) => {
                     this.loading = false;
@@ -1659,8 +1695,7 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
                         _uploading: false,
                         is_decrypted: true,
                     };
-                    const currentMessages =
-                        this.getMessagesData().homeMessagesData?.messages || [];
+                    const currentMessages = this.getMessagesData().homeMessagesData?.messages || [];
                     const hydratedDisplayMessage = this.hydrateReplyPreview(
                         [displayMessageForSender],
                         [displayMessageForSender, ...currentMessages],
@@ -3925,9 +3960,23 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
     }
 
     openAiSummaryModal() {
-        this.showUnreadSummaryPopup = false;
-        this.showAiSummaryModal = true;
-        this.startAiSummaryStream();
+        Swal.fire({
+            title: 'Lưu ý về bảo mật',
+            text: 'Khi bạn yêu cầu tóm tắt, bạn đang đồng ý chia sẻ tạm thời nội dung các tin nhắn chưa đọc với Pigeons để AI tạo bản tóm tắt cho bạn.',
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonText: 'Đồng ý và tiếp tục',
+            cancelButtonText: 'Hủy',
+            confirmButtonColor: 'var(--accent)',
+            background: '#06131f',
+            color: '#fff',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                this.showUnreadSummaryPopup = false;
+                this.showAiSummaryModal = true;
+                this.startAiSummaryStream();
+            }
+        });
     }
 
     closeAiSummaryModal() {
@@ -3960,7 +4009,7 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
         this.aiSummaryQueue = [];
     }
 
-    private startAiSummaryStream() {
+    private async startAiSummaryStream() {
         this.stopAiSummaryStream();
         this.aiSummaryText = '';
         this.aiSummaryError = '';
@@ -3979,49 +4028,173 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
         }
 
         const streamToken = ++this.aiSummaryStreamToken;
-
         this.cdr.markForCheck();
 
-        void this.messagesService.streamSummaryMessages(
-            conversationId,
-            this.summaryTriggerLastReadMessageId,
-            {
-                onChunk: (content: string) => {
-                    this.ngZone.run(() => {
-                        if (streamToken !== this.aiSummaryStreamToken) return;
-                        this.aiSummaryLoading = false;
-                        this.enqueueAiSummaryChunk(content);
-                        this.cdr.markForCheck();
-                    });
-                },
-                onDone: () => {
-                    this.ngZone.run(() => {
-                        if (streamToken !== this.aiSummaryStreamToken) return;
-                        this.aiSummaryLoading = false;
-                        this.aiSummaryStreaming = false;
-                        this.aiSummaryDone = true;
-                        if (this.aiSummaryQueue.length === 0) {
-                            this.stopAiSummaryTypewriter();
-                        }
-                        this.scrollAiSummaryToBottom();
-                        this.cdr.markForCheck();
-                    });
-                },
-                onError: (error: unknown) => {
-                    this.ngZone.run(() => {
-                        if (streamToken !== this.aiSummaryStreamToken) return;
-                        this.aiSummaryLoading = false;
-                        this.aiSummaryStreaming = false;
-                        this.aiSummaryDone = false;
-                        this.aiSummaryError =
-                            error instanceof Error
-                                ? error.message
-                                : 'Không thể tạo tóm tắt. Vui lòng thử lại.';
-                        this.cdr.markForCheck();
-                    });
-                },
+        const streamHandlers = {
+            onChunk: (content: string) => {
+                this.ngZone.run(() => {
+                    if (streamToken !== this.aiSummaryStreamToken) return;
+                    this.aiSummaryLoading = false;
+                    this.enqueueAiSummaryChunk(content);
+                    this.cdr.markForCheck();
+                });
             },
+            onDone: () => {
+                this.ngZone.run(() => {
+                    if (streamToken !== this.aiSummaryStreamToken) return;
+                    this.aiSummaryLoading = false;
+                    this.aiSummaryStreaming = false;
+                    this.aiSummaryDone = true;
+                    if (this.aiSummaryQueue.length === 0) {
+                        this.stopAiSummaryTypewriter();
+                    }
+                    this.scrollAiSummaryToBottom();
+                    this.cdr.markForCheck();
+                });
+            },
+            onError: (error: unknown) => {
+                this.ngZone.run(() => {
+                    if (streamToken !== this.aiSummaryStreamToken) return;
+                    this.aiSummaryLoading = false;
+                    this.aiSummaryStreaming = false;
+                    this.aiSummaryDone = false;
+                    this.aiSummaryError =
+                        error instanceof Error
+                            ? error.message
+                            : 'Không thể tạo tóm tắt. Vui lòng thử lại.';
+                    this.cdr.markForCheck();
+                });
+            },
+        };
+
+        try {
+            const summaryMessages = await this.buildSummaryMessages(this.summaryTriggerLastReadMessageId);
+            void this.messagesService.streamSummaryMessagesFromPayload(
+                conversationId,
+                summaryMessages,
+                streamHandlers,
+            );
+        } catch (error: any) {
+            this.aiSummaryLoading = false;
+            this.aiSummaryStreaming = false;
+            this.aiSummaryError = error?.message || 'Có lỗi xảy ra khi chuẩn bị dữ liệu tóm tắt.';
+            this.cdr.markForCheck();
+        }
+    }
+
+    // chuẩn hóa tin nhắn trước khi gửi về server để tóm tắt
+    private async buildSummaryMessages(lastReadMessageId: string): Promise<any[]> {
+        const conversationId = this.conversationId();
+        const messages = this.getMessagesData().homeMessagesData?.messages || [];
+        if (!messages.length) return [];
+
+        const sorted = [...messages].sort(
+            (a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
         );
+
+        let startIndex = 0;
+        if (lastReadMessageId) {
+            const idx = sorted.findIndex((m: any) => String(m.id) === String(lastReadMessageId));
+            if (idx >= 0) startIndex = idx + 1;
+        }
+
+        const unread = sorted
+            .slice(startIndex)
+            .filter((m: any) => !m?.is_deleted && m?.message_type !== 'system')
+            .filter((m: any) => !m?.is_e2ee || m?.is_decrypted);
+
+        const idToMsgNo: Record<string, number> = {};
+        unread.forEach((msg: any, index: number) => {
+            idToMsgNo[String(msg.id)] = index;
+        });
+
+        const allMessagesMap = new Map(sorted.map((msg: any) => [String(msg.id), msg]));
+        const contextMessages: any[] = [];
+        const contextIdMap: Record<string, number> = {};
+        let nextNegativeNo = -1;
+
+        const mappedUnread = unread.map((m: any, index: number) => {
+            const result: any = {
+                msg_no: index,
+                sender: m.sender_name || 'Unknown',
+                type: m.message_type,
+                content: m.content || '',
+            };
+
+            if (m.file_name) result.file_name = m.file_name;
+            if (m.link_description) result.file_desc = m.link_description;
+
+            if (m.parent_message_id) {
+                const pId = String(m.parent_message_id);
+                if (idToMsgNo[pId] !== undefined) {
+                    result.reply_to = idToMsgNo[pId];
+                } else if (contextIdMap[pId] === undefined) {
+                    contextIdMap[pId] = nextNegativeNo--;
+                }
+            }
+            return result;
+        });
+
+        // Xử lý giải mã các tin nhắn ngữ cảnh (Context) bất đồng bộ
+        const contextIds = Object.keys(contextIdMap);
+        for (const pId of contextIds) {
+            const parentIdx = contextIdMap[pId];
+            const parentMsgInStore = allMessagesMap.get(pId);
+            
+            // Tìm tin nhắn unread đầu tiên có nhắc tới pId để lấy pInfo
+            const mReferencing = unread.find((m: any) => String(m.parent_message_id) === pId);
+            const pInfo = mReferencing?.parent_message_info;
+
+            let safeContent = '...';
+            try {
+                if (parentMsgInStore) {
+                    if (parentMsgInStore.is_e2ee && !parentMsgInStore.is_decrypted) {
+                        const decrypted = await this.e2eeMessageService.decryptMessage(conversationId, {
+                            ciphertext: parentMsgInStore.content,
+                            iv: parentMsgInStore.iv,
+                            keyVersion: parentMsgInStore.key_version,
+                        });
+                        safeContent = decrypted.content || '[Nội dung mã hóa]';
+                    } else {
+                        safeContent = parentMsgInStore.content || '...';
+                    }
+                } else if (pInfo) {
+                    if (pInfo.parent_message_is_e2ee) {
+                        const decrypted = await this.e2eeMessageService.decryptMessage(conversationId, {
+                            ciphertext: pInfo.parent_message_content,
+                            iv: pInfo.parent_message_iv,
+                            keyVersion: pInfo.parent_message_key_version,
+                        });
+                        safeContent = decrypted.content || '[Nội dung mã hóa]';
+                    } else {
+                        safeContent = pInfo.parent_message_content || '...';
+                    }
+                }
+            } catch (e) {
+                console.warn('[AI Summary] Decryption failed for context message:', pId, e);
+                safeContent = '[Nội dung mã hóa]';
+            }
+
+            contextMessages.push({
+                msg_no: parentIdx,
+                read: true,
+                sender: parentMsgInStore?.sender_name || pInfo?.parent_message_name || 'Unknown',
+                type: parentMsgInStore?.message_type || pInfo?.parent_message_type || 'text',
+                content: safeContent,
+            });
+        }
+
+        // Cập nhật lại reply_to cho mappedUnread dựa trên contextIdMap
+        unread.forEach((m: any, index: number) => {
+            if (m.parent_message_id) {
+                const pId = String(m.parent_message_id);
+                if (idToMsgNo[pId] === undefined && contextIdMap[pId] !== undefined) {
+                    mappedUnread[index].reply_to = contextIdMap[pId];
+                }
+            }
+        });
+
+        return [...contextMessages, ...mappedUnread];
     }
 
     private enqueueAiSummaryChunk(content: string) {

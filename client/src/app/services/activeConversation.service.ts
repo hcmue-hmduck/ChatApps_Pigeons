@@ -72,6 +72,7 @@ export class ActiveConversationService implements OnDestroy {
         return joined.reduce((acc: number, conv: any) => acc + (Number(conv.unread_count) || 0), 0);
     });
 
+
     private async decryptSidebarLastMessages(joined: any[]) {
         return await Promise.all(
             joined.map(async (conv: any) => {

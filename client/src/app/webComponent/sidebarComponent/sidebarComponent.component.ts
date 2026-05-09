@@ -20,6 +20,7 @@ import { User } from '../../services/user';
 import { SocketService } from '../../services/socket';
 import { UserInforModel } from '../userinforModel/userinforModel.component';
 import { FileUtils } from '../../utils/FileUtils/fileUltils';
+import { NavigationService } from '../../services/navigation';
 
 @Component({
     selector: 'sidebar-component',
@@ -37,6 +38,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     authService = inject(AuthService);
     cdr = inject(ChangeDetectorRef);
     router = inject(Router);
+    navService = inject(NavigationService);
 
     // ── State ──────────────────────────────────────────────
     currentUserId = computed(() => this.authService.getUserId());
@@ -123,7 +125,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     }
 
     goToMessagesWelcome() {
-        this.router.navigate(['/conversations']);
+        this.navService.goToMessagesWelcome();
     }
 
     isActive(view: string): boolean {

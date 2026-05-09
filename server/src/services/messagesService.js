@@ -1,5 +1,6 @@
 const { Op, literal } = require('sequelize');
 const messagesModel = require('../models/messagesModel');
+const conversationKeysVaultModel = require('../models/conversationkeysvaultModel');
 const { BadRequestError } = require('../core/errorResponse.js');
 
 
@@ -43,9 +44,25 @@ class MessagesService {
         });
     }
 
-    async getAllMessagesByConversationId(conversationId, limit = 100, offset = 0) {
+    async getAllMessagesByConversationId(conversationId, limit = 100, offset = 0, userId = null) {
+        let whereCondition = { conversation_id: conversationId };
+
+        if (userId) {
+            const vaults = await conversationKeysVaultModel.findAll({
+                where: { user_id: userId, conversation_id: conversationId },
+                attributes: ['key_version'],
+                raw: true
+            });
+            const keyVersions = vaults.map(v => v.key_version);
+
+            whereCondition[Op.or] = [
+                { is_e2ee: false },
+                { is_e2ee: true, key_version: { [Op.in]: keyVersions } },
+            ];
+        }
+
         const messages = await messagesModel.findAll({
-            where: { conversation_id: conversationId },
+            where: whereCondition,
             include: [
                 {
                     association: 'call',

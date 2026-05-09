@@ -85,9 +85,6 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     selectedConversationType = '';
     getMessageInfor: any = {};
     isFirstConversationReady = signal(false);
-    aiSummaryTriggerUnreadCount = 0;
-    aiSummaryTriggerLastReadMessageId = '';
-    aiSummaryTriggerKey = 0;
 
     // Search state
     searchTerm = signal('');
@@ -101,8 +98,14 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
 
     private readUpdateInFlightByConversation = new Map<string, boolean>();
     private pendingReadMessageIdByConversation = new Map<string, string>();
-    private hasInitWelcomeResetEffect = false;
-    private aiSummaryTriggerRequestToken = 0;
+    private activeMessagesLayout?: {
+        applySummaryTrigger: (unreadCount: number, lastReadMessageId: string) => void;
+    };
+    private pendingSummaryTrigger?: {
+        conversationId: string;
+        unreadCount: number;
+        lastReadMessageId: string;
+    };
     activeConvMenuId: string | null = null;
     private destroy$ = new Subject<void>();
 
@@ -150,15 +153,6 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
             this.navService.pendingDirectConversationUser.set(null);
         });
 
-        effect(() => {
-            const resetTick = this.navService.messagesWelcomeResetTick();
-            if (!this.hasInitWelcomeResetEffect) {
-                this.hasInitWelcomeResetEffect = true;
-                return;
-            }
-            if (resetTick < 1) return;
-            this.resetToWelcome();
-        });
 
         // Optimization: Đã xóa loadConversations effect ở đây vì ActiveConversationService 
         // là một Singleton đã tự động handle việc load data dựa trên userId.
@@ -289,7 +283,13 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
     handleConversationID(conv: any) {
         // this.socketService.off('newMessage');
         const unreadCountOnClick = Number(conv?.unread_count || 0);
-        this.triggerAiSummarySuggestion(conv, unreadCountOnClick);
+        const localLastReadMessageId = this.getLastReadMessageIdFromConversation(conv);
+        this.pendingSummaryTrigger = {
+            conversationId: String(conv?.conversation_id || ''),
+            unreadCount: unreadCountOnClick,
+            lastReadMessageId: localLastReadMessageId,
+        };
+        this.dispatchSummaryTrigger();
 
         this.selectedConversationId.set(conv.conversation_id);
         this.convStore.setActiveConversationId(conv.conversation_id);
@@ -336,46 +336,6 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         }
     }
 
-    private triggerAiSummarySuggestion(conv: any, unreadCount: number) {
-        const localLastReadMessageId = this.getLastReadMessageIdFromConversation(conv);
-
-        if (unreadCount < 10) {
-            this.setAiSummaryTrigger(unreadCount, localLastReadMessageId);
-            return;
-        }
-
-        // Clear previous popup state while waiting for fresh last_read_message_id from API.
-        this.setAiSummaryTrigger(0, '');
-
-        const conversationId = conv?.conversation_id ? String(conv.conversation_id) : '';
-        const userId = String(this.currentUserId() || '').trim();
-        if (!conversationId || !userId) {
-            this.setAiSummaryTrigger(unreadCount, localLastReadMessageId);
-            return;
-        }
-
-        const requestToken = ++this.aiSummaryTriggerRequestToken;
-        this.participantService.getLastReadMessageByConversationAndUser(conversationId, userId).subscribe({
-            next: (response: any) => {
-                if (requestToken !== this.aiSummaryTriggerRequestToken) return;
-
-                const lastReadFromApi = response?.metadata?.last_read_message_id
-                    ? String(response.metadata.last_read_message_id)
-                    : '';
-
-                this.setAiSummaryTrigger(unreadCount, lastReadFromApi || localLastReadMessageId);
-                this.cdr.markForCheck();
-            },
-            error: (error) => {
-                if (requestToken !== this.aiSummaryTriggerRequestToken) return;
-
-                console.error('Error fetching last read message id for summary trigger:', error);
-                this.setAiSummaryTrigger(unreadCount, localLastReadMessageId);
-                this.cdr.markForCheck();
-            }
-        });
-    }
-
     private getLastReadMessageIdFromConversation(conv: any): string {
         const currentParticipant = conv?.participants?.find((p: any) => p.user_id === this.currentUserId());
         const participantLastReadMessageId = currentParticipant?.last_read_message_id
@@ -388,10 +348,25 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
         return participantLastReadMessageId || conversationLastReadMessageId;
     }
 
-    private setAiSummaryTrigger(unreadCount: number, lastReadMessageId: string) {
-        this.aiSummaryTriggerUnreadCount = unreadCount;
-        this.aiSummaryTriggerLastReadMessageId = lastReadMessageId;
-        this.aiSummaryTriggerKey += 1;
+    onMessagesLayoutActivate(component: any) {
+        if (component && typeof component.applySummaryTrigger === 'function') {
+            this.activeMessagesLayout = component;
+            this.dispatchSummaryTrigger();
+        }
+    }
+
+    private dispatchSummaryTrigger() {
+        if (!this.pendingSummaryTrigger || !this.activeMessagesLayout) return;
+        if (
+            this.pendingSummaryTrigger.conversationId &&
+            this.pendingSummaryTrigger.conversationId !== String(this.selectedConversationId())
+        ) {
+            return;
+        }
+        this.activeMessagesLayout.applySummaryTrigger(
+            this.pendingSummaryTrigger.unreadCount,
+            this.pendingSummaryTrigger.lastReadMessageId,
+        );
     }
 
     private queueParticipantReadUpdate(conversationId: string, participantId: string, lastReadMessageId: string) {

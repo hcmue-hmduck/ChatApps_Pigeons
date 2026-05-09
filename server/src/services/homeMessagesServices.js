@@ -10,11 +10,11 @@ const openAiService = require('../services/openAiService.js');
 const e2eeService = require('./E2EEService');
 
 class HomeMessagesService {
-    async getMessagesByConversation(conversationId, limit = 100, offset = 0) {
+    async getMessagesByConversation(conversationId, limit = 100, offset = 0, userId = null) {
         // 1. Song song hóa queries ban đầu
         const [conversation, messages, pinnedMessages] = await Promise.all([
             conversationsService.getConversationById(conversationId),
-            messagesService.getAllMessagesByConversationId(conversationId, limit, offset),
+            messagesService.getAllMessagesByConversationId(conversationId, limit, offset, userId),
             pinnedmessagesService.getPinnedMessagesByConversationId(conversationId),
         ]);
 
@@ -130,6 +130,9 @@ class HomeMessagesService {
                         parent_message_name: parentSender ? parentSender.full_name : 'Unknown',
                         parent_message_thumbnail_url: parentMsg.thumbnail_url,
                         parent_message_type: parentMsg.message_type,
+                        parent_message_is_e2ee: parentMsg.is_e2ee,
+                        parent_message_iv: parentMsg.iv,
+                        parent_message_key_version: parentMsg.key_version,
                     };
                 }
             }
@@ -145,79 +148,18 @@ class HomeMessagesService {
         };
     }
 
-    async getUnreadMessages({ conversation_id, last_read_message_id }) {
+
+    async *getSummaryFromPayload(conversation_id, messages = []) {
+        console.log(`getSummaryFromPayload`,{conversation_id, messages} )
+
         if (!conversation_id) throw new BadRequestError('params invalid');
 
-        const unreadMessages = await messagesService.getUnreadMessages(
-            { conversation_id, last_read_message_id },
-            {
-                attributes: [
-                    'id',
-                    'sender_id',
-                    'message_type',
-                    'content',
-                    'parent_message_id',
-                    'file_name',
-                    'link_description',
-                ],
-                raw: true,
-                order: [['created_at', 'ASC']],
-            },
-        );
-
-        if (unreadMessages.length === 0) return null;
-
-        const senderIds = Array.from(new Set(unreadMessages.map((m) => m.sender_id)));
-
-        const participants = await participantsService.getParticipantByConversationsAndUserIds(
-            conversation_id,
-            senderIds,
-            { attributes: ['user_id', 'nick_name'], raw: true },
-        );
-
-        const participantsMap = participants.reduce((acc, p) => {
-            acc[p.user_id] = p.nick_name;
-            return acc;
-        }, {});
-
-        const messageIdsMap = {};
-        unreadMessages.forEach((msg, index) => {
-            messageIdsMap[msg.id] = index;
-        });
-
-        const updateUnreadMessages = unreadMessages.map((m) => {
-            const { id, sender_id, message_type, content, parent_message_id, file_name, link_description } = m;
-            const result = {
-                msg_no: messageIdsMap[id],
-                sender: participantsMap[sender_id],
-                type: message_type,
-                content: content,
-            };
-
-            if (file_name) result['file_name'] = file_name;
-            if (link_description) result['file_desc'] = link_description;
-            if (parent_message_id) result['reply_to'] = messageIdsMap[parent_message_id];
-
-            return result;
-        });
-
-        return updateUnreadMessages;
-    }
-
-    async *getSummaryMessages(conversation_id, last_read_message_id) {
-        if (!conversation_id) throw new BadRequestError('params invalid');
-
-        const unreadMessages = await this.getUnreadMessages({
-            conversation_id,
-            last_read_message_id,
-        });
-
-        if (!unreadMessages || unreadMessages.length === 0) {
+        if (!Array.isArray(messages) || messages.length === 0) {
             yield 'Hiện chưa có tin nhắn chưa đọc để tóm tắt.';
             return;
         }
 
-        for await (const content of openAiService.summarizeMessages(unreadMessages)) {
+        for await (const content of openAiService.summarizeMessages(messages)) {
             yield content;
         }
     }
