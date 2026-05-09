@@ -57,8 +57,10 @@ import { Messages } from '../../services/messages';
 import { MessageStoreService } from '../../services/messageStore.service';
 import { Participant } from '../../services/participant';
 import { PinMessages } from '../../services/pin_message';
+import { RelationshipStoreService } from '../../services/relationshipStore.service';
 import { SocketService } from '../../services/socket';
 import { UploadService } from '../../services/uploadService';
+import { UserBlock } from '../../services/userBlock';
 import { DateTimeUtils } from '../../utils/DateTimeUtils/datetimeUtils';
 import { FileUtils } from '../../utils/FileUtils/fileUltils';
 import { ImgVidUtils } from '../../utils/img_vidUtils/img_vidUtils';
@@ -212,7 +214,9 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
     onlineUsers = computed(() => this.convStore.onlineUsers());
     UserPresence = computed(() => this.convStore.userPresence());
     userBlock = computed(() => this.convStore.userBlock());
-
+    userBlockService = inject(UserBlock);
+    private relStore = inject(RelationshipStoreService);
+    
     currentConversation = computed(() => this.convStore.getConversationById(this.conversationId()));
 
     conversationType = computed(() => this.currentConversation()?.type || '');
@@ -292,7 +296,22 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
             return this.sanitizer.bypassSecurityTrustHtml(content);
         }
 
-        return this.linkPreviewUtils.formatMessageText(content, participants);
+        // Thay thế @[currentUserId] bằng "Bạn"
+        const currentUserId = this.currentUserId();
+        let replacedContent = content.replace(new RegExp(`@\\[${currentUserId}\\]`, 'g'), 'Bạn');
+
+        // Xoá thẻ icon ghim cũ nếu lỡ lưu vào DB (cả dạng raw và dạng escaped) để tránh lỗi hiện text thô
+        replacedContent = replacedContent.replace(/<i class="bi bi-pin-angle"><\/i>/g, '');
+        replacedContent = replacedContent.replace(/&lt;i class="bi bi-pin-angle"&gt;&lt;\/i&gt;/g, '');
+
+        let formatted = this.linkPreviewUtils.formatMessageText(replacedContent, participants);
+        
+        // Bypass security nếu chứa icon để hiển thị được class bootstrap icon (đã được linkPreviewUtils unescape)
+        if (typeof formatted === 'string' && formatted.includes('<i class="bi')) {
+            return this.sanitizer.bypassSecurityTrustHtml(formatted);
+        }
+
+        return formatted;
     }
 
     getStoredLinkPreview(message: any): any | null {
@@ -504,7 +523,7 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
 
                 this.socketService.emit('unpinMessage', pm);
 
-                const messageContent = `đã bỏ ghim tin nhắn: ${this.pinnedMessagePreviewText(pm)}`;
+                const messageContent = `@[${this.currentUserId()}] đã bỏ ghim tin nhắn: ${this.pinnedMessagePreviewText(pm)}`;
                 this.postAndBroadcastMessage(messageContent, 'system');
             },
             error: (error: any) => {
@@ -625,6 +644,12 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
     // Format time as HH:mm
     formatTime(dateStr: string): string {
         return this.dateTimeUtils.formatTime(dateStr);
+    }
+
+    isMuted(conv: any): boolean {
+        const me = conv?.participants?.find((p: any) => String(p.user_id) === String(this.currentUserId()));
+        console.log('[isMuted Header] conv:', conv?.conversation_id, 'me:', me?.user_id, 'is_muted:', me?.is_muted);
+        return me?.is_muted === true || me?.is_muted === 1 || me?.is_muted === '1';
     }
 
     constructor(
@@ -892,6 +917,9 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
                             messages: [...currentMessages, messageToAdd],
                         },
                     }));
+
+                    // Cập nhật sidebar cho người nhận (để cập nhật thời gian và tin nhắn cuối)
+                    this.convStore.updateConversationList(messageToAdd);
 
                     // Tự động scroll xuống nếu đang ở gần cuối
                     if (this.isUserNearBottom()) {
@@ -1188,6 +1216,13 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
         });
 
         console.log('Online User', this.onlineUsers);
+
+        // Đăng ký nhận sự kiện khi có tin nhắn mới được thêm vào store (ví dụ từ conversationInforLayout)
+        this.messageStore.messageAdded$.subscribe(({ convId, message }) => {
+            if (convId === this.conversationId()) {
+                this.updateUIWithNewMessage(message, convId);
+            }
+        });
     }
 
     ngAfterViewInit() {
@@ -1482,7 +1517,16 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
 
     getLastMessageSenderName(sender_id: string, sender_name: string): string {
         if (sender_id === this.currentUserId()) return 'Bạn ';
-        return sender_name ? sender_name : 'Ai đó';
+        const participants = this.getMessageInfor()?.participants || [];
+        const participant = participants.find((p: any) => String(p.user_id) === String(sender_id));
+        return participant?.nick_name || sender_name || 'Ai đó';
+    }
+
+    getSenderDisplayName(sender_id: string, fallback_name: string): string {
+        if (sender_id === this.currentUserId()) return 'Bạn';
+        const participants = this.getMessageInfor()?.participants || [];
+        const participant = participants.find((p: any) => String(p.user_id) === String(sender_id));
+        return participant?.nick_name || fallback_name || 'Ai đó';
     }
 
     private broadcastMessage(message: any) {
@@ -1504,6 +1548,10 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
         existingTempId?: string,
         isNewConversationUpgrade: boolean = false,
     ) {
+        if (this.isBlocked()) {
+            console.warn('Cannot send message: user is blocked or has blocked you.');
+            return;
+        }
         this.postMessage$(
             content,
             messageType,
@@ -3240,8 +3288,8 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
                     // Broadcast cho người khác trong conversation
                     this.socketService.emit('pinMessage', newPinMessage);
 
-                    const messageContent = `đã ghim tin nhắn: ${this.pinnedMessagePreviewText(newPinMessage)}`;
-                    const message_type = 'system';
+                const messageContent = `@[${this.currentUserId()}] đã ghim tin nhắn: ${this.pinnedMessagePreviewText(newPinMessage)}`;
+                const message_type = 'system';
 
                     this.postAndBroadcastMessage(messageContent, message_type);
                 },
@@ -3666,11 +3714,88 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
     }
 
     isBlocked(): boolean {
+        return this.iBlockedThem() || this.theyBlockedMe();
+    }
+
+    iBlockedThem(): boolean {
         const infor = this.getMessageInfor();
         if (!infor?.participants || infor.participants.length > 2) return false;
-        const parti = infor.participants.find((p: any) => p.user_id !== this.currentUserId());
+        const parti = infor.participants.find((p: any) => String(p.user_id) !== String(this.currentUserId()));
         if (!parti) return false;
-        return this.userBlock()?.some((block: any) => block.blocked_id === parti.user_id) ?? false;
+        
+        const currentUserId = this.currentUserId();
+        return this.userBlock()?.some((block: any) => 
+            String(block.blocked_id) === String(parti.user_id) && String(block.blocker_id) === String(currentUserId)
+        ) ?? false;
+    }
+
+    theyBlockedMe(): boolean {
+        const infor = this.getMessageInfor();
+        if (!infor?.participants || infor.participants.length > 2) return false;
+        const parti = infor.participants.find((p: any) => String(p.user_id) !== String(this.currentUserId()));
+        if (!parti) return false;
+        
+        const currentUserId = this.currentUserId();
+        return this.userBlock()?.some((block: any) => 
+            String(block.blocker_id) === String(parti.user_id) && String(block.blocked_id) === String(currentUserId)
+        ) ?? false;
+    }
+
+    unblockCurrentUser() {
+        console.log('[unblockCurrentUser] Hàm được gọi');
+        const infor = this.getMessageInfor();
+        if (!infor?.participants) {
+            console.log('[unblockCurrentUser] Không có participants');
+            return;
+        }
+        const parti = infor.participants.find((p: any) => String(p.user_id) !== String(this.currentUserId()));
+        if (!parti) {
+            console.log('[unblockCurrentUser] Không tìm thấy đối phương');
+            return;
+        }
+        
+        const full_name = parti.nick_name || infor.title || 'Người dùng';
+        const currentUserId = this.currentUserId();
+        const block = this.userBlock()?.find((b: any) => 
+            String(b.blocked_id) === String(parti.user_id) && String(b.blocker_id) === String(currentUserId)
+        );
+        
+        console.log('[unblockCurrentUser] parti:', parti.user_id, 'currentUserId:', currentUserId);
+        console.log('[unblockCurrentUser] userBlock list:', this.userBlock());
+        console.log('[unblockCurrentUser] found block:', block);
+        
+        if (!block?.id) {
+            console.log('[unblockCurrentUser] Không tìm thấy block record hoặc không có ID');
+            return;
+        }
+
+        Swal.fire({
+            title: `Bỏ chặn "${full_name}"?`,
+            text: 'Bạn có chắc chắn muốn bỏ chặn người này không?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Bỏ chặn',
+            cancelButtonText: 'Hủy'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                this.userBlockService.deleteBlockedUser(block.id).subscribe({
+                    next: () => {
+                        console.log('Unblocked successfully');
+                        // Update local signal
+                        this.convStore.userBlock.update(list => list.filter(b => b.id !== block.id));
+                        // Update relStore signal as well!
+                        this.relStore.blockedUser.update(list => list.filter(b => String(b.friend_id || b.id) !== String(parti.user_id)));
+                        // Emit socket
+                        this.socketService.emit('unblockUser', { blocker_id: currentUserId, blocked_id: parti.user_id });
+                        Swal.fire('Thành công', 'Đã bỏ chặn người dùng.', 'success');
+                    },
+                    error: (err) => {
+                        console.error('Failed to unblock:', err);
+                        Swal.fire('Lỗi', 'Không thể bỏ chặn người dùng.', 'error');
+                    }
+                });
+            }
+        });
     }
 
     async openCallWindow({
@@ -3824,6 +3949,10 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
     }
 
     handleCall(media_type: 'video' | 'audio') {
+        if (this.isBlocked()) {
+            console.warn('Cannot start call: user is blocked or has blocked you.');
+            return;
+        }
         if (this.hasJoinableGroupCall()) {
             this.joinOngoingGroupCall();
             return;

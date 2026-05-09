@@ -25,7 +25,10 @@ export class NavigationService {
     setView(view: AppView) {
         this.activeView.set(view);
         if (view === 'messages') {
-            this.router.navigate(['/conversations']);
+            // Nếu đang có pending conversation hoặc user thì để component tự điều hướng, tránh race condition
+            if (!this.pendingConversationId() && !this.pendingDirectConversationUser()) {
+                this.router.navigate(['/conversations']);
+            }
         } else if (view === 'friends') {
             this.router.navigate(['/relationship']);
         } else if (view === 'newFeeds') {

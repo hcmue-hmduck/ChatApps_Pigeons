@@ -36,6 +36,7 @@ export class RelationshipStoreService {
     friendIds = new Set<string>();
     friendRequestsIds = new Set<string>();
     sendingRequestsIds = new Set<string>();
+    allFriendIds = new Set<string>();
 
     constructor() {
         this.setupSocketListeners();
@@ -68,10 +69,13 @@ export class RelationshipStoreService {
                 const allUsersArr = res.users?.metadata || [];
 
                 // Reset Helper Sets
+                this.allFriendIds = new Set<string>(allFriendsArr.map((f: any) => f.friend_id));
+                const blockedIdsSet = new Set<string>(blocksArr.map((b: any) => b.blocked_id));
+                
+                // Bao gồm tất cả bạn bè kể cả đã chặn
                 this.friendIds = new Set<string>(allFriendsArr.map((f: any) => f.friend_id));
                 this.friendRequestsIds = new Set<string>(receivedRequestsArr.map((r: any) => r.sender_id));
                 this.sendingRequestsIds = new Set<string>(sentRequestsArr.map((r: any) => r.receiver_id));
-                const blockedIdsSet = new Set<string>(blocksArr.map((b: any) => b.blocked_id));
 
                 const userProfileMap = new Map<string, any>(allUsersArr.map((u: any) => [u.id, u]));
 
@@ -84,13 +88,13 @@ export class RelationshipStoreService {
 
                     if (blockedIdsSet.has(u.id)) {
                         const blockData = blocksArr.find((b: any) => b.blocked_id === u.id);
-                        blockedList.push({ ...u, block_id: blockData?.id, reason: blockData?.reason });
+                        blockedList.push({ ...u, friend_id: u.id, block_id: blockData?.id, reason: blockData?.reason });
                     } else {
                         const isFriend = this.friendIds.has(u.id);
                         const isRequestSent = this.sendingRequestsIds.has(u.id);
                         const isRequestReceived = this.friendRequestsIds.has(u.id);
                         if (!isFriend && !isRequestSent && !isRequestReceived) {
-                            suggestionsList.push(u);
+                            suggestionsList.push({ ...u, friend_id: u.id });
                         }
                     }
                 });
@@ -185,12 +189,18 @@ export class RelationshipStoreService {
 
         this.socketService.on('blockUser', (data: any) => {
              const blockedId = data.blocked_id;
-             this.friends.update(list => list.filter(f => (f.friend_id || f.id) !== blockedId));
-             this.friendIds.delete(blockedId);
+             // Không xóa khỏi friends nữa
+             // Thêm vào blockedUser nếu chưa có (để đồng bộ nhiều tab)
+             this.blockedUser.update(list => {
+                 if (!list.some(b => String(b.friend_id || b.id) === String(blockedId))) {
+                     return [...list, { friend_id: blockedId, block_id: data.id, reason: data.reason }];
+                 }
+                 return list;
+             });
         });
 
         this.socketService.on('unblockUser', (data: any) => {
-            this.blockedUser.update(list => list.filter(b => (b.blocked_id || b.id) !== data.blocked_id));
+            this.blockedUser.update(list => list.filter(b => String(b.friend_id || b.id) !== String(data.blocked_id)));
         });
     }
 
@@ -270,11 +280,9 @@ export class RelationshipStoreService {
         const friendId = friend.friend_id || friend.id;
         return this.userBlockService.createBlockedUser(currentUserId, friendId, reason).subscribe({
             next: (res: any) => {
-                const blockedUser = { ...friend, block_id: res.metadata.newUserBlock.id, reason };
-                this.friends.update(list => list.filter(f => (f.friend_id || f.id) !== friendId));
+                const blockedUser = { ...friend, friend_id: friendId, block_id: res.metadata.newUserBlock.id, reason };
                 this.blockedUser.update(list => [...list, blockedUser]);
-                this.friendIds.delete(friendId);
-                this.socketService.emit('blockUser', { blocker_id: currentUserId, blocked_id: friendId });
+                this.socketService.emit('blockUser', { blocker_id: currentUserId, blocked_id: friendId, id: res.metadata.newUserBlock.id });
             }
         });
     }

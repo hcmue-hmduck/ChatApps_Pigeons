@@ -487,3 +487,35 @@ CREATE TABLE IF NOT EXISTS "ChatPigeons"."bots" (
 CREATE INDEX IF NOT EXISTS "idx_bots_bot_user_id" ON "ChatPigeons"."bots"("bot_user_id");
 CREATE INDEX IF NOT EXISTS "idx_bots_owner_id" ON "ChatPigeons"."bots"("owner_id");
 CREATE INDEX IF NOT EXISTS "idx_users_bot_name" ON "ChatPigeons"."users"("bot_name") WHERE is_bot = TRUE;
+
+-- Tạo bảng group_join_requests trong schema ChatPigeons
+CREATE TABLE "ChatPigeons"."group_join_requests" (
+    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "user_id" UUID NOT NULL,
+    "conversation_id" UUID NOT NULL,
+    "status" VARCHAR(20) NOT NULL DEFAULT 'pending',
+    "note" VARCHAR(500),
+    "processed_by" UUID,
+    "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    
+    -- Khóa ngoại liên kết tới bảng users và conversations
+    CONSTRAINT "fk_gjr_user" FOREIGN KEY ("user_id") REFERENCES "ChatPigeons"."users"("id") ON DELETE CASCADE,
+        
+    CONSTRAINT "fk_gjr_conversation" FOREIGN KEY ("conversation_id") REFERENCES "ChatPigeons"."conversations"("id") ON DELETE CASCADE,
+        
+    CONSTRAINT "fk_gjr_processed_by" FOREIGN KEY ("processed_by") REFERENCES "ChatPigeons"."users"("id") ON DELETE SET NULL,
+     
+    -- Ràng buộc chỉ cho phép 3 trạng thái này
+    CONSTRAINT "check_status" CHECK ("status" IN ('pending', 'approved', 'rejected'))
+);
+
+-- 1. Index UNIQUE: Tránh việc 1 user gửi nhiều yêu cầu "đang chờ" vào cùng 1 nhóm
+CREATE UNIQUE INDEX "idx_gjr_user_conv_pending" 
+ON "ChatPigeons"."group_join_requests" ("user_id", "conversation_id") 
+WHERE "status" = 'pending';
+
+-- 2. Index hỗ trợ truy vấn nhanh danh sách yêu cầu của 1 nhóm (Dành cho Admin duyệt)
+CREATE INDEX "idx_gjr_conv_status" 
+ON "ChatPigeons"."group_join_requests" ("conversation_id", "status");
+

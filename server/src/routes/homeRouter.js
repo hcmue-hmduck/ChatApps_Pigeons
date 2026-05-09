@@ -17,6 +17,7 @@ const friendRouter = require('./friendRouter');
 const searchRouter = require('./searchRouter');
 const callRouter = require('./callRouter');
 const openAiRouter = require('./openAiRouter');
+const groupJoinRequestsRouter = require('./groupJoinRequestsRouter');
 
 router.use('/userinfor', usersRouter);
 router.use('/post-reactions', postReactionsRouter);
@@ -35,5 +36,6 @@ router.use('/friends', friendRouter);
 router.use('/search', searchRouter);
 router.use('/call', callRouter);
 router.use('/chatAI', openAiRouter);
+router.use('/group-requests', groupJoinRequestsRouter);
 
 module.exports = router;
