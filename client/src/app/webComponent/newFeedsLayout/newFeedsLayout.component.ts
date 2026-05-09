@@ -573,7 +573,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
     }
 
     getCommentAuthorAvatar(comment: any): string {
-        return comment?.user_infor?.avatar_url;
+        return comment?.user_infor?.avatar_url || 'assets/AvatarDefault.jpg';
     }
 
     getMediaLayoutClass(post: any): string {

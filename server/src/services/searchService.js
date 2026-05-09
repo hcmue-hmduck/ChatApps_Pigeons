@@ -30,6 +30,7 @@ class SearchService {
                     )
                 ],
                 is_active: true,
+                public_key: { [Op.ne]: null }
             },
             attributes: ['id', 'full_name', 'email', 'avatar_url', 'status', 'is_bot', 'bot_name'],
             limit: 10,

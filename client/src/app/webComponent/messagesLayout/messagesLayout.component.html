@@ -734,8 +734,7 @@
                 )
                 ) {
                 <div class="msg-avatar-wrap">
-                    <img class="msg-avatar" [src]="msg.sender_avatar" [alt]="msg.sender_name"
-                        (error)="msg.sender_avatar = 'null' + msg.sender_id" />
+                    <img class="msg-avatar" [src]="msg.sender_avatar || 'assets/AvatarDefault.jpg'" [alt]="msg.sender_name" />
                 </div>
                 } @else {
                 <div class="msg-avatar-placeholder"></div>
@@ -1536,7 +1535,7 @@
                         [alt]="getForwardConversationTitle(conv)" referrerPolicy="no-referrer" />
                     } @else {
                     @if (hasForwardGroupAvatar(conv)) {
-                    <img class="forward-avatar" [src]="conv.avatar_url" [alt]="getForwardConversationTitle(conv)"
+                    <img class="forward-avatar" [src]="conv.avatar_url || 'assets/AvatarDefault.jpg'" [alt]="getForwardConversationTitle(conv)"
                         referrerPolicy="no-referrer" />
                     } @else {
                     <div class="forward-avatar-group">

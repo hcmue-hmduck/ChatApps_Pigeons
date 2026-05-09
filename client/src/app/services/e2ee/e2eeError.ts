@@ -21,6 +21,7 @@ export enum E2EEErrorCode {
     SERVER_IDENTITY_KEY_NOT_FOUND = 'E2EE_SERVER_IDENTITY_KEY_NOT_FOUND',
     SERVER_VAULT_ALREADY_EXISTS = 'E2EE_SERVER_VAULT_ALREADY_EXISTS',
     SERVER_VAULT_NOT_FOUND = 'SERVER_VAULT_NOT_FOUND',
+    CONVERSATION_KEY_ROTATION_REQUIRED = 'E2EE_CONVERSATION_KEY_ROTATION_REQUIRED',
 }
 
 // Chuyển thành const object thay vì enum
@@ -40,7 +41,8 @@ export const E2EEErrorMessage: Record<E2EEErrorCode, string> = {
     [E2EEErrorCode.SERVER_IDENTITY_KEY_NOT_FOUND]:
         'Không tìm thấy thông tin bảo mật của thành viên trên hệ thống.',
     [E2EEErrorCode.SERVER_VAULT_ALREADY_EXISTS]: 'Phiên bản khóa này đã tồn tại trên máy chủ.',
-    [E2EEErrorCode.SERVER_VAULT_NOT_FOUND]: 'Phiên bản khóa này không tồn tại trên máy chủ.'
+    [E2EEErrorCode.SERVER_VAULT_NOT_FOUND]: 'Phiên bản khóa này không tồn tại trên máy chủ.',
+    [E2EEErrorCode.CONVERSATION_KEY_ROTATION_REQUIRED]: 'Khóa của cuộc trò chuyện cần được xoay trước khi gửi tin nhắn.',
 };
 
 export class E2EEError extends Error {

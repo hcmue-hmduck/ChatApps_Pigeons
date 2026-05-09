@@ -80,7 +80,7 @@
                     <div class="content-padding">
                         @for (member of participants; track member.user_id) {
                         <div class="member-item">
-                            <img [src]="member.avatar_url" [alt]="member.full_name" class="member-avatar">
+                            <img [src]="member.avatar_url || 'assets/AvatarDefault.jpg'" [alt]="member.full_name" class="member-avatar">
                             <div class="member-info">
                                 <p class="member-name">{{ member.nick_name || member.full_name }}</p>
                                 <p class="member-role accent-text">

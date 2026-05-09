@@ -189,6 +189,18 @@ class HomeMessagesService {
         let resolvedLinkDescription = link_description;
         let resolvedHasLink = has_link;
 
+        // --- KIỂM TRA KEY STATUS (cần xoay key trước khi gửi) ---
+        if (is_e2ee) {
+            const conversation = await conversationsService.getConversationById(conversationId);
+            if (conversation && conversation.key_status === 'require_rotation') {
+                throw new BadRequestError(
+                    'Conversation key requires rotation before sending message',
+                    undefined,
+                    E2EEErrorCode.CONVERSATION_KEY_ROTATION_REQUIRED,
+                );
+            }
+        }
+
         // --- KIỂM TRA KEY VERSION E2EE ---
         if (is_e2ee && key_version) {
             const latestVault = await e2eeService.getLatestConversationKey(senderId, conversationId, false);

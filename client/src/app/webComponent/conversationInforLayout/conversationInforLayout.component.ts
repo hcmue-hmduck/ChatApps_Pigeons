@@ -16,6 +16,7 @@ import { MessageStoreService } from '../../services/messageStore.service';
 import { Conversation } from '../../services/conversation';
 import { UploadService } from '../../services/uploadService';
 import { RelationshipStoreService } from '../../services/relationshipStore.service';
+import { KeyManagementService } from '../../services/e2ee/keyManagementService';
 
 @Component({
     selector: 'app-conversation-info-layout',
@@ -60,6 +61,7 @@ export class ConversationInfoLayoutComponent implements OnInit, OnDestroy, OnCha
     conversationService = inject(Conversation);
     uploadService = inject(UploadService);
     relationshipStore = inject(RelationshipStoreService);
+    keyManagementService = inject(KeyManagementService);
     private cdr = inject(ChangeDetectorRef);
     @ViewChild('avatarInput') avatarInput!: ElementRef<HTMLInputElement>;
     private onUpdateConversationInfoSocket?: (data: any) => void;
@@ -179,7 +181,7 @@ export class ConversationInfoLayoutComponent implements OnInit, OnDestroy, OnCha
     }
 
     get participants(): any[] {
-        return this.conversationInfor?.participants || [];
+        return (this.conversationInfor?.participants || []).filter((p: any) => !p.left_at);
     }
 
     get isGroupConversation(): boolean {
@@ -198,7 +200,7 @@ export class ConversationInfoLayoutComponent implements OnInit, OnDestroy, OnCha
 
     get otherParticipant(): any | null {
         if (this.isGroupConversation) return null;
-        return this.conversationInfor?.participants.find((p: any) => p.user_id !== this.currentUserId)
+        return this.participants.find((p: any) => p.user_id !== this.currentUserId)
     }
 
     get isBlocked(): boolean {
@@ -615,12 +617,6 @@ export class ConversationInfoLayoutComponent implements OnInit, OnDestroy, OnCha
         const conversationId = this.conversationInfor?.conversation_id || this.activeConversationService.activeConversationId();
         if (!conversationId) return;
 
-        const me = this.participants.find((p: any) => String(p.user_id) === String(this.currentUserId));
-        if (!me || !me.id) {
-            Swal.fire('Lỗi', 'Không tìm thấy thông tin thành viên của bạn', 'error');
-            return;
-        }
-
         Swal.fire({
             title: 'Rời nhóm?',
             text: 'Bạn sẽ không thể tham gia lại trừ khi được mời!',
@@ -639,8 +635,20 @@ export class ConversationInfoLayoutComponent implements OnInit, OnDestroy, OnCha
                     allowOutsideClick: false
                 });
 
-                this.conversationService.updateParticipant(me.id, { is_active: false }).subscribe({
+                this.participantService.leaveConversation(conversationId).subscribe({
                     next: () => {
+                        const msg = `<i class="bi bi-box-arrow-right"></i> @[${this.currentUserId}] đã rời nhóm`;
+                        this.messagesService.postMessage(conversationId, this.currentUserId, msg, undefined, 'system').subscribe({
+                            next: (msgRes: any) => {
+                                const savedMsg = msgRes.metadata?.newMessage;
+                                if (savedMsg) {
+                                    this.messageStoreService.addMessage(conversationId, savedMsg);
+                                    this.socketService.emit('sendMessage', savedMsg);
+                                    this.socketService.emit('updateConversation', savedMsg);
+                                }
+                            }
+                        });
+                        this.socketService.emit('leaveGroup', { conversation_id: conversationId, user_id: this.currentUserId });
                         Swal.fire('Thành công', 'Đã rời nhóm', 'success');
                         this.activeConversationService.activeConversationId.set(null);
                     },
@@ -741,16 +749,67 @@ export class ConversationInfoLayoutComponent implements OnInit, OnDestroy, OnCha
     }
 
     removeMember(member: any) {
+        const conversationId = this.conversationInfor?.conversation_id;
+        if (!conversationId) return;
+
         Swal.fire({
-            title: 'Xác nhận xoá',
-            text: `Bạn có chắc muốn xoá ${member.full_name} khỏi cuộc trò chuyện?`,
+            title: 'Xác nhận xóa',
+            text: `Bạn có chắc muốn xóa ${member.nick_name || member.full_name} khỏi nhóm?`,
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Xoá',
-            cancelButtonText: 'Hủy'
+            confirmButtonText: 'Xóa',
+            cancelButtonText: 'Hủy',
+            confirmButtonColor: '#ff0055'
         }).then((result) => {
             if (result.isConfirmed) {
-                Swal.fire('Thông báo', 'Chức năng xoá thành viên đang được phát triển', 'info');
+                Swal.fire({
+                    title: 'Đang xử lý...',
+                    didOpen: () => Swal.showLoading(),
+                    allowOutsideClick: false
+                });
+
+                this.participantService.kickMember(conversationId, member.user_id).subscribe({
+                    next: () => {
+                        // Gửi tin nhắn hệ thống
+                        const msg = `<i class="bi bi-person-x"></i> @[${this.currentUserId}] đã xóa @[${member.user_id}] khỏi nhóm`;
+                        this.messagesService.postMessage(conversationId, this.currentUserId, msg, undefined, 'system').subscribe({
+                            next: (msgRes: any) => {
+                                const savedMsg = msgRes.metadata?.newMessage;
+                                if (savedMsg) {
+                                    this.messageStoreService.addMessage(conversationId, savedMsg);
+                                    this.socketService.emit('sendMessage', savedMsg);
+                                    this.socketService.emit('updateConversation', savedMsg);
+                                }
+                            }
+                        });
+
+                        // Emit socket để thành viên bị kick biết và tự rời
+                        this.socketService.emit('kickMember', {
+                            conversation_id: conversationId,
+                            kicked_user_id: member.user_id,
+                            kicked_by: this.currentUserId
+                        });
+
+                        // Xóa khỏi danh sách hiển thị cục bộ
+                        if (this.conversationInfor?.participants) {
+                            this.conversationInfor.participants = this.conversationInfor.participants.filter(
+                                (p: any) => String(p.user_id) !== String(member.user_id)
+                            );
+                        }
+
+                        // Thực hiện xoay key ngay lập tức (kick → rotate ngay)
+                        this.keyManagementService.rotateConversationKey(conversationId).catch((err: any) => {
+                            console.error('rotateConversationKey after kick failed:', err);
+                        });
+
+                        Swal.fire('Thành công', `Đã xóa ${member.nick_name || member.full_name} khỏi nhóm`, 'success');
+                        this.cdr.detectChanges();
+                    },
+                    error: (err) => {
+                        console.error('Failed to kick member:', err);
+                        Swal.fire('Lỗi', 'Không thể xóa thành viên', 'error');
+                    }
+                });
             }
         });
     }
@@ -954,24 +1013,24 @@ export class ConversationInfoLayoutComponent implements OnInit, OnDestroy, OnCha
         this.addMemberError = '';
         const selectedIds = Array.from(this.selectedFriendIds);
 
-        const addRequests = selectedIds.reduce((acc: any, userId) => {
-            acc[userId] = this.participantService.postParticipant({
+        // Chuyển sang mảng để forkJoin chạy ổn định hơn
+        const addRequests = selectedIds.map(userId =>
+            this.participantService.postParticipant({
                 conversation_id: convID,
                 user_id: userId,
                 role: 'member'
-            });
-            return acc;
-        }, {});
+            })
+        );
 
         forkJoin(addRequests).subscribe({
-            next: async () => {
-                this.isAddingMembers = false;
-                const allParticipantIds = [
-                    ...this.participants.map((p: any) => p.user_id),
-                    ...selectedIds
-                ];
-
+            next: async (results) => {
                 try {
+                    const allParticipantIds = [
+                        ...this.participants.map((p: any) => p.user_id),
+                        ...selectedIds
+                    ];
+
+                    // Gửi tin nhắn hệ thống song song
                     const systemMessageRequests = selectedIds.map(addedUserId =>
                         lastValueFrom(this.messagesService.postMessage(
                             convID,
@@ -984,6 +1043,7 @@ export class ConversationInfoLayoutComponent implements OnInit, OnDestroy, OnCha
 
                     const savedMessages = await Promise.all(systemMessageRequests);
 
+                    // Bắn socket báo có thành viên mới
                     this.socketService.emit('addMember', {
                         conversation_id: convID,
                         added_user_ids: selectedIds,
@@ -991,30 +1051,45 @@ export class ConversationInfoLayoutComponent implements OnInit, OnDestroy, OnCha
                         all_participant_ids: allParticipantIds,
                     });
 
+                    // Bắn socket tin nhắn hệ thống
                     savedMessages.forEach(response => {
-                        const savedMsg = response.metadata?.newMessage;
+                        const savedMsg = response?.metadata?.newMessage;
                         if (savedMsg) {
-                            const person = this.friends.find((f: any) => String(f.friend_id) === String(savedMsg.sender_id));
-                            if (person) {
-                                savedMsg.sender_name = person.full_name;
-                                savedMsg.sender_avatar = person.avatar_url;
+                            // Người gửi tin nhắn hệ thống là chính mình (người thêm)
+                            if (this.userInfor) {
+                                savedMsg.sender_name = this.userInfor.full_name;
+                                savedMsg.sender_avatar = this.userInfor.avatar_url;
                             }
                             this.socketService.emit('sendMessage', savedMsg);
                         }
                     });
 
+                    // Thông báo cho các user mới về cuộc trò chuyện
                     this.socketService.emit('notifyNewConversation', {
                         receiverIds: selectedIds,
                         conversationId: convID,
                         conversation_id: convID,
                     });
-                } catch (err) { }
+                    
+                    // Thực hiện xoay key ngay lập tức để người mới có thể đọc tin nhắn sau này
+                    this.keyManagementService.rotateConversationKey(convID).catch((err: any) => {
+                        console.error('rotateConversationKey after add members failed:', err);
+                    });
 
-                this.closeAddMemberModal();
+                    console.log('Add members process completed successfully');
+                } catch (err) {
+                    console.error('Error in next block of submitAddMembers:', err);
+                } finally {
+                    this.isAddingMembers = false;
+                    this.closeAddMemberModal();
+                    this.cdr.detectChanges();
+                }
             },
             error: (err) => {
+                console.error('Failed to add members API call:', err);
                 this.addMemberError = 'Gặp lỗi khi thêm thành viên. Vui lòng thử lại.';
                 this.isAddingMembers = false;
+                this.cdr.detectChanges();
             }
         });
     }

@@ -27,9 +27,9 @@ export class KeyManagementService {
     constructor(private authService: AuthService) {
         if (typeof window !== 'undefined') {
             (window as any).TestKeyMService = this;
+            this.userId = authService.getUserId();
+            this.checkIdentityKeyPair().then(res => this.hasIdentityKey.set(res));
         }
-        this.userId = authService.getUserId();
-        this.checkIdentityKeyPair().then(res => this.hasIdentityKey.set(res));
     }
 
     async checkIdentityKeyPair() {
@@ -201,8 +201,6 @@ export class KeyManagementService {
             await firstValueFrom(this.e2eeApiService.addConversationKeys(payload));
 
             this.updateSharedKeyCache(conversationId, keyVersion, sharedKey);
-
-            console.log(`establishConversationSercurity`);
 
             await this.localDB.saveConversationKey({
                 conversationId,

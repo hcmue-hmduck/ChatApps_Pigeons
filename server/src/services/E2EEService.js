@@ -2,6 +2,7 @@ const { BadRequestError, E2EEErrorCode } = require('../core/errorResponse.js');
 const userModel = require('../models/usersModel.js');
 const conversationKeysVaultModel = require('../models/conversationkeysvaultModel.js');
 const participantsService = require('./participantsService.js');
+const conversationsService = require('./conversationsService.js');
 
 class E2EEService {
     async setupKeys(user_id, { public_key, wrapped_private_key, kek_iv, pin_salt }) {
@@ -107,7 +108,9 @@ class E2EEService {
             );
         }
 
-        return await conversationKeysVaultModel.bulkCreate(conversation_key_vaults);
+        const result = await conversationKeysVaultModel.bulkCreate(conversation_key_vaults);
+        await conversationsService.updateKeyStatus(conversation_id,  'active');
+        return result;
     }
 
     async getConversationKey(user_id, conversation_id, key_version) {

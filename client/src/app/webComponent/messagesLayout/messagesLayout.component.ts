@@ -1688,6 +1688,43 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
                                           }),
                                       );
                                   }
+
+                                  // --- XỬ LÝ RETRY KHI KEY CẦN XOAY (thành viên vào/rời nhóm) ---
+                                  if (errorCode === E2EEErrorCode.CONVERSATION_KEY_ROTATION_REQUIRED) {
+                                      console.warn(
+                                          '[E2EE] Key rotation required. Rotating and retrying...',
+                                      );
+
+                                      return from(
+                                          this.keyManagementService.rotateConversationKey(
+                                              this.conversationId(),
+                                          ),
+                                      ).pipe(
+                                          switchMap(() =>
+                                              from(
+                                                  this.e2eeMessageService.encryptMessage(
+                                                      this.conversationId(),
+                                                      content,
+                                                  ),
+                                              ),
+                                          ),
+                                          switchMap((newEncrypted: any) =>
+                                              this.messagesService.postMessage(
+                                                  this.conversationId(),
+                                                  this.currentUserId(),
+                                                  newEncrypted.ciphertext,
+                                                  replyTo,
+                                                  messageType,
+                                                  file_metadata,
+                                                  {
+                                                      iv: newEncrypted.iv,
+                                                      keyVersion: newEncrypted.keyVersion,
+                                                  },
+                                              ),
+                                          ),
+                                      );
+                                  }
+
                                   return throwError(() => error);
                               }),
                           );
@@ -3172,7 +3209,7 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
             (p: any) => String(p?.user_id) !== String(this.currentUserId()),
         );
 
-        return receiver?.avatar_url;
+        return receiver?.avatar_url || 'assets/AvatarDefault.jpg';
     }
 
     getForwardConversationAvatar(conv: any): string {
