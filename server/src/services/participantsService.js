@@ -177,7 +177,7 @@ class ParticipantsService {
         await targetParticipant.update({ left_at: now, updated_at: now });
 
         // Cập nhật key_status = require_rotation (Client của actor sẽ thực hiện rotate ngay) - đã rotate trên client
-        // await conversationsService.updateKeyStatus(conversation_id, 'require_rotation');
+        await conversationsService.updateKeyStatus(conversation_id, 'require_rotation');
 
         return { success: true, kicked_user_id: target_user_id };
     }

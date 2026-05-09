@@ -860,7 +860,7 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
         this.onNewMessageSocket = async (data: any) => {
             if (
                 data.conversation_id === conversationId &&
-                data.sender_id !== this.currentUserId()
+                (data.sender_id !== this.currentUserId() || data.message_type === 'system')
             ) {
                 this.lastMessageId = data.id;
 

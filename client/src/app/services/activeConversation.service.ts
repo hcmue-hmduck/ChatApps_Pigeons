@@ -57,6 +57,7 @@ export class ActiveConversationService implements OnDestroy {
     private onFriendRequestSocket?: (data: any) => void;
     private onAcceptFriendRequestSocketGlobal?: (data: any) => void;
     private onReactionMessageSocket?: (data: any) => void;
+    private onAddMemberSocket?: (data: any) => void;
 
     joinedConversations = computed(
         () => this.conversations()?.homeConversationData?.joinedConversations || [],
@@ -477,6 +478,111 @@ export class ActiveConversationService implements OnDestroy {
             this.syncReactions(data.message_id, data.reactions, data.counts);
         };
         this.socketService.on('reactionMessage', this.onReactionMessageSocket);
+
+        // Handle leaving or being kicked from a group in real-time
+        this.socketService.on('leaveGroup', (data: any) => {
+            const now = new Date().toISOString();
+            this.updateConversationParticipantStatus(data.conversation_id, data.user_id, now);
+        });
+
+        this.socketService.on('kickMember', (data: any) => {
+            const now = new Date().toISOString();
+            this.updateConversationParticipantStatus(data.conversation_id, data.kicked_user_id, now);
+        });
+
+        // 8. addMember
+        this.onAddMemberSocket = (data: any) => {
+            console.log('[ActiveConversationService] addMember received:', data);
+            const currentUserId = this.authService.getUserId();
+            
+            // Nếu mình là người được thêm vào
+            if (data.added_user_ids && data.added_user_ids.includes(currentUserId)) {
+                // Tham gia vào room socket
+                this.socketService.emit('joinConversation', data.conversation_id);
+                
+                // Tải lại danh sách hội thoại để thấy nhóm mới
+                this.conversationService.getConversations(currentUserId).subscribe({
+                    next: async (response) => {
+                        const metadata = response.metadata || {};
+                        let joined = metadata.homeConversationData?.joinedConversations || [];
+                        joined = await this.decryptSidebarLastMessages(joined);
+                        
+                        this.conversations.set({
+                            ...metadata,
+                            homeConversationData: {
+                                ...metadata.homeConversationData,
+                                joinedConversations: joined,
+                            },
+                        });
+                    }
+                });
+            } else {
+                // Nếu mình đã ở trong nhóm, chỉ cập nhật danh sách participants nếu cần
+                if (data.newParticipants) {
+                    this.updateConversationParticipants(data.conversation_id, data.newParticipants);
+                }
+            }
+
+            // PHÁT LẠI CÁC TIN NHẮN HỆ THỐNG CỤC BỘ CHO TẤT CẢ MỌI NGƯỜI (Admin, Người cũ, Người mới)
+            // Việc này an toàn vì MessagesLayoutComponent đã có logic chống trùng tin nhắn (duplicate check)
+            if (data.systemMessages && Array.isArray(data.systemMessages)) {
+                data.systemMessages.forEach((msg: any) => {
+                    if (String(msg.conversation_id) === String(data.conversation_id)) {
+                        // 1. Để hiện trong khung chat (nếu đang mở)
+                        this.socketService.emitLocal('newMessage', msg);
+                        // 2. Để cập nhật dòng tin nhắn cuối trên sidebar
+                        this.socketService.emitLocal('updateConversation', msg);
+                    }
+                });
+            }
+        };
+        this.socketService.on('addMember', this.onAddMemberSocket);
+    }
+
+    updateConversationParticipantStatus(conversationId: string, userId: string, leftAt: string | null) {
+        this.conversations.update((cur) => {
+            if (!cur?.homeConversationData?.joinedConversations) return cur;
+            const updated = cur.homeConversationData.joinedConversations.map((conv: any) => {
+                if (String(conv.conversation_id) === String(conversationId)) {
+                    const updatedParticipants = conv.participants.map((p: any) => {
+                        if (String(p.user_id) === String(userId)) {
+                            return { ...p, left_at: leftAt };
+                        }
+                        return p;
+                    });
+                    return { ...conv, participants: updatedParticipants };
+                }
+                return conv;
+            });
+            return {
+                ...cur,
+                homeConversationData: { ...cur.homeConversationData, joinedConversations: updated },
+            };
+        });
+    }
+
+    updateConversationParticipants(conversationId: string, newParticipants: any[]) {
+        this.conversations.update((cur) => {
+            if (!cur?.homeConversationData?.joinedConversations) return cur;
+            const updated = cur.homeConversationData.joinedConversations.map((conv: any) => {
+                if (String(conv.conversation_id) === String(conversationId)) {
+                    // Tránh duplicate nếu socket đã báo trước đó
+                    const participants = conv.participants || [];
+                    const existingIds = new Set(participants.map((p: any) => String(p.user_id)));
+                    const filteredNew = newParticipants.filter(p => !existingIds.has(String(p.user_id)));
+                    
+                    return { 
+                        ...conv, 
+                        participants: [...participants, ...filteredNew] 
+                    };
+                }
+                return conv;
+            });
+            return {
+                ...cur,
+                homeConversationData: { ...cur.homeConversationData, joinedConversations: updated },
+            };
+        });
     }
 
     syncReactions(msgId: string, reactions: any[], counts: any) {
@@ -502,6 +608,9 @@ export class ActiveConversationService implements OnDestroy {
         if (this.onUserStatusChangedSocket) this.socketService.off('userStatusChanged', this.onUserStatusChangedSocket);
         if (this.onFriendRequestSocket) this.socketService.off('sendFriendRequest', this.onFriendRequestSocket);
         if (this.onReactionMessageSocket) this.socketService.off('reactionMessage', this.onReactionMessageSocket);
+        this.socketService.off('leaveGroup');
+        this.socketService.off('kickMember');
+        if (this.onAddMemberSocket) this.socketService.off('addMember', this.onAddMemberSocket);
     }
 
     async updateConversationList(data: any) {

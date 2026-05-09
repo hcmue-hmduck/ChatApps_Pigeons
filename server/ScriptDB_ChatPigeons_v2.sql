@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS conversations (
     last_message_at TIMESTAMPTZ,
     is_active BOOLEAN DEFAULT TRUE,
     key_status VARCHAR(20) DEFAULT 'no_key' CHECK (key_status IN ('no_key', 'active', 'require_rotation')),
+    -- allow_history_view BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );

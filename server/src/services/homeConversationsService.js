@@ -7,7 +7,7 @@ const { BadRequestError } = require('../core/errorResponse');
 class HomeConversationService {
     // Lấy danh sách conversations của user để hiển thị sidebar
     async getAllUserMessagesInJoinedConversations(userId) {
-        // 1. Lấy tất cả participant record của user
+        // 1. Lấy tất cả participant record của user (bao gồm cả các cuộc hội thoại đã rời)
         const userParticipants = await participantsService.getAllParticipants({ user_id: userId });
         const conversationIds = userParticipants.map((p) => p.conversation_id);
         if (conversationIds.length === 0) return {
@@ -162,7 +162,8 @@ class HomeConversationService {
                 participants: convParticipants,
                 lastMessage: messagesMap.get(conv.last_message_id) || null,
                 unread_count: unreadCountsMap[conv.id] || 0,
-                is_pinned: isPinnedMap.get(conv.id) || false
+                is_pinned: isPinnedMap.get(conv.id) || false,
+                allow_history_view: conv.allow_history_view
             };
         });
 

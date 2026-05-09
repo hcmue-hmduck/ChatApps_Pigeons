@@ -768,46 +768,56 @@ export class ConversationInfoLayoutComponent implements OnInit, OnDestroy, OnCha
                     allowOutsideClick: false
                 });
 
-                this.participantService.kickMember(conversationId, member.user_id).subscribe({
-                    next: () => {
-                        // Gửi tin nhắn hệ thống
-                        const msg = `<i class="bi bi-person-x"></i> @[${this.currentUserId}] đã xóa @[${member.user_id}] khỏi nhóm`;
-                        this.messagesService.postMessage(conversationId, this.currentUserId, msg, undefined, 'system').subscribe({
-                            next: (msgRes: any) => {
-                                const savedMsg = msgRes.metadata?.newMessage;
-                                if (savedMsg) {
-                                    this.messageStoreService.addMessage(conversationId, savedMsg);
-                                    this.socketService.emit('sendMessage', savedMsg);
-                                    this.socketService.emit('updateConversation', savedMsg);
-                                }
-                            }
-                        });
-
-                        // Emit socket để thành viên bị kick biết và tự rời
-                        this.socketService.emit('kickMember', {
-                            conversation_id: conversationId,
-                            kicked_user_id: member.user_id,
-                            kicked_by: this.currentUserId
-                        });
-
-                        // Xóa khỏi danh sách hiển thị cục bộ
-                        if (this.conversationInfor?.participants) {
-                            this.conversationInfor.participants = this.conversationInfor.participants.filter(
-                                (p: any) => String(p.user_id) !== String(member.user_id)
-                            );
+                // 1. Gửi tin nhắn hệ thống TRƯỚC khi kick để người bị kick vẫn nhận được qua socket
+                const msgContent = `<i class="bi bi-person-x"></i> @[${this.currentUserId}] đã xóa @[${member.user_id}] khỏi nhóm`;
+                this.messagesService.postMessage(conversationId, this.currentUserId, msgContent, undefined, 'system').subscribe({
+                    next: (msgRes: any) => {
+                        const savedMsg = msgRes.metadata?.newMessage;
+                        if (savedMsg) {
+                            this.messageStoreService.addMessage(conversationId, savedMsg);
+                            this.socketService.emit('sendMessage', savedMsg);
+                            this.socketService.emit('updateConversation', savedMsg);
                         }
 
-                        // Thực hiện xoay key ngay lập tức (kick → rotate ngay)
-                        this.keyManagementService.rotateConversationKey(conversationId).catch((err: any) => {
-                            console.error('rotateConversationKey after kick failed:', err);
-                        });
+                        // 2. Sau khi gửi tin nhắn xong, mới thực hiện kick qua API
+                        this.participantService.kickMember(conversationId, member.user_id).subscribe({
+                            next: () => {
+                                // 3. Emit socket để thành viên bị kick biết và tự rời
+                                this.socketService.emit('kickMember', {
+                                    conversation_id: conversationId,
+                                    kicked_user_id: member.user_id,
+                                    kicked_by: this.currentUserId
+                                });
 
-                        Swal.fire('Thành công', `Đã xóa ${member.nick_name || member.full_name} khỏi nhóm`, 'success');
-                        this.cdr.detectChanges();
+                                // Xóa khỏi danh sách hiển thị cục bộ
+                                const now = new Date().toISOString();
+                                if (this.conversationInfor && this.conversationInfor.participants) {
+                                    this.conversationInfor.participants = this.conversationInfor.participants.map((p: any) => {
+                                        if (String(p.user_id) === String(member.user_id)) {
+                                            return { ...p, left_at: now };
+                                        }
+                                        return p;
+                                    });
+                                }
+                                this.activeConversationService.updateConversationParticipantStatus(conversationId, member.user_id, now);
+
+                                // Thực hiện xoay key ngay lập tức (kick → rotate ngay) 
+                                this.keyManagementService.rotateConversationKey(conversationId).catch((err: any) => {
+                                    console.error('rotateConversationKey after kick failed:', err);
+                                });
+
+                                Swal.fire('Thành công', `Đã xóa ${member.nick_name || member.full_name} khỏi nhóm`, 'success');
+                                this.cdr.detectChanges();
+                            },
+                            error: (err) => {
+                                console.error('Failed to kick member:', err);
+                                Swal.fire('Lỗi', 'Không thể xóa thành viên', 'error');
+                            }
+                        });
                     },
                     error: (err) => {
-                        console.error('Failed to kick member:', err);
-                        Swal.fire('Lỗi', 'Không thể xóa thành viên', 'error');
+                        console.error('Failed to post system message for kick:', err);
+                        Swal.fire('Lỗi', 'Không thể tạo tin nhắn hệ thống', 'error');
                     }
                 });
             }
@@ -1023,10 +1033,29 @@ export class ConversationInfoLayoutComponent implements OnInit, OnDestroy, OnCha
         );
 
         forkJoin(addRequests).subscribe({
-            next: async (results) => {
+            next: async (results: any[]) => {
                 try {
+                    if (!results || results.length === 0) {
+                        this.isAddingMembers = false;
+                        this.cdr.detectChanges();
+                        return;
+                    }
+
+                    const newParticipants = results
+                        .filter(res => res?.metadata?.participant)
+                        .map(res => res.metadata.participant);
+
+                    if (newParticipants.length > 0) {
+                        if (this.conversationInfor && this.conversationInfor.participants) {
+                            this.conversationInfor.participants = [...this.conversationInfor.participants, ...newParticipants];
+                        }
+                        // Cập nhật vào store tổng
+                        this.activeConversationService.updateConversationParticipants(convID, newParticipants);
+                    }
+
+                    const currentParticipants = this.conversationInfor?.participants || [];
                     const allParticipantIds = [
-                        ...this.participants.map((p: any) => p.user_id),
+                        ...currentParticipants.map((p: any) => p.user_id),
                         ...selectedIds
                     ];
 
@@ -1041,28 +1070,24 @@ export class ConversationInfoLayoutComponent implements OnInit, OnDestroy, OnCha
                         ))
                     );
 
-                    const savedMessages = await Promise.all(systemMessageRequests);
+                    const savedMessagesResponses = await Promise.all(systemMessageRequests);
+                    const savedMessages = savedMessagesResponses.map(res => res.metadata?.newMessage);
 
                     // Bắn socket báo có thành viên mới
-                    this.socketService.emit('addMember', {
+                    const addMemberPayload = {
                         conversation_id: convID,
                         added_user_ids: selectedIds,
                         added_by: this.currentUserId,
                         all_participant_ids: allParticipantIds,
-                    });
+                        newParticipants: newParticipants,
+                        systemMessages: savedMessages // Gửi kèm các tin nhắn hệ thống thực tế (đã trích xuất)
+                    };
 
-                    // Bắn socket tin nhắn hệ thống
-                    savedMessages.forEach(response => {
-                        const savedMsg = response?.metadata?.newMessage;
-                        if (savedMsg) {
-                            // Người gửi tin nhắn hệ thống là chính mình (người thêm)
-                            if (this.userInfor) {
-                                savedMsg.sender_name = this.userInfor.full_name;
-                                savedMsg.sender_avatar = this.userInfor.avatar_url;
-                            }
-                            this.socketService.emit('sendMessage', savedMsg);
-                        }
-                    });
+                    this.socketService.emit('addMember', addMemberPayload);
+                    // Tự bắn nội bộ cho chính mình (người thêm) để hiện sys message ngay lập tức
+                    this.socketService.emitLocal('addMember', addMemberPayload);
+
+                    this.isAddingMembers = false;
 
                     // Thông báo cho các user mới về cuộc trò chuyện
                     this.socketService.emit('notifyNewConversation', {

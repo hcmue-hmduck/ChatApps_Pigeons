@@ -28,7 +28,7 @@ export class KeyManagementService {
         if (typeof window !== 'undefined') {
             (window as any).TestKeyMService = this;
             this.userId = authService.getUserId();
-            this.checkIdentityKeyPair().then(res => this.hasIdentityKey.set(res));
+            this.checkIdentityKeyPair().then((res) => this.hasIdentityKey.set(res));
         }
     }
 
@@ -220,11 +220,11 @@ export class KeyManagementService {
 
     async rotateConversationKey(conversationId: string) {
         try {
-            const latestConvKeys = await this.getLatestConversationKey(conversationId);
-            if (latestConvKeys) {
-                const keyVersion = latestConvKeys.keyVersion + 1;
-
-                return await this.establishConversationSercurity(conversationId, keyVersion);
+            console.warn(`rotateConversationKey`);
+            const { sharedKeyObj, keyVersion } = await this.getLatestKeyFromServer(conversationId);
+            // const latestConvKeys = await this.getLatestConversationKey(conversationId);
+            if (sharedKeyObj && keyVersion) {
+                return await this.establishConversationSercurity(conversationId, keyVersion + 1);
             }
         } catch (error: any) {
             console.error(`rotateSharedKey`, error);
@@ -357,6 +357,18 @@ export class KeyManagementService {
             }
 
             // db
+            return await this.getLatestKeyFromServer(conversationId);
+        } catch (error: any) {
+            const errorCodeServer = error?.error?.errorCode;
+            if (errorCodeServer === E2EEErrorCode.SERVER_VAULT_NOT_FOUND) {
+                return await this.establishConversationSercurity(conversationId);
+            }
+            throw error;
+        }
+    }
+
+    async getLatestKeyFromServer(conversationId: string) {
+        try {
             const res = await firstValueFrom(
                 this.e2eeApiService.getLatestConversationKey(conversationId),
             );
@@ -377,11 +389,8 @@ export class KeyManagementService {
                 keyVersion,
                 sharedKeyObj,
             };
-        } catch (error: any) {
-            const errorCodeServer = error?.error?.errorCode;
-            if (errorCodeServer === E2EEErrorCode.SERVER_VAULT_NOT_FOUND) {
-                return await this.establishConversationSercurity(conversationId);
-            }
+        } catch (error) {
+            console.error(`getLatestKeyFromServer`, error);
             throw error;
         }
     }

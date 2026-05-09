@@ -150,11 +150,13 @@
                     }
                 </button>
 
-                <div class="modal-footer-actions">
-                    <button type="button" class="logout-link-btn" (click)="handleLogout()">
-                        <i class="bi bi-box-arrow-right"></i> Đăng xuất tài khoản
-                    </button>
-                </div>
+                @if (mode() === 'setup') {
+                    <div class="modal-footer-actions">
+                        <button type="button" class="logout-link-btn" (click)="handleLogout()">
+                            <i class="bi bi-box-arrow-right"></i> Đăng xuất tài khoản
+                        </button>
+                    </div>
+                }
             </form>
         </div>
     </div>
