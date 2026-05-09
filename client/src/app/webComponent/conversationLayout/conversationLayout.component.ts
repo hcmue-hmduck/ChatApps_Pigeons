@@ -180,7 +180,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
             
             // Nếu có ID từ URL và chưa chọn đúng hội thoại ở sidebar, đồng bộ selection
             if (routeId && routeId !== currentSelectedId) {
-                console.log('Syncing selection after full data load:', routeId);
+                // console.log('Syncing selection after full data load:', routeId);
                 this.syncSelectionWithRoute();
             }
         });
@@ -807,7 +807,7 @@ export class ConversationLayoutComponent implements OnInit, OnDestroy {
 
     isMuted(conv: any): boolean {
         const me = conv?.participants?.find((p: any) => String(p.user_id) === String(this.currentUserId()));
-        console.log('[isMuted] conv:', conv?.conversation_id, 'me:', me?.user_id, 'is_muted:', me?.is_muted);
+        // console.log('[isMuted] conv:', conv?.conversation_id, 'me:', me?.user_id, 'is_muted:', me?.is_muted);
         return me?.is_muted === true || me?.is_muted === 1 || me?.is_muted === '1';
     }
 

@@ -82,7 +82,8 @@ export class ActiveConversationService implements OnDestroy {
                     conv.lastMessage &&
                     conv.lastMessage.is_e2ee &&
                     conv.lastMessage.content &&
-                    !conv.lastMessage.is_deleted
+                    !conv.lastMessage.is_deleted &&
+                    !conv.lastMessage.is_decrypted
                 ) {
                     try {
                         const e2eePayload = {
@@ -617,7 +618,7 @@ export class ActiveConversationService implements OnDestroy {
         let displayContent = data.content;
 
         // --- GIẢI MÃ TIN NHẮN MỚI CHO SIDEBAR ---
-        if (data.is_e2ee && data.content && !data.is_deleted) {
+        if (data.is_e2ee && data.content && !data.is_deleted && !data.is_decrypted) {
             try {
                 const e2eePayload = {
                     ciphertext: data.content,

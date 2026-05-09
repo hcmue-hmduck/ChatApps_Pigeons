@@ -648,7 +648,7 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
 
     isMuted(conv: any): boolean {
         const me = conv?.participants?.find((p: any) => String(p.user_id) === String(this.currentUserId()));
-        console.log('[isMuted Header] conv:', conv?.conversation_id, 'me:', me?.user_id, 'is_muted:', me?.is_muted);
+        // console.log('[isMuted Header] conv:', conv?.conversation_id, 'me:', me?.user_id, 'is_muted:', me?.is_muted);
         return me?.is_muted === true || me?.is_muted === 1 || me?.is_muted === '1';
     }
 
@@ -866,7 +866,7 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
 
                 // --- GIẢI MÃ TIN NHẮN ---
                 let messageToAdd = data;
-                if (data.is_e2ee && data.content && !data.is_deleted) {
+                if (data.is_e2ee && data.content && !data.is_deleted && !data.is_decrypted) {
                     try {
                         const e2eePayload = {
                             ciphertext: data.content,
@@ -943,7 +943,7 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
                 const targetCallId = data.call?.id || data.call_id;
 
                 let updatedContent = data.content;
-                if (data.is_e2ee && data.content && !data.is_deleted && !isCallStatusUpdate) {
+                if (data.is_e2ee && data.content && !data.is_deleted && !isCallStatusUpdate && !data.is_decrypted) {
                     try {
                         const e2eePayload = {
                             ciphertext: data.content,
@@ -1276,7 +1276,7 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
 
         const results = await Promise.all(
             pins.map(async (pin) => {
-                if (!pin?.is_e2ee || !pin.content) return pin;
+                if (!pin?.is_e2ee || !pin.content || pin.is_decrypted) return pin;
 
                 try {
                     const e2eePayload = {
@@ -3716,14 +3716,21 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
         this.isLoadingMore = true;
         // High throughput batch size for ultra-fast deep search
         this.messagesService.getMessages(this.conversationId(), 100, this.currentOffset).subscribe({
-            next: (response) => {
-                const olderMessages = response.metadata?.homeMessagesData?.messages || [];
+            next: async (response) => {
+                let olderMessages = response.metadata?.homeMessagesData?.messages || [];
                 if (olderMessages.length === 0) {
                     this.hasMore = false;
                     this.isLoadingMore = false;
-                    // Exit recursion if we reach the end of history without finding the message
                     return;
                 }
+
+                // --- GIẢI MÃ TIN NHẮN (bao gồm cả parent_message_info) ---
+                olderMessages = await this.decryptMessages(olderMessages);
+                const currentMessages = this.getMessagesData().homeMessagesData?.messages || [];
+                olderMessages = this.hydrateReplyPreview(olderMessages, [
+                    ...olderMessages,
+                    ...currentMessages,
+                ]);
 
                 // Prepend older messages
                 this.getMessagesData.update((old) => ({
@@ -3738,7 +3745,6 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
                 this.hasMore = response.metadata?.homeMessagesData?.hasMore ?? false;
                 this.isLoadingMore = false;
 
-                // Instant chaining if still not in local data, otherwise wait slightly for render
                 const foundInNewBatch = olderMessages.some((m: any) => m.id === messageId);
                 const delay = foundInNewBatch ? 60 : 0;
 

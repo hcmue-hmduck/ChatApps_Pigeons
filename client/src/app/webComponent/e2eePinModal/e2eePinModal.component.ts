@@ -7,6 +7,7 @@ import { LocalDatabaseService } from '../../services/e2ee/localDatabaseService';
 import { AuthService } from '../../services/authService';
 import { E2eeModalService } from '../../services/e2ee/e2eeModalService';
 import { firstValueFrom } from 'rxjs';
+import Swal from 'sweetalert2';
 
 @Component({
     selector: 'app-e2ee-pin-modal',
@@ -113,6 +114,13 @@ export class E2eePinModalComponent implements OnInit {
                     throw new Error('Mã PIN cũ không chính xác');
                 }
                 await this.keyService.changePin(this.pin());
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Thành công!',
+                    text: 'Thay đổi mã PIN thành công.',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
                 this.closeModal();
             }
         } catch (err: any) {

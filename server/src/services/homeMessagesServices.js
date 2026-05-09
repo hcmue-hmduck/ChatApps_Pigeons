@@ -148,9 +148,8 @@ class HomeMessagesService {
         };
     }
 
-
     async *getSummaryFromPayload(conversation_id, messages = []) {
-        console.log(`getSummaryFromPayload`,{conversation_id, messages} )
+        console.log(`getSummaryFromPayload`, { conversation_id, messages });
 
         if (!conversation_id) throw new BadRequestError('params invalid');
 

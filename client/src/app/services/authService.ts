@@ -59,7 +59,23 @@ export class AuthService {
     async setUserInfo(userId: string) {
         try {
             const { metadata } = await firstValueFrom(this.userService.getUserById(userId));
-            const { id, full_name, avatar_url, role, email, bio, phone_number, birthday, gender, is_email_verified, is_phone_verified, last_online_at, created_at, updated_at, hasPassword } = metadata.userInfor;
+            const {
+                id,
+                full_name,
+                avatar_url,
+                role,
+                email,
+                bio,
+                phone_number,
+                birthday,
+                gender,
+                is_email_verified,
+                is_phone_verified,
+                last_online_at,
+                created_at,
+                updated_at,
+                hasPassword,
+            } = metadata.userInfor;
             this.user.set({
                 id,
                 full_name: full_name,
@@ -75,7 +91,7 @@ export class AuthService {
                 last_online_at,
                 created_at,
                 updated_at,
-                hasPassword
+                hasPassword,
             });
             console.log('Đã setUserInfor: ', { id, full_name, avatar_url, role, email });
         } catch (error) {
@@ -93,9 +109,9 @@ export class AuthService {
     }
 
     updateLocalUser(data: Partial<UserInfor>) {
-        this.user.update(current => ({
+        this.user.update((current) => ({
             ...current,
-            ...data
+            ...data,
         }));
     }
 
@@ -120,10 +136,10 @@ export class AuthService {
                         last_online_at: res.metadata.last_online_at,
                         created_at: res.metadata.created_at,
                         updated_at: res.metadata.updated_at,
-                        hasPassword: res.metadata.hasPassword
+                        hasPassword: res.metadata.hasPassword,
                     });
                 }
-            })
+            }),
         );
     }
 
@@ -150,14 +166,30 @@ export class AuthService {
     }
 
     logout(): Observable<any> {
-        return this.httpClient.post(`${this.apiUrl}/logout`, {}).pipe(
-            tap(() => this.clearLocalUser())
-        );
+        return this.httpClient
+            .post(`${this.apiUrl}/logout`, {})
+            .pipe(tap(() => this.clearLocalUser()));
     }
 
     // Xóa trạng thái local khi đăng xuất (dùng khi server lỗi)
     clearLocalUser() {
-        this.user.set({ id: '', full_name: '', avatar_url: '', email: '', role: '', bio: '', phone_number: '', birthday: '', gender: '', is_email_verified: false, is_phone_verified: false, last_online_at: '', created_at: '', updated_at: '', hasPassword: false });
+        this.user.set({
+            id: '',
+            full_name: '',
+            avatar_url: '',
+            email: '',
+            role: '',
+            bio: '',
+            phone_number: '',
+            birthday: '',
+            gender: '',
+            is_email_verified: false,
+            is_phone_verified: false,
+            last_online_at: '',
+            created_at: '',
+            updated_at: '',
+            hasPassword: false,
+        });
     }
 
     refreshToken(): Observable<any> {
@@ -180,7 +212,7 @@ export class AuthService {
                         last_online_at: user.last_online_at,
                         created_at: user.created_at,
                         updated_at: user.updated_at,
-                        hasPassword: user.hasPassword
+                        hasPassword: user.hasPassword,
                     });
                     console.log('Refresh success - User set:', user.id);
                 }
@@ -188,10 +220,9 @@ export class AuthService {
             catchError((err) => {
                 this.clearLocalUser();
                 throw err;
-            })
+            }),
         );
     }
-
 
     getMe(): Observable<any> {
         return this.httpClient.get(`${this.rootApiUrl}/home/userinfor/me`).pipe(
@@ -215,16 +246,15 @@ export class AuthService {
                         last_online_at: user.last_online_at,
                         created_at: user.created_at,
                         updated_at: user.updated_at,
-                        hasPassword: user.hasPassword
+                        hasPassword: user.hasPassword,
                     });
                     console.log('GetMe success - User set:', this.user());
                 }
-
             }),
             catchError((err) => {
                 this.clearLocalUser();
                 throw err;
-            })
+            }),
         );
     }
 
@@ -247,26 +277,29 @@ export class AuthService {
         }
     }
 
-
     googleLogin(): Observable<any> {
         return this.httpClient.get(`${this.apiUrl}/google`);
     }
 
     setPassword(password: string) {
-        return this.httpClient.patch(`${this.rootApiUrl}/home/userinfor/me/password-setup`, { password }).pipe(
-            tap(() => {
-                // Cập nhật state local ngay khi API trả về thành công
-                this.updateLocalUser({ hasPassword: true });
-            })
-        );
+        return this.httpClient
+            .patch(`${this.rootApiUrl}/home/userinfor/me/password-setup`, { password })
+            .pipe(
+                tap(() => {
+                    // Cập nhật state local ngay khi API trả về thành công
+                    this.updateLocalUser({ hasPassword: true });
+                }),
+            );
     }
 
     changePassword(oldPassword: string, newPassword: string) {
-        return this.httpClient.patch(`${this.rootApiUrl}/home/userinfor/me/password-change`,
-            { oldPassword, newPassword })
+        return this.httpClient.patch(`${this.rootApiUrl}/home/userinfor/me/password-change`, {
+            oldPassword,
+            newPassword,
+        });
     }
 
     resetPassword(password: string, email: string): Observable<any> {
-        return this.httpClient.post(`${this.apiUrl}/reset-password`, {password, email});
+        return this.httpClient.post(`${this.apiUrl}/reset-password`, { password, email });
     }
 }
