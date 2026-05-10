@@ -4044,7 +4044,7 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
                             next: (res: any) => {
                                 const systemMessage = {
                                     ...res.metadata,
-                                    sender_name: name,
+                                    sender_name: full_name,
                                     sender_avatar: avatar_url,
                                 };
 
