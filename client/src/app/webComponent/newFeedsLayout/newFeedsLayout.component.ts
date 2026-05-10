@@ -1175,7 +1175,12 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
 
         this.feedStore.commentOnPost(commentData).subscribe({
             next: (data: any) => {
-                this.feedStore.emitSocket('newComment', data.metadata.newComment);
+                const serverComment = data.metadata.newComment;
+                const emittedComment = {
+                    ...serverComment,
+                    user_infor: this.convStore.currentUserInfo() || serverComment.user_infor || null,
+                };
+                this.feedStore.emitSocket('newComment', emittedComment);
                 this.newCommentContent = '';
                 this.replyToCommentId = null;
                 this.newReplyContent = '';
