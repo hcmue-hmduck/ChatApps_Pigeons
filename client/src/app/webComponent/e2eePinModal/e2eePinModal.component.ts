@@ -107,6 +107,25 @@ export class E2eePinModalComponent implements OnInit {
             } else if (this.mode() === 'recovery') {
                 await this.keyService.recoveryDevice(this.pin());
                 this.closeModal();
+                
+                // Wait for the key to be stored in IndexedDB before reloading
+                const user = this.authService.getUserInfor();
+                if (user) {
+                    let retries = 0;
+                    const maxRetries = 10;
+                    while (retries < maxRetries) {
+                        const ownKey = await this.localDB.getOwnKey(user.id);
+                        if (ownKey) {
+                            // Key is stored, safe to reload
+                            if (typeof window !== 'undefined') window.location.reload();
+                            return;
+                        }
+                        retries++;
+                        // Wait 100ms before checking again
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+                }
+                // Fallback: reload anyway after waiting
                 if (typeof window !== 'undefined') window.location.reload();
             } else if (this.mode() === 'change') {
                 const isVerify = await this.keyService.verifyPin(this.oldPin());

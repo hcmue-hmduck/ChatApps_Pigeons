@@ -218,6 +218,18 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
     private relStore = inject(RelationshipStoreService);
     
     currentConversation = computed(() => this.convStore.getConversationById(this.conversationId()));
+    currentParticipant = computed(() => {
+        const participants = this.currentConversation()?.participants || [];
+        return (
+            participants.find((p: any) => String(p.user_id) === String(this.currentUserId())) ||
+            null
+        );
+    });
+
+    isCurrentUserActiveMember = computed(() => {
+        const participant = this.currentParticipant();
+        return !!participant && !participant.left_at;
+    });
 
     conversationType = computed(() => this.currentConversation()?.type || '');
 
@@ -877,7 +889,12 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
                             conversationId,
                             e2eePayload,
                         );
-                        messageToAdd = { ...data, content: decrypted.content, is_decrypted: true };
+                        messageToAdd = {
+                            ...data,
+                            content: decrypted.content,
+                            is_decrypted: !!decrypted.isDecrypted,
+                            is_decryption_error: !decrypted.isDecrypted,
+                        };
                     } catch (e) {
                         console.error('Socket decryption failed', e);
                         messageToAdd = {
@@ -4253,6 +4270,7 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
     private async buildSummaryMessages(lastReadMessageId: string): Promise<any[]> {
         const conversationId = this.conversationId();
         const messages = this.getMessagesData().homeMessagesData?.messages || [];
+        console.log('[AI Summary] Total messages in store:', messages.length, 'lastReadMessageId:', lastReadMessageId);
         if (!messages.length) return [];
 
         const sorted = [...messages].sort(
@@ -4262,13 +4280,28 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
         let startIndex = 0;
         if (lastReadMessageId) {
             const idx = sorted.findIndex((m: any) => String(m.id) === String(lastReadMessageId));
+            console.log('[AI Summary] lastReadMessageId index in sorted:', idx);
             if (idx >= 0) startIndex = idx + 1;
         }
 
         const unread = sorted
             .slice(startIndex)
-            .filter((m: any) => !m?.is_deleted && m?.message_type !== 'system')
-            .filter((m: any) => !m?.is_e2ee || m?.is_decrypted);
+            .filter((m: any) => !m?.is_deleted && m?.message_type !== 'system');
+
+        console.log('[AI Summary] Unread messages after filter:', unread.length, 'startIndex:', startIndex);
+        
+        // Check for duplicates in unread
+        const unreadIds = new Set();
+        const duplicates: any[] = [];
+        unread.forEach((m: any) => {
+            if (unreadIds.has(m.id)) {
+                duplicates.push(m.id);
+            }
+            unreadIds.add(m.id);
+        });
+        if (duplicates.length > 0) {
+            console.warn('[AI Summary] Found duplicate message IDs in unread:', duplicates);
+        }
 
         const idToMsgNo: Record<string, number> = {};
         unread.forEach((msg: any, index: number) => {
@@ -4280,12 +4313,32 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
         const contextIdMap: Record<string, number> = {};
         let nextNegativeNo = -1;
 
-        const mappedUnread = unread.map((m: any, index: number) => {
+        const mappedUnread: any[] = [];
+        for (let index = 0; index < unread.length; index++) {
+            const m = unread[index];
+            let finalContent = m.content || '';
+
+            // If E2EE and not yet decrypted, decrypt it directly
+            if (m.is_e2ee && !m.is_decrypted) {
+                try {
+                    const decrypted = await this.e2eeMessageService.decryptMessage(conversationId, {
+                        ciphertext: m.content as any,
+                        iv: m.iv as any,
+                        keyVersion: m.key_version,
+                    });
+                    if (decrypted?.isDecrypted) {
+                        finalContent = decrypted.content || '';
+                    }
+                } catch (e) {
+                    console.warn('[AI Summary] Failed to decrypt unread message:', m.id, e);
+                }
+            }
+
             const result: any = {
                 msg_no: index,
                 sender: m.sender_name || 'Unknown',
                 type: m.message_type,
-                content: m.content || '',
+                content: finalContent,
             };
 
             if (m.file_name) result.file_name = m.file_name;
@@ -4299,47 +4352,57 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
                     contextIdMap[pId] = nextNegativeNo--;
                 }
             }
-            return result;
-        });
+            mappedUnread.push(result);
+        }
 
-        // Xử lý giải mã các tin nhắn ngữ cảnh (Context) bất đồng bộ
+        // Handle parent context message decryption
         const contextIds = Object.keys(contextIdMap);
         for (const pId of contextIds) {
             const parentIdx = contextIdMap[pId];
             const parentMsgInStore = allMessagesMap.get(pId);
-            
-            // Tìm tin nhắn unread đầu tiên có nhắc tới pId để lấy pInfo
+
+            // Find first unread message referencing this parent to get parent_message_info
             const mReferencing = unread.find((m: any) => String(m.parent_message_id) === pId);
             const pInfo = mReferencing?.parent_message_info;
 
-            let safeContent = '...';
+            let safeContent: string | null = null;
+
             try {
                 if (parentMsgInStore) {
                     if (parentMsgInStore.is_e2ee && !parentMsgInStore.is_decrypted) {
+                        // Decrypt parent message directly
                         const decrypted = await this.e2eeMessageService.decryptMessage(conversationId, {
-                            ciphertext: parentMsgInStore.content,
-                            iv: parentMsgInStore.iv,
+                            ciphertext: parentMsgInStore.content as any,
+                            iv: parentMsgInStore.iv as any,
                             keyVersion: parentMsgInStore.key_version,
                         });
-                        safeContent = decrypted.content || '[Nội dung mã hóa]';
+                        safeContent = decrypted?.isDecrypted ? decrypted.content : parentMsgInStore.content;
                     } else {
-                        safeContent = parentMsgInStore.content || '...';
+                        safeContent = parentMsgInStore.content || null;
                     }
+                } else if (pInfo?.parent_message_is_e2ee) {
+                    // Parent info available but message not in store - decrypt from pInfo
+                    const decrypted = await this.e2eeMessageService.decryptMessage(conversationId, {
+                        ciphertext: pInfo.parent_message_content as any,
+                        iv: pInfo.parent_message_iv as any,
+                        keyVersion: pInfo.parent_message_key_version,
+                    });
+                    safeContent = decrypted?.isDecrypted ? decrypted.content : pInfo.parent_message_content;
                 } else if (pInfo) {
-                    if (pInfo.parent_message_is_e2ee) {
-                        const decrypted = await this.e2eeMessageService.decryptMessage(conversationId, {
-                            ciphertext: pInfo.parent_message_content,
-                            iv: pInfo.parent_message_iv,
-                            keyVersion: pInfo.parent_message_key_version,
-                        });
-                        safeContent = decrypted.content || '[Nội dung mã hóa]';
-                    } else {
-                        safeContent = pInfo.parent_message_content || '...';
-                    }
+                    safeContent = pInfo.parent_message_content || null;
                 }
             } catch (e) {
-                console.warn('[AI Summary] Decryption failed for context message:', pId, e);
-                safeContent = '[Nội dung mã hóa]';
+                console.warn('[AI Summary] Failed to decrypt parent message:', pId, e);
+                if (parentMsgInStore) {
+                    safeContent = parentMsgInStore.content || null;
+                } else if (pInfo) {
+                    safeContent = pInfo.parent_message_content || null;
+                }
+            }
+
+            if (!safeContent) {
+                delete contextIdMap[pId];
+                continue;
             }
 
             contextMessages.push({
@@ -4351,7 +4414,7 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
             });
         }
 
-        // Cập nhật lại reply_to cho mappedUnread dựa trên contextIdMap
+        // Update reply_to references based on contextIdMap
         unread.forEach((m: any, index: number) => {
             if (m.parent_message_id) {
                 const pId = String(m.parent_message_id);
@@ -4361,7 +4424,14 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
             }
         });
 
-        return [...contextMessages, ...mappedUnread];
+        const finalPayload = [...contextMessages, ...mappedUnread];
+        console.log('[AI Summary] Final payload breakdown:');
+        console.log('  - Unread message count:', mappedUnread.length);
+        console.log('  - Context message count:', contextMessages.length);
+        console.log('  - Total:', finalPayload.length);
+        console.log('  - Unread msg_no values:', mappedUnread.map(m => m.msg_no));
+        console.log('  - Context msg_no values:', contextMessages.map(m => m.msg_no));
+        return finalPayload;
     }
 
     private enqueueAiSummaryChunk(content: string) {

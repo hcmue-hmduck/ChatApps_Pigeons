@@ -3,6 +3,8 @@ const participantsService = require('./participantsService');
 const messagesService = require('./messagesService');
 const conversationsService = require('./conversationsService');
 const { BadRequestError } = require('../core/errorResponse');
+const { Op } = require('sequelize');
+const messagesModel = require('../models/messagesModel');
 
 class HomeConversationService {
     // Lấy danh sách conversations của user để hiển thị sidebar
@@ -39,6 +41,10 @@ class HomeConversationService {
         const messagesMap = new Map(allRelevantMessages.map((msg) => [msg.id, msg]));
         const usersMap = new Map(users.map((u) => [u.id, u]));
         const conversationsMap = new Map(conversations.map((c) => [c.id, c]));
+
+        const currentUserParticipantMap = new Map(
+            userParticipants.map((p) => [String(p.conversation_id), p]),
+        );
 
         // Chuẩn bị thông tin unread count
         const convReadTimestamps = [];
@@ -99,11 +105,47 @@ class HomeConversationService {
                 if (conv && conv.last_message_id !== p.last_read_message_id) {
                     convReadTimestamps.push({
                         conversation_id: p.conversation_id,
-                        last_read_at: lastReadAt
+                        last_read_at: lastReadAt,
+                        left_at: p.left_at || null,
                     });
                 }
             }
         });
+
+        const leftConversations = conversations.filter((conv) => {
+            const currentParticipant = currentUserParticipantMap.get(String(conv.id));
+            return !!currentParticipant?.left_at;
+        });
+
+        const leftConversationLastMessageMap = new Map();
+        if (leftConversations.length > 0) {
+            const snapshots = await Promise.all(
+                leftConversations.map(async (conv) => {
+                    const currentParticipant = currentUserParticipantMap.get(String(conv.id));
+                    if (!currentParticipant?.left_at) return [String(conv.id), null];
+
+                    const lastVisibleMessage = await messagesModel.findOne({
+                        where: {
+                            conversation_id: conv.id,
+                            created_at: { [Op.lte]: currentParticipant.left_at },
+                        },
+                        include: [
+                            {
+                                association: 'call',
+                                required: false,
+                            },
+                        ],
+                        order: [['created_at', 'DESC']],
+                    });
+
+                    return [String(conv.id), lastVisibleMessage || null];
+                }),
+            );
+
+            snapshots.forEach(([convId, msg]) => {
+                leftConversationLastMessageMap.set(convId, msg);
+            });
+        }
 
         // 5. Batch count unread messages
         const unreadCountsMap = await messagesService.countUnreadMessages(convReadTimestamps);
@@ -153,6 +195,12 @@ class HomeConversationService {
                 title = other ? other.full_name : 'Cuộc trò chuyện';
             }
 
+            const currentParticipant = currentUserParticipantMap.get(String(conv.id));
+            const hasLeft = !!currentParticipant?.left_at;
+            const sidebarLastMessage = hasLeft
+                ? leftConversationLastMessageMap.get(String(conv.id)) || null
+                : messagesMap.get(conv.last_message_id) || null;
+
             return {
                 conversation_id: conv.id,
                 title,
@@ -160,8 +208,8 @@ class HomeConversationService {
                 type: conv.conversation_type,
                 ownerInfo: ownerInfoMap.get(conv.id) || null,
                 participants: convParticipants,
-                lastMessage: messagesMap.get(conv.last_message_id) || null,
-                unread_count: unreadCountsMap[conv.id] || 0,
+                lastMessage: sidebarLastMessage,
+                unread_count: hasLeft ? 0 : unreadCountsMap[conv.id] || 0,
                 is_pinned: isPinnedMap.get(conv.id) || false,
                 allow_history_view: conv.allow_history_view
             };

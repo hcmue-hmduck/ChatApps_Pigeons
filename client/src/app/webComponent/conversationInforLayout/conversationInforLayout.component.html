@@ -15,7 +15,7 @@
                     [avatarUrl]="isGroupConversation ? (conversationAvatar || conversationInfor?.avatar_url || 'assets/AvatarDefault.jpg') : profileAvatar"
                     [alt]="profileName" [size]="112">
                 </app-group-avatar-layout>
-                @if (isGroupConversation && (isOwner || isAdmin)) {
+                @if (isGroupConversation && isCurrentUserActiveMember && (isOwner || isAdmin)) {
                 <button class="upload-avatar-btn" (click)="triggerAvatarUpload()" title="Đổi ảnh đại diện" style="position: absolute; bottom: 0; right: 0; border: none; background: rgba(0,0,0,0.6); color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
                     <i class="bi bi-camera"></i>
                 </button>
@@ -27,7 +27,7 @@
             } @else {
             <h1 class="profile-name" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
                 {{ profileName }}
-                @if (isGroupConversation && (isOwner || isAdmin)) {
+                @if (isGroupConversation && isCurrentUserActiveMember && (isOwner || isAdmin)) {
                 <button class="action-btn edit-btn" (click)="editGroupName()" title="Sửa tên nhóm" style="font-size: 1rem; border: none; background: none; cursor: pointer; padding: 0; display: inline-flex; align-items: center;">
                     <i class="bi bi-pencil" style="color: var(--accent-color, #ff0055);"></i>
                 </button>
@@ -45,6 +45,7 @@
                 </div>
                 }
                 @else {
+                @if (isCurrentUserActiveMember) {
                 <div class="action-item group">
                     <div class="icon-circle" (click)="handleAddMember()">
                         <i class="bi bi-person-plus-fill"></i>
@@ -52,12 +53,7 @@
                     <span class="action-label">Thêm thành viên</span>
                 </div>
                 }
-                <div class="action-item group">
-                    <div class="icon-circle">
-                        <i class="bi bi-bell-fill"></i>
-                    </div>
-                    <span class="action-label">Tắt thông báo</span>
-                </div>
+                }
                 <div class="action-item group">
                     <div class="icon-circle">
                         <i class="bi bi-search"></i>
@@ -88,6 +84,7 @@
                                     : 'Thành viên') }}
                                 </p>
                             </div>
+                            @if (isCurrentUserActiveMember) {
                             <div class="member-actions">
                                 <button class="action-btn edit-btn" (click)="editNickname(member)"
                                     title="Sửa biệt danh">
@@ -131,9 +128,10 @@
                                 }
                                 }
                             </div>
+                            }
                         </div>
                         }
-                        @if (isGroupConversation) {
+                        @if (isGroupConversation && isCurrentUserActiveMember) {
                         <button class="add-people-btn" (click)="handleAddMember()">
                             <i class="bi bi-person-plus"></i>
                             Thêm thành viên
@@ -304,7 +302,7 @@
                             <span>Giải tán nhóm</span>
                             <i class="bi bi-trash"></i>
                         </button>
-                    } @else {
+                    } @else if (isCurrentUserActiveMember) {
                         <button class="accordion-header" style="color: var(--danger-color, #ff0055); display: flex; justify-content: space-between; align-items: center;" (click)="leaveGroup()">
                             <span>Rời nhóm</span>
                             <i class="bi bi-box-arrow-right"></i>

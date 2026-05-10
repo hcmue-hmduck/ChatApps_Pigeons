@@ -663,6 +663,15 @@ export class ActiveConversationService implements OnDestroy {
 
             if (index !== -1) {
                 const conv = { ...convList[index] };
+                const me = conv.participants?.find(
+                    (p: any) => String(p.user_id) === String(currentUserId),
+                );
+
+                // Nếu đã rời nhóm, giữ nguyên preview hiện tại ở sidebar
+                // (dừng tại message system cuối cùng đã nhận được trước/sát thời điểm rời nhóm).
+                if (me?.left_at) {
+                    return cur;
+                }
 
                 // --- Increment Unread Count (The missing logic!) ---
                 // Only increment if:
@@ -696,7 +705,6 @@ export class ActiveConversationService implements OnDestroy {
                     key_version: data.key_version,
                 };
 
-                const me = conv.participants?.find((p: any) => String(p.user_id) === String(currentUserId));
                 const isMuted = me?.is_muted || false;
 
                 if (!isMuted) {

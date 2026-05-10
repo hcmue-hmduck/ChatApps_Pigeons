@@ -11,10 +11,25 @@ const e2eeService = require('./E2EEService');
 
 class HomeMessagesService {
     async getMessagesByConversation(conversationId, limit = 100, offset = 0, userId = null) {
+        let leftAt = null;
+        if (userId) {
+            const currentParticipant = await participantsService.getParticipant({
+                conversation_id: conversationId,
+                user_id: userId,
+            });
+            leftAt = currentParticipant?.left_at || null;
+        }
+
         // 1. Song song hóa queries ban đầu
         const [conversation, messages, pinnedMessages] = await Promise.all([
             conversationsService.getConversationById(conversationId),
-            messagesService.getAllMessagesByConversationId(conversationId, limit, offset, userId),
+            messagesService.getAllMessagesByConversationId(
+                conversationId,
+                limit,
+                offset,
+                userId,
+                leftAt,
+            ),
             pinnedmessagesService.getPinnedMessagesByConversationId(conversationId),
         ]);
 
@@ -84,8 +99,16 @@ class HomeMessagesService {
             countReactionMap[mId][r.emoji_char] = (countReactionMap[mId][r.emoji_char] || 0) + 1;
         });
 
+        const visiblePinned = leftAt
+            ? safePinned.filter((pin) => {
+                  const targetMsg = refMessagesMap.get(pin.message_id);
+                  if (!targetMsg?.created_at) return false;
+                  return new Date(targetMsg.created_at).getTime() <= new Date(leftAt).getTime();
+              })
+            : safePinned;
+
         // 6. Map Pinned Messages → plain objects
-        const mappedPinnedMessages = safePinned.map((pin) => {
+        const mappedPinnedMessages = visiblePinned.map((pin) => {
             const pinner = userMap.get(pin.pinned_by);
             const targetMsg = refMessagesMap.get(pin.message_id);
             const sender = targetMsg ? userMap.get(targetMsg.sender_id) : null;

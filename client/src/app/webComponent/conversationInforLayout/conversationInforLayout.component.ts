@@ -184,6 +184,12 @@ export class ConversationInfoLayoutComponent implements OnInit, OnDestroy, OnCha
         return (this.conversationInfor?.participants || []).filter((p: any) => !p.left_at);
     }
 
+    get isCurrentUserActiveMember(): boolean {
+        return (this.conversationInfor?.participants || []).some(
+            (p: any) => String(p.user_id) === String(this.currentUserId) && !p.left_at,
+        );
+    }
+
     get isGroupConversation(): boolean {
         return this.conversationInfor?.type === 'group';
     }
@@ -955,6 +961,7 @@ export class ConversationInfoLayoutComponent implements OnInit, OnDestroy, OnCha
     }
 
     handleAddMember() {
+        if (!this.isCurrentUserActiveMember) return;
         this.openAddMemberModal();
     }
 

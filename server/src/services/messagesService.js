@@ -44,7 +44,13 @@ class MessagesService {
         });
     }
 
-    async getAllMessagesByConversationId(conversationId, limit = 100, offset = 0, userId = null) {
+    async getAllMessagesByConversationId(
+        conversationId,
+        limit = 100,
+        offset = 0,
+        userId = null,
+        leftAt = null,
+    ) {
         let whereCondition = { conversation_id: conversationId };
 
         if (userId) {
@@ -59,6 +65,10 @@ class MessagesService {
                 { is_e2ee: false },
                 { is_e2ee: true, key_version: { [Op.in]: keyVersions } },
             ];
+        }
+
+        if (leftAt) {
+            whereCondition.created_at = { [Op.lte]: leftAt };
         }
 
         const messages = await messagesModel.findAll({
@@ -144,11 +154,22 @@ class MessagesService {
     async countUnreadMessages(convReadTimestamps) {
         if (convReadTimestamps.length === 0) return {};
 
-        const orConditions = convReadTimestamps.map(item => ({
-            conversation_id: item.conversation_id,
-            created_at: { [Op.gt]: item.last_read_at },
-            is_deleted: false
-        }));
+        const orConditions = convReadTimestamps.map((item) => {
+            const base = {
+                conversation_id: item.conversation_id,
+                created_at: { [Op.gt]: item.last_read_at },
+                is_deleted: false,
+            };
+
+            if (item.left_at) {
+                base.created_at = {
+                    [Op.gt]: item.last_read_at,
+                    [Op.lte]: item.left_at,
+                };
+            }
+
+            return base;
+        });
 
         const counts = await messagesModel.findAll({
             attributes: [
