@@ -29,8 +29,9 @@ export class BotServices {
     getBotById(botId: string) {
         return this.http.get(`${this.apiUrl}/${botId}`);
     }
-
+    
     postMessageToWebhook(botUserId: string, data: any) {
+        console.log('postMessageToWebhook');
         return this.http.post(`${this.apiUrl}/${botUserId}/webhook`, data);
     }
 }

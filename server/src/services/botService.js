@@ -55,11 +55,13 @@ class BotService {
     }
 
     async callWebhook(bot_user_id, payload) {
+        
         const bot = await botModel.findOne({ where: { bot_user_id } });
         if (!bot || !bot.webhook_url) {
             throw new BadRequestError('Bot does not exist or has no webhook URL');
         }
-
+        
+        console.log(`callWebhook`, {bot_user_id,payload });
         // Google Apps Script thường redirect 302 -> phải dùng `redirect: 'follow'`
         const response = await fetch(bot.webhook_url, {
             method: 'POST',
@@ -78,6 +80,7 @@ class BotService {
 
         try {
             const data = await response.json();
+            console.log(`callWebhook response`, data);
             return data;
         } catch (error) {
             // Google Apps Script có thể trả về text thay vì JSON
