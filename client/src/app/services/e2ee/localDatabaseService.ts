@@ -1,7 +1,9 @@
-import { Injectable } from '@angular/core';
+import { effect, Injectable } from '@angular/core';
 import { Dexie, Table } from 'dexie';
 import { AuthService } from '../authService';
 import { Base64String } from './cryptoUtilityService';
+
+
 
 // 1. Lưu bộ khóa cá nhân
 export interface OwnKey {
@@ -65,11 +67,20 @@ export class LocalDatabaseService {
     private db: PigeonsDatabase | null = null;
 
     constructor(private authService: AuthService) {
-        //test
         if (typeof window !== 'undefined') {
             (window as any).TestLocalDB = this;
-            const userId = authService.getUserId();
-            this.initDb(userId);
+            
+            effect(() => {
+                const userId = this.authService.getUserId();
+                if (userId) {
+                    this.initDb(userId);
+                } else {
+                    if (this.db) {
+                        this.db.close();
+                        this.db = null;
+                    }
+                }
+            });
         }
     }
 

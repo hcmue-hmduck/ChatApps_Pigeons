@@ -118,33 +118,42 @@ export class AuthService {
     login(payload: LoginPayload): Observable<any> {
         return this.httpClient.post(`${this.apiUrl}/login`, payload).pipe(
             tap((res: any) => {
-                console.log('res', res);
-                const userId = res.metadata?.id;
-                if (userId) {
-                    this.user.set({
-                        id: res.metadata.id,
-                        full_name: res.metadata.full_name,
-                        avatar_url: res.metadata.avatar_url,
-                        role: res.metadata.role,
-                        email: res.metadata.email,
-                        bio: res.metadata.bio,
-                        phone_number: res.metadata.phone_number,
-                        birthday: res.metadata.birthday,
-                        gender: res.metadata.gender,
-                        is_email_verified: res.metadata.is_email_verified,
-                        is_phone_verified: res.metadata.is_phone_verified,
-                        last_online_at: res.metadata.last_online_at,
-                        created_at: res.metadata.created_at,
-                        updated_at: res.metadata.updated_at,
-                        hasPassword: res.metadata.hasPassword,
-                    });
-                }
+                console.log('Login res:', res);
+                this.updateUserStateFromRes(res);
             }),
         );
     }
 
     signup(payload: SignupPayload): Observable<any> {
-        return this.httpClient.post(`${this.apiUrl}/signup`, payload);
+        return this.httpClient.post(`${this.apiUrl}/signup`, payload).pipe(
+            tap((res: any) => {
+                console.log('Signup res:', res);
+                this.updateUserStateFromRes(res);
+            }),
+        );
+    }
+
+    private updateUserStateFromRes(res: any) {
+        const userData = res.metadata;
+        if (userData && userData.id) {
+            this.user.set({
+                id: userData.id,
+                full_name: userData.full_name,
+                avatar_url: userData.avatar_url,
+                role: userData.role,
+                email: userData.email,
+                bio: userData.bio,
+                phone_number: userData.phone_number,
+                birthday: userData.birthday,
+                gender: userData.gender,
+                is_email_verified: userData.is_email_verified,
+                is_phone_verified: userData.is_phone_verified,
+                last_online_at: userData.last_online_at,
+                created_at: userData.created_at,
+                updated_at: userData.updated_at,
+                hasPassword: userData.hasPassword,
+            });
+        }
     }
 
     requestSignupOTP(email: string): Observable<any> {

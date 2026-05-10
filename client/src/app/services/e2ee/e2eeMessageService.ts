@@ -19,13 +19,14 @@ export class E2EEMessageService {
     cryptoUtil = inject(CryptoUtilityService);
     authService = inject(AuthService);
 
-    userId = '';
+    private get userId() {
+        return this.authService.getUserId();
+    }
 
     constructor() {
         if (typeof window !== 'undefined') {
             (window as any).TestE2EEMessageService = this;
         }
-        this.userId = this.authService.getUserId();
     }
 
     async encryptMessage(conversationId: string, message: string) {

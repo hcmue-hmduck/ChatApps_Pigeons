@@ -1,4 +1,4 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { effect, inject, Injectable, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../authService';
 import { CryptoUtilityService } from './cryptoUtilityService';
@@ -15,7 +15,10 @@ export class KeyManagementService {
     private e2eeApiService = inject(E2eeApiService);
     hasIdentityKey = signal(false);
 
-    private userId = '';
+    private get userId() {
+        return this.authService.getUserId();
+    }
+
     private sharedKeys: Map<
         string,
         {
@@ -27,8 +30,17 @@ export class KeyManagementService {
     constructor(private authService: AuthService) {
         if (typeof window !== 'undefined') {
             (window as any).TestKeyMService = this;
-            this.userId = authService.getUserId();
-            this.checkIdentityKeyPair().then((res) => this.hasIdentityKey.set(res));
+            
+            // Re-check identity key whenever userId changes
+            effect(() => {
+                const id = this.userId;
+                if (id) {
+                    this.checkIdentityKeyPair().then((res) => this.hasIdentityKey.set(res));
+                } else {
+                    this.hasIdentityKey.set(false);
+                    this.sharedKeys.clear(); // Clear cache on logout
+                }
+            });
         }
     }
 
@@ -59,7 +71,7 @@ export class KeyManagementService {
             await firstValueFrom(this.e2eeApiService.setupKeys(payload));
 
             const res = await this.localDB.saveOwnKey({
-                userId: this.userId!,
+                userId: this.userId,
                 publicKeyBase64,
                 privateKeyObj,
                 pinHash: await this.cryptoUtil.hashString(pin),
@@ -74,7 +86,7 @@ export class KeyManagementService {
 
     async verifyPin(pin: string) {
         try {
-            const ownKeys = await this.localDB.getOwnKey(this.userId!);
+            const ownKeys = await this.localDB.getOwnKey(this.userId);
             if (!ownKeys) throw new Error('missing own key');
 
             const { pinHash } = ownKeys;
@@ -91,7 +103,7 @@ export class KeyManagementService {
         try {
             const pinSalt = await this.cryptoUtil.generateRandomSalt();
             const kek = await this.cryptoUtil.deriveKEKFromPIN(newPin, pinSalt.buffer);
-            const ownKeys = await this.localDB.getOwnKey(this.userId!);
+            const ownKeys = await this.localDB.getOwnKey(this.userId);
             if (!ownKeys) throw new Error('Thiết bị chưa thiết lập mã hóa E2EE');
 
             const { publicKeyBase64, privateKeyObj } = ownKeys;
@@ -108,7 +120,7 @@ export class KeyManagementService {
                 pin_salt: pinSaltBase64,
             };
 
-            await this.localDB.updateOwnKey(this.userId!, {
+            await this.localDB.updateOwnKey(this.userId, {
                 pinHash: await this.cryptoUtil.hashString(newPin),
             });
 
@@ -136,7 +148,7 @@ export class KeyManagementService {
             const arrPromise = [];
             arrPromise.push(
                 this.localDB.saveOwnKey({
-                    userId: this.userId!,
+                    userId: this.userId,
                     publicKeyBase64: public_key,
                     privateKeyObj,
                     pinHash,
