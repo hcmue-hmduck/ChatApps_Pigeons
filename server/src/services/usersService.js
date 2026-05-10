@@ -6,8 +6,22 @@ const { getUpdateData } = require('../utils/dataUtil.js');
 
 class UsersService {
     // Lấy users theo điều kiện filter
-    async getAllUsers(where = {}) {
-        const resolvedWhere = { is_active: true, public_key: { [Op.ne]: null }, ...where };
+    async getAllUsers(where = {}, options = {}) {
+        const { includeBotsWithoutPublicKey = false } = options;
+        const resolvedWhere = { is_active: true, ...where };
+
+        if (includeBotsWithoutPublicKey) {
+            resolvedWhere[Op.and] = [
+                {
+                    [Op.or]: [
+                        { public_key: { [Op.ne]: null } },
+                        { is_bot: true },
+                    ],
+                },
+            ];
+        } else {
+            resolvedWhere.public_key = { [Op.ne]: null };
+        }
 
         if (where.id) {
             resolvedWhere.id = Array.isArray(where.id) ? { [Op.in]: where.id } : where.id;

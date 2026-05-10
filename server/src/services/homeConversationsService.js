@@ -33,7 +33,7 @@ class HomeConversationService {
         const allRelevantMessageIds = [...new Set([...lastMessageIds, ...lastReadMessageIds])];
 
         const [users, allRelevantMessages] = await Promise.all([
-            usersService.getAllUsers({ id: userIds }),
+            usersService.getAllUsers({ id: userIds }, { includeBotsWithoutPublicKey: true }),
             allRelevantMessageIds.length > 0 ? messagesService.getMessagesByIds(allRelevantMessageIds) : Promise.resolve([]),
         ]);
 
@@ -241,7 +241,10 @@ class HomeConversationService {
         const allUserIds = [created_by];
         if (participants_id) allUserIds.push(participants_id);
 
-        const users = await usersService.getAllUsers({ id: allUserIds });
+        const users = await usersService.getAllUsers(
+            { id: allUserIds },
+            { includeBotsWithoutPublicKey: true },
+        );
         const usersMap = new Map(users.map(u => [String(u.id), u]));
 
         const enrich = (p) => {
@@ -278,7 +281,10 @@ class HomeConversationService {
         const you = await participantsService.createParticipant(conv.id, { user_id: created_by, role: 'owner' });
 
         const allUserIds = [created_by, ...participants_ids];
-        const users = await usersService.getAllUsers({ id: allUserIds });
+        const users = await usersService.getAllUsers(
+            { id: allUserIds },
+            { includeBotsWithoutPublicKey: true },
+        );
         const usersMap = new Map(users.map(u => [String(u.id), u]));
 
         const enrich = (p) => {

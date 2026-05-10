@@ -12,25 +12,34 @@ class SearchService {
         // 1. Tìm kiếm Users (bao gồm cả bot bằng bot_name)
         const users = await User.findAll({
             where: {
-                [Op.or]: [
-                    // Tìm kiếm không phân biệt dấu trên cột full_name
-                    where(
-                        fn('unaccent', col('full_name')),
-                        { [Op.iLike]: fn('unaccent', unaccentKeyword) }
-                    ),
-                    // Tìm kiếm trên cột email
-                    where(
-                        fn('unaccent', col('email')),
-                        { [Op.iLike]: fn('unaccent', unaccentKeyword) }
-                    ),
-                    // Tìm kiếm trên cột bot_name (cho bot)
-                    where(
-                        fn('unaccent', col('bot_name')),
-                        { [Op.iLike]: fn('unaccent', unaccentKeyword) }
-                    )
-                ],
-                is_active: true,
-                public_key: { [Op.ne]: null }
+                [Op.and]: [
+                    {
+                        [Op.or]: [
+                            // Tìm kiếm không phân biệt dấu trên cột full_name
+                            where(
+                                fn('unaccent', col('full_name')),
+                                { [Op.iLike]: fn('unaccent', unaccentKeyword) }
+                            ),
+                            // Tìm kiếm trên cột email
+                            where(
+                                fn('unaccent', col('email')),
+                                { [Op.iLike]: fn('unaccent', unaccentKeyword) }
+                            ),
+                            // Tìm kiếm trên cột bot_name (cho bot)
+                            where(
+                                fn('unaccent', col('bot_name')),
+                                { [Op.iLike]: fn('unaccent', unaccentKeyword) }
+                            )
+                        ]
+                    },
+                    { is_active: true },
+                    {
+                        [Op.or]: [
+                            { public_key: { [Op.ne]: null } },
+                            { is_bot: true }
+                        ]
+                    }
+                ]
             },
             attributes: ['id', 'full_name', 'email', 'avatar_url', 'status', 'is_bot', 'bot_name'],
             limit: 10,
