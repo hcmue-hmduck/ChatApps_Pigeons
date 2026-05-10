@@ -32,8 +32,19 @@ CREATE TABLE Users (
     last_online_at TIMESTAMPTZ,
 	is_bot BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+	-- E2EE fields
+	public_key TEXT,
+	wrapped_private_key TEXT,
+	kek_iv VARCHAR(64),
+	pin_salt VARCHAR(64);
 );
+
+ALTER TABLE users
+ADD COLUMN public_key TEXT,
+ADD COLUMN wrapped_private_key TEXT,
+ADD COLUMN kek_iv VARCHAR(64),
+ADD COLUMN pin_salt VARCHAR(64)
 
 CREATE INDEX idx_users_email ON Users(email);
 CREATE INDEX idx_users_phone ON Users(phone_number);
@@ -51,12 +62,34 @@ CREATE TABLE Conversations (
     last_message_id UUID,                -- Sẽ được cập nhật sau khi insert Messages
     last_message_at TIMESTAMPTZ,
     is_active BOOLEAN DEFAULT TRUE,
+	key_status VARCHAR(20) DEFAULT 'no_key' CHECK (key_status IN ('no_key', 'active', 'require_rotation'))
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE Conversations
+ADD COLUMN key_status VARCHAR(20) DEFAULT 'no_key' CHECK (key_status IN ('no_key', 'active', 'require_rotation'))
+
 CREATE INDEX idx_conversations_last_message_at ON Conversations(last_message_at);
 CREATE INDEX idx_conversations_type ON Conversations(conversation_type);
+
+-- =====================================================
+-- Bảng conversationkeysvault
+-- =====================================================
+CREATE TABLE conversationkeysvault (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    key_version INTEGER NOT NULL,
+    wrapped_shared_key TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Index cho conversationkeysvault
+CREATE INDEX idx_vault_conversation_id ON conversationkeysvault(conversation_id);
+CREATE INDEX idx_vault_user_id ON conversationkeysvault(user_id);
+
 
 -- =====================================================
 -- Bảng Participants (Thành viên trong cuộc trò chuyện)
@@ -124,8 +157,17 @@ CREATE TABLE Messages (
     deleted_for_all BOOLEAN DEFAULT FALSE,
     parent_message_id UUID REFERENCES Messages(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+	-- For E2EE: if message is encrypted, `encrypted_content` holds ciphertext and `content` may be NULL (plaintext only stored locally)
+    is_e2ee BOOLEAN DEFAULT FALSE,
+	key_version INTEGER,
+	iv VARCHAR(64);
 );
+
+ALTER TABLE messages
+ADD COLUMN is_e2ee BOOLEAN DEFAULT FALSE,
+ADD COLUMN key_version INTEGER,
+ADD COLUMN iv VARCHAR(64)
 
 CREATE INDEX idx_messages_conversation_created ON Messages(conversation_id, created_at DESC);
 CREATE INDEX idx_messages_sender ON Messages(sender_id);
@@ -487,35 +529,3 @@ CREATE TABLE IF NOT EXISTS "ChatPigeons"."bots" (
 CREATE INDEX IF NOT EXISTS "idx_bots_bot_user_id" ON "ChatPigeons"."bots"("bot_user_id");
 CREATE INDEX IF NOT EXISTS "idx_bots_owner_id" ON "ChatPigeons"."bots"("owner_id");
 CREATE INDEX IF NOT EXISTS "idx_users_bot_name" ON "ChatPigeons"."users"("bot_name") WHERE is_bot = TRUE;
-
--- Tạo bảng group_join_requests trong schema ChatPigeons
-CREATE TABLE "ChatPigeons"."group_join_requests" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    "user_id" UUID NOT NULL,
-    "conversation_id" UUID NOT NULL,
-    "status" VARCHAR(20) NOT NULL DEFAULT 'pending',
-    "note" VARCHAR(500),
-    "processed_by" UUID,
-    "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    
-    -- Khóa ngoại liên kết tới bảng users và conversations
-    CONSTRAINT "fk_gjr_user" FOREIGN KEY ("user_id") REFERENCES "ChatPigeons"."users"("id") ON DELETE CASCADE,
-        
-    CONSTRAINT "fk_gjr_conversation" FOREIGN KEY ("conversation_id") REFERENCES "ChatPigeons"."conversations"("id") ON DELETE CASCADE,
-        
-    CONSTRAINT "fk_gjr_processed_by" FOREIGN KEY ("processed_by") REFERENCES "ChatPigeons"."users"("id") ON DELETE SET NULL,
-     
-    -- Ràng buộc chỉ cho phép 3 trạng thái này
-    CONSTRAINT "check_status" CHECK ("status" IN ('pending', 'approved', 'rejected'))
-);
-
--- 1. Index UNIQUE: Tránh việc 1 user gửi nhiều yêu cầu "đang chờ" vào cùng 1 nhóm
-CREATE UNIQUE INDEX "idx_gjr_user_conv_pending" 
-ON "ChatPigeons"."group_join_requests" ("user_id", "conversation_id") 
-WHERE "status" = 'pending';
-
--- 2. Index hỗ trợ truy vấn nhanh danh sách yêu cầu của 1 nhóm (Dành cho Admin duyệt)
-CREATE INDEX "idx_gjr_conv_status" 
-ON "ChatPigeons"."group_join_requests" ("conversation_id", "status");
-
