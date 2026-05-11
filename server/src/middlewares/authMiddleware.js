@@ -30,6 +30,22 @@ const authentication = async (req, res, next) => {
     }
 };
 
+function authorize(allowedRoles = []) {
+    const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
+
+    return (req, res, next) => {
+        const userRole = req.user?.role;
+        if (!userRole) throw new UnauthorizedError('missing user role');
+
+        if (roles.length === 0 || roles.includes(userRole)) {
+            return next();
+        }
+
+        throw new ForbiddenError('permission denied');
+    };
+}
+
+
 const refreshAuthentication = async (req, res, next) => {
     const refreshToken = req.cookies.rt;
     if (!refreshToken) {
@@ -82,5 +98,6 @@ const refreshAuthentication = async (req, res, next) => {
 
 module.exports = {
     authentication,
+    authorize,
     refreshAuthentication,
 };
