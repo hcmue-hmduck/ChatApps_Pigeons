@@ -224,15 +224,40 @@ io.on('connection', (socket) => {
         socket.to(data.conversation_id).emit('unpinMessage', data);
     });
 
-    socket.on('updateProfile', (data) => {
+    socket.on('updateProfile', async (data) => {
         console.log('Received updateProfile event on server:', data);
-        io.emit('updateProfile', data);
+        try {
+            // Notify all sockets of conversations where this user is an active participant
+            const participantRows = await models.Participant.findAll({
+                where: { user_id: data.user_id, left_at: null },
+                attributes: ['conversation_id'],
+            });
+
+            const conversationIds = participantRows.map((p) => p.conversation_id).filter(Boolean);
+
+            conversationIds.forEach((convId) => {
+                io.to(convId).emit('updateProfile', data);
+            });
+
+            // Also notify all devices of the user who updated profile (their own sockets)
+            const userSockets = onlineUsers.get(String(data.user_id)) || onlineUsers.get(data.user_id);
+            if (userSockets) {
+                userSockets.forEach((sockId) => {
+                    io.to(sockId).emit('updateProfile', data);
+                });
+            }
+
+        } catch (err) {
+            console.error('Error broadcasting updateProfile to conversation rooms:', err);
+            // Fallback to global emit so clients still get update
+            io.emit('updateProfile', data);
+        }
     });
 
     socket.on('updateParticipant', (data) => {
-       // console.log('Received updateParticipant event on server:', data);
-        // Broadcast tới tất cả thành viên trong conversation room
-        socket.to(data.conversation_id).emit('updateParticipant', data);
+        console.log('Received updateParticipant event on server:', data);
+        // Broadcast tới tất cả thành viên trong conversation room (INCLUDING sender)
+        io.to(data.conversation_id).emit('updateParticipant', data);
     });
 
     socket.on('addMember', (data) => {

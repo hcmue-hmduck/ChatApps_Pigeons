@@ -1,23 +1,24 @@
 <div #feedRoot class="feed-root">
     <div class="feed-shell">
         <header class="feed-header">
-            <div class="brand-wrap">
-                <div class="brand-icon">
-                    <i class="bi bi-lightning-charge-fill"></i>
-                </div>
-                <h1 class="brand-title">ChatPigeons</h1>
+            <div class="brand-title-wrap">
+                <span class="brand-title">Bản tin</span>
             </div>
 
-            <div class="search-wrap">
-                <i class="bi bi-search search-icon"></i>
-                <input class="search-input" placeholder="Nhập từ khoá để tìm kiếm..." type="text">
+            <div class="feed-nav-links" role="tablist" aria-label="Feeds navigation">
+                <button class="feed-nav-link" type="button" role="tab" [class.active]="isFeedTabActive('home')"
+                    [attr.aria-selected]="isFeedTabActive('home')" (click)="setFeedTab('home')">
+                    <i class="bi bi-house-door-fill"></i>
+                    <span>Trang chủ</span>
+                </button>
+                <button class="feed-nav-link" type="button" role="tab" [class.active]="isFeedTabActive('mine')"
+                    [attr.aria-selected]="isFeedTabActive('mine')" (click)="setFeedTab('mine')">
+                    <i class="bi bi-person-badge-fill"></i>
+                    <span>Của tôi</span>
+                </button>
             </div>
 
             <div class="header-actions">
-                <button class="icon-btn" type="button" aria-label="Notifications">
-                    <i class="bi bi-bell"></i>
-                    <span class="notif-dot"></span>
-                </button>
                 <div class="avatar-shell">
                     <img [src]="convStore.currentUserAvatar()" alt="User avatar" class="avatar-m" referrerPolicy="no-referrer"
                         loading="lazy">
@@ -218,7 +219,7 @@
                         </article>
                         }
 
-                        @for (post of feedStore.posts(); track post.id) {
+                        @for (post of visiblePosts(); track post.id) {
                         <ng-container
                             *ngTemplateOutlet="postCard; context: { post: post, isNested: false }"></ng-container>
                         }
@@ -601,9 +602,15 @@
                         </div>
                         }
 
-                        @if (!feedStore.loading() && !feedStore.error() && feedStore.posts().length === 0) {
+                        @if (!feedStore.loading() && !feedStore.error() && visiblePosts().length === 0) {
                         <article class="cyber-glass post-card">
-                            <p class="post-text">Chưa có bài viết nào để hiển thị.</p>
+                            <p class="post-text">
+                                @if (isFeedTabActive('mine')) {
+                                Chưa có bài viết nào của bạn để hiển thị.
+                                } @else {
+                                Chưa có bài viết nào để hiển thị.
+                                }
+                            </p>
                         </article>
                         }
 
@@ -612,24 +619,6 @@
                 </main>
 
                 <aside class="feed-sidebar">
-                    <section class="cyber-glass sidebar-card">
-                        <div class="sidebar-head">
-                            <h2>Trending</h2>
-                            <i class="bi bi-graph-up-arrow"></i>
-                        </div>
-
-                        <div class="trending-list">
-                            @for (item of trending; track item.tag) {
-                            <div class="trending-item">
-                                <p class="trending-tag">{{ item.tag }}</p>
-                                <p class="trending-meta">{{ item.count }}</p>
-                            </div>
-                            }
-                        </div>
-
-                        <button class="show-more" type="button">Show more</button>
-                    </section>
-
                     <section class="cyber-glass sidebar-card sidebar-friends">
                         <div class="sidebar-head">
                             <h2>Online Friends</h2>
@@ -651,7 +640,8 @@
                                     <span class="friend-name">{{ node.name }}</span>
                                 </div>
 
-                                <button class="icon-btn subtle chat-btn" type="button" aria-label="Chat">
+                                <button class="icon-btn subtle chat-btn" type="button" aria-label="Nhắn tin"
+                                    (click)="openDirectChat(node)">
                                     <i class="bi bi-chat-dots"></i>
                                 </button>
                             </div>

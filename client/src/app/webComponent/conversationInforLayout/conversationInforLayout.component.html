@@ -37,7 +37,7 @@
 
             <div class="action-buttons">
                 @if (!isGroupConversation) {
-                <div class="action-item group">
+                <div class="action-item group" (click)="openUserProfile()" style="cursor: pointer;">
                     <div class="icon-circle">
                         <i class="bi bi-person-fill"></i>
                     </div>
@@ -329,6 +329,9 @@
 
     </div>
 </aside>
+
+<!-- User Profile Modal (opened when clicking Trang cá nhân) -->
+<user-infor-modal #userProfileModal></user-infor-modal>
 
 <!-- Image Viewer Modal Overlay -->
 @if (isImageViewerOpen) {

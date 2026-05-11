@@ -115,13 +115,8 @@ export class SidebarComponent implements OnInit, OnDestroy {
 
     // ── Navigation ────────────────────────────────────────
     setView(view: string) {
-        if (view === 'messages') {
-            this.router.navigate(['/conversations']);
-        } else if (view === 'friends') {
-            this.router.navigate(['/relationship']);
-        } else if (view === 'newFeeds') {
-            this.router.navigate(['/new-feeds']);
-        }
+        // Use NavigationService to change view so activeView state and persistence are updated
+        this.navService.setView(view as any);
     }
 
     goToMessagesWelcome() {
@@ -129,11 +124,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     }
 
     isActive(view: string): boolean {
-        const url = this.router.url;
-        if (view === 'messages') return url.includes('/conversations');
-        if (view === 'friends') return url.includes('/relationship');
-        if (view === 'newFeeds') return url.includes('/new-feeds');
-        return false;
+        return this.navService.activeView() === view;
     }
 
     // ── Profile Modal Callback ────────────────────────────

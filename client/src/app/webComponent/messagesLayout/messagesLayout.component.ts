@@ -189,6 +189,16 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
         this.isLoaded = false;
         this.error = '';
         this.newMessage = '';
+        this.messageStatus.set('');
+        this.cancelReply();
+        this.activeComposerLinkPreview.set(null);
+        // Clear the input element using setTimeout to ensure it's rendered
+        setTimeout(() => {
+            if (this.messageInput && this.messageInput.nativeElement) {
+                this.messageInput.nativeElement.value = '';
+                this.messageInput.nativeElement.innerHTML = '';
+            }
+        }, 0);
 
         // Clear active timeouts
         if (this.highlightTimeout) clearTimeout(this.highlightTimeout);
@@ -500,6 +510,7 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
     private onPinMessageSocket?: (data: any) => void;
     private onUnpinMessageSocket?: (data: any) => void;
     private onUpdateProfileSocket?: (data: any) => void;
+    private onUpdateParticipantSocket?: (data: any) => void;
     private onDeleteMessageSocket?: (data: any) => void;
 
     private pinnedMenuTimeout: any;
@@ -846,6 +857,8 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
             this.socketService.off('unpinMessage', this.onUnpinMessageSocket);
         if (this.onUpdateProfileSocket)
             this.socketService.off('updateProfile', this.onUpdateProfileSocket);
+        if (this.onUpdateParticipantSocket)
+            this.socketService.off('updateParticipant', this.onUpdateParticipantSocket);
         if (this.onDeleteMessageSocket)
             this.socketService.off('deleteMessage', this.onDeleteMessageSocket);
         if (this.onTypingSocket) this.socketService.off('typing', this.onTypingSocket);
@@ -857,6 +870,7 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
         this.onPinMessageSocket = undefined;
         this.onUnpinMessageSocket = undefined;
         this.onUpdateProfileSocket = undefined;
+        this.onUpdateParticipantSocket = undefined;
         this.onDeleteMessageSocket = undefined;
         this.onTypingSocket = undefined;
         this.onStopTypingSocket = undefined;
@@ -1160,11 +1174,37 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
         };
         this.socketService.on('updateProfile', this.onUpdateProfileSocket);
 
+        this.onUpdateParticipantSocket = (data: any) => {
+            if (data.conversation_id === conversationId) {
+                const conv = this.currentConversation();
+                if (conv && conv.participants) {
+                    const idx = conv.participants.findIndex((p: any) => String(p.user_id) === String(data.user_id));
+                    if (idx !== -1) {
+                        const existing = conv.participants[idx];
+                        if (data.nick_name !== undefined) existing.nick_name = data.nick_name;
+                        if (data.full_name !== undefined) existing.full_name = data.full_name;
+                        if (data.avatar_url !== undefined) existing.avatar_url = data.avatar_url;
+                        this.cdr.markForCheck();
+                    }
+                }
+            }
+        };
+        this.socketService.on('updateParticipant', this.onUpdateParticipantSocket);
+
         this.onTypingSocket = (data: any) => {
             if (data.conversation_id === conversationId && data.user_id !== this.currentUserId()) {
+                // Enrich with participant info if nick_name is missing
+                const participants = this.currentConversation()?.participants || [];
+                const participant = participants.find((p: any) => String(p.user_id) === String(data.user_id));
+                const enriched = {
+                    ...data,
+                    nick_name: data.nick_name || participant?.nick_name,
+                    full_name: data.full_name || participant?.full_name,
+                };
+
                 this.typingUsers.update((users) => {
-                    if (!users.find((u) => u.user_id === data.user_id)) {
-                        return [...users, data];
+                    if (!users.find((u) => u.user_id === enriched.user_id)) {
+                        return [...users, enriched];
                     }
                     return users;
                 });
@@ -1925,7 +1965,7 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
                 error: (error: any) => {
                     this.loading = false;
                     console.error('Error posting message:', error);
-                    this.messageStatus.set('Lỗi');
+                    this.messageStatus.set('Không thể gửi tin nhắn');
                 },
             }),
         );

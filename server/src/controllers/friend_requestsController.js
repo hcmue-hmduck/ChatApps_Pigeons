@@ -23,15 +23,42 @@ class FriendRequestsController {
 
     async createFriendRequest(req, res) {
         try {
-            const { senderId, receiverId, reason } = req.body;
-            const friendRequest = await friendrequestsService.createFriendRequest(senderId, receiverId, reason);
+            const senderId = req.body?.senderId || req.body?.sender_id;
+            const receiverId = req.body?.receiverId || req.body?.receiver_id;
+            const note = req.body?.note ?? req.body?.reason ?? '';
+
+            if (!senderId || !receiverId) {
+                return res.status(400).json({
+                    message: 'senderId and receiverId are required',
+                    metadata: null,
+                    code: 400,
+                });
+            }
+
+            if (String(senderId) === String(receiverId)) {
+                return res.status(400).json({
+                    message: 'Cannot send friend request to yourself',
+                    metadata: null,
+                    code: 400,
+                });
+            }
+
+            const friendRequest = await friendrequestsService.createFriendRequest(senderId, receiverId, note);
             new SuccessResponse({
                 message: 'Create friend request successfully',
-                metadata: friendRequest,
+                metadata: {
+                    friendRequest,
+                },
                 statusCode: 200,
                 status: 'success'
             }).send(res);
         } catch (error) {
+            console.error('[FriendRequestsController] createFriendRequest error:', {
+                body: req.body,
+                message: error?.message,
+                name: error?.name,
+                parent: error?.parent?.detail || error?.parent?.message,
+            });
             new SuccessResponse({
                 message: 'Create friend request failed',
                 metadata: null,

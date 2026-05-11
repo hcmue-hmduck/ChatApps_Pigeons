@@ -16,14 +16,43 @@ export interface DirectConversationTarget {
 export class NavigationService {
     router = inject(Router);
     convStore = inject(ActiveConversationService);
-
     activeView = signal<AppView>('messages');
     activeFriendsTab = signal<FriendsTab>('friends_suggestions');
     pendingConversationId = signal<string | null>(null);
     pendingDirectConversationUser = signal<DirectConversationTarget | null>(null);
 
+    constructor() {
+        // Restore persisted active view if available
+        try {
+            const saved = localStorage.getItem('pigeons_active_view');
+            if (saved === 'messages' || saved === 'friends' || saved === 'newFeeds') {
+                this.activeView.set(saved as AppView);
+            }
+        } catch (e) {
+            // ignore
+        }
+
+        // Listen to router navigation to keep activeView in sync with URL (handles reloads)
+        this.router.events.subscribe((ev: any) => {
+            const NavigationEnd = (ev && ev.constructor && ev.constructor.name === 'NavigationEnd');
+            if (!NavigationEnd) return;
+            const url: string = ev.urlAfterRedirects || ev.url || '';
+            if (url.startsWith('/relationship')) {
+                this.activeView.set('friends');
+                try { localStorage.setItem('pigeons_active_view', 'friends'); } catch {};
+            } else if (url.startsWith('/new-feeds')) {
+                this.activeView.set('newFeeds');
+                try { localStorage.setItem('pigeons_active_view', 'newFeeds'); } catch {};
+            } else {
+                this.activeView.set('messages');
+                try { localStorage.setItem('pigeons_active_view', 'messages'); } catch {};
+            }
+        });
+    }
+
     setView(view: AppView) {
         this.activeView.set(view);
+        try { localStorage.setItem('pigeons_active_view', view); } catch {}
         if (view === 'messages') {
             this.router.navigate(['/conversations']);
         } else if (view === 'friends') {

@@ -688,13 +688,11 @@
                         .length -
                         1 && messageStatus() !== ''
                         ) {
-                        <span class="msg-status" [ngClass]="{
-                                                                'msg-error': messageStatus() === 'Lỗi',
-                                                            }">
-                            @if (messageStatus() !== 'Lỗi') {
+                        <span class="msg-status" [ngClass]="{'msg-error': messageStatus().includes('Không thể gửi')}">
+                            @if (!messageStatus().includes('Không thể gửi')) {
                             <i class="bi bi-check-all"></i>
                             }
-                            @if (messageStatus() === 'Lỗi') {
+                            @if (messageStatus().includes('Không thể gửi')) {
                             <i class="bi bi-exclamation-circle"></i>
                             }
                             {{ messageStatus() }} lúc
@@ -1195,10 +1193,10 @@
         </div>
         <span class="typing-text">
             @if (typingUsers().length === 1) {
-            {{ typingUsers()[0].full_name }} đang soạn tin
+            {{ typingUsers()[0].nick_name || typingUsers()[0].full_name }} đang soạn tin
             } @else if (typingUsers().length === 2) {
-            {{ typingUsers()[0].full_name }} và
-            {{ typingUsers()[1].full_name }} đang soạn tin
+            {{ typingUsers()[0].nick_name || typingUsers()[0].full_name }} và
+            {{ typingUsers()[1].nick_name || typingUsers()[1].full_name }} đang soạn tin
             } @else {
             Nhiều người đang soạn tin
             }

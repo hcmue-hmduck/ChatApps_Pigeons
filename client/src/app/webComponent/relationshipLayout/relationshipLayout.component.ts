@@ -31,7 +31,7 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
 
     // Tự động tính toán lại danh sách hiển thị khi friends hoặc currentSort thay đổi
     groupedFriends = computed(() => {
-        const rawFriends = this.relStore.friends();
+        const rawFriends = this.relStore.friends().filter((f: any) => !f.is_bot);
         const sortOrder = this.currentSort();
         const grouped = this.groupFriendsByAlphabet(rawFriends);
 
@@ -69,7 +69,7 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
     displayedSuggestions = computed(() => {
         const kw = this.searchKeyword.trim();
         const results = this.searchResults();
-        const suggestions = this.relStore.suggestions();
+        const suggestions = this.relStore.suggestions().filter((u: any) => !u.is_bot);
         const presence = this.convStore.userPresence(); // Theo dõi trạng thái presence toàn cục
 
         let baseList = [];
@@ -206,7 +206,7 @@ export class RelationshipLayoutComponent implements OnChanges, OnInit, OnDestroy
 
         this.relStore.searchUsers(kw).subscribe({
             next: (res: any) => {
-                const users = (res.metadata?.users || []).filter((u: any) => u.id !== this.userId());
+                const users = (res.metadata?.users || []).filter((u: any) => u.id !== this.userId() && !u.is_bot);
                 console.log('[RelationshipLayout] Search results:', users.length);
                 this.searchResults.set(users);
                 this.relStore.isSearching.set(false);

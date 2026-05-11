@@ -1,9 +1,11 @@
 import { Component, signal, Output, EventEmitter, Input, OnInit, OnDestroy, inject, ChangeDetectorRef, OnChanges, SimpleChanges, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GroupAvatarLayoutComponent } from '../groupAvatarLayout/groupAvatarLayout.component';
+import { UserInforModel } from '../userinforModel/userinforModel.component';
 import { MediaService } from '../../services/media';
 import { Friend } from '../../services/friend';
 import { Participant } from '../../services/participant';
+import { User } from '../../services/user';
 import { FormsModule } from '@angular/forms';
 import { SocketService } from '../../services/socket';
 import { FileUtils } from '../../utils/FileUtils/fileUltils';
@@ -21,7 +23,7 @@ import { KeyManagementService } from '../../services/e2ee/keyManagementService';
 @Component({
     selector: 'app-conversation-info-layout',
     standalone: true,
-    imports: [CommonModule, GroupAvatarLayoutComponent, FormsModule],
+    imports: [CommonModule, GroupAvatarLayoutComponent, FormsModule, UserInforModel],
     templateUrl: './conversationInforLayout.component.html',
     styleUrls: ['./conversationInforLayout.component.css']
 })
@@ -62,9 +64,12 @@ export class ConversationInfoLayoutComponent implements OnInit, OnDestroy, OnCha
     uploadService = inject(UploadService);
     relationshipStore = inject(RelationshipStoreService);
     keyManagementService = inject(KeyManagementService);
+    userService = inject(User);
     private cdr = inject(ChangeDetectorRef);
     @ViewChild('avatarInput') avatarInput!: ElementRef<HTMLInputElement>;
+    @ViewChild('userProfileModal') userProfileModal!: UserInforModel;
     private onUpdateConversationInfoSocket?: (data: any) => void;
+    private onUpdateParticipantSocket?: (data: any) => void;
 
     constructor() {
         this.mediaViewer = new ImgVidUtils(this.fileUtils);
@@ -141,12 +146,44 @@ export class ConversationInfoLayoutComponent implements OnInit, OnDestroy, OnCha
         };
 
         this.socketService.on('updateConversationInfo', this.onUpdateConversationInfoSocket);
+
+        // Listen for participant updates (e.g., nickname changes)
+        if (this.onUpdateParticipantSocket) {
+            this.socketService.off('updateParticipant', this.onUpdateParticipantSocket);
+        }
+
+        this.onUpdateParticipantSocket = (data: any) => {
+            const currentActiveId = this.activeConversationService.activeConversationId() ||
+                this.conversationInfor?.conversation_id;
+
+            if (data.conversation_id === this.conversationInfor?.conversation_id || data.conversation_id === currentActiveId) {
+                if (!this.conversationInfor || !this.conversationInfor.participants) return;
+
+                // Find participant by user_id and update nick_name/full_name/avatar if provided
+                const idx = this.conversationInfor.participants.findIndex((p: any) => String(p.user_id) === String(data.user_id));
+                if (idx !== -1) {
+                    const existing = this.conversationInfor.participants[idx];
+                    if (data.nick_name !== undefined) existing.nick_name = data.nick_name;
+                    if (data.full_name !== undefined) existing.full_name = data.full_name;
+                    if (data.avatar_url !== undefined) existing.avatar_url = data.avatar_url;
+                    // update local reference
+                    this.conversationInfor.participants[idx] = existing;
+                    this.cdr.detectChanges();
+                }
+            }
+        };
+
+        this.socketService.on('updateParticipant', this.onUpdateParticipantSocket);
     }
 
     ngOnDestroy(): void {
         if (this.onUpdateConversationInfoSocket) {
             this.socketService.off('updateConversationInfo', this.onUpdateConversationInfoSocket);
             this.onUpdateConversationInfoSocket = undefined;
+        }
+        if (this.onUpdateParticipantSocket) {
+            this.socketService.off('updateParticipant', this.onUpdateParticipantSocket);
+            this.onUpdateParticipantSocket = undefined;
         }
     }
 
@@ -265,7 +302,7 @@ export class ConversationInfoLayoutComponent implements OnInit, OnDestroy, OnCha
     }
 
     get profileName(): string {
-        return this.conversationInfor?.title || this.otherParticipant?.full_name || 'Cuộc trò chuyện';
+        return this.conversationInfor?.title || this.otherParticipant?.nick_name || this.otherParticipant?.full_name || 'Cuộc trò chuyện';
     }
 
     get profileAvatar(): string {
@@ -273,6 +310,69 @@ export class ConversationInfoLayoutComponent implements OnInit, OnDestroy, OnCha
             return this.conversationAvatar || this.conversationInfor?.avatar_url || 'assets/AvatarDefault.jpg';
         }
         return this.otherParticipant?.avatar_url || 'assets/AvatarDefault.jpg';
+    }
+
+    openUserProfile() {
+        const other = this.otherParticipant;
+        if (!other) return;
+
+        // Build minimal initial data from participant
+        const initialData: any = {
+            id: other.user_id,
+            full_name: other.nick_name || other.full_name,
+            avatar_url: other.avatar_url,
+            email: other.email,
+            phone_number: other.phone_number,
+            bio: other.bio,
+            birthday: other.birthday || null,
+            gender: other.gender || '',
+            created_at: other.created_at || null,
+            updated_at: other.updated_at || null,
+            hasPassword: other.hasPassword || false,
+        };
+
+        // If email/phone/bio are missing, fetch full user info from API
+        const needsFetch = !initialData.email && !initialData.phone_number && !initialData.bio;
+
+        const openModalWith = (data: any) => {
+            try {
+                if (this.userProfileModal) {
+                    (this.userProfileModal as any).currentUserId = String(other.user_id);
+                    (this.userProfileModal as any).editPremission = false;
+                    this.userProfileModal.open(data);
+                }
+            } catch (e) {
+                console.error('Failed to open user profile modal:', e);
+            }
+        };
+
+        if (needsFetch) {
+            this.userService.getUserById(String(other.user_id)).subscribe({
+                next: (res: any) => {
+                    const fetched = res?.metadata?.userInfor || res?.metadata || res;
+                    const merged = {
+                        ...initialData,
+                        full_name: fetched.full_name || initialData.full_name,
+                        avatar_url: fetched.avatar_url || initialData.avatar_url,
+                        email: fetched.email || initialData.email || '',
+                        phone_number: fetched.phone_number || initialData.phone_number || '',
+                        bio: fetched.bio || initialData.bio || '',
+                        birthday: fetched.birthday || initialData.birthday,
+                        gender: fetched.gender || initialData.gender,
+                        created_at: fetched.created_at || initialData.created_at,
+                        updated_at: fetched.updated_at || initialData.updated_at,
+                        hasPassword: fetched.hasPassword || initialData.hasPassword || false,
+                    };
+                    openModalWith(merged);
+                },
+                error: (err) => {
+                    console.warn('[ConversationInfo] Failed to fetch user details, opening with partial data', err);
+                    openModalWith(initialData);
+                }
+            });
+        } else {
+            openModalWith(initialData);
+        }
     }
 
     sections = signal({

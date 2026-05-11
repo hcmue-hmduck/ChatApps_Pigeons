@@ -1,4 +1,4 @@
-import { Component, Input, signal, OnDestroy, HostListener, ViewChild, ElementRef, AfterViewInit, ChangeDetectorRef, inject, CUSTOM_ELEMENTS_SCHEMA, NgZone, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, signal, computed, effect, OnDestroy, HostListener, ViewChild, ElementRef, AfterViewInit, ChangeDetectorRef, inject, CUSTOM_ELEMENTS_SCHEMA, NgZone, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpEventType } from '@angular/common/http';
@@ -14,6 +14,7 @@ import { FeedStoreService } from '../../services/feedStore.service';
 import { ActiveConversationService } from '../../services/activeConversation.service';
 import { Friend } from '../../services/friend';
 import { SocketService } from '../../services/socket';
+import { NavigationService } from '../../services/navigation';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -42,6 +43,9 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
 
     feedStore = inject(FeedStoreService);
     convStore = inject(ActiveConversationService);
+    navService = inject(NavigationService);
+    private loadedOnlineFriendsForUserId = '';
+    private onlineFriendsBase = signal<any[]>([]);
 
     constructor(
         private emojisService: Emojis,
@@ -54,11 +58,33 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         private feedReaction: FeedReactions,
         private socketService: SocketService,
         private cdr: ChangeDetectorRef
-    ) { }
+    ) {
+        effect(() => {
+            const currentUserId = String(this.convStore.currentUserInfo()?.id || '');
+            if (currentUserId && currentUserId !== this.loadedOnlineFriendsForUserId) {
+                this.loadOnlineFriends(currentUserId);
+            }
+        });
+
+        effect(() => {
+            const presence = this.convStore.userPresence();
+            const onlineSet = this.convStore.onlineUsers();
+            this.onlineNodes.set(
+                this.onlineFriendsBase().map(friend => {
+                    const uid = String(friend.id);
+                    const realTimePresence = presence.get(uid);
+                    return {
+                        ...friend,
+                        status: realTimePresence?.status || (onlineSet.has(uid) ? 'online' : friend.status || 'offline'),
+                    };
+                })
+            );
+        });
+    }
 
     @Input() set userInfor(value: any) {
-        if (value) {
-            this.loadOnlineFriends();
+        if (value?.id) {
+            this.loadOnlineFriends(String(value.id));
         }
     }
 
@@ -112,26 +138,35 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
     currentUser = {
         avatar: 'assets/AvatarDefault.jpg'
     };
-    trending: Array<{ tag: string; cat: string; count: string }> = [
-        { tag: '#NeuralLink', cat: 'Tech', count: '12.4k transmissions' },
-        { tag: '#CyberChat', cat: 'Network', count: '8.9k transmissions' },
-        { tag: '#NeonMesh', cat: 'Grid', count: '6.2k transmissions' },
-        { tag: '#QuantumKeys', cat: 'Security', count: '4.1k transmissions' }
-    ];
+    feedTab = signal<'home' | 'mine'>('home');
+    visiblePosts = computed(() => {
+        const currentUserId = String(this.convStore.currentUserInfo()?.id || '');
+        const posts = this.feedStore.posts();
+
+        if (this.feedTab() === 'mine') {
+            return posts.filter((post: any) => String(post?.user_id) === currentUserId);
+        }
+
+        return posts;
+    });
     onlineNodes = signal<any[]>([]);
 
-    loadOnlineFriends() {
-        if (!this.convStore.currentUserInfo()?.id) return;
+    loadOnlineFriends(userId?: string) {
+        const currentUserId = String(userId || this.convStore.currentUserInfo()?.id || '');
+        if (!currentUserId) return;
 
-        this.friendService.getFriendByUserId(this.convStore.currentUserInfo().id).subscribe({
+        this.loadedOnlineFriendsForUserId = currentUserId;
+
+        this.friendService.getFriendByUserId(currentUserId).subscribe({
             next: (data: any) => {
                 const friends = data.metadata.friends || [];
                 const mappedFriends = friends.map((f: any) => ({
-                    id: f.friend.id,
+                    id: String(f.friend.id),
                     name: f.friend.full_name,
                     avatar: f.friend.avatar_url,
                     status: f.friend.status
                 }));
+                this.onlineFriendsBase.set(mappedFriends);
                 this.onlineNodes.set(mappedFriends);
             },
             error: (err) => console.error('Error loading online friends:', err)
@@ -252,18 +287,38 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         this.onUserStatusChangedSocket = (data: { userId: string, status: string }) => {
             // Update Sidebar friends list specifically for this component
             this.onlineNodes.update(nodes => nodes.map(node =>
-                node.id === data.userId ? { ...node, status: data.status } : node
+                String(node.id) === String(data.userId) ? { ...node, status: data.status } : node
+            ));
+            this.onlineFriendsBase.update(nodes => nodes.map(node =>
+                String(node.id) === String(data.userId) ? { ...node, status: data.status } : node
             ));
         };
         this.socketService.on('userStatusChanged', this.onUserStatusChangedSocket);
 
         this.onOnlineUsersListSocket = (onlineIds: string[]) => {
+            const onlineSet = new Set((onlineIds || []).map(id => String(id)));
             this.onlineNodes.update(nodes => nodes.map(node => ({
                 ...node,
-                status: onlineIds.includes(node.id) ? 'online' : 'offline'
+                status: onlineSet.has(String(node.id)) ? 'online' : 'offline'
+            })));
+            this.onlineFriendsBase.update(nodes => nodes.map(node => ({
+                ...node,
+                status: onlineSet.has(String(node.id)) ? 'online' : 'offline'
             })));
         };
         this.socketService.on('onlineUsersList', this.onOnlineUsersListSocket);
+    }
+
+    openDirectChat(user: any) {
+        const targetId = String(user?.id || user?.friend_id || '');
+        if (!targetId) return;
+
+        this.navService.openDirectConversation({
+            id: targetId,
+            full_name: user?.name || user?.full_name,
+            avatar_url: user?.avatar || user?.avatar_url,
+            last_online_at: user?.last_online_at,
+        });
     }
 
     onAttachmentSelected(event: Event) {
@@ -756,6 +811,14 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
             case 'news_file': return 'Tệp tin';
             default: return 'Bản tin';
         }
+    }
+
+    setFeedTab(tab: 'home' | 'mine') {
+        this.feedTab.set(tab);
+    }
+
+    isFeedTabActive(tab: 'home' | 'mine'): boolean {
+        return this.feedTab() === tab;
     }
 
     isUserPost(post_user: string): boolean {

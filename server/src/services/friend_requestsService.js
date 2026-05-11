@@ -1,7 +1,45 @@
 const friendrequestsModel = require('../models/friendrequestsModel');
 const usersService = require('./usersService');
+const { Op } = require('sequelize');
 
 class FriendRequestsService {
+    async _getPairRequests(userA, userB) {
+        return await friendrequestsModel.findAll({
+            where: {
+                [Op.or]: [
+                    { sender_id: userA, receiver_id: userB },
+                    { sender_id: userB, receiver_id: userA },
+                ],
+            },
+            order: [['created_at', 'ASC']],
+        });
+    }
+
+    async _normalizePairRequest(userA, userB, note) {
+        const requests = await this._getPairRequests(userA, userB);
+        if (!requests.length) return null;
+
+        // Prefer the row already in the same direction as the new request.
+        const keeper = requests.find(
+            (r) => String(r.sender_id) === String(userA) && String(r.receiver_id) === String(userB),
+        ) || requests[0];
+
+        const duplicateIds = requests
+            .filter((r) => String(r.id) !== String(keeper.id))
+            .map((r) => r.id);
+
+        if (duplicateIds.length) {
+            await friendrequestsModel.destroy({ where: { id: duplicateIds } });
+        }
+
+        return await keeper.update({
+            sender_id: userA,
+            receiver_id: userB,
+            status: 'pending',
+            note,
+        });
+    }
+
     async getFriendRequests(receiver_id) {
         try {
             return await friendrequestsModel.findAll({
@@ -49,25 +87,37 @@ class FriendRequestsService {
 
     async createFriendRequest(sender_id, receiver_id, note) {
         try {
-            const existingRequest = await friendrequestsModel.findOne({
-                where: {
-                    sender_id: sender_id,
-                    receiver_id: receiver_id,
-                }
-            });
-            if (existingRequest) {
-                // Return updated instance
-                return await existingRequest.update({
-                    status: 'pending',
-                    note
-                });
-            } else {
-                // Return created instance
+            const normalizedSenderId = String(sender_id || '').trim();
+            const normalizedReceiverId = String(receiver_id || '').trim();
+            const normalizedNote = note == null ? '' : String(note);
+
+            if (!normalizedSenderId || !normalizedReceiverId) {
+                throw new Error('sender_id and receiver_id are required');
+            }
+
+            const normalizedExisting = await this._normalizePairRequest(
+                normalizedSenderId,
+                normalizedReceiverId,
+                normalizedNote,
+            );
+            if (normalizedExisting) return normalizedExisting;
+
+            try {
                 return await friendrequestsModel.create({
-                    sender_id,
-                    receiver_id,
-                    note
+                    sender_id: normalizedSenderId,
+                    receiver_id: normalizedReceiverId,
+                    note: normalizedNote,
                 });
+            } catch (error) {
+                if (error?.name === 'SequelizeUniqueConstraintError') {
+                    const normalizedAfterConflict = await this._normalizePairRequest(
+                        normalizedSenderId,
+                        normalizedReceiverId,
+                        normalizedNote,
+                    );
+                    if (normalizedAfterConflict) return normalizedAfterConflict;
+                }
+                throw error;
             }
         } catch (error) {
             throw error;
