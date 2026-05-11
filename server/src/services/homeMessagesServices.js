@@ -8,6 +8,7 @@ const participantsService = require('./participantsService.js');
 const { BadRequestError, E2EEErrorCode } = require('../core/errorResponse.js');
 const openAiService = require('../services/openAiService.js');
 const e2eeService = require('./E2EEService');
+const oneSignalService = require('./oneSignalService');
 
 class HomeMessagesService {
     async getMessagesByConversation(conversationId, limit = 100, offset = 0, userId = null) {
@@ -309,6 +310,48 @@ class HomeMessagesService {
                   parent_message_thumbnail_url: parentMessage.thumbnail_url,
               }
             : null;
+
+        setImmediate(async () => {
+            try {
+                const [participantIds, sender, conversation] = await Promise.all([
+                    participantsService.getParticipantIdsByConversationId(conversationId),
+                    usersService.getUserById(senderId),
+                    conversationsService.getConversationById(conversationId),
+                ]);
+
+                const recipientIds = (participantIds || [])
+                    .map((p) => p.user_id)
+                    .filter((id) => id && id !== senderId);
+
+                if (recipientIds.length === 0) return;
+
+                const title = sender?.full_name || conversation?.name || 'New message';
+                let body = 'You have a new message';
+                if (!is_e2ee && message_type === 'text' && content) {
+                    body = content;
+                }
+
+                const baseUrl =
+                    process.env.LINK_CLIENT ||
+                    process.env.LINK_CLIENT_PROD ||
+                    process.env.LINK_CLIENT_LOCAL_IP ||
+                    '';
+                const url = baseUrl ? `${baseUrl}/conversations/${conversationId}` : undefined;
+
+                await oneSignalService.sendNotification({
+                    headings: { en: title },
+                    contents: { en: body },
+                    externalUserIds: recipientIds.map((id) => String(id)),
+                    data: {
+                        conversation_id: conversationId,
+                        message_id: newMessage.id,
+                    },
+                    url,
+                });
+            } catch (error) {
+                console.error('OneSignal push failed:', error?.message || error);
+            }
+        });
 
         return {
             ...newMessage.dataValues,
