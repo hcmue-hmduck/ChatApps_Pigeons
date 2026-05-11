@@ -1,11 +1,15 @@
 const postsModel = require('../models/postsModel');
 
 class PostsService {
-    async getHomePosts(limit = 30, offset = 0) {
+    async getHomePosts(limit = 30, offset = 0, status = 'approved') {
         try {
+            const where = { is_deleted: false };
+            if (status && status !== 'all') {
+                where.status = status;
+            }
             const posts = await postsModel.findAll({
                 order: [['created_at', 'DESC']],
-                where: { is_deleted: false },
+                where,
                 limit,
                 offset
             });
@@ -52,6 +56,41 @@ class PostsService {
             return await postsModel.update({ is_deleted: true }, { where: { id: postId } });
         } catch (error) {
             console.error('Error deleting post:', error);
+            throw error;
+        }
+    }
+
+    async countAllPosts() {
+        try {
+            return await postsModel.count();
+        } catch (error) {
+            console.error('Error counting posts:', error);
+            throw error;
+        }
+    }
+
+    async getPostsCountByDay() {
+        try {
+            const { Op } = require('sequelize');
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+            return await postsModel.findAll({
+                attributes: [
+                    [postsModel.sequelize.fn('date_trunc', 'day', postsModel.sequelize.col('created_at')), 'date'],
+                    [postsModel.sequelize.fn('COUNT', postsModel.sequelize.col('id')), 'count']
+                ],
+                where: {
+                    created_at: {
+                        [Op.gte]: sevenDaysAgo
+                    }
+                },
+                group: [postsModel.sequelize.fn('date_trunc', 'day', postsModel.sequelize.col('created_at'))],
+                order: [[postsModel.sequelize.fn('date_trunc', 'day', postsModel.sequelize.col('created_at')), 'ASC']],
+                raw: true
+            });
+        } catch (error) {
+            console.error('Error getting posts count by day:', error);
             throw error;
         }
     }

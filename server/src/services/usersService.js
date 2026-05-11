@@ -7,10 +7,12 @@ const { getUpdateData } = require('../utils/dataUtil.js');
 class UsersService {
     // Lấy users theo điều kiện filter
     async getAllUsers(where = {}, options = {}) {
-        const { includeBotsWithoutPublicKey = false } = options;
+        const { includeBotsWithoutPublicKey = false, includeUsersWithoutPublicKey = false } = options;
         const resolvedWhere = { is_active: true, ...where };
 
-        if (includeBotsWithoutPublicKey) {
+        if (includeUsersWithoutPublicKey) {
+            // Do not add public_key constraint for admin or specific views
+        } else if (includeBotsWithoutPublicKey) {
             resolvedWhere[Op.and] = [
                 {
                     [Op.or]: [
@@ -167,6 +169,15 @@ class UsersService {
             return true;
         }
         return false;
+    }
+
+    async countAllUsers() {
+        return await usersModel.count({ 
+            where: { 
+                is_active: true, 
+                is_bot: { [Op.ne]: true } 
+            } 
+        });
     }
 }
 

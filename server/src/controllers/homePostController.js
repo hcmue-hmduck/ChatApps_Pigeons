@@ -5,7 +5,8 @@ class HomePostController {
     async getHomePosts(req, res) {
         const limit = parseInt(req.query.limit) || 30;
         const offset = parseInt(req.query.offset) || 0;
-        const homePosts = await homePostsService.getHomePosts(limit, offset);
+        const status = req.query.status || 'approved';
+        const homePosts = await homePostsService.getHomePosts(limit, offset, status);
         new SuccessResponse({
             message: 'Get home posts successfully',
             metadata: {
@@ -15,14 +16,23 @@ class HomePostController {
     }
 
     async createNewPost(req, res) {
-        const newPostData = req.body;
-        const newPost = await homePostsService.createNewPost(newPostData);
-        new SuccessResponse({
-            message: 'Create new post successfully',
-            metadata: {
-                newPost: newPost,
-            },
-        }).send(res);
+        try {
+            const newPostData = req.body;
+            const newPost = await homePostsService.createNewPost(newPostData);
+            new SuccessResponse({
+                message: 'Create new post successfully',
+                metadata: {
+                    newPost: newPost,
+                },
+            }).send(res);
+        } catch (error) {
+            const isModerationReject = error?.code === 'MODERATION_REJECTED';
+            res.status(isModerationReject ? 400 : 500).json({
+                message: isModerationReject
+                    ? 'Nội dung không phù hợp để đăng. Vui lòng chỉnh sửa và thử lại.'
+                    : (error?.message || 'Create post failed'),
+            });
+        }
     }
 
     async createNewMediaPost(req, res) {

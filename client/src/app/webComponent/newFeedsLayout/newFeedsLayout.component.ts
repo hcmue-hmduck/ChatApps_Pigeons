@@ -94,7 +94,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
     isPosting = signal(false);
     isUpdatingPost = signal(false);
     uploadProgress = signal(0);
-    uploadStage = signal<'creating' | 'uploading' | 'saving'>('creating');
+    uploadStage = signal<'checking' | 'posting' | 'uploading' | 'saving'>('checking');
     activeLinkPreview: any | null = null;
     editLinkPreview: any | null = null;
     shareLinkPreview: any | null = null;
@@ -985,7 +985,7 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
 
         this.isPosting.set(true);
         this.uploadProgress.set(0);
-        this.uploadStage.set('creating');
+        this.uploadStage.set('checking');
 
         // 1. Chờ lấy Preview trước để xác định chính xác post_type
         const linkPreview = await this.linkPreviewUtils.getLinkPreviewAsync(content);
@@ -998,6 +998,8 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
             feeling: this.newPostFeeling,
             location: this.newPostLocation
         };
+
+        this.uploadStage.set('checking');
 
         const resetComposer = () => {
             this.newPostContent = '';
@@ -1014,11 +1016,12 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
             if (shouldReset) resetComposer();
             this.isPosting.set(false);
             this.uploadProgress.set(0);
-            this.uploadStage.set('creating');
+            this.uploadStage.set('checking');
         };
 
         this.feedsService.createNewPost(postData).subscribe({
             next: (data: any) => {
+                this.uploadStage.set('posting');
                 const newPost = data.metadata.newPost;
                 newPost.user_infor = this.convStore.currentUserInfo();
 
@@ -1039,8 +1042,30 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                         likes_count: 0,
                         shares_count: 0
                     };
-                    this.feedStore.posts.update((prev: any[]) => [enrichedPost, ...prev]);
-                    this.socketService.emit('newPost', enrichedPost);
+
+                    if (enrichedPost.status === 'approved') {
+                        this.feedStore.posts.update((prev: any[]) => [enrichedPost, ...prev]);
+                        this.socketService.emit('newPost', enrichedPost);
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Đăng bài thành công',
+                            text: 'Bài viết của bạn đã được đăng lên bảng tin.',
+                            timer: 1600,
+                            showConfirmButton: false,
+                            background: '#06131f',
+                            color: '#fff'
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Bài viết đang chờ duyệt',
+                            text: 'Bài viết của bạn đã được gửi và sẽ hiển thị sau khi được duyệt.',
+                            confirmButtonText: 'Đã hiểu',
+                            background: '#06131f',
+                            color: '#fff'
+                        });
+                    }
+
                     this.uploadProgress.set(100);
                     finishPosting(true);
                 };
@@ -1099,7 +1124,14 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                 }
             },
             error: (err: any) => {
-                console.error('Post error:', err);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Bị chặn',
+                    text: err?.error?.message || err?.message || 'Nội dung không được phép đăng.',
+                    confirmButtonText: 'Đã hiểu',
+                    background: '#06131f',
+                    color: '#fff'
+                });
                 this.error.set('Tạo bài viết thất bại. Vui lòng thử lại.');
                 finishPosting(false);
             }
@@ -1146,16 +1178,6 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                 const newPostId = response.metadata.newPost.id;
 
                 const completeShare = (mediaData: any[] = []) => {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Đã chia sẻ',
-                        text: 'Bài viết đã được chia sẻ lên bảng tin của bạn.',
-                        timer: 1500,
-                        showConfirmButton: false,
-                        background: '#06131f',
-                        color: '#fff'
-                    });
-
                     const originalPost = this.sharingPost();
                     if (!originalPost) return;
 
@@ -1190,8 +1212,30 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                         shares_count: 0,
                         shared_post: originalPost.shared_post || originalPost
                     };
-                    this.feedStore.posts.update((prev: any[]) => [sharedPostWithDetails, ...prev]);
-                    this.socketService.emit('newPost', sharedPostWithDetails);
+
+                    if (sharedPostWithDetails.status === 'approved') {
+                        this.feedStore.posts.update((prev: any[]) => [sharedPostWithDetails, ...prev]);
+                        this.socketService.emit('newPost', sharedPostWithDetails);
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Chia sẻ thành công',
+                            text: 'Bài viết đã được chia sẻ lên bảng tin của bạn.',
+                            timer: 1600,
+                            showConfirmButton: false,
+                            background: '#06131f',
+                            color: '#fff'
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Chia sẻ đang chờ duyệt',
+                            text: 'Bài chia sẻ của bạn đã được gửi và sẽ hiển thị sau khi được duyệt.',
+                            confirmButtonText: 'Đã hiểu',
+                            background: '#06131f',
+                            color: '#fff'
+                        });
+                    }
+
                     this.shareLinkPreview = null;
                 };
 
@@ -1213,14 +1257,15 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
                 }
             },
             error: (err: any) => {
-                console.error('Error sharing post:', err);
                 Swal.fire({
                     icon: 'error',
-                    title: 'Lỗi',
-                    text: 'Không thể chia sẻ bài viết. Vui lòng thử lại sau.',
+                    title: 'Bị chặn',
+                    text: err?.error?.message || err?.message || 'Nội dung không được phép chia sẻ.',
+                    confirmButtonText: 'Đã hiểu',
                     background: '#06131f',
                     color: '#fff'
                 });
+                this.closeShareModal();
             }
         });
     }

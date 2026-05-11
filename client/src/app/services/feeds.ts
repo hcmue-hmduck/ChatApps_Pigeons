@@ -14,8 +14,8 @@ export class Feeds {
       constructor(private http: HttpClient) { }
 
       // Lấy danh sách bài viết với phân trang
-      getFeeds(limit: number = 10, offset: number = 0): Observable<any> {
-        return this.http.get(`${this.apiUrl}?limit=${limit}&offset=${offset}`);
+      getFeeds(limit: number = 10, offset: number = 0, status: string = 'approved'): Observable<any> {
+        return this.http.get(`${this.apiUrl}?limit=${limit}&offset=${offset}&status=${status}`);
       }
 
       createNewPost(newPostData: any): Observable<any> {

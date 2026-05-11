@@ -211,6 +211,31 @@ class MessagesService {
             link: media.filter(m => m.message_type === 'text'),
         }
     }
+
+    async countAllMessages() {
+        return await messagesModel.count();
+    }
+
+    async getMessagesCountByDay() {
+        const { Op } = require('sequelize');
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+        return await messagesModel.findAll({
+            attributes: [
+                [messagesModel.sequelize.fn('date_trunc', 'day', messagesModel.sequelize.col('created_at')), 'date'],
+                [messagesModel.sequelize.fn('COUNT', messagesModel.sequelize.col('id')), 'count']
+            ],
+            where: {
+                created_at: {
+                    [Op.gte]: sevenDaysAgo
+                }
+            },
+            group: [messagesModel.sequelize.fn('date_trunc', 'day', messagesModel.sequelize.col('created_at'))],
+            order: [[messagesModel.sequelize.fn('date_trunc', 'day', messagesModel.sequelize.col('created_at')), 'ASC']],
+            raw: true
+        });
+    }
 }
 
 module.exports = new MessagesService();

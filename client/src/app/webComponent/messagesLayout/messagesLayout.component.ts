@@ -1416,6 +1416,21 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
             }
 
             const cachedMessages = cache.getMessagesData?.homeMessagesData?.messages || [];
+            const cachedLastReadMessageId = cache.getMessagesData?.homeMessagesData?.last_read_message_id || '';
+            
+            // Calculate unread messages from cache for AI summary trigger
+            if (cachedMessages.length > 0) {
+                let unreadCount = cachedMessages.length;
+                if (cachedLastReadMessageId) {
+                    const lastReadIndex = cachedMessages.findIndex((m: any) => String(m.id) === String(cachedLastReadMessageId));
+                    if (lastReadIndex >= 0) {
+                        unreadCount = cachedMessages.length - (lastReadIndex + 1);
+                    }
+                }
+                console.log('[AI Summary] Unread trigger (from cache) - count:', unreadCount, 'lastReadMessageId:', cachedLastReadMessageId);
+                this.applySummaryTrigger(unreadCount, cachedLastReadMessageId);
+            }
+            
             const cachedLatestMessage = [...cachedMessages].reverse().find((msg: any) => msg?.id);
             if (cachedLatestMessage) {
                 queueMicrotask(() => this.persistReadState(cachedLatestMessage.id));
@@ -1464,6 +1479,20 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
                 this.pinnedMessages.set(pinned);
                 this.loading = false;
                 this.isLoaded = true;
+
+                // Calculate unread messages for AI summary trigger
+                const lastReadMessageId = data.homeMessagesData?.last_read_message_id || '';
+                if (messages.length > 0) {
+                    let unreadCount = messages.length;
+                    if (lastReadMessageId) {
+                        const lastReadIndex = messages.findIndex((m: any) => String(m.id) === String(lastReadMessageId));
+                        if (lastReadIndex >= 0) {
+                            unreadCount = messages.length - (lastReadIndex + 1);
+                        }
+                    }
+                    console.log('[AI Summary] Unread trigger - count:', unreadCount, 'lastReadMessageId:', lastReadMessageId);
+                    this.applySummaryTrigger(unreadCount, lastReadMessageId);
+                }
 
                 const latestLoadedMessage = [...messages].reverse().find((msg: any) => msg?.id);
                 if (latestLoadedMessage) {

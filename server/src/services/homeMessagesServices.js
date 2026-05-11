@@ -13,12 +13,14 @@ const oneSignalService = require('./oneSignalService');
 class HomeMessagesService {
     async getMessagesByConversation(conversationId, limit = 100, offset = 0, userId = null) {
         let leftAt = null;
+        let lastReadMessageId = null;
         if (userId) {
             const currentParticipant = await participantsService.getParticipant({
                 conversation_id: conversationId,
                 user_id: userId,
             });
             leftAt = currentParticipant?.left_at || null;
+            lastReadMessageId = currentParticipant?.last_read_message_id || null;
         }
 
         // 1. Song song hóa queries ban đầu
@@ -46,6 +48,7 @@ class HomeMessagesService {
                 hasMore: false,
                 is_not_found: true,
                 conversation_type: 'direct', // Default fallback
+                last_read_message_id: lastReadMessageId,
             };
         }
 
@@ -57,6 +60,7 @@ class HomeMessagesService {
                 messages: [],
                 pinnedMessages: [],
                 hasMore: false,
+                last_read_message_id: lastReadMessageId,
             };
         }
 
@@ -169,6 +173,7 @@ class HomeMessagesService {
             messages: mappedMessages,
             pinnedMessages: mappedPinnedMessages,
             hasMore: messages.length === limit,
+            last_read_message_id: lastReadMessageId,
         };
     }
 

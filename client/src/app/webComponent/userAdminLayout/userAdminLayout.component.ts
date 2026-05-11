@@ -28,7 +28,8 @@ export class UserAdminLayoutComponent implements OnInit {
         this.userService.getAllUsers().subscribe({
             next: (response) => {
                 console.log(response.metadata);
-                this.users.set(response.metadata || []);
+                const users = response.metadata || [];
+                this.users.set(users.filter((u: any) => !u.is_bot));
                 this.loading = false;
             },
             error: (error) => {

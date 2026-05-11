@@ -40,7 +40,7 @@ export class FeedStoreService {
         this.setupSocketListeners();
     }
 
-    loadFeeds(isLoadMore: boolean = false) {
+    loadFeeds(isLoadMore: boolean = false, status: string = 'approved') {
         if (isLoadMore) {
             if (!this.hasMore() || this.loadingMore() || this.loading()) return;
             this.loadingMore.set(true);
@@ -56,7 +56,7 @@ export class FeedStoreService {
         }
         this.error.set(null);
 
-        const feeds$ = this.feedsService.getFeeds(this.limit, this.offset());
+        const feeds$ = this.feedsService.getFeeds(this.limit, this.offset(), status);
         const emojis$ = isLoadMore ? of(null) : this.emojiService.getEmojis();
 
         forkJoin({
@@ -96,6 +96,10 @@ export class FeedStoreService {
 
     private setupSocketListeners() {
         this.onNewPostSocket = (data: any) => {
+            if (data?.status && data.status !== 'approved') {
+                return;
+            }
+
             if (data.shared_post) {
                 this.posts.update((posts: any[]) => posts.map((post: any) => {
                     if (post.id === data.shared_post.id) {
@@ -112,6 +116,11 @@ export class FeedStoreService {
         this.socketService.on('newPost', this.onNewPostSocket);
 
         this.onUpdatePostSocket = (data: any) => {
+            if (data?.status && data.status !== 'approved') {
+                this.posts.update((posts: any[]) => posts.filter((post: any) => post.id !== data.id));
+                return;
+            }
+
             this.posts.update((posts: any[]) => posts.map((post: any) => {
                 if (post.id === data.id) return data;
                 if (post.shared_post && post.shared_post.id === data.id) {

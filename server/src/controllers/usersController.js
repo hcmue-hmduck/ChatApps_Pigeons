@@ -4,7 +4,7 @@ const SuccessResponse = require('../core/successResponse');
 class UsersController {
     // GET /admin/users - Lấy tất cả users
     async getAllUsers(req, res, next) {
-        const allUsers = await usersService.getAllUsers();
+        const allUsers = await usersService.getAllUsers({}, { includeUsersWithoutPublicKey: true });
         new SuccessResponse({
             message: 'Get all users successfully',
             metadata: allUsers,

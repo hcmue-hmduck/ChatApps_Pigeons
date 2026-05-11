@@ -196,11 +196,17 @@
                         @if (isPosting()) {
                         <div class="create-upload-overlay" aria-live="polite">
                             <div class="upload-spinner" aria-hidden="true"></div>
-                            <div class="upload-headline">Đang tải file lên Cloudinary...</div>
+                            <div class="upload-headline">
+                                @if (uploadStage() === 'checking') { Đang kiểm tra nội dung... }
+                                @if (uploadStage() === 'posting') { Đang đăng bài... }
+                                @if (uploadStage() === 'uploading') { Đang tải tệp đính kèm... }
+                                @if (uploadStage() === 'saving') { Đang hoàn tất bài viết... }
+                            </div>
                             <div class="upload-subline">
-                                @if (uploadStage() === 'creating') { Đang tạo bài viết... }
-                                @if (uploadStage() === 'uploading') { Đang tải file... }
-                                @if (uploadStage() === 'saving') { Đang hoàn tất dữ liệu... }
+                                @if (uploadStage() === 'checking') { AI đang kiểm tra nội dung trước khi lưu. }
+                                @if (uploadStage() === 'posting') { Bài viết đã qua kiểm tra và đang được lưu. }
+                                @if (uploadStage() === 'uploading') { Đang tải nội dung kèm theo lên hệ thống. }
+                                @if (uploadStage() === 'saving') { Đang cập nhật dữ liệu bài viết. }
                             </div>
                         </div>
                         }

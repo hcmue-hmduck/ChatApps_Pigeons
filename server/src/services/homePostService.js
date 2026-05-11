@@ -3,17 +3,22 @@ const postsService = require('./postsService');
 const commentsService = require('./commentsService');
 const postmediaService = require('./postmediaService');
 const postReactionService = require('./post_reactionsService');
-const { moderateTextHF } = require('./huggingfaceApiService');
+const moderationService = require('./moderationService');
 const { sequelize } = require('../configs/sequelizeConfig.js');
 
 const APPROVE_SCORE_THRESHOLD = 0.35;
 const REJECT_SCORE_THRESHOLD = 0.85;
 
+function shouldRejectModeration(moderation) {
+    const score = Number(moderation?.score);
+    return Boolean(moderation?.isViolated) || (Number.isFinite(score) && score >= REJECT_SCORE_THRESHOLD);
+}
+
 function resolvePostStatusFromModeration(moderation) {
     const score = Number(moderation?.score);
 
     if (!Number.isFinite(score)) {
-        return 'flagged';
+        return 'pending';
     }
 
     if (moderation?.isViolated || score >= REJECT_SCORE_THRESHOLD) {
@@ -21,7 +26,7 @@ function resolvePostStatusFromModeration(moderation) {
     }
 
     if (score >= APPROVE_SCORE_THRESHOLD) {
-        return 'flagged';
+        return 'pending';
     }
 
     return 'approved';
@@ -36,7 +41,7 @@ class HomePostService {
         }
 
         try {
-            const moderation = await moderateTextHF(text);
+            const moderation = await moderationService.moderateText(text);
             const status = resolvePostStatusFromModeration(moderation);
 
             console.log('[Post Moderation] AI result:', {
@@ -57,8 +62,8 @@ class HomePostService {
         }
     }
 
-    async getHomePosts(limit = 30, offset = 0) {
-        const posts = await postsService.getHomePosts(limit, offset);
+    async getHomePosts(limit = 30, offset = 0, status = 'approved') {
+        const posts = await postsService.getHomePosts(limit, offset, status);
         if (posts.length === 0) return [];
 
         return await this.enrichPosts(posts);
@@ -145,13 +150,29 @@ class HomePostService {
     }
 
     async createNewPost(newPostData) {
+        const text = typeof newPostData?.content === 'string' ? newPostData.content.trim() : '';
+        let initialStatus = 'approved';
+
+        if (text) {
+            const moderation = await moderationService.moderateText(text);
+            if (shouldRejectModeration(moderation)) {
+                console.warn('[Post Moderation] Rejected post before create:', {
+                    category: moderation?.category,
+                    score: moderation?.score,
+                    reason: moderation?.reason,
+                });
+                const rejectError = new Error('Nội dung không phù hợp để đăng. Vui lòng chỉnh sửa và thử lại.');
+                rejectError.code = 'MODERATION_REJECTED';
+                throw rejectError;
+            }
+
+            initialStatus = resolvePostStatusFromModeration(moderation);
+        }
+
         const createdPost = await postsService.createPost({
             ...newPostData,
-            status: newPostData?.status || 'pending'
+            status: initialStatus
         });
-
-        // Wait for AI moderation to complete, update DB status, then return the moderated post
-        await this.moderateTextAndUpdateStatus(createdPost.id, newPostData?.content);
 
         const refreshedPosts = await postsService.getPostsByIds([createdPost.id]);
         return refreshedPosts[0] || createdPost;

@@ -188,11 +188,10 @@
 }
 
 .admin-header {
-    height: 64px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 32px;
+    padding: 24px 32px;
     background: rgba(255, 255, 255, 0.03);
     backdrop-filter: blur(24px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
@@ -215,65 +214,10 @@
     gap: 24px;
 }
 
-.header-search {
-    position: relative;
-}
-
-.header-search i {
-    position: absolute;
-    left: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--text-slate-500);
-    font-size: 1rem;
-}
-
-.header-search input {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    padding: 6px 16px 6px 40px;
-    width: 256px;
-    color: var(--text-slate-200);
-    font-size: 0.875rem;
-    transition: all 0.2s;
-}
-
-.header-search input:focus {
-    outline: none;
-    border-color: rgba(187, 134, 252, 0.5);
-    background: rgba(255, 255, 255, 0.08);
-}
-
 .header-actions {
     display: flex;
     align-items: center;
     gap: 24px;
-}
-
-.action-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: var(--text-slate-300);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.action-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--text-slate-100);
-}
-
-.action-divider {
-    width: 1px;
-    height: 32px;
-    background: rgba(255, 255, 255, 0.1);
 }
 
 .admin-profile {
@@ -425,7 +369,7 @@
 /* Charts Layout */
 .charts-layout {
     display: grid;
-    grid-template-columns: 2fr 1fr;
+    grid-template-columns: 1fr 1fr;
     gap: 32px;
 }
 

@@ -49,6 +49,8 @@
 .btn-primary,
 .btn-secondary,
 .btn-danger,
+.btn-warning,
+.btn-success,
 .modal-close {
 	border-radius: 14px;
 	border: 1px solid rgba(120, 170, 255, 0.16);
@@ -58,6 +60,8 @@
 .btn-primary,
 .btn-secondary,
 .btn-danger,
+.btn-warning,
+.btn-success,
 .modal-close {
 	cursor: pointer;
 }
@@ -65,7 +69,9 @@
 .action-chip,
 .btn-primary,
 .btn-secondary,
-.btn-danger {
+.btn-danger,
+.btn-warning,
+.btn-success {
 	display: inline-flex;
 	align-items: center;
 	gap: 0.5rem;
@@ -87,6 +93,16 @@
 .btn-danger {
 	background: rgba(255, 72, 106, 0.15);
 	color: #ff9fb0;
+}
+
+.btn-warning {
+	background: rgba(255, 171, 0, 0.15);
+	color: #ffca28;
+}
+
+.btn-success {
+	background: rgba(0, 200, 83, 0.15);
+	color: #69f0ae;
 }
 
 .feeds-admin-stats {
@@ -247,6 +263,21 @@
 .meta-pill.danger {
 	background: rgba(255, 72, 106, 0.16);
 	color: #ffb0bf;
+}
+
+.meta-pill.success {
+	background: rgba(0, 200, 83, 0.16);
+	color: #69f0ae;
+}
+
+.meta-pill.warning {
+	background: rgba(255, 171, 0, 0.16);
+	color: #ffca28;
+}
+
+.meta-pill.pending {
+	background: rgba(255, 255, 255, 0.1);
+	color: #eef5ff;
 }
 
 .post-meta-stack {

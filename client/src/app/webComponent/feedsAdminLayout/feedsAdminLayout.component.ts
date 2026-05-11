@@ -16,29 +16,21 @@ export class FeedsAdminLayoutComponent implements OnInit, OnDestroy {
 	searchTerm = signal('');
 	typeFilter = signal<'all' | 'text' | 'link' | 'share' | 'media'>('all');
 	privacyFilter = signal<'all' | 'public' | 'friends' | 'only_me' | 'custom'>('all');
-	selectedPost = signal<any>(null);
-	isEditOpen = signal(false);
-	isSaving = signal(false);
+	statusFilter = signal<'all' | 'pending' | 'approved' | 'rejected'>('all');
+
 	loading = computed(() => this.feedStore.loading());
 	error = computed(() => this.feedStore.error() || '');
 	expandedPosts = signal<Set<string>>(new Set());
 	private readonly defaultFeedLimit = 10;
 
-	editForm = {
-		content: '',
-		privacy: 'public',
-		feeling: '',
-		location: ''
-	};
+
 
 	stats = computed(() => {
 		const posts = this.feedStore.posts();
 		const visiblePosts = posts.filter((post: any) => !post.is_deleted);
-		const botPosts = posts.filter((post: any) => !!post?.user_infor?.is_bot).length;
 		return [
 			{ label: 'Total Posts', value: String(posts.length), icon: 'bi-file-earmark-post' },
 			{ label: 'Visible Posts', value: String(visiblePosts.length), icon: 'bi-eye' },
-			{ label: 'Bot Posts', value: String(botPosts), icon: 'bi-robot' },
 			{ label: 'Shared Posts', value: String(posts.filter((post: any) => post.post_type === 'share').length), icon: 'bi-share' },
 		];
 	});
@@ -47,6 +39,7 @@ export class FeedsAdminLayoutComponent implements OnInit, OnDestroy {
 		const term = this.searchTerm().trim().toLowerCase();
 		const typeFilter = this.typeFilter();
 		const privacyFilter = this.privacyFilter();
+		const statusFilter = this.statusFilter();
 
 		return this.feedStore.posts()
 			.filter((post: any) => {
@@ -60,8 +53,9 @@ export class FeedsAdminLayoutComponent implements OnInit, OnDestroy {
 
 				const matchesType = typeFilter === 'all' || post.post_type === typeFilter;
 				const matchesPrivacy = privacyFilter === 'all' || post.privacy === privacyFilter;
+				const matchesStatus = statusFilter === 'all' || post.status === statusFilter;
 
-				return matchesTerm && matchesType && matchesPrivacy;
+				return matchesTerm && matchesType && matchesPrivacy && matchesStatus;
 			})
 			.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 	});
@@ -77,7 +71,7 @@ export class FeedsAdminLayoutComponent implements OnInit, OnDestroy {
 	loadPosts() {
 		this.feedStore.limit = 100;
 		this.feedStore.isDataLoaded.set(false);
-		this.feedStore.loadFeeds(false);
+		this.feedStore.loadFeeds(false, 'all');
 	}
 
 	refresh() {
@@ -88,52 +82,7 @@ export class FeedsAdminLayoutComponent implements OnInit, OnDestroy {
 		this.searchTerm.set(value);
 	}
 
-	openEdit(post: any) {
-		this.selectedPost.set(post);
-		this.editForm = {
-			content: post?.content || '',
-			privacy: post?.privacy || 'public',
-			feeling: post?.feeling || '',
-			location: post?.location || ''
-		};
-		this.isEditOpen.set(true);
-	}
 
-	closeEdit() {
-		this.isEditOpen.set(false);
-		this.selectedPost.set(null);
-	}
-
-	savePost() {
-		const post = this.selectedPost();
-		if (!post?.id) return;
-
-		this.isSaving.set(true);
-		this.feedStore.updatePost(post.id, {
-			postData: {
-				content: this.editForm.content,
-				privacy: this.editForm.privacy,
-				feeling: this.editForm.feeling,
-				location: this.editForm.location
-			},
-			mediaData: null
-		}).subscribe({
-			next: (response: any) => {
-				const updatedFeed = response?.metadata?.updatedFeed;
-				if (updatedFeed) {
-					this.feedStore.posts.update(list => list.map((item: any) => item.id === post.id ? { ...item, ...updatedFeed } : item));
-				} else {
-					this.feedStore.posts.update(list => list.map((item: any) => item.id === post.id ? { ...item, ...this.editForm } : item));
-				}
-				this.isSaving.set(false);
-				this.closeEdit();
-			},
-			error: (err: any) => {
-				this.isSaving.set(false);
-				Swal.fire('Lỗi', err?.message || 'Không thể cập nhật bài viết', 'error');
-			}
-		});
-	}
 
 	deletePost(post: any) {
 		if (!post?.id) return;
@@ -154,6 +103,40 @@ export class FeedsAdminLayoutComponent implements OnInit, OnDestroy {
 				},
 				error: (err: any) => {
 					Swal.fire('Lỗi', err?.message || 'Không thể xóa bài viết', 'error');
+				}
+			});
+		});
+	}
+
+	updatePostStatus(post: any, newStatus: string) {
+		if (!post?.id) return;
+
+		const actionText = newStatus === 'approved' ? 'Chấp nhận' : 'Ẩn';
+		
+		Swal.fire({
+			title: `${actionText} bài viết?`,
+			text: `Bạn có chắc chắn muốn ${actionText.toLowerCase()} bài viết này?`,
+			icon: 'question',
+			showCancelButton: true,
+			confirmButtonText: actionText,
+			cancelButtonText: 'Hủy'
+		}).then((result) => {
+			if (!result.isConfirmed) return;
+
+			this.feedStore.updatePost(post.id, {
+				postData: {
+					status: newStatus
+				},
+				mediaData: null
+			}).subscribe({
+				next: (response: any) => {
+					this.feedStore.posts.update(list => 
+						list.map((item: any) => item.id === post.id ? { ...item, status: newStatus } : item)
+					);
+					Swal.fire('Thành công', `Đã ${actionText.toLowerCase()} bài viết`, 'success');
+				},
+				error: (err: any) => {
+					Swal.fire('Lỗi', err?.message || `Không thể ${actionText.toLowerCase()} bài viết`, 'error');
 				}
 			});
 		});
@@ -189,6 +172,15 @@ export class FeedsAdminLayoutComponent implements OnInit, OnDestroy {
 			custom: 'Tuỳ chỉnh'
 		};
 		return labels[privacy] || privacy || 'Unknown';
+	}
+
+	getStatusLabel(status: string): string {
+		const labels: Record<string, string> = {
+			approved: 'Đã duyệt',
+			rejected: 'Đã ẩn',
+			pending: 'Chờ duyệt'
+		};
+		return labels[status] || status || 'Unknown';
 	}
 
 	formatTime(value: string | Date): string {

@@ -48,6 +48,13 @@
 			<option value="only_me">Chỉ mình tôi</option>
 			<option value="custom">Tuỳ chỉnh</option>
 		</select>
+
+		<select class="toolbar-select" [value]="statusFilter()" (change)="statusFilter.set($any($event.target).value)">
+			<option value="all">Tất cả trạng thái</option>
+			<option value="approved">Đã duyệt</option>
+			<option value="rejected">Đã ẩn</option>
+			<option value="pending">Chờ duyệt</option>
+		</select>
 	</div>
 
 	@if (loading()) {
@@ -84,6 +91,11 @@
 				<div class="post-meta-stack">
 					<span class="meta-pill">{{ getPostTypeLabel(post.post_type) }}</span>
 					<span class="meta-pill">{{ getPrivacyLabel(post.privacy) }}</span>
+					<span class="meta-pill" [ngClass]="{
+						'success': post.status === 'approved',
+						'warning': post.status === 'rejected',
+						'pending': post.status === 'pending'
+					}">{{ getStatusLabel(post.status) }}</span>
 					@if (post.is_deleted) {
 					<span class="meta-pill danger">Đã xoá</span>
 					}
@@ -252,10 +264,25 @@
 						<i class="bi bi-chat-square-text"></i>
 						{{ isCommentsExpanded(post.id) ? 'Ẩn bình luận' : 'Xem bình luận' }}
 					</button>
-					<button class="btn-secondary" type="button" (click)="openEdit(post)" [disabled]="post.is_deleted">
-						<i class="bi bi-pencil"></i>
-						Sửa
+
+					@if (post.status === 'approved') {
+					<button class="btn-warning" type="button" (click)="updatePostStatus(post, 'rejected')" [disabled]="post.is_deleted">
+						<i class="bi bi-eye-slash"></i>
+						Ẩn
 					</button>
+					} @else if (post.status === 'rejected') {
+					<button class="btn-success" type="button" (click)="updatePostStatus(post, 'approved')" [disabled]="post.is_deleted">
+						<i class="bi bi-check-lg"></i>
+						Chấp nhận
+					</button>
+					} @else if (post.status === 'pending') {
+					<button class="btn-success" type="button" (click)="updatePostStatus(post, 'approved')" [disabled]="post.is_deleted">
+						<i class="bi bi-check-lg"></i>
+						Duyệt
+					</button>
+					}
+
+
 					<button class="btn-danger" type="button" (click)="deletePost(post)" [disabled]="post.is_deleted">
 						<i class="bi bi-trash"></i>
 						Xoá
@@ -309,52 +336,4 @@
 	</div>
 </section>
 
-@if (isEditOpen()) {
-<div class="modal-backdrop" (click)="closeEdit()">
-	<div class="edit-modal" (click)="$event.stopPropagation()">
-		<div class="edit-modal-header">
-			<div>
-				<p class="section-kicker">Edit post</p>
-				<h3>Sửa bài viết</h3>
-			</div>
-			<button class="modal-close" type="button" (click)="closeEdit()"><i class="bi bi-x-lg"></i></button>
-		</div>
 
-		<div class="edit-modal-body">
-			<label>
-				<span>Nội dung</span>
-				<textarea [(ngModel)]="editForm.content" rows="5"></textarea>
-			</label>
-
-			<div class="edit-grid">
-				<label>
-					<span>Quyền riêng tư</span>
-					<select [(ngModel)]="editForm.privacy">
-						<option value="public">Công khai</option>
-						<option value="friends">Bạn bè</option>
-						<option value="only_me">Chỉ mình tôi</option>
-						<option value="custom">Tuỳ chỉnh</option>
-					</select>
-				</label>
-
-				<label>
-					<span>Cảm xúc</span>
-					<input type="text" [(ngModel)]="editForm.feeling">
-				</label>
-
-				<label class="full">
-					<span>Địa điểm</span>
-					<input type="text" [(ngModel)]="editForm.location">
-				</label>
-			</div>
-		</div>
-
-		<div class="edit-modal-footer">
-			<button class="btn-secondary" type="button" (click)="closeEdit()">Huỷ</button>
-			<button class="btn-primary" type="button" (click)="savePost()" [disabled]="isSaving()">
-				{{ isSaving() ? 'Đang lưu...' : 'Lưu thay đổi' }}
-			</button>
-		</div>
-	</div>
-</div>
-}
