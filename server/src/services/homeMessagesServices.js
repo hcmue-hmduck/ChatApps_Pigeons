@@ -342,7 +342,7 @@ class HomeMessagesService {
                     process.env.LINK_CLIENT_LOCAL_IP ||
                     '';
                 const url = baseUrl ? `${baseUrl}/conversations/${conversationId}` : undefined;
-
+                
                 await oneSignalService.sendNotification({
                     headings: { en: title },
                     contents: { en: body },

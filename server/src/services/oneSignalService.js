@@ -27,9 +27,9 @@ const postJson = (path, payload, apiKey) =>
                     const status = res.statusCode || 0;
                     if (status >= 200 && status < 300) {
                         try {
-                            resolve(JSON.parse(data));
+                            resolve({ status, data: JSON.parse(data) });
                         } catch (error) {
-                            resolve({ raw: data });
+                            resolve({ status, data: { raw: data } });
                         }
                         return;
                     }
@@ -45,25 +45,38 @@ const postJson = (path, payload, apiKey) =>
     });
 
 const sendNotification = async ({ headings, contents, externalUserIds, data, url }) => {
-    const appId = process.env.ONESIGNAL_APP_ID;
-    const apiKey = process.env.ONESIGNAL_REST_API_KEY;
+    try {
+        const appId = process.env.ONESIGNAL_APP_ID;
+        const apiKey = process.env.ONESIGNAL_REST_API_KEY;
 
-    if (!appId || !apiKey) return null;
-    if (!Array.isArray(externalUserIds) || externalUserIds.length === 0) return null;
+        if (!appId || !apiKey) return null;
+        if (!Array.isArray(externalUserIds) || externalUserIds.length === 0) return null;
 
-    const payload = {
-        app_id: appId,
-        include_external_user_ids: externalUserIds,
-        headings,
-        contents,
-        data,
-    };
+        const payload = {
+            app_id: appId,
+            include_external_user_ids: externalUserIds,
+            headings,
+            contents,
+            data,
+        };
 
-    if (url) {
-        payload.url = url;
+        if (url) {
+            payload.url = url;
+        }
+
+        const response = await postJson(ONE_SIGNAL_PATH, payload, apiKey);
+        console.log('[OneSignal] Push sent', {
+            status: response?.status,
+            recipients: externalUserIds.length,
+            notificationId: response?.data?.id,
+            recipientsCount: response?.data?.recipients,
+            externalUserIds,
+        });
+        return response;
+    } catch (error) {
+        console.warn('[OneSignal] Push failed', error?.message || error);
+        throw error
     }
-
-    return postJson(ONE_SIGNAL_PATH, payload, apiKey);
 };
 
 module.exports = {

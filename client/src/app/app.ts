@@ -49,15 +49,21 @@ export class App implements OnInit {
             windowAny.OneSignalDeferred = windowAny.OneSignalDeferred || [];
             windowAny.OneSignalDeferred.push(async (OneSignal: any) => {
                 await OneSignal.init({
-                    appId: '9a1b4e85-7b6d-4393-abcc-5b657c28f385',
+                    appId: 'a90c132a-bc7c-4bce-9dcf-7d4887ea6419',
                     allowLocalhostAsSecureOrigin: true,
                     serviceWorkerPath: 'OneSignalSDKWorker.js',
                 });
+                console.log(`Init OneSignal`);
+
+                await OneSignal.Notifications.requestPermission();
+                const permission = await OneSignal.Notifications.permission;
+                
 
                 const currentUser = this.authService.getUserInfor();
                 if (currentUser && currentUser.id) {
                     if (OneSignal.login && typeof OneSignal.login === 'function') {
                         await OneSignal.login(String(currentUser.id));
+                        console.log(`Login OneSignal`);
                     }
                 }
             });

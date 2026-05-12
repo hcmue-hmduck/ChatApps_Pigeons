@@ -21,7 +21,6 @@ const authentication = async (req, res, next) => {
 
         req.user = { id: uid, role, sid };
 
-        console.log(`authentication`, req.user )
         next();
     } catch (error) {
         if (error.name === 'TokenExpiredError') throw new UnauthorizedError('access token expired');
@@ -42,7 +41,6 @@ function authorize(allowedRoles = []) {
         if (roles.length === 0 || roles.includes(userRole)) {
             return next();
         }
-        console.log(`authorize`,req.user)
 
         throw new ForbiddenError('permission denied');
     };
