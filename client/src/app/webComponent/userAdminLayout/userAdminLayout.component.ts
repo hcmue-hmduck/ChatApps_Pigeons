@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { User } from '../../services/user';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../services/authService';
+import { SocketService } from '../../services/socket';
 
 @Component({
     selector: 'user-admin-layout',
@@ -23,6 +24,7 @@ export class UserAdminLayoutComponent implements OnInit {
         private userService: User,
         private router: ActivatedRoute,
         private authService: AuthService,
+        private socketService: SocketService,
     ) { }
 
     ngOnInit() {
@@ -90,6 +92,10 @@ export class UserAdminLayoutComponent implements OnInit {
                     ),
                 );
                 this.lockLoadingIds.delete(user.id);
+
+                if (!nextIsActive) {
+                    this.socketService.emit('lockUser', { userId: user.id });
+                }
             },
             error: (error) => {
                 this.error = error.message;

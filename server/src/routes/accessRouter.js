@@ -16,7 +16,6 @@ router.post('/otp/verify-signup', accessController.verifySignupOTP);
 router.post('/otp/request-forgot-password', accessController.requestForgotPasswordOTP);
 router.post('/otp/verify-forgot-password', accessController.verifyForgotPasswordOTP);
 
-
 router.post('/refresh-token', refreshAuthentication, accessController.refreshToken);
 router.post('/logout', authentication, accessController.logout);
 
@@ -46,6 +45,6 @@ router.get(
     accessController.loginSocial,
 );
 
-router.post('/reset-password', accessController.resetPassword)
+router.post('/reset-password', accessController.resetPassword);
 
 module.exports = router;

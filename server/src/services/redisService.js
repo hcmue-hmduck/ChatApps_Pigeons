@@ -16,6 +16,7 @@ class RedisService {
                 rt_secret: refreshTokenSecret,
                 rotated_at: null,
                 created_at: new Date().toISOString(),
+                is_active: 'true',
             })
             .expire(key, timeToLiveSecond)
             .exec();
@@ -56,6 +57,26 @@ class RedisService {
         if (!userId || !sid) throw new BadRequestError('missing parameters');
         const key = `auth:session:${userId}:${sid}`;
         return (await redis.del(key)) > 0;
+    }
+
+    async deleteAllUserSessions(userId) {
+        if (!userId) throw new BadRequestError('missing parameters');
+        const keys = await redis.keys(`auth:session:${userId}:*`);
+        if (keys.length > 0) {
+            await redis.del(...keys);
+        }
+    }
+
+    async updateAllSessionsActiveStatus(userId, isActive) {
+        if (!userId) throw new BadRequestError('missing parameters');
+        const keys = await redis.keys(`auth:session:${userId}:*`);
+        if (keys.length > 0) {
+            const pipeline = redis.pipeline();
+            keys.forEach(key => {
+                pipeline.hset(key, 'is_active', String(isActive));
+            });
+            await pipeline.exec();
+        }
     }
 
     async getAccessTokenSecret(userId, sid) {

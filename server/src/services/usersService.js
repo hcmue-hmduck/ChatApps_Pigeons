@@ -3,6 +3,7 @@ const usersModel = require('../models/usersModel');
 const { compareHashString, hashString } = require('../utils/authUtil.js');
 const { BadRequestError, UnauthorizedError, ConflictRequestError } = require('../core/errorResponse.js');
 const { getUpdateData } = require('../utils/dataUtil.js');
+const redisService = require('./redisService.js');
 
 class UsersService {
     // Lấy users theo điều kiện filter
@@ -185,6 +186,8 @@ class UsersService {
             is_active: isActive,
             updated_at: new Date().toISOString(),
         });
+
+        await redisService.updateAllSessionsActiveStatus(userId, isActive);
 
         return user;
     }

@@ -67,6 +67,12 @@ const refreshAuthentication = async (req, res, next) => {
         // rotate rt nhưng giữ nguyên sid, nếu kh tìm được session thì session hết hạn hoặc được logout
         if (!sessionInfo || !sessionInfo.rt_secret) throw new UnauthorizedError('session expired');
 
+        if (sessionInfo.is_active === 'false') {
+            await redisService.deleteAllUserSessions(uid);
+            clearCookieTokens(res);
+            throw new UnauthorizedError('account is locked');
+        }
+
         const { rt_secret, rotated_at } = sessionInfo;
 
         verifyJWT(refreshToken, rt_secret);

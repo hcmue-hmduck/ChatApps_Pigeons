@@ -254,6 +254,23 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('lockUser', (data) => {
+        console.log('Received lockUser event on server:', data);
+        const { userId } = data;
+        if (!userId) return;
+
+        const userSockets = onlineUsers.get(userId) || onlineUsers.get(Number(userId)) || onlineUsers.get(String(userId));
+        if (userSockets) {
+            userSockets.forEach((sId) => {
+                const s = io.sockets.sockets.get(sId);
+                if (s) {
+                    s.emit('accountLocked');
+                    s.disconnect(true);
+                }
+            });
+        }
+    });
+
     socket.on('updateParticipant', (data) => {
         console.log('Received updateParticipant event on server:', data);
         // Broadcast tới tất cả thành viên trong conversation room (INCLUDING sender)

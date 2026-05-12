@@ -10,7 +10,7 @@ import {
     Validators,
     ɵInternalFormsSharedModule,
 } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import { LoginPayload, SignupPayload } from '../../models/authData';
 import { AuthService } from '../../services/authService';
@@ -19,13 +19,20 @@ import { ForgotPasswordModalComponent } from '../forgotPasswordModal/forgotPassw
 @Component({
     selector: 'home-layout',
     standalone: true,
-    imports: [CommonModule, FormsModule, ɵInternalFormsSharedModule, ReactiveFormsModule, ForgotPasswordModalComponent],
+    imports: [
+        CommonModule,
+        FormsModule,
+        ɵInternalFormsSharedModule,
+        ReactiveFormsModule,
+        ForgotPasswordModalComponent,
+    ],
     templateUrl: './homeLayout.component.html',
     styleUrls: ['./homeLayout.component.css'],
 })
 export class HomeLayoutComponent implements OnInit {
     private authService = inject(AuthService);
     private router = inject(Router);
+    private route = inject(ActivatedRoute);
     protected readonly title = signal('Home');
     protected isLogin = signal(true);
     private fb = inject(FormBuilder).nonNullable;
@@ -82,7 +89,18 @@ export class HomeLayoutComponent implements OnInit {
         return password === confirmPassword ? null : { passwordMismatch: true };
     }
 
-    ngOnInit() { }
+    ngOnInit() {
+        this.route.queryParams.subscribe((params) => {
+            if (params['error'] === 'account_locked') {
+                this.loginErrorMessage.set('Tài khoản của bạn đã bị khóa bởi quản trị viên.');
+                setTimeout(() => {
+                    alert('Đăng nhập thất bại: Tài khoản của bạn đã bị khóa bởi quản trị viên.');
+                }, 500);
+            } else if (params['error'] === 'login_failed') {
+                this.loginErrorMessage.set('Đăng nhập bằng tài khoản mạng xã hội thất bại.');
+            }
+        });
+    }
 
     ngOnDestroy() {
         this.clearCountdown();
@@ -133,10 +151,7 @@ export class HomeLayoutComponent implements OnInit {
             },
             error: (error) => {
                 console.error(error.error);
-                const serverMessage =
-                    error?.error?.message ||
-                    error?.error?.error?.message ||
-                    '';
+                const serverMessage = error?.error?.message || error?.error?.error?.message || '';
                 if (serverMessage === 'account is locked') {
                     this.loginErrorMessage.set('Tài khoản đã bị khóa');
                     return;
@@ -172,9 +187,7 @@ export class HomeLayoutComponent implements OnInit {
 
         // Countdown = 0, gửi OTP mới
         this.isAuthenticating.set(true);
-        this.authService.requestSignupOTP(
-            payload.email!
-        ).subscribe({
+        this.authService.requestSignupOTP(payload.email!).subscribe({
             next: () => {
                 this.isAuthenticating.set(false);
                 this.verifyEmail.set(payload.email!);
@@ -190,7 +203,7 @@ export class HomeLayoutComponent implements OnInit {
                 } else {
                     this.signupErrorMessage.set('Không thể gửi mã xác thực, vui lòng thử lại');
                 }
-            }
+            },
         });
     }
 
@@ -229,15 +242,15 @@ export class HomeLayoutComponent implements OnInit {
         input.value = digit;
 
         if (digit && index < 5) {
-            const next = document.getElementById(`verify-digit-${index + 1}`) as
-                | HTMLInputElement
-                | null;
+            const next = document.getElementById(
+                `verify-digit-${index + 1}`,
+            ) as HTMLInputElement | null;
             next?.focus();
             next?.select();
         }
 
         // Tự động xác thực khi nhập đủ 6 số
-        if (current.every(d => d !== '')) {
+        if (current.every((d) => d !== '')) {
             this.authenticateCode();
         }
     }
@@ -245,9 +258,9 @@ export class HomeLayoutComponent implements OnInit {
     protected onCodeKeydown(index: number, event: KeyboardEvent) {
         const input = event.target as HTMLInputElement;
         if (event.key === 'Backspace' && !input.value && index > 0) {
-            const prev = document.getElementById(`verify-digit-${index - 1}`) as
-                | HTMLInputElement
-                | null;
+            const prev = document.getElementById(
+                `verify-digit-${index - 1}`,
+            ) as HTMLInputElement | null;
             prev?.focus();
             prev?.select();
         }
@@ -306,7 +319,7 @@ export class HomeLayoutComponent implements OnInit {
                         this.isAuthenticating.set(false);
                         console.error(signupError.error);
                         this.verifyErrorMessage.set('Đăng ký thất bại, vui lòng thử lại sau');
-                    }
+                    },
                 });
             },
             error: (verifyError) => {
@@ -315,9 +328,11 @@ export class HomeLayoutComponent implements OnInit {
                 this.verifyErrorMessage.set('Mã xác thực không chính xác hoặc đã hết hạn');
                 // Optional: Clear code on error
                 this.verifyCode.set(['', '', '', '', '', '']);
-                const firstInput = document.getElementById('verify-digit-0') as HTMLInputElement | null;
+                const firstInput = document.getElementById(
+                    'verify-digit-0',
+                ) as HTMLInputElement | null;
                 firstInput?.focus();
-            }
+            },
         });
     }
 
