@@ -7,8 +7,12 @@ const { getUpdateData } = require('../utils/dataUtil.js');
 class UsersService {
     // Lấy users theo điều kiện filter
     async getAllUsers(where = {}, options = {}) {
-        const { includeBotsWithoutPublicKey = false, includeUsersWithoutPublicKey = false } = options;
-        const resolvedWhere = { is_active: true, ...where };
+        const {
+            includeBotsWithoutPublicKey = false,
+            includeUsersWithoutPublicKey = false,
+            includeInactiveUsers = false,
+        } = options;
+        const resolvedWhere = includeInactiveUsers ? { ...where } : { is_active: true, ...where };
 
         if (includeUsersWithoutPublicKey) {
             // Do not add public_key constraint for admin or specific views
@@ -61,6 +65,8 @@ class UsersService {
 
         const isMatch = await compareHashString(password, foundUser.password_hash);
         if (!isMatch) throw new UnauthorizedError('invalid email or password');
+
+        if (!foundUser.is_active) throw new UnauthorizedError('account is locked');
 
         return foundUser;
     }
@@ -169,6 +175,18 @@ class UsersService {
             return true;
         }
         return false;
+    }
+
+    async setActiveStatus(userId, isActive) {
+        const user = await usersModel.findByPk(userId);
+        if (!user) throw new BadRequestError('User not found');
+
+        await user.update({
+            is_active: isActive,
+            updated_at: new Date().toISOString(),
+        });
+
+        return user;
     }
 
     async countAllUsers() {

@@ -3,6 +3,7 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const GitHubStrategy = require('passport-github2').Strategy;
 const LocalStrategy = require('passport-local').Strategy;
 const userService = require('../services/usersService.js');
+const { UnauthorizedError } = require('../core/errorResponse.js');
 
 const { app, google, github, facebook } = require('../configs/index.js');
 
@@ -31,8 +32,11 @@ const socialVerifyCallback = async (accessToken, refreshToken, profile, cb) => {
 
         const user = await userService.findOrCreateSocialUser(userProfile);
 
+        if (!user.is_active) return cb(null, false, new UnauthorizedError('account is locked'));
+
         return cb(null, user);
     } catch (error) {
+        if (error.status === 401 || error.status === 400) return cb(null, false, error);
         return cb(error);
     }
 };

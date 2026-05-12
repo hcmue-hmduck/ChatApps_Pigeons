@@ -120,6 +120,34 @@
     border: 1px solid rgba(187, 134, 252, 0.1);
 }
 
+.lock-toggle {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: 999px;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.12);
+    transition: all 0.2s ease;
+}
+
+.lock-toggle.locked {
+    border-color: rgba(255, 71, 87, 0.4);
+    color: #ff4757;
+    background: rgba(255, 71, 87, 0.12);
+}
+
+.lock-toggle:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.lock-toggle.self {
+    border-color: rgba(148, 163, 184, 0.4);
+    color: #94a3b8;
+    background: rgba(148, 163, 184, 0.12);
+}
+
 /* States */
 .user-loading, .user-error, .user-empty {
     padding: 40px;

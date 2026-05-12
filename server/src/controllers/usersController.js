@@ -4,7 +4,10 @@ const SuccessResponse = require('../core/successResponse');
 class UsersController {
     // GET /admin/users - Lấy tất cả users
     async getAllUsers(req, res, next) {
-        const allUsers = await usersService.getAllUsers({}, { includeUsersWithoutPublicKey: true });
+        const allUsers = await usersService.getAllUsers({}, {
+            includeUsersWithoutPublicKey: true,
+            includeInactiveUsers: true,
+        });
         new SuccessResponse({
             message: 'Get all users successfully',
             metadata: allUsers,
@@ -117,6 +120,36 @@ class UsersController {
                 error: error.message
             });
         }
+    }
+
+    // PATCH /admin/users/:id/lock
+    async lockUser(req, res) {
+        if (req.user?.id === req.params.id) {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot lock your own account',
+            });
+        }
+        const updatedUser = await usersService.setActiveStatus(req.params.id, false);
+        return new SuccessResponse({
+            message: 'locked user successfully',
+            metadata: updatedUser,
+        }).send(res);
+    }
+
+    // PATCH /admin/users/:id/unlock
+    async unlockUser(req, res) {
+        if (req.user?.id === req.params.id) {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot unlock your own account',
+            });
+        }
+        const updatedUser = await usersService.setActiveStatus(req.params.id, true);
+        return new SuccessResponse({
+            message: 'unlocked user successfully',
+            metadata: updatedUser,
+        }).send(res);
     }
 }
 

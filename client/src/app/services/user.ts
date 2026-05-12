@@ -43,5 +43,15 @@ export class User {
     return this.http.delete(`${this.apiUrl}/${id}`);
   }
 
+  // Khóa tài khoản
+  lockUser(id: string): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/${id}/lock`, {});
+  }
+
+  // Mở khóa tài khoản
+  unlockUser(id: string): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/${id}/unlock`, {});
+  }
+
   
 }

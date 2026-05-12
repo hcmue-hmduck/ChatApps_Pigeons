@@ -31,6 +31,7 @@
                     <th>Status</th>
                     <th>Role</th>
                     <th>Birthday</th>
+                    <th>Account</th>
                 </tr>
             </thead>
             <tbody>
@@ -52,6 +53,16 @@
                     </td>
                     <td>
                         <span class="user-role">{{ user.birthday }}</span>
+                    </td>
+                    <td>
+                        <button
+                            class="lock-toggle"
+                            [class.locked]="user.is_active === false"
+                            [class.self]="isSelf(user)"
+                            [disabled]="isLocking(user.id) || isSelf(user)"
+                            (click)="toggleLock(user)">
+                            {{ isSelf(user) ? 'Self' : (user.is_active === false ? 'Unlock' : 'Lock') }}
+                        </button>
                     </td>
                 </tr>
                 }

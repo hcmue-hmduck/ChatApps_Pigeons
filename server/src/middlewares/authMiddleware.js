@@ -1,5 +1,5 @@
 const { decodeJWT, verifyJWT, clearCookieTokens } = require('../utils/authUtil.js');
-const { UnauthorizedError, TooManyRequestError } = require('../core/errorResponse.js');
+const { UnauthorizedError, TooManyRequestError, ForbiddenError } = require('../core/errorResponse.js');
 const redisService = require('../services/redisService.js');
 
 const authentication = async (req, res, next) => {
@@ -21,6 +21,7 @@ const authentication = async (req, res, next) => {
 
         req.user = { id: uid, role, sid };
 
+        console.log(`authentication`, req.user )
         next();
     } catch (error) {
         if (error.name === 'TokenExpiredError') throw new UnauthorizedError('access token expired');
@@ -34,12 +35,14 @@ function authorize(allowedRoles = []) {
     const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
 
     return (req, res, next) => {
+
         const userRole = req.user?.role;
         if (!userRole) throw new UnauthorizedError('missing user role');
 
         if (roles.length === 0 || roles.includes(userRole)) {
             return next();
         }
+        console.log(`authorize`,req.user)
 
         throw new ForbiddenError('permission denied');
     };

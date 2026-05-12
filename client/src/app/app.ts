@@ -44,21 +44,25 @@ export class App implements OnInit {
 
         if (!isPlatformBrowser(this.platformId)) return;
 
-        const windowAny = window as any;
-        windowAny.OneSignalDeferred = windowAny.OneSignalDeferred || [];
-        windowAny.OneSignalDeferred.push(async (OneSignal: any) => {
-            await OneSignal.init({
-                appId: '9a1b4e85-7b6d-4393-abcc-5b657c28f385',
-                allowLocalhostAsSecureOrigin: true,
-                serviceWorkerPath: 'OneSignalSDKWorker.js',
-            });
+        try {
+            const windowAny = window as any;
+            windowAny.OneSignalDeferred = windowAny.OneSignalDeferred || [];
+            windowAny.OneSignalDeferred.push(async (OneSignal: any) => {
+                await OneSignal.init({
+                    appId: '9a1b4e85-7b6d-4393-abcc-5b657c28f385',
+                    allowLocalhostAsSecureOrigin: true,
+                    serviceWorkerPath: 'OneSignalSDKWorker.js',
+                });
 
-            const currentUser = this.authService.getUserInfor();
-            if (currentUser && currentUser.id) {
-                if (OneSignal.login && typeof OneSignal.login === 'function') {
-                    await OneSignal.login(String(currentUser.id));
+                const currentUser = this.authService.getUserInfor();
+                if (currentUser && currentUser.id) {
+                    if (OneSignal.login && typeof OneSignal.login === 'function') {
+                        await OneSignal.login(String(currentUser.id));
+                    }
                 }
-            }
-        });
+            });
+        } catch (error) {
+            console.error(`Init OneSignal:`,error);
+        }
     }
 }
