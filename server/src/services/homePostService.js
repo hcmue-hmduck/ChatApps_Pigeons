@@ -155,6 +155,9 @@ class HomePostService {
 
         if (text) {
             const moderation = await moderationService.moderateText(text);
+            
+            console.log('[Post Moderation] AI result for new post:', { moderation });
+
             if (shouldRejectModeration(moderation)) {
                 console.warn('[Post Moderation] Rejected post before create:', {
                     category: moderation?.category,
