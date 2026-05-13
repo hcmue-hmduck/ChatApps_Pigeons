@@ -880,6 +880,20 @@
             }
         </div>
 
+        @if (isUpdatingPost()) {
+        <div class="create-upload-overlay" aria-live="polite">
+            <div class="upload-spinner" aria-hidden="true"></div>
+            <div class="upload-headline">
+                @if (uploadStage() === 'checking') { Đang kiểm tra nội dung... }
+                @if (uploadStage() === 'saving') { Đang lưu thay đổi... }
+            </div>
+            <div class="upload-subline">
+                @if (uploadStage() === 'checking') { AI đang kiểm tra nội dung trước khi lưu. }
+                @if (uploadStage() === 'saving') { Đang cập nhật dữ liệu bài viết. }
+            </div>
+        </div>
+        }
+
         <div class="edit-modal-actions">
             <button class="btn-secondary" type="button" (click)="closeEditPostModal()">Hủy</button>
             <button class="btn-primary" type="button" (click)="saveEditedPostLocal()" [disabled]="isUpdatingPost()">

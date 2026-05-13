@@ -925,15 +925,46 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         }
 
         this.isUpdatingPost.set(true);
+        this.uploadStage.set('checking');
         this.feedStore.updatePost(this.editingPost().id, updatedPayload).subscribe({
             next: (res: any) => {
                 this.isUpdatingPost.set(false);
                 this.isEditModalOpen.set(false);
-                this.feedStore.emitSocket('updatePost', res.metadata.updatedFeed);
+                
+                const updatedPost = res.metadata.updatedFeed;
+                this.feedStore.emitSocket('updatePost', updatedPost);
+
+                if (updatedPost.status === 'approved') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Cập nhật thành công',
+                        text: 'Bài viết của bạn đã được cập nhật.',
+                        timer: 1600,
+                        showConfirmButton: false,
+                        background: '#06131f',
+                        color: '#fff'
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Bài viết đang chờ duyệt',
+                        text: 'Nội dung chỉnh sửa đã được gửi và sẽ hiển thị sau khi được duyệt.',
+                        confirmButtonText: 'Đã hiểu',
+                        background: '#06131f',
+                        color: '#fff'
+                    });
+                }
             },
             error: (err: any) => {
                 this.isUpdatingPost.set(false);
-                Swal.fire('Lỗi', 'Không thể cập nhật bài viết.', 'error');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Bị chặn',
+                    text: err?.error?.message || err?.message || 'Nội dung không được phép cập nhật.',
+                    confirmButtonText: 'Đã hiểu',
+                    background: '#06131f',
+                    color: '#fff'
+                });
             }
         });
     }

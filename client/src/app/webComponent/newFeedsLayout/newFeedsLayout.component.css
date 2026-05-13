@@ -2114,6 +2114,7 @@
     border: 1px solid rgba(187, 134, 252, 0.26);
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
     background: rgba(10, 18, 30, 0.9);
+    position: relative;
 }
 
 .edit-modal-head {
@@ -3014,4 +3015,9 @@
 .reaction-modal-body::-webkit-scrollbar-thumb {
     background: rgba(187, 134, 252, 0.15);
     border-radius: 10px;
+}
+
+/* Fix SweetAlert z-index behind modal */
+::ng-deep .swal2-container {
+    z-index: 20000 !important;
 }

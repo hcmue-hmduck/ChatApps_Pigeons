@@ -59,17 +59,26 @@ class HomePostController {
     }
 
     async updatePost(req, res) {
-        const postId = req.params.postID;
-        const { postData, mediaData } = req.body;
+        try {
+            const postId = req.params.postID;
+            const { postData, mediaData } = req.body;
 
-        const updatedPost = await homePostsService.updatePostById(postId, postData, mediaData);
+            const updatedPost = await homePostsService.updatePostById(postId, postData, mediaData);
 
-        new SuccessResponse({
-            message: 'Update post successfully',
-            metadata: {
-                updatedFeed: updatedPost,
-            },
-        }).send(res);
+            new SuccessResponse({
+                message: 'Update post successfully',
+                metadata: {
+                    updatedFeed: updatedPost,
+                },
+            }).send(res);
+        } catch (error) {
+            const isModerationReject = error?.code === 'MODERATION_REJECTED';
+            res.status(isModerationReject ? 400 : 500).json({
+                message: isModerationReject
+                    ? 'Nội dung không phù hợp để cập nhật. Vui lòng chỉnh sửa và thử lại.'
+                    : (error?.message || 'Update post failed'),
+            });
+        }
     }
 }
 

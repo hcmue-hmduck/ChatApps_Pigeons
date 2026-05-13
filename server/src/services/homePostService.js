@@ -189,6 +189,28 @@ class HomePostService {
     async updatePostById(postId, postData, mediaData) {
         const transaction = await sequelize.transaction();
         try {
+            if (Object.prototype.hasOwnProperty.call(postData, 'content')) {
+                const text = typeof postData.content === 'string' ? postData.content.trim() : '';
+                if (text) {
+                    const moderation = await moderationService.moderateText(text);
+                    
+                    console.log('[Post Moderation] AI result for update:', { moderation });
+
+                    if (shouldRejectModeration(moderation)) {
+                        console.warn('[Post Moderation] Rejected post update:', {
+                            category: moderation?.category,
+                            score: moderation?.score,
+                            reason: moderation?.reason,
+                        });
+                        const rejectError = new Error('Nội dung không phù hợp để cập nhật. Vui lòng chỉnh sửa và thử lại.');
+                        rejectError.code = 'MODERATION_REJECTED';
+                        throw rejectError;
+                    }
+
+                    postData.status = resolvePostStatusFromModeration(moderation);
+                }
+            }
+
             await postsService.updatePost(postId, postData, { transaction });
 
             if (mediaData && Array.isArray(mediaData)) {
@@ -199,11 +221,6 @@ class HomePostService {
             }
 
             await transaction.commit();
-
-            if (Object.prototype.hasOwnProperty.call(postData, 'content')) {
-                // Wait for moderation before returning updated post so client receives final status
-                await this.moderateTextAndUpdateStatus(postId, postData.content);
-            }
 
             // Lấy lại bài đăng đã được cập nhật và làm giàu thông tin
             const updatedPosts = await postsService.getPostsByIds([postId]);
