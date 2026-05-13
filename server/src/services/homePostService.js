@@ -11,7 +11,7 @@ const REJECT_SCORE_THRESHOLD = 0.85;
 
 function shouldRejectModeration(moderation) {
     const score = Number(moderation?.score);
-    return Boolean(moderation?.isViolated) || (Number.isFinite(score) && score >= REJECT_SCORE_THRESHOLD);
+    return (Number.isFinite(score) && score >= REJECT_SCORE_THRESHOLD);
 }
 
 function resolvePostStatusFromModeration(moderation) {
@@ -21,7 +21,7 @@ function resolvePostStatusFromModeration(moderation) {
         return 'pending';
     }
 
-    if (moderation?.isViolated || score >= REJECT_SCORE_THRESHOLD) {
+    if (score >= REJECT_SCORE_THRESHOLD) {
         return 'rejected';
     }
 
@@ -150,6 +150,7 @@ class HomePostService {
     }
 
     async createNewPost(newPostData) {
+        console.log('[Post Moderation] createNewPost called with:', { newPostData });
         const text = typeof newPostData?.content === 'string' ? newPostData.content.trim() : '';
         let initialStatus = 'approved';
 

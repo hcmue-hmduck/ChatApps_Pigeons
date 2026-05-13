@@ -10,16 +10,17 @@ const MODERATION_PROMPT = `Bạn là một hệ thống kiểm duyệt nội dun
 Hãy phân tích nội dung sau và trả về JSON với cấu trúc:
 {
   "isViolated": boolean (true nếu vi phạm, false nếu ok),
-  "category": string (ví dụ: "hate_speech", "violence", "spam", "adult_content", "clean"),
+  "category": string (ví dụ: "hate_speech", "violence", "spam", "adult_content", "toxic_language", "clean"),
   "score": number (0-1, 0=an toàn, 1=nguy hiểm),
   "reason": string (lý do tóm tắt)
 }
 
 Tiêu chí kiểm duyệt:
-- hate_speech: Khích động thù hận,차別gia hoặc bạo lực
+- hate_speech: Khích động thù hận, phân biệt đối xử hoặc bạo lực
 - violence: Nội dung bạo lực, đe dọa
 - spam: Quảng cáo lặp lại, liên kết độc hại
 - adult_content: Nội dung 18+ không phù hợp
+- toxic_language: Chứa từ ngữ thô tục, chửi bậy, xúc phạm người khác (Chấm điểm từ 0.5 - 0.7)
 - clean: Nội dung bình thường, an toàn
 
 Nội dung cần kiểm duyệt:
