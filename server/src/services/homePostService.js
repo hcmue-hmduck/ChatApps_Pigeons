@@ -62,8 +62,8 @@ class HomePostService {
         }
     }
 
-    async getHomePosts(limit = 30, offset = 0, status = 'approved') {
-        const posts = await postsService.getHomePosts(limit, offset, status);
+    async getHomePosts(limit = 30, offset = 0, status = 'approved', userId = null) {
+        const posts = await postsService.getHomePosts(limit, offset, status, userId);
         if (posts.length === 0) return [];
 
         return await this.enrichPosts(posts);

@@ -61,7 +61,6 @@
                                             <div class="privacy-selector">
                                                 <select class="cyber-select-small" [(ngModel)]="newPostPrivacy">
                                                     <option value="public">🌐 Công khai</option>
-                                                    <option value="friends">👥 Bạn bè</option>
                                                     <option value="only_me">🔒 Chỉ mình tôi</option>
                                                 </select>
                                             </div>
@@ -720,7 +719,6 @@
             <div class="edit-control-grid">
                 <select class="cyber-select-small" [(ngModel)]="editPostPrivacy">
                     <option value="public">🌐 Công khai</option>
-                    <option value="friends">👥 Bạn bè</option>
                     <option value="only_me">🔒 Chỉ mình tôi</option>
                 </select>
 
@@ -956,7 +954,6 @@
                             <select [ngModel]="sharePrivacy()" (ngModelChange)="sharePrivacy.set($event)"
                                 class="share-meta-select share-privacy-select">
                                 <option value="public">🌐 Công khai</option>
-                                <option value="friends">👥 Bạn bè</option>
                                 <option value="only_me">🔒 Chỉ mình tôi</option>
                             </select>
                         </div>

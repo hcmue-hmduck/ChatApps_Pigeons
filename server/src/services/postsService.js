@@ -1,12 +1,23 @@
 const postsModel = require('../models/postsModel');
 
 class PostsService {
-    async getHomePosts(limit = 30, offset = 0, status = 'approved') {
+    async getHomePosts(limit = 30, offset = 0, status = 'approved', userId = null) {
         try {
+            const { Op } = require('sequelize');
             const where = { is_deleted: false };
             if (status && status !== 'all') {
                 where.status = status;
             }
+            
+            if (userId) {
+                where[Op.or] = [
+                    { privacy: 'public' },
+                    { privacy: 'only_me', user_id: userId }
+                ];
+            } else {
+                where.privacy = 'public';
+            }
+
             const posts = await postsModel.findAll({
                 order: [['created_at', 'DESC']],
                 where,

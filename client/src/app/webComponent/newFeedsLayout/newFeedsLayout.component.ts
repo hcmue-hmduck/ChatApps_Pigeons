@@ -147,7 +147,8 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
             return posts.filter((post: any) => String(post?.user_id) === currentUserId);
         }
 
-        return posts;
+        // Home tab: hide 'only_me' posts as requested ("chỉ mình tôi thì chỉ hiện ở tab của tôi")
+        return posts.filter((post: any) => post.privacy !== 'only_me');
     });
     onlineNodes = signal<any[]>([]);
 
@@ -750,8 +751,6 @@ export class NewFeedsLayoutComponent implements AfterViewInit, OnDestroy {
         switch (privacy) {
             case 'public':
                 return 'Công khai';
-            case 'friends':
-                return 'Bạn bè';
             case 'only_me':
                 return 'Chỉ mình tôi';
             case 'custom':

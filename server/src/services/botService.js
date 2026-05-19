@@ -62,7 +62,6 @@ class BotService {
         }
         
         console.log(`callWebhook`, {bot_user_id,payload });
-        // Google Apps Script thường redirect 302 -> phải dùng `redirect: 'follow'`
         const response = await fetch(bot.webhook_url, {
             method: 'POST',
             headers: {

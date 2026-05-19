@@ -6,7 +6,8 @@ class HomePostController {
         const limit = parseInt(req.query.limit) || 30;
         const offset = parseInt(req.query.offset) || 0;
         const status = req.query.status || 'approved';
-        const homePosts = await homePostsService.getHomePosts(limit, offset, status);
+        const userId = req.user?.id;
+        const homePosts = await homePostsService.getHomePosts(limit, offset, status, userId);
         new SuccessResponse({
             message: 'Get home posts successfully',
             metadata: {
