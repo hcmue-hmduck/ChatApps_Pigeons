@@ -297,7 +297,7 @@ io.on('connection', (socket) => {
 
     socket.on('leaveGroup', (data) => {
         const { conversation_id, user_id } = data;
-        
+
         // 1. Thông báo cho tất cả mọi người trong phòng (bao gồm các thiết bị khác của user này)
         io.to(conversation_id).emit('leaveGroup', data);
 
@@ -314,9 +314,15 @@ io.on('connection', (socket) => {
         console.log(`User ${user_id} left group ${conversation_id}`);
     });
 
+    socket.on('disbandGroup', (data) => {
+        const { conversation_id } = data;
+        io.to(conversation_id).emit('disbandGroup', data);
+        console.log(`Group ${conversation_id} disbanded`);
+    });
+
     socket.on('kickMember', (data) => {
         const { conversation_id, kicked_user_id } = data;
-        
+
         // 1. Broadcast cho mọi người trong phòng (bao gồm người bị kick) để họ cập nhật UI
         io.to(conversation_id).emit('kickMember', data);
 

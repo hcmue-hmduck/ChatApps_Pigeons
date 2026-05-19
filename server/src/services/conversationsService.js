@@ -1,5 +1,7 @@
 const { Op } = require('sequelize');
 const conversationsModel = require('../models/conversationsModel');
+const Participant = require('../models/participantsModel');
+const Message = require('../models/messagesModel');
 
 class ConversationsService {
     // Lấy conversations theo điều kiện filter
@@ -55,17 +57,82 @@ class ConversationsService {
         return null;
     }
 
-    // Xóa conversation (Soft Delete)
+    // Xóa/Giải tán conversation
     async deleteConversation(conversationId) {
         const conversation = await conversationsModel.findByPk(conversationId);
-        if (conversation) {
-            await conversation.update({
-                is_active: false,
-                updated_at: new Date().toISOString(),
+        if (!conversation) return false;
+
+        const transaction = await conversationsModel.sequelize.transaction();
+        try {
+            const now = new Date();
+
+            // 1. Cho tất cả thành viên rời nhóm (đặt left_at)
+            await Participant.update({
+                left_at: now
+            }, {
+                where: {
+                    conversation_id: conversationId,
+                    left_at: null
+                },
+                transaction
             });
+
+            // Tìm sender_id cho tin nhắn hệ thống
+            let senderId = conversation.created_by;
+            if (!senderId) {
+                // Thử tìm owner trong participants
+                const owner = await Participant.findOne({
+                    where: {
+                        conversation_id: conversationId,
+                        role: 'owner'
+                    },
+                    transaction
+                });
+                if (owner) {
+                    senderId = owner.user_id;
+                } else {
+                    // Thử tìm bất cứ participant nào
+                    const anyParticipant = await Participant.findOne({
+                        where: { conversation_id: conversationId },
+                        transaction
+                    });
+                    if (anyParticipant) {
+                        senderId = anyParticipant.user_id;
+                    }
+                }
+            }
+
+            // Nếu vẫn không có senderId, rollback và return false
+            if (!senderId) {
+                await transaction.rollback();
+                return false;
+            }
+
+            // 2. Thêm tin nhắn hệ thống báo nhóm đã giải tán
+            const systemMessage = await Message.create({
+                conversation_id: conversationId,
+                sender_id: senderId,
+                message_type: 'system',
+                content: '<i class="bi bi-x-circle"></i> Trưởng nhóm đã giải tán nhóm',
+                is_deleted: false,
+                created_at: now,
+                updated_at: now
+            }, { transaction });
+
+            // 3. Cập nhật last_message_id và last_message_at của cuộc hội thoại
+            await conversation.update({
+                last_message_id: systemMessage.id,
+                last_message_at: now,
+                updated_at: now
+            }, { transaction });
+
+            await transaction.commit();
             return true;
+        } catch (error) {
+            await transaction.rollback();
+            console.error('Error in deleteConversation:', error);
+            throw error;
         }
-        return false;
     }
 
     // Cập nhật key_status cho E2EE rotation

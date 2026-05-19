@@ -1,4 +1,5 @@
 const homeConversationsService = require('../services/homeConversationsService');
+const conversationsService = require('../services/conversationsService');
 const SuccessResponse = require('../core/successResponse');
 
 class HomeConversationController {
@@ -45,9 +46,9 @@ class HomeConversationController {
         try {
             const { participants_ids, name, avatar_url } = req.body;
             const { id: created_by } = req.user;
-            
+
             const newConversation = await homeConversationsService.createGroup(participants_ids, name, avatar_url, created_by);
-            
+
             return new SuccessResponse({
                 message: 'Create group successfully',
                 metadata: {
@@ -66,6 +67,24 @@ class HomeConversationController {
             message: 'Get conversation name successfully',
             metadata: groupName,
         }).send(res);
+    }
+
+    async deleteConversation(req, res, next) {
+        try {
+            const conversationId = req.params.convID;
+            const isDeleted = await conversationsService.deleteConversation(conversationId);
+            if (!isDeleted) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Conversation not found'
+                });
+            }
+            return new SuccessResponse({
+                message: 'Disband group successfully',
+            }).send(res);
+        } catch (error) {
+            next(error);
+        }
     }
 }
 
