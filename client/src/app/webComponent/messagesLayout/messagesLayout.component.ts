@@ -1184,6 +1184,8 @@ export class MessagesLayoutComponent implements OnInit, AfterViewInit, AfterView
                         if (data.nick_name !== undefined) existing.nick_name = data.nick_name;
                         if (data.full_name !== undefined) existing.full_name = data.full_name;
                         if (data.avatar_url !== undefined) existing.avatar_url = data.avatar_url;
+                        if (data.owner !== undefined) existing.owner = data.owner;
+                        if (data.role !== undefined) existing.role = data.role;
                         this.cdr.markForCheck();
                     }
                 }

@@ -484,11 +484,17 @@ export class ActiveConversationService implements OnDestroy {
         this.socketService.on('leaveGroup', (data: any) => {
             const now = new Date().toISOString();
             this.updateConversationParticipantStatus(data.conversation_id, data.user_id, now);
+            if (String(data.user_id) === String(this.authService.getUserId()) && String(data.conversation_id) === String(this.activeConversationId())) {
+                this.activeConversationId.set(null);
+            }
         });
 
         this.socketService.on('kickMember', (data: any) => {
             const now = new Date().toISOString();
             this.updateConversationParticipantStatus(data.conversation_id, data.kicked_user_id, now);
+            if (String(data.kicked_user_id) === String(this.authService.getUserId()) && String(data.conversation_id) === String(this.activeConversationId())) {
+                this.activeConversationId.set(null);
+            }
         });
 
         // 8. addMember
